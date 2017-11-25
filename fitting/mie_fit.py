@@ -1,6 +1,6 @@
 from lmfit import Minimizer, Parameters, report_fit
 import numpy as np
-import spheredhm as sph
+from  lorenzmie.theory import spheredhm as sph
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib as mpl

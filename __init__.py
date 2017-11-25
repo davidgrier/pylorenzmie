@@ -1,1 +1,3 @@
-__all__ = ['spheredhm', 'rayleighsommerfeld', 'sphere_coefficients', 'spherefield', 'sphericalfield', 'mie_fit']
+__all__ = ['detection', 'fitting', 'math', 'theory']
+
+from . import detection, fitting, math, theory
