@@ -2,7 +2,7 @@ import numpy as np
 from sphericalfield import sphericalfield
 from sphere_coefficients import sphere_coefficients
 import matplotlib.pyplot as plt
-import geometry as g
+import math.geometry as g
 import azimedian as azi
 
 def round_to_even(num):
