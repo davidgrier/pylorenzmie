@@ -1,3 +1,3 @@
-__all__ = ['detection', 'fitting', 'math', 'theory']
+__all__ = ['detection', 'fitting', 'utilities', 'theory']
 
-from . import detection, fitting, math, theory
+from . import detection, fitting, utilities, theory

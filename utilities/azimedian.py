@@ -96,16 +96,16 @@ def azimedian(a, center = default, rad = None, deinterlace = 0, weight = 0,
    umsg = 'USAGE: result = azimedian(data)'
 
    if type(a) != np.ndarray:
-      print umsg
-      print 'DATA must be a numpy array' 
-      return -1
+      print(umsg)
+      print('DATA must be a numpy array')
+      raise TypeError
 
 
    sz = a.ndim
    if sz != 2 :
-      print umsg 
-      print 'DATA must be a two-dimensional array' 
-      return -1
+      print(umsg)
+      print('DATA must be a two-dimensional array')
+      raise TypeError
 
    nx,ny = a.shape			# width, height 
 

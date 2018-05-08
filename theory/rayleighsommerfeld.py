@@ -5,11 +5,12 @@ def hanning(nx, ny):
     Calculates the Hanning Window of size (nx,ny)
     """ 
     if ny <= 0:
-        print "Array dimensions must be >= 0"
-        return
+        print("Array dimensions must be >= 0")
+        raise TypeError
     if nx <= 0:
-        print "Array dimensions must be >= 0"
-        return
+        print("Array dimensions must be >= 0")
+        raise TypeError
+    
     row_window = .5*(1-np.cos(2*np.pi*np.arange(0,int(nx))/nx))
     col_window = .5*(1-np.cos(2*np.pi*np.arange(0,int(ny))/ny))
     if ny > 0:
@@ -39,19 +40,21 @@ def rayleighsommerfeld(a, z, lamb = 0.447, mpp = 0.135, nozphase = False,
 
     # Check if a and z are appropriates types
     if type(a) != np.ndarray:
-        print 'a must be a numpy array'
-        return None
+        print('a must be a numpy array')
+        raise TypeError
 
     if type(z) == int or type(z) == float:
         z = [z]
 
     if type(z) != list and type(z) != np.ndarray:
-        print 'z must be an int, float, list or numpy array'
-        return None
+        print('z must be an int, float, list or numpy array')
+        raise TypeError
 
     # Check image is 2D
     if a.ndim != 2 : 
-        print "a must be two-dimensional hologram"
+        print("a must be two-dimensional hologram")
+        raise TypeError
+    
     ny, nx = map(float, a.shape)
   
     # A single slice or volumetric slices?

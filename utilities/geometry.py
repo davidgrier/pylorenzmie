@@ -102,12 +102,12 @@ def test():
     x = np.tile(np.arange(10, dtype = float), 10)
     y = np.repeat(np.arange(10, dtype = float), 10)
     
-    print cart.xx
-    print cart.x
-    print x
-    print cart.y
-    print y
-    print cart.units
+    print(cart.xx)
+    print(cart.x)
+    print(x)
+    print(cart.y)
+    print(y)
+    print(cart.units)
     
 def test_spherical():
     

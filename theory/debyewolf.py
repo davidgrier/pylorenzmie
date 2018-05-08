@@ -2,8 +2,8 @@ import numpy as np
 from sphericalfield import sphericalfield
 from sphere_coefficients import sphere_coefficients
 import matplotlib.pyplot as plt
-import math.geometry as g
-import azimedian as azi
+from lorenzmie.utilities import geometry as g
+from lorenzmie.utilities import azimedian as azi
 
 def round_to_even(num):
     return int(np.ceil(num/2.)*2)
