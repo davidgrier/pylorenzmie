@@ -3,7 +3,7 @@ import numpy as np
 def check_if_numpy(x, char_x):
     ''' checks if x is a numpy array '''
     if type(x) != np.ndarray:
-        print char_x + ' must be an numpy array'
+        print(char_x + ' must be an numpy array')
         return False
     else:
         return True
@@ -36,21 +36,21 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
     # Check that inputs are numpy arrays
     for var, char_var in zip([x,y,ab], ['x', 'y', 'ab']):
         if not check_if_numpy(var, char_var):
-            print 'x, y and ab must be numpy arrays'
+            print('x, y and ab must be numpy arrays')
             return None
 
     z = np.array(z) # In case it is a float or integer.
     type_z = type(z)
     if type_z != np.ndarray and type_z != int and type_z != float:
-        print 'z must be a float, int or numpy array.'
+        print('z must be a float, int or numpy array.')
         return None
 
     signZ = np.sign(z)
 
     # Check the inputs are the right size
     if x.shape != y.shape:
-        print 'x has shape {} while y has shape {}'.format(x.shape, y.shape)
-        print 'and yet their dimensions must match.'
+        print('x has shape {} while y has shape {}'.format(x.shape, y.shape))
+        print('and yet their dimensions must match.')
         return None
 
     npts = len(x)
