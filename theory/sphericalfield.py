@@ -1,4 +1,5 @@
 import numpy as np
+from builtins import range
 
 def check_if_numpy(x, char_x):
     ''' checks if x is a numpy array '''
@@ -106,7 +107,7 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
     Es = np.zeros([3, npts],complex)
 
     # Compute field by summing multipole contributions
-    for n in xrange(1, nc+1):
+    for n in range(1, nc+1):
 
         # upward recurrences ...
         # ... Legendre factor (4.47)
