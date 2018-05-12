@@ -1,26 +1,27 @@
 import numpy as np
 from builtins import range
 
-def Nstop(x, m): 
-    """
+def Nstop(x, m, method='both'): 
+    '''
     Return the number of terms to keep in partial wave expansion
-    according to Wiscombe (1980) and Yang (2003).
-    """
+    Args: 
+        x: [nlayers] list of size parameters for each layer
+        m: relative refractive index
+     to Wiscombe (1980) and Yang (2003).
+    '''
 
     ### Wiscombe (1980)
     xl = x[-1]
-    if xl < 8.:
+    if xl <= 8.:
         ns = np.floor(xl + 4. * xl**(1./3.) + 1.)
-    elif xl < 4200.:
+    elif xl <= 4200.:
         ns = np.floor(xl + 4.05 * xl**(1./3.) + 2.)
-    elif xl > 4199.:
+    elif xl > 4200.:
         ns = np.floor(xl + 4. * xl**(1./3.) + 2.)
 
     ### Yang (2003) Eq. (30)
-    ns = [ns]
-    ns.extend(map(abs,x*m))
-    ns.extend(map(abs,np.roll(x,-1)*m))
-    return int(np.floor(max(ns))+15)
+    nstop = max(ns, *abs(x*m), *abs(np.roll(x,-1)*m))
+    return int(nstop + 15)
 
 def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
     """
