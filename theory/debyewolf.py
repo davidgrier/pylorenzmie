@@ -9,7 +9,8 @@ def round_to_even(num):
     return int(np.ceil(num/2.)*2)
 
 def map_abs(data):
-    return np.hstack(map(np.abs, data[:]))
+    #return np.hstack(map(np.abs, data[:]))
+    return np.hstack([np.abs(datum) for datum in data])
 
 def verbose(data, title, gray=False, outfile=None, **kwargs):
     plt.imshow(data, **kwargs)
@@ -282,8 +283,8 @@ def image_camera_plane(z, a_p, n_p, nm, nm_obj=1.5, nm_img=1.0, NA=1.45,
     image = image_formation(es_cam, e_inc)
 
     if dim is not None:
-        xc, yc = map(lambda x:x/2, image.shape)
-        dim = map(lambda x:x/2, dim)
+        xc, yc = list(map(lambda x:x//2, image.shape))
+        dim = list(map(lambda x:x//2, dim))
         image = image[xc-dim[0]:xc+dim[0], yc-dim[1]:yc+dim[1]]
 
     return image
