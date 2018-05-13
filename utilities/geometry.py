@@ -37,24 +37,25 @@ class CartesianCoordinates(object):
 
     def extrema(self):
         return (self.xx.min(), self.yy.min(), self.xx.max(), self.yy.max())
+    
+    def acquire_spherical(self, z):
+        xx = self.xx
+        yy = self.yy
 
-class SphericalCoordinates(object):
-    def __init__(self, cart):
-        xx = cart.xx
-        yy = cart.yy
-        r_squared = xx**2 + yy**2
-        #inds = np.where((r_squared-0.5)**2 < .25) # Keep r_squared between 0 and 1.
-        inds = np.where(r_squared > 0.0)
-
-        self.costheta = np.sqrt(1. - r_squared)
-        self.sintheta = np.sqrt(r_squared)
-        
-        self.cosphi = np.ones(r_squared.shape)
-        self.sinphi = np.ones(r_squared.shape)
-
-        self.cosphi[inds] = xx[inds]/self.sintheta[inds]
-        self.sinphi[inds] = yy[inds]/self.sintheta[inds]
-
+        # convert to spherical coordinates centered on the sphere.
+        # (r, theta, phi) is the spherical coordinate of the pixel
+        # at (x,y) in the imaging plane at distance z from the
+        # center of the sphere.
+        self.z = z
+        self.rho   = np.sqrt(xx**2 + yy**2)
+        self.r     = np.sqrt(self.rho**2 + z**2)
+        theta = np.arctan2(self.rho, z)
+        phi   = np.arctan2(yy, xx)
+        self.costheta = np.cos(theta)
+        self.sintheta = np.sin(theta)
+        self.cosphi   = np.cos(phi)
+        self.sinphi   = np.sin(phi)
+    
 class VectorField(object):
     def __init__(self, coordinates, dim):
         self.coords = coordinates
@@ -73,11 +74,11 @@ class SphericalVectorField(VectorField):
         VectorField.__init__(self, coordinates, dim)
     
 
-def spherical_to_cartesian(es_cam, sph_coords):
-    sintheta = sph_coords.sintheta
-    costheta = sph_coords.costheta
-    sinphi = sph_coords.sinphi
-    cosphi = sph_coords.cosphi
+def spherical_to_cartesian(es_cam, geom):
+    sintheta = geom.sintheta
+    costheta = geom.costheta
+    sinphi = geom.sinphi
+    cosphi = geom.cosphi
 
     es_cam_cart = np.zeros(es_cam.shape, dtype = complex)
     es_cam_cart += es_cam
@@ -101,14 +102,7 @@ def test():
     
     x = np.tile(np.arange(10, dtype = float), 10)
     y = np.repeat(np.arange(10, dtype = float), 10)
-    
-    print(cart.xx)
-    print(cart.x)
-    print(x)
-    print(cart.y)
-    print(y)
-    print(cart.units)
-    
+
 def test_spherical():
     
     # Parameters
