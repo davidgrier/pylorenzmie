@@ -9,7 +9,6 @@ def round_to_even(num):
     return int(np.ceil(num/2.)*2)
 
 def map_abs(data):
-    #return np.hstack(map(np.abs, data[:]))
     return np.hstack([np.abs(datum) for datum in data])
 
 def verbose(data, title, gray=False, outfile=None, **kwargs):
@@ -34,7 +33,7 @@ def discretize_plan(NA, M, lamb, nm_img, mpp):
 
     # Suppose the largest scatterer we consider is 20 lambda. Then
     # P should be larger than 40*NA.
-    diam = 200 # wavelengths
+    diam = 300 # wavelengths
 
     p, q = int(2*diam*NA), int(2*diam*NA) # FIXME (MDH): should you add nm_obj?
 
@@ -47,6 +46,7 @@ def discretize_plan(NA, M, lamb, nm_img, mpp):
 
     # Compute the real mpp.
     mpp_r = lamb*p/(2*NA*Np) # FIXME (MDH): Will this result in mpp_x, mpp_y?
+    print('mpp_r is {}'.format(mpp_r))
 
     return mpp_r, Np, Nq, p, q
 
@@ -127,9 +127,12 @@ def refocus(es_img, s_img, n_disc_grid, p, q, Np, Nq, NA, M, lamb, nm_img,
 
     return es_cam
 
-def image_formation(es_cam, e_inc_cam):
+def image_formation(*fields):
     '''Produces an image from the electric fields present.'''
-    fields = es_cam + e_inc_cam
+    for field in fields:
+        if type(field) != np.ndarray:
+            raise TypeError
+    fields = np.sum(fields, axis=0)
     image = np.sum(np.real(fields*np.conjugate(fields)), axis = 0)
     return image
 
@@ -208,7 +211,6 @@ def particle_field_camera_plane(z, a_p, n_p, nm, nm_obj=1.339, nm_img=1.0, NA=1.
     n_disc_grid = g.CartesianCoordinates(Np, Nq, origin=[.5*(Np-1), .5*(Nq-1.)])
     #n_disc_grid = g.CartesianCoordinates(Np, Nq, origin=[0, 0])
     
-
     # Spherical Geometries.
     s_obj_cart.acquire_spherical(1.)
     s_img_cart.acquire_spherical(1.)
@@ -278,7 +280,7 @@ def image_camera_plane(z, a_p, n_p, nm, nm_obj=1.5, nm_img=1.0, NA=1.45,
     es_cam = particle_field_camera_plane(z, a_p, n_p, nm, nm_obj=nm_obj, 
                                          nm_img=nm_img, NA=NA,
                                          lamb=lamb, mpp=mpp, M=M,
-                                         quiet=quiet)*-1
+                                         quiet=quiet)*-1 # why this negative 1?
 
     image = image_formation(es_cam, e_inc)
 
@@ -289,14 +291,14 @@ def image_camera_plane(z, a_p, n_p, nm, nm_obj=1.5, nm_img=1.0, NA=1.45,
 
     return image
 
-def test_image(z=10.0, quiet=False):
+def test_image(z=10.0, quiet=True):
     from spheredhm import spheredhm
 
     # Necessary parameters.
     a_p = 0.5
     n_p = 1.59
     nm = 1.339
-    NA = 1.339
+    NA = 1.45
     lamb = 0.447
     dim = [400,400] # FIXME: Does nothing.
     nm_obj = 1.339
@@ -308,7 +310,7 @@ def test_image(z=10.0, quiet=False):
     cam_image = image_camera_plane(z/mpp, a_p, n_p, nm, nm_obj=nm_obj, 
                                    nm_img=nm_img,  NA=NA, lamb=lamb, 
                                    mpp=mpp, M=M, dim=dim, 
-                                   quiet=quiet)
+                                   quiet=True)
 
     # Produce image in the focal plane.
     dim = cam_image.shape
@@ -318,16 +320,17 @@ def test_image(z=10.0, quiet=False):
     cam_image *= M**2*nm_img/nm_obj
     diff = cam_image - image
     print("Maximum difference between two images: {}".format(np.max(diff)))
-    verbose(np.hstack([cam_image, image, diff+1]), 
-            r'Camera Plane Image, Focal Plane Image and their Difference.', 
-            gray=True)
+    #verbose(np.hstack([cam_image, image, diff+1]), 
+    #        r'Camera Plane Image, Focal Plane Image and their Difference.', 
+    #        gray=True)
 
     # Plot the radii.
     cam_rad = azi.azimedian(cam_image)
     focal_rad = azi.azimedian(image) 
-    # FIXME (MDH): center is not correct...
+    # FIXME (MDH): Check if center is correct...
 
     end = 150
+    fig, ax = plt.subplots(figsize=(10,7))
     plt.plot(cam_rad[:end], 'r', label = 'Camera Plane')
     plt.plot(focal_rad[:end], 'black', label = 'Focal Plane')
     plt.xlabel('Radial distance [pix]')
