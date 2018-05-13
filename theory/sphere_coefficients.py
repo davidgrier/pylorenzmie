@@ -20,7 +20,9 @@ def Nstop(x, m, method='both'):
         ns = np.floor(xl + 4. * xl**(1./3.) + 2.)
 
     ### Yang (2003) Eq. (30)
-    nstop = max(ns, *abs(x*m), *abs(np.roll(x,-1)*m))
+    xm = abs(x*m)
+    xm_1 = abs(np.roll(x,-1)*m)
+    nstop = max(ns, xm, xm_1)
     return int(nstop + 15)
 
 def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
@@ -117,8 +119,8 @@ def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
             D1_am1[n-1, ii] = n/z2 - 1./(D1_am1[n, ii] + n/z2)
             
        # Upward recurrence for PsiZeta and D3, Eqs. (18a) and (18b)
-        PsiZeta_a[0, ii]   = 0.5 * (1. - np.exp(2. * ci * z1)) # Eq. (18a)
-        PsiZeta_am1[0, ii] = 0.5 * (1. - np.exp(2. * ci * z2))
+        PsiZeta_a[0, ii]   = 0.5 * (1. - np.exp(2.j * z1)) # Eq. (18a)
+        PsiZeta_am1[0, ii] = 0.5 * (1. - np.exp(2.j * z2))
         D3_a[0, ii]   = ci           
         D3_am1[0, ii] = ci           
         for n in range(1, nmax+1):    # Eq. (18b)
