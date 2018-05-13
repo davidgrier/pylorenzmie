@@ -61,6 +61,7 @@
 #-
 
 import numpy as np
+from builtins import range
 
 default = np.array([])
 
@@ -147,7 +148,7 @@ def azimedian(a, center = default, rad = None, deinterlace = 0, weight = 0,
 
    #Make an array n which has the points lying between
    #r and r+1.  Evaluate the median of the image over these pixels
-   for i in xrange(int(rmax+1)):
+   for i in range(int(rmax+1)):
       n = (r>=i)*(r<(i+1))
       med[i] = np.median(a[n])
          
