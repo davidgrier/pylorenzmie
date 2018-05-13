@@ -1,6 +1,6 @@
 import numpy as np
-from sphericalfield import sphericalfield
-from sphere_coefficients import sphere_coefficients
+from lorenzmie.theory.sphericalfield import sphericalfield
+from lorenzmie.theory.sphere_coefficients import sphere_coefficients
 import matplotlib.pyplot as plt
 from lorenzmie.utilities import geometry as g
 from lorenzmie.utilities import azimedian as azi
@@ -28,12 +28,12 @@ def aperture(field, geom, r_max):
 
     return field
 
-def discretize_plan(NA, M, lamb, nm_img, mpp):
+def discretize_plan(NA, M, lamb, nm_img, mpp, diam=300):
     '''Discretizes a plane according to Eq. 130 - 131.'''
 
     # Suppose the largest scatterer we consider is 20 lambda. Then
     # P should be larger than 40*NA.
-    diam = 300 # wavelengths
+    # diam = 300 # wavelengths
 
     p, q = int(2*diam*NA), int(2*diam*NA) # FIXME (MDH): should you add nm_obj?
 
@@ -46,7 +46,6 @@ def discretize_plan(NA, M, lamb, nm_img, mpp):
 
     # Compute the real mpp.
     mpp_r = lamb*p/(2*NA*Np) # FIXME (MDH): Will this result in mpp_x, mpp_y?
-    print('mpp_r is {}'.format(mpp_r))
 
     return mpp_r, Np, Nq, p, q
 
@@ -162,11 +161,11 @@ def propagate_ang_spec_microscope(ang_spec, s_obj_cart, s_img_cart, nm_obj,
 
     return es_cam
 
-def incident_field_camera_plane(nm, nm_obj, nm_img, lamb, mpp, NA, M, z):
+def incident_field_camera_plane(nm, nm_obj, nm_img, lamb, mpp, NA, M, z, diam):
     """Calculate the incident field in the camera plane."""
     
     # Devise a discretization plan.
-    mpp_r, Np, Nq, p, q = discretize_plan(NA, M, lamb, nm_img, mpp)
+    mpp_r, Np, Nq, p, q = discretize_plan(NA, M, lamb, nm_img, mpp, diam)
 
     # Necessary constants.
     k_med = 2*np.pi*nm*mpp_r/lamb # [pix**-1]
@@ -180,11 +179,12 @@ def incident_field_camera_plane(nm, nm_obj, nm_img, lamb, mpp, NA, M, z):
 
 def particle_field_camera_plane(z, a_p, n_p, nm, nm_obj=1.339, nm_img=1.0, NA=1.45,
                        lamb=0.447, mpp=0.135, M=100, f=2.E5, dim=[201,201],
-                       quiet=True):
+                                quiet=True, diam=300):
     """Calculate the field of a scattering particle in the camera plane."""
 
     # Devise a discretization plan.
-    mpp_r, Np, Nq, p, q = discretize_plan(NA, M, lamb, nm_img, mpp)
+    mpp_r, Np, Nq, p, q = discretize_plan(NA, M, lamb, nm_img, mpp, diam)
+    print(Np, Nq, p, q)
     z *= mpp/mpp_r # TOTAL HACK FIXME (MDH)
     mpp = mpp_r
 
@@ -238,7 +238,7 @@ def particle_field_camera_plane(z, a_p, n_p, nm, nm_obj=1.339, nm_img=1.0, NA=1.
 
 def image_camera_plane(z, a_p, n_p, nm, nm_obj=1.5, nm_img=1.0, NA=1.45, 
                        lamb=0.447, mpp=0.135, M=100, dim=None, 
-                       quiet=True):
+                       quiet=True, diam=100):
     '''
     Returns an image in the camera plane due to a spherical scatterer with 
     radius a_p and refractive index n_p at a height z above the focal plane. 
@@ -275,12 +275,12 @@ def image_camera_plane(z, a_p, n_p, nm, nm_obj=1.5, nm_img=1.0, NA=1.45,
                Applied Optics, 38(34), 7085.
     '''
 
-    e_inc = incident_field_camera_plane(nm, nm_obj, nm_img, lamb, mpp, NA, M, z)
+    e_inc = incident_field_camera_plane(nm, nm_obj, nm_img, lamb, mpp, NA, M, z, diam)
 
     es_cam = particle_field_camera_plane(z, a_p, n_p, nm, nm_obj=nm_obj, 
                                          nm_img=nm_img, NA=NA,
                                          lamb=lamb, mpp=mpp, M=M,
-                                         quiet=quiet)*-1 # why this negative 1?
+                                         quiet=quiet, diam=diam)*-1 # why this negative 1?
 
     image = image_formation(es_cam, e_inc)
 
