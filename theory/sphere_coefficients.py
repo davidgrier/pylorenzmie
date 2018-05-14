@@ -45,7 +45,7 @@ def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
         ab: the coefficients a,b
     """
 
-    if type(a_p) == float:
+    if type(a_p) == float or type(a_p) == np.float64:
         a_p = np.array([a_p])
         n_p = np.array([n_p])
 
