@@ -5,8 +5,12 @@ import matplotlib.pyplot as plt
 from lorenzmie.utilities import geometry as g
 from lorenzmie.utilities import azimedian as azi
 
+
 def round_to_even(num):
     return int(np.ceil(num/2.)*2)
+
+def round_to_odd(num):
+    return int(np.ceil(num/2.)*2)-1
 
 def map_abs(data):
     return np.hstack([np.abs(datum) for datum in data])
@@ -36,11 +40,13 @@ def discretize_plan(NA, M, lamb, nm_img, mpp, diam=300):
     # diam = 300 # wavelengths
 
     p, q = int(2*diam*NA), int(2*diam*NA) # FIXME (MDH): should you add nm_obj?
-
+    p, q = map(round_to_odd, [p, q])
+    
     # Pad with zeros to help dealias and to approximate mpp_r to mpp.
     pad_p = max([int((lamb - mpp*2*NA)/(mpp*2*NA)*p), 0])
     pad_q = max([int((lamb - mpp*2*NA)/(mpp*2*NA)*q), 0])
-
+    pad_p, pad_q = map(round_to_even, [pad_p, pad_q])
+    
     Np = p + pad_p
     Nq = q + pad_q
 
