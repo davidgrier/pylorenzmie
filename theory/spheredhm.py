@@ -75,7 +75,8 @@ def test_spheredhm():
     
     # Produce Image.
     image = spheredhm(rp, a_p, n_p, n_m , dim, lamb = lamb, mpp = mpp)
-
+    test_image = np.load('test_hologram.npy')
+    print(np.allclose(image, test_image, rtol=0, atol=1E-15))
     # Plot the hologram.
     import matplotlib.pyplot as plt
     plt.imshow(image)

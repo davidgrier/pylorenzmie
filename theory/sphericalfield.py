@@ -65,15 +65,14 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
     # center of the sphere.
     rho   = np.sqrt(x**2 + y**2)
     r     = np.sqrt(rho**2 + z**2)
-    theta = np.arctan2(rho, z)
-    phi   = np.arctan2(y, x)
-    costheta = np.cos(theta)
-    sintheta = np.sin(theta)
-    cosphi   = np.cos(phi)
-    sinphi   = np.sin(phi)
+    costheta = z/r
+    sintheta = rho/r
+    cosphi   = x/rho
+    sinphi = y/rho
 
     kr = k*r # reduced radial coordinate
-
+    inv_kr = 1./kr
+    
     # starting points for recursive function evaluation ...
     # ... Riccati-Bessel radial functions, page 478
     sinkr = np.sin(kr)
@@ -106,6 +105,9 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
     # storage for scattered field
     Es = np.zeros([3, npts],complex)
 
+    # Speed up. The "a" sphere_coefficients are always multiplied by 1.j
+    ab[:,0] *= 1.0j
+
     # Compute field by summing multipole contributions
     for n in range(1, nc+1):
 
@@ -117,14 +119,14 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
         tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
 
         # ... Riccati-Bessel function, page 478
-        xi_n = (2.0*n - 1.0) * xi_nm1 / kr - xi_nm2    # \xi_n(kr)
+        xi_n = (2.0*n - 1.0) * xi_nm1 *inv_kr - xi_nm2    # \xi_n(kr)
 
         # vector spherical harmonics (4.50)
         #Mo1n[0, :] = 0               # no radial component
         Mo1n[1, :] = pi_n * xi_n     # ... divided by cosphi/kr
         Mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
 
-        dn = (n * xi_n)/kr - xi_nm1
+        dn = (n * xi_n) * inv_kr - xi_nm1
         Ne1n[0, :] = n*(n + 1.0) * pi_n * xi_n # ... divided by cosphi sintheta/kr^2
         Ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
         Ne1n[2, :] = pi_n  * dn      # ... divided by sinphi/kr
@@ -133,7 +135,7 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
         En = 1.j**n * (2.0*n + 1.0) / n / (n + 1.0)
 
         # the scattered field in spherical coordinates (4.45)
-        Es += En * (1.j * ab[n,0] * Ne1n - ab[n,1] * Mo1n)
+        Es += En * (ab[n,0] * Ne1n - ab[n,1] * Mo1n)
 
         # upward recurrences ...
         # ... angular functions (4.47)

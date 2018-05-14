@@ -190,7 +190,7 @@ def particle_field_camera_plane(z, a_p, n_p, nm, nm_obj=1.339, nm_img=1.0, NA=1.
 
     # Devise a discretization plan.
     mpp_r, Np, Nq, p, q = discretize_plan(NA, M, lamb, nm_img, mpp, diam)
-    print(Np, Nq, p, q)
+
     z *= mpp/mpp_r # TOTAL HACK FIXME (MDH)
     mpp = mpp_r
 
