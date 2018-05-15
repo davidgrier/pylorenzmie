@@ -105,11 +105,16 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
     # storage for scattered field
     Es = np.zeros([3, npts],complex)
 
-    # Speed up. The "a" sphere_coefficients are always multiplied by 1.j
+    # Speed ups
+    #The "a" sphere_coefficients are always multiplied by 1.j
     ab[:,0] *= 1.0j
 
+    # prefactor, page 93
+    ns = np.arange(1, nc+1)
+    En = 1.j**ns * (2.0*ns + 1.0) / ns / (ns + 1.0)
+    
     # Compute field by summing multipole contributions
-    for n in range(1, nc+1):
+    for n in ns:
 
         # upward recurrences ...
         # ... Legendre factor (4.47)
@@ -131,11 +136,8 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
         Ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
         Ne1n[2, :] = pi_n  * dn      # ... divided by sinphi/kr
 
-        # prefactor, page 93
-        En = 1.j**n * (2.0*n + 1.0) / n / (n + 1.0)
-
         # the scattered field in spherical coordinates (4.45)
-        Es += En * (ab[n,0] * Ne1n - ab[n,1] * Mo1n)
+        Es += En[n-1] * (ab[n,0] * Ne1n - ab[n,1] * Mo1n)
 
         # upward recurrences ...
         # ... angular functions (4.47)
@@ -165,7 +167,6 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
     # is linearly polarized along x
     if cartesian:
         Ec = np.zeros([3, npts], complex)
-        Ec += Es
 
         Ec[0, :] =  Es[0, :] * sintheta * cosphi
         Ec[0, :] += Es[1, :] * costheta * cosphi
