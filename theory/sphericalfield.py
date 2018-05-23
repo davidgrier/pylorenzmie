@@ -67,8 +67,8 @@ def sphericalfield(x, y, z, ab, lamb, cartesian=False, str_factor=False,
     r     = np.sqrt(rho**2 + z**2)
     costheta = z/r
     sintheta = rho/r
-    cosphi   = x/rho
-    sinphi = y/rho
+    cosphi   = x/(rho + 1E-30)
+    sinphi = y/(rho + 1E-30)
 
     kr = k*r # reduced radial coordinate
     inv_kr = 1./kr
