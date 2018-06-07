@@ -40,14 +40,11 @@ class Mie_Fitter(object):
             covariances, . (See lmfit result object docs).
     '''
     def __init__(self, init_params, fixed=['n_m', 'mpp', 'lamb']):
-        # Instantiate parameters.
         self.__init_params__()
-
-        # Set initial values.
+        
         for name, value in init_params.items():
             self.set_param(name, value)
 
-        # Set parameters which should NOT be varied.
         for name in fixed:
             self.fix_param(name)
         

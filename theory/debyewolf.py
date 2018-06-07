@@ -244,7 +244,7 @@ def particle_field_camera_plane(z, a_p, n_p, nm, nm_obj=1.339, nm_img=1.0, NA=1.
 
 def image_camera_plane(z, a_p, n_p, nm, nm_obj=1.5, nm_img=1.0, NA=1.45, 
                        lamb=0.447, mpp=0.135, M=100, dim=None, 
-                       quiet=True, diam=100):
+                       quiet=True, diam=300):
     '''
     Returns an image in the camera plane due to a spherical scatterer with 
     radius a_p and refractive index n_p at a height z above the focal plane. 
