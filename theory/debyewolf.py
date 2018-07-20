@@ -1,6 +1,6 @@
 import numpy as np
-from sphericalfield import sphericalfield
-from sphere_coefficients import sphere_coefficients
+from lorenzmie.theory.sphericalfield import sphericalfield
+from lorenzmie.theory.sphere_coefficients import sphere_coefficients
 import matplotlib.pyplot as plt
 from lorenzmie.utilities import geometry as g
 from lorenzmie.utilities import azimedian as azi

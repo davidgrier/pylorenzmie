@@ -1,5 +1,5 @@
 import numpy as np
-from spherefield import spherefield
+from lorenzmie.theory.spherefield import spherefield
 
 def spheredhm(rp, a_p, n_p, n_m, dim, mpp = 0.135, lamb = .447, alpha = False, 
               precision = False,  lut = False):

@@ -1,5 +1,5 @@
-from sphere_coefficients import sphere_coefficients
-from sphericalfield import sphericalfield
+from lorenzmie.theory.sphere_coefficients import sphere_coefficients
+from lorenzmie.theory.sphericalfield import sphericalfield
 import numpy as np
 
 def spherefield(x, y, z, a_p, n_p, n_m = complex(1.3326, 1.5e-8), 
