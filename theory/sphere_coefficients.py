@@ -45,6 +45,7 @@ def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
         ab: the coefficients a,b
     """
 
+    '''
     if type(a_p) == float:
         a_p = np.array([a_p])
         n_p = np.array([n_p])
@@ -52,18 +53,21 @@ def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
     if type(a_p) != np.ndarray:
         a_p = np.array(a_p)
         n_p = np.array(n_p)
-        
+    '''
+    a_p = np.array([a_p])
+    n_p = np.array([n_p])
     nlayers = a_p.ndim
 
     if n_p.ndim != nlayers:
         print("Error Warning: a_p and n_p must have the same number of elements")
 
     # arrange shells in size order
+    '''
     if nlayers > 1: 
         order = a_p.argsort()
         a_p = a_p[order]
         n_p = n_p[order]
-
+    '''
     x = [abs(2.0 * np.pi * n_m * a_layer) for a_layer in a_p] # size parameter [array]
     m = n_p/n_m                   # relative refractive index [array]
     nmax = Nstop(x, m)            # number of terms in partial-wave expansion
