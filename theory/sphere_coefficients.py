@@ -1,7 +1,43 @@
+# -*- coding: utf-8 -*-
+
 import numpy as np
 
+'''
+REFERENCES
+1. Adapted from Chapter 8 in
+   C. F. Bohren and D. R. Huffman,
+   Absorption and Scattering of Light by Small Particles,
+   (New York, Wiley, 1983).
 
-def n_stop(x, m, method='both'):
+2. W. Yang,
+   Improved recursive algorithm for light scattering
+   by a multilayered sphere,
+   Applied Optics 42, 1710--1720 (2003).
+
+3. O. Pena, U. Pal,
+   Scattering of electromagnetic radiation by a multilayered sphere,
+   Computer Physics Communications 180, 2348--2354 (2009).
+   NB: Equation numbering follows this reference.
+
+4. W. J. Wiscombe,
+   Improved Mie scattering algorithms,
+   Applied Optics 19, 1505-1509 (1980).
+
+5. A. A. R. Neves and D. Pisignano,
+   Effect of finite terms on the truncation error of Mie series,
+   Optics Letters 37, 2481-2420 (2012).
+
+HISTORY
+Adapted from the IDL routine sphere_coefficients.pro
+which calculates scattering coefficients for layered spheres.
+The IDL code was
+Copyright (c) 2010-2016 F. C. Cheong and D. G. Grier
+The present python adaptation is
+Copyright (c) 2018 Mark D. Hannel and David G. Grier
+'''
+
+
+def wiscombe_yang(x, m):
     '''
     Return the number of terms to keep in partial wave expansion
     Args:
@@ -23,7 +59,7 @@ def n_stop(x, m, method='both'):
     xm = abs(x*m)
     xm_1 = abs(np.roll(x, -1)*m)
     nstop = max(ns, xm, xm_1)
-    return int(nstop + 15)
+    return int(nstop)
 
 
 def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
@@ -39,7 +75,7 @@ def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
         n_m: (complex) refractive index of medium
         lamb: wavelength of light [micrometers]
 
-    Keywrods:
+    Keywords:
         resolution: minimum magnitude of Lorenz-Mie coefficients to retain.
               Default: See references
     Returns:
@@ -63,7 +99,7 @@ def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
     # size parameters for layers
     x = [abs(2.0 * np.pi * n_m * a_j) for a_j in a_p]
     m = n_p/n_m               # relative refractive index [array]
-    nmax = n_stop(x, m)       # number of terms in partial-wave expansion
+    nmax = wiscombe_yang(x, m)
 
     # arrays for storing results
     # Note:  May be faster not to use zeros
@@ -176,7 +212,7 @@ def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
     ab[:, 1] = (hb[:, -1]*m[-1] + n/x[-1]) * psi - np.roll(psi,  1)  # Eq. (6)
     ab[:, 1] /= (hb[:, -1]*m[-1] + n/x[-1]) * zeta - np.roll(zeta, 1)
     ab[0, :] = complex(0., 0.)
-    if (resolution > 0):
+    if resolution is not None:
         w = abs(ab).sum(axis=1)
         ab = ab[(w > resolution), :]
 
