@@ -8,62 +8,50 @@ class Particle(object):
     '''Abstraction of a particle for Lorenz-Mie microscopy'''
 
     def __init__(self,
-                 rp=None,  # 3-dimensional coordinates of center
-                 ab=None):  # Lorenz-Mie ab coefficients
-        if rp is None:
-            self.rp = [0, 0, 0]
-        else:
-            self.rp = rp
+                 r_p=[0, 0, 0]):   # 3-dimensional coordinates of center
 
-        if ab is None:
-            self.ab = [1, 1]
+        self.r_p = r_p
 
     @property
-    def rp(self):
+    def r_p(self):
         '''Three-dimensional coordinates of particle's center'''
-        return self._rp
+        return self._r_p
 
-    @rp.setter
-    def rp(self, rp):
-        self._rp = np.asarray(rp, dtype=float)
-
-    @property
-    def xp(self):
-        return self._rp[0]
-
-    @xp.setter
-    def xp(self, xp):
-        self._rp[0] = float(xp)
+    @r_p.setter
+    def r_p(self, r_p):
+        self._r_p = np.asarray(r_p, dtype=float)
 
     @property
-    def yp(self):
-        return self._rp[1]
+    def x_p(self):
+        return self._r_p[0]
 
-    @yp.setter
-    def yp(self, yp):
-        self._rp[1] = float(yp)
-
-    @property
-    def zp(self):
-        return self._rp[2]
-
-    @zp.setter
-    def zp(self, zp):
-        self._rp[2] = float(zp)
+    @x_p.setter
+    def x_p(self, x_p):
+        self._r_p[0] = float(x_p)
 
     @property
-    def ab(self):
-        '''Lorenz-Mie a and b coefficients'''
-        return self._ab
+    def y_p(self):
+        return self._r_p[1]
 
-    @ab.setter
-    def ab(self, ab):
-        self._ab = np.asarray(ab, dtype=np.complex)
+    @y_p.setter
+    def y_p(self, y_p):
+        self._r_p[1] = float(y_p)
+
+    @property
+    def z_p(self):
+        return self._r_p[2]
+
+    @z_p.setter
+    def z_p(self, z_p):
+        self._r_p[2] = float(z_p)
+
+    def ab(self, n_m=1., wavelength=0., resolution=0):
+        return np.asarray([1, 1], dtype=np.complex)
 
 
 if __name__ == '__main__':
     p = Particle()
-    print(p.rp)
-    p.xp = 100.
-    print(p.rp)
-    print(p.ab)
+    print(p.r_p)
+    p.x_p = 100.
+    print(p.r_p)
+    print(p.ab())
