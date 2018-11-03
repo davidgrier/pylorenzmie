@@ -7,23 +7,12 @@ class Instrument(object):
     Lorenz-Mie microscopy'''
 
     def __init__(self,
-                 wavelength=None,
-                 magnification=None,
-                 mm=None):
-        if wavelength is None:
-            self.wavelength = 0.532
-        else:
-            self.wavelength = wavelength
-
-        if magnification is None:
-            self.magnification = 0.135
-        else:
-            self.magnification = magnification
-
-        if mm is None:
-            self.mm = 1.335
-        else:
-            self.mm = mm
+                 wavelength=0.532,
+                 magnification=0.135,
+                 n_m=1.335):
+        self.wavelength = wavelength
+        self.magnification = magnification
+        self.n_m = n_m
 
     @property
     def wavelength(self):
@@ -44,13 +33,13 @@ class Instrument(object):
         self._magnification = float(magnification)
 
     @property
-    def mm(self):
+    def n_m(self):
         '''Complex refractive index of medium'''
-        return self._mm
+        return self._n_m
 
-    @mm.setter
-    def mm(self, mm):
-        self._mm = complex(mm)
+    @n_m.setter
+    def n_m(self, n_m):
+        self._n_m = complex(n_m)
 
 
 if __name__ == '__main__':
