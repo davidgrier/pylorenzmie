@@ -15,6 +15,7 @@ class Particle(object):
 
     @property
     def rp(self):
+        '''Three-dimensional coordinates of particle's center'''
         return self._rp
 
     @rp.setter
