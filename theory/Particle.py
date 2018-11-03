@@ -7,11 +7,16 @@ import numpy as np
 class Particle(object):
     '''Abstraction of a particle for Lorenz-Mie microscopy'''
 
-    def __init__(self, rp=None):
+    def __init__(self,
+                 rp=None,  # 3-dimensional coordinates of center
+                 ab=None):  # Lorenz-Mie ab coefficients
         if rp is None:
             self.rp = [0, 0, 0]
         else:
             self.rp = rp
+
+        if ab is None:
+            self.ab = [1, 1]
 
     @property
     def rp(self):
@@ -46,9 +51,19 @@ class Particle(object):
     def zp(self, zp):
         self._rp[2] = float(zp)
 
+    @property
+    def ab(self):
+        '''Lorenz-Mie a and b coefficients'''
+        return self._ab
+
+    @ab.setter
+    def ab(self, ab):
+        self._ab = np.asarray(ab, dtype=np.complex)
+
 
 if __name__ == '__main__':
     p = Particle()
     print(p.rp)
     p.xp = 100.
     print(p.rp)
+    print(p.ab)
