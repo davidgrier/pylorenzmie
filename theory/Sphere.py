@@ -24,6 +24,7 @@ class Sphere(Particle):
 
     @property
     def ap(self):
+        '''Radius of sphere [um]'''
         return self._ap
 
     @ap.setter
@@ -32,6 +33,7 @@ class Sphere(Particle):
 
     @property
     def mp(self):
+        '''Complex refractive index of sphere'''
         return self._mp
 
     @mp.setter
