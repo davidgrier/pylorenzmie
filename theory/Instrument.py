@@ -1,6 +1,8 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import numpy as np
+
 
 class Instrument(object):
     '''Abstraction of an in-line holographic microscope for
@@ -40,6 +42,15 @@ class Instrument(object):
     @n_m.setter
     def n_m(self, n_m):
         self._n_m = complex(n_m)
+
+    def wavenumber(self, in_medium=True, magnified=True):
+        '''Wave number of light in the medium [um^-1]'''
+        k = 2.*np.pi/self.wavelength  # wave number in vacuum
+        if in_medium:
+            k *= np.real(self.n_m)    # wave number in medium
+        if magnified:
+            k *= self.magnification
+        return k
 
 
 if __name__ == '__main__':
