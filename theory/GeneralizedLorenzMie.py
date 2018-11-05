@@ -47,6 +47,8 @@ Copyright (c) 2018 David G. Grier
 
 
 class GeneralizedLorenzMie(object):
+    '''Compute the field scattered by a particle in a microscope'''
+
     def __init__(self,
                  coordinates=None,
                  particle=None,
@@ -78,6 +80,7 @@ class GeneralizedLorenzMie(object):
 
     @property
     def particle(self):
+        '''Particle responsible for light scattering'''
         return self._particle
 
     @particle.setter
@@ -87,6 +90,7 @@ class GeneralizedLorenzMie(object):
 
     @property
     def instrument(self):
+        '''Imaging instrument'''
         return self._instrument
 
     @instrument.setter
