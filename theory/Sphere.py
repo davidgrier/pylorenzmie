@@ -40,12 +40,21 @@ Copyright (c) 2018 Mark D. Hannel and David G. Grier
 
 
 def wiscombe_yang(x, m):
-    '''
-    Return the number of terms to keep in partial wave expansion
-    Args:
-        x: [nlayers] list of size parameters for each layer
-        m: relative refractive index
-     to Wiscombe (1980) and Yang (2003).
+    '''Return the number of terms to keep in partial wave expansion
+
+    Equation numbers refer to Wiscombe (1980) and Yang (2003).
+
+    Parameters
+    ----------
+    x : complex or numpy.ndarray
+        size parameters for each layer
+    m : complex or numpy.ndarray
+        relative refractive indexes of the layers
+
+    Returns
+    -------
+    ns : int
+        Number of terms to retain in the partial-wave expansion
     '''
 
     # Wiscombe (1980)
@@ -65,21 +74,28 @@ def wiscombe_yang(x, m):
 
 
 def mie_coefficients(a_p, n_p, n_m, wavelength):
-    """
-    Calculate the Mie scattering coefficients for a multilayered sphere
-    illuminated by a coherent plane wave linearly polarized in the x direction.
+    '''Calculate the Mie scattering coefficients for a sphere
 
-    Args:
-        a_p: [nlayers] radii of layered sphere [micrometers]
-            NOTE: a_p and n_p are reordered automatically so that
-            a_p is in ascending order.
-        n_p: [nlayers] (complex) refractive indexes of sphere's layers
-        n_m: (complex) refractive index of medium
-        wavelength: wavelength of light [micrometers]
+    This works for a (multilayered) sphere illuminated by
+    a coherent plane wave that is linearly polarized in the
+    x direction.
 
-    Returns:
-        ab: the coefficients a,b
-    """
+    Parameters
+    ----------
+    a_p : float or numpy.ndarray
+        radii of the layers in the sphere [um]
+    n_p : complex or numpy.ndarray
+        (complex) refractive indexes of sphere's layers
+    n_m : complex
+        (complex) refractive index of medium
+    wavelength : float
+        wavelength of light [um]
+
+    Returns
+    -------
+    ab : numpy.ndarray
+        Mie AB coefficients
+    '''
 
     a_p = np.atleast_1d(np.asarray(a_p))
     n_p = np.atleast_1d(np.asarray(n_p))
@@ -159,13 +175,13 @@ def mie_coefficients(a_p, n_p, n_m, wavelength):
     # upward recurrence for Psi, Zeta, PsiZeta and D3
     psi[0] = np.sin(z1)                                       # Eq. (20a)
     zeta[0] = -1.j * np.exp(1.j * z1)                         # Eq. (21a)
-    psiZeta = 0.5 * (1. - np.exp(2.j * z1))                   # Eq. (18a)
+    psizeta = 0.5 * (1. - np.exp(2.j * z1))                   # Eq. (18a)
     for n in range(1, nmax+1):
         psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])               # Eq. (20b)
         zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])             # Eq. (21b)
-        psiZeta *= (n/z1 - d1_z1[n-1]) * \
+        psizeta *= (n/z1 - d1_z1[n-1]) * \
                    (n/z1 - d3_z1[n-1])                        # Eq. (18c)
-        d3_z1[n] = d1_z1[n] + 1.j/psiZeta                     # Eq. (18d)
+        d3_z1[n] = d1_z1[n] + 1.j/psizeta                     # Eq. (18d)
 
     # Scattering coefficients
     n = np.arange(nmax+1)
@@ -181,7 +197,25 @@ def mie_coefficients(a_p, n_p, n_m, wavelength):
 
 
 class Sphere(Particle):
-    '''Abstraction of a spherical particle for Lorenz-Mie micrsocopy'''
+    '''
+    Abstraction of a spherical particle for Lorenz-Mie micrsocopy
+
+    ...
+
+    Attributes
+    ----------
+    a_p : float or numpy.ndarray
+        radius of particle [um]
+        or array containing radii of concentric shells
+    n_p : complex or numpy.ndarray
+        refractive index of particle
+        or array containing refractive indexes of shells
+
+    Methods
+    -------
+    ab(n_m, wavelength) : numpy.ndarray
+        returns the Mie scattering coefficients for the sphere
+    '''
 
     def __init__(self,
                  a_p=1.,   # radius of sphere [um]
@@ -215,9 +249,21 @@ class Sphere(Particle):
     def n_p(self, n_p):
         self._n_p = np.asarray(n_p, dtype=complex)
 
-    def ab(self, n_m, wavelength, resolution=None):
-        '''Lorenz-Mie ab coefficients for given wavelength
-        and refractive index'''
+    def ab(self, n_m, wavelength):
+        '''Returns the Mie scattering coefficients
+
+        Parameters
+        ----------
+        n_m : complex
+            Refractive index of medium
+        wavelength : float
+            Vacuum wavelength of light [um]
+
+        Returns
+        -------
+        ab : numpy.ndarray
+            Mie AB scattering coefficients
+        '''
         return mie_coefficients(self.a_p, self.n_p, n_m, wavelength)
 
 

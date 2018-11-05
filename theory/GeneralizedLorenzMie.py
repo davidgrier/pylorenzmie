@@ -47,7 +47,26 @@ Copyright (c) 2018 David G. Grier
 
 
 class GeneralizedLorenzMie(object):
-    '''Compute the field scattered by a particle in a microscope'''
+    '''
+    A class that computes scattered light fields
+
+    ...
+
+    Attributes
+    ----------
+    particle : Particle
+        Object representing the particle scattering light
+    instrument : Instrument
+        Object resprenting the light-scattering instrument
+    coordinates : numpy.ndarray
+        [npts, 3] array of x, y and z coordinates where field
+        is calculated
+
+    Methods
+    -------
+    field(cartesian=True, bohren=True, strength=False)
+        Returns the complex-valued field at each of the coordinates.
+    '''
 
     def __init__(self,
                  coordinates=None,
@@ -56,6 +75,23 @@ class GeneralizedLorenzMie(object):
                  n_m=None,
                  magnification=None,
                  wavelength=None):
+        '''
+        Parameters
+        ----------
+        coordinates : numpy.ndarray
+           [npts, 3] array of x, y and z coordinates where field
+           is calculated
+        particle : Particle
+           Object representing the particle scattering light
+        instrument : Instrument
+           Object resprenting the light-scattering instrument
+        n_m : complex, optional
+           Refractive index of medium
+        magnification : float, optional
+           Magnification of microscope [um/pixel]
+        wavelength : float, optional
+           Vacuum wavelength of light [um]
+        '''
         self.coordinates = coordinates
         self.particle = particle
         if instrument is None:
@@ -99,7 +135,27 @@ class GeneralizedLorenzMie(object):
             self._instrument = instrument
 
     def field(self, cartesian=True, bohren=True, strength=False):
-        '''Compute scattered field'''
+        '''Returns the field scattered by the particle at each coordinate
+
+        Parameters
+        ----------
+        cartesian : bool
+            If set, return field projected onto Cartesian coordinates.
+            Otherwise, return polar projection.
+        bohren : bool
+            If set, use sign convention from Bohren and Huffman.
+            Otherwise, use opposite sign convention.
+        strength : bool
+            If set, return the field strength at each coordinate.
+            Otherwise, return the field.
+
+        Returns
+        -------
+        field : numpy.ndarray
+           [3, npts] array of complex vector values of the
+           scattered field (or field strength) at each coordinate.
+        '''
+
         if (self.coordinates is None or self.particle is None):
             return None
 

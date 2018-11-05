@@ -6,6 +6,23 @@ import numpy as np
 
 
 class LMHologram(LorenzMie):
+    '''
+    A class that computes in-line holograms of spheres
+
+    ...
+
+    Attributes
+    ----------
+    shape : list
+        [height, width] specification of hologram shape
+    alpha : float, optional
+        weight of scattered field in superposition
+
+    Methods
+    -------
+    hologram() : numpy.ndarray
+        Computed hologram of sphere
+    '''
 
     def __init__(self,
                  shape=[201, 201],
@@ -40,6 +57,13 @@ class LMHologram(LorenzMie):
         self._alpha = float(alpha)
 
     def hologram(self):
+        '''Return hologram of sphere
+
+        Returns
+        -------
+        hologram : numpy.ndarray
+            Computed hologram.
+        '''
         k = self.instrument.wavenumber()
         field = self.field()
         field *= self.alpha * np.exp(-1.j*k*self.particle.z_p)
