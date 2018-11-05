@@ -60,9 +60,12 @@ class GeneralizedLorenzMie(object):
             self.instrument = Instrument()
         else:
             self.instrument = instrument
-        self.instrument.n_m = n_m
-        self.instrument.magnification = magnification
-        self.instrument.wavelength = wavelength
+        if n_m is not None:
+            self.instrument.n_m = n_m
+        if magnification is not None:
+            self.instrument.magnification = magnification
+        if wavelength is not None:
+            self.instrument.wavelength = wavelength
 
     @property
     def coordinates(self):
