@@ -50,12 +50,19 @@ class GeneralizedLorenzMie(object):
     def __init__(self,
                  coordinates=None,
                  particle=None,
-                 instrument=None):
+                 instrument=None,
+                 n_m=None,
+                 magnification=None,
+                 wavelength=None):
         self.coordinates = coordinates
         self.particle = particle
         if instrument is None:
             self.instrument = Instrument()
-        self.instrument = instrument
+        else:
+            self.instrument = instrument
+        self.instrument.n_m = n_m
+        self.instrument.magnification = magnification
+        self.instrument.wavelength = wavelength
 
     @property
     def coordinates(self):
