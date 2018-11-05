@@ -53,6 +53,8 @@ class GeneralizedLorenzMie(object):
                  instrument=None):
         self.coordinates = coordinates
         self.particle = particle
+        if instrument is None:
+            self.instrument = Instrument()
         self.instrument = instrument
 
     @property
@@ -84,9 +86,7 @@ class GeneralizedLorenzMie(object):
 
     def field(self, cartesian=True, bohren=True, strength=False):
         '''Compute scattered field'''
-        if (self.coordinates is None or
-            self.particle is None or
-                self.instrument is None):
+        if (self.coordinates is None or self.particle is None):
             return None
 
         # scattering coefficients
