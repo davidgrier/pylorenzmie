@@ -62,7 +62,7 @@ def wiscombe_yang(x, m):
     return int(nstop)
 
 
-def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
+def sphere_coefficients(a_p, n_p, n_m, wavelength, resolution=0):
     """
     Calculate the Mie scattering coefficients for a multilayered sphere
     illuminated by a coherent plane wave linearly polarized in the x direction.
@@ -73,7 +73,7 @@ def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
             a_p is in ascending order.
         n_p: [nlayers] (complex) refractive indexes of sphere's layers
         n_m: (complex) refractive index of medium
-        lamb: wavelength of light [micrometers]
+        wavelength: wavelength of light [micrometers]
 
     Keywords:
         resolution: minimum magnitude of Lorenz-Mie coefficients to retain.
@@ -97,7 +97,8 @@ def sphere_coefficients(a_p, n_p, n_m, lamb, resolution=0):
         n_p = n_p[order]
     '''
     # size parameters for layers
-    x = [abs(2.0 * np.pi * n_m * a_j) for a_j in a_p]
+    k = 2.*np.pi*np.real(n_m)/wavelength  # wave number in medium [um^-1]
+    x = [k * a_j for a_j in a_p]
     m = n_p/n_m               # relative refractive index [array]
     nmax = wiscombe_yang(x, m)
 
