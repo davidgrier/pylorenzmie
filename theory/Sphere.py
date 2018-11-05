@@ -61,10 +61,10 @@ def wiscombe_yang(x, m):
     xm = abs(x*m)
     xm_1 = abs(np.roll(x, -1)*m)
     nstop = max(ns, xm, xm_1)
-    return int(nstop) + 15
+    return int(nstop)
 
 
-def mie_coefficients(a_p, n_p, n_m, wavelength, resolution=0):
+def mie_coefficients(a_p, n_p, n_m, wavelength):
     """
     Calculate the Mie scattering coefficients for a multilayered sphere
     illuminated by a coherent plane wave linearly polarized in the x direction.
@@ -77,31 +77,18 @@ def mie_coefficients(a_p, n_p, n_m, wavelength, resolution=0):
         n_m: (complex) refractive index of medium
         wavelength: wavelength of light [micrometers]
 
-    Keywords:
-        resolution: minimum magnitude of Lorenz-Mie coefficients to retain.
-              Default: See references
     Returns:
         ab: the coefficients a,b
     """
 
-    a_p = np.array([a_p])
-    n_p = np.array([n_p])
+    a_p = np.atleast_1d(np.asarray(a_p))
+    n_p = np.atleast_1d(np.asarray(n_p))
     nlayers = a_p.size
 
-    assert n_p.size == nlayers, \
-        'a_p and n_p must have the same number of elements'
-
-    # arrange shells in size order
-    '''
-    if nlayers > 1:
-        order = a_p.argsort()
-        a_p = a_p[order]
-        n_p = n_p[order]
-    '''
     # size parameters for layers
     k = 2.*np.pi*np.real(n_m)/wavelength  # wave number in medium [um^-1]
-    x = [k * a_j for a_j in a_p]          # size parameter in each layer
-    m = n_p/n_m                           # relative refractive index
+    x = [k * a_j for a_j in a_p]      # size parameter in each layer
+    m = n_p/n_m                       # relative refractive index
 
     # number of terms in partial-wave expansion
     nmax = wiscombe_yang(x, m)
@@ -190,10 +177,6 @@ def mie_coefficients(a_p, n_p, n_m, wavelength, resolution=0):
                (fac*zeta - np.roll(zeta, 1))                  # Eq. (6)
     ab[0, :] = complex(0., 0.)
 
-    if resolution is not None:
-        w = abs(ab).sum(axis=1)
-        ab = ab[(w > resolution), :]
-
     return ab
 
 
@@ -235,12 +218,10 @@ class Sphere(Particle):
     def ab(self, n_m, wavelength, resolution=None):
         '''Lorenz-Mie ab coefficients for given wavelength
         and refractive index'''
-        self._ab = mie_coefficients(self.a_p, self.n_p,
-                                    n_m, wavelength, resolution)
-        return self._ab
+        return mie_coefficients(self.a_p, self.n_p, n_m, wavelength)
 
 
 if __name__ == '__main__':
     s = Sphere(a_p=0.75, n_p=1.5)
     print(s.a_p, s.n_p)
-    print(s.ab(1.335, 0.532))
+    print(s.ab(1.339, 0.447).shape)
