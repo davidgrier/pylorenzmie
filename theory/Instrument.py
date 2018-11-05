@@ -5,8 +5,28 @@ import numpy as np
 
 
 class Instrument(object):
-    '''Abstraction of an in-line holographic microscope for
-    Lorenz-Mie microscopy'''
+    '''
+    Abstraction of an in-line holographic microscope
+
+    The instrument forms an image of the light scattering
+    pattern for Lorenz-Mie microscopy
+
+    ...
+
+    Attributes
+    ----------
+    wavelength : float
+        Vacuum wavelength of light [um]
+    magnification : float
+        Effective size of pixels [um/pixel]
+    n_m : complex
+        Refractive index of medium
+
+    Methods
+    -------
+    wavenumber(in_medium=True, magnified=True) : float
+        Wavenumber of light
+    '''
 
     def __init__(self,
                  wavelength=0.532,
@@ -44,7 +64,22 @@ class Instrument(object):
         self._n_m = complex(n_m)
 
     def wavenumber(self, in_medium=True, magnified=True):
-        '''Wave number of light in the medium [um^-1]'''
+        '''Return the wave number of light
+
+        Parameters
+        ----------
+        in_medium : bool
+            If set (default) return the wave number in the medium
+            Otherwise, return the wave number in vacuum
+        magnified : bool
+            If set (default) return the scaled value [radian/pixel]
+            Otherwise, return SI value [radian/um]
+
+        Returns
+        -------
+        k : float
+            Wave number
+        '''
         k = 2.*np.pi/self.wavelength  # wave number in vacuum
         if in_medium:
             k *= np.real(self.n_m)    # wave number in medium
