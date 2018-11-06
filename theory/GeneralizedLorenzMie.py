@@ -46,7 +46,7 @@ Copyright (c) 2018 David G. Grier
 '''
 
 
-def field(ab, krv, cartesian=True, bohren=True):
+def glm_field(ab, krv, cartesian=True, bohren=True):
     '''Returns the field scattered by the particle at each coordinate
 
     Parameters
@@ -298,7 +298,7 @@ class GeneralizedLorenzMie(object):
         # wavenumber in medium [pixel^-1]
         k = self.instrument.wavenumber()
         krv = k*(self.coordinates - self.particle.r_p)
-        return field(ab, krv, cartesian=cartesian, bohren=bohren)
+        return glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
 
 
 if __name__ == '__main__':
