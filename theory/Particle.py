@@ -5,6 +5,7 @@ import numpy as np
 
 
 class Particle(object):
+
     '''
     Abstraction of a particle for Lorenz-Mie microscopy
 
@@ -35,6 +36,10 @@ class Particle(object):
             [x, y, z] coordinates of the center of the particle.
         '''
         self.r_p = r_p
+
+    def __str__(self):
+        str = '{}(r_p={})'
+        return str.format(self.__class__.__name__, self.r_p)
 
     @property
     def r_p(self):
@@ -69,7 +74,7 @@ class Particle(object):
     def z_p(self, z_p):
         self._r_p[2] = float(z_p)
 
-    def ab(self, n_m=1.+0.j, wavelength=0.):
+    def ab(self, n_m=1. + 0.j, wavelength=0.):
         '''Returns the Mie scattering coefficients
 
         Subclasses of Particle should override this
