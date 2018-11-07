@@ -275,8 +275,12 @@ class GeneralizedLorenzMie(object):
 
     @particle.setter
     def particle(self, particle):
-        if isinstance(particle, Particle):
-            self._particle = particle
+        try:
+            if isinstance(particle[0], Particle):
+                self._particle = particle
+        except TypeError:
+            if isinstance(particle, Particle):
+                self._particle = particle
 
     @property
     def instrument(self):
@@ -293,19 +297,24 @@ class GeneralizedLorenzMie(object):
         if (self.coordinates is None or self.particle is None):
             return None
 
-        # scattering coefficients
-        ab = self.particle.ab(self.instrument.n_m, self.instrument.wavelength)
-
-        # wavenumber in medium [pixel^-1]
         k = self.instrument.wavenumber()
         try:               # one particle in field of view
             krv = k*(self.coordinates - self.particle.r_p)
+            ab = self.particle.ab(self.instrument.n_m,
+                                  self.instrument.wavelength)
             field = glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
-        except TypeError:  # list of particles
-            field = 0
+            field *= np.exp(-1j * k * self.particle.z_p)
+        except AttributeError:  # list of particles
             for p in self.particle:
                 krv = k*(self.coordinates - p.r_p)
-                field += glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
+                ab = p.ab(self.instrument.n_m,
+                          self.instrument.wavelength)
+                this = glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
+                this *= np.exp(-1j * k * p.z_p)
+                try:
+                    field += this
+                except NameError:
+                    field = this
         return field
 
 
