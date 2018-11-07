@@ -64,9 +64,7 @@ class LMHologram(LorenzMie):
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        k = self.instrument.wavenumber()
-        field = self.field()
-        field *= self.alpha * np.exp(-1.j*k*self.particle.z_p)
+        field = self.alpha * self.field()
         field[0, :] += 1.
         res = np.sum(np.real(field*np.conj(field)), axis=0)
         return res.reshape(self.shape)
