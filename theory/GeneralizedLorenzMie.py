@@ -4,6 +4,8 @@
 import numpy as np
 from Particle import Particle
 from Instrument import Instrument
+from cglm_field import cglm_field
+
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the
@@ -86,11 +88,11 @@ def glm_field(ab, krv, cartesian=True, bohren=True):
     npts = len(kx)
 
     # 2. geometric factors
+    krho = np.sqrt(kx**2 + ky**2)
     phi = np.arctan2(ky, kx)
     cosphi = np.cos(phi)
     sinphi = np.sin(phi)
 
-    krho = np.sqrt(kx**2 + ky**2)
     theta = np.arctan2(krho, kz)
     costheta = np.cos(theta)
     sintheta = np.sin(theta)
@@ -155,10 +157,12 @@ def glm_field(ab, krv, cartesian=True, bohren=True):
 
         # prefactor, page 93
         en = 1.j**n * (2.*n + 1.) / n / (n + 1.)
+        ne1n *= 1.j * en * ab[n, 0]
+        mo1n *= en * ab[n, 1]
 
         # the scattered field in spherical coordinates (4.45)
-        es += (1.j * en * ab[n, 0]) * ne1n
-        es -= (en * ab[n, 1]) * mo1n
+        es += ne1n  # (1.j * en * ab[n, 0]) * ne1n
+        es -= mo1n  # (en * ab[n, 1]) * mo1n
 
         # upward recurrences ...
         # ... angular functions (4.47)
@@ -288,7 +292,7 @@ class GeneralizedLorenzMie(object):
         if isinstance(instrument, Instrument):
             self._instrument = instrument
 
-    def field(self, cartesian=True, bohren=True):
+    def field(self, cartesian=True, bohren=True, cython=True):
         if (self.coordinates is None or self.particle is None):
             return None
 
@@ -298,7 +302,12 @@ class GeneralizedLorenzMie(object):
         # wavenumber in medium [pixel^-1]
         k = self.instrument.wavenumber()
         krv = k*(self.coordinates - self.particle.r_p)
-        return glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
+        if cython:
+            print('cython')
+            return cglm_field(ab, krv, cartesian=cartesian, bohren=bohren)
+        else:
+            print('python')
+            return glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
 
 
 if __name__ == '__main__':
