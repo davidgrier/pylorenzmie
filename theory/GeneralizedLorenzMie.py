@@ -4,6 +4,7 @@
 import numpy as np
 from Particle import Particle
 from Instrument import Instrument
+from cuda_field import cuda_field
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the
@@ -138,7 +139,7 @@ def glm_field(ab, krv, cartesian=True, bohren=True):
         tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
 
         # ... Riccati-Bessel function, page 478
-        xi_n = (2.*n - 1.) * (xi_nm1 / kr) - xi_nm2  # \xi_n(kr)
+        xi_n = (2. * n - 1.) * (xi_nm1 / kr) - xi_nm2  # \xi_n(kr)
 
         # ... Deirmendjian's derivative
         dn = (n * xi_n) / kr - xi_nm1
@@ -149,12 +150,12 @@ def glm_field(ab, krv, cartesian=True, bohren=True):
         mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
 
         # ... divided by cosphi sintheta/kr^2
-        ne1n[0, :] = n*(n + 1.) * pi_n * xi_n
+        ne1n[0, :] = n * (n + 1.) * pi_n * xi_n
         ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
         ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
 
         # prefactor, page 93
-        en = 1.j**n * (2.*n + 1.) / n / (n + 1.)
+        en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
 
         # the scattered field in spherical coordinates (4.45)
         es += (1.j * en * ab[n, 0]) * ne1n
@@ -164,7 +165,7 @@ def glm_field(ab, krv, cartesian=True, bohren=True):
         # ... angular functions (4.47)
         # Method described by Wiscombe (1980)
         pi_nm1 = pi_n
-        pi_n = swisc + ((n + 1.)/n) * twisc
+        pi_n = swisc + ((n + 1.) / n) * twisc
 
         # ... Riccati-Bessel function
         xi_nm2 = xi_nm1
@@ -201,6 +202,7 @@ def glm_field(ab, krv, cartesian=True, bohren=True):
 
 
 class GeneralizedLorenzMie(object):
+
     '''
     A class that computes scattered light fields
 
@@ -292,24 +294,30 @@ class GeneralizedLorenzMie(object):
         if isinstance(instrument, Instrument):
             self._instrument = instrument
 
-    def field(self, cartesian=True, bohren=True):
+    def field(self, cartesian=True, bohren=True, cuda=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
 
+        if cuda:
+            compute = cuda_field
+        else:
+            compute = glm_field
         k = self.instrument.wavenumber()
         try:               # one particle in field of view
-            krv = k*(self.coordinates - self.particle.r_p)
+            krv = k * (self.coordinates - self.particle.r_p)
             ab = self.particle.ab(self.instrument.n_m,
                                   self.instrument.wavelength)
-            field = glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
+            field = compute(ab, krv,
+                            cartesian=cartesian, bohren=bohren)
             field *= np.exp(-1j * k * self.particle.z_p)
         except AttributeError:  # list of particles
             for p in self.particle:
-                krv = k*(self.coordinates - p.r_p)
+                krv = k * (self.coordinates - p.r_p)
                 ab = p.ab(self.instrument.n_m,
                           self.instrument.wavelength)
-                this = glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
+                this = compute(ab, krv,
+                               cartesian=cartesian, bohren=bohren)
                 this *= np.exp(-1j * k * p.z_p)
                 try:
                     field += this
@@ -345,8 +353,8 @@ if __name__ == '__main__':
     kernel = GeneralizedLorenzMie(coordinates, particle, instrument)
     field = kernel.field()
     # Compute hologram from field and show it
-    field *= np.exp(-1.j*k*particle.z_p)
+    field *= np.exp(-1.j * k * particle.z_p)
     field[0, :] += 1.
-    hologram = np.sum(np.real(field*np.conj(field)), axis=0)
+    hologram = np.sum(np.real(field * np.conj(field)), axis=0)
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
