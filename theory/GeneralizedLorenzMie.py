@@ -289,6 +289,7 @@ class GeneralizedLorenzMie(object):
             self._instrument = instrument
 
     def field(self, cartesian=True, bohren=True):
+        '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
 
@@ -297,8 +298,15 @@ class GeneralizedLorenzMie(object):
 
         # wavenumber in medium [pixel^-1]
         k = self.instrument.wavenumber()
-        krv = k*(self.coordinates - self.particle.r_p)
-        return glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
+        try:               # one particle in field of view
+            krv = k*(self.coordinates - self.particle.r_p)
+            field = glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
+        except TypeError:  # list of particles
+            field = 0
+            for p in self.particle:
+                krv = k*(self.coordinates - p.r_p)
+                field += glm_field(ab, krv, cartesian=cartesian, bohren=bohren)
+        return field
 
 
 if __name__ == '__main__':
