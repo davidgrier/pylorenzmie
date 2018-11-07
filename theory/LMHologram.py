@@ -56,7 +56,7 @@ class LMHologram(LorenzMie):
     def alpha(self, alpha):
         self._alpha = float(alpha)
 
-    def hologram(self):
+    def hologram(self, cython=True):
         '''Return hologram of sphere
 
         Returns
@@ -65,7 +65,7 @@ class LMHologram(LorenzMie):
             Computed hologram.
         '''
         k = self.instrument.wavenumber()
-        field = self.field()
+        field = self.field(cython=cython)
         field *= self.alpha * np.exp(-1.j*k*self.particle.z_p)
         field[0, :] += 1.
         res = np.sum(np.real(field*np.conj(field)), axis=0)
@@ -74,9 +74,16 @@ class LMHologram(LorenzMie):
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
+    import timeit
 
-    h = LMHologram(shape=[201, 251])
+    h = LMHologram(shape=[1024, 1280])
     h.particle.r_p = [125, 75, 100]
     h.instrument.wavelength = 0.447
-    plt.imshow(h.hologram(), cmap='gray')
+    t0 = timeit.default_timer()
+    a = h.hologram(cython=True)
+    t1 = timeit.default_timer()
+    b = h.hologram(cython=False)
+    t2 = timeit.default_timer()
+    print(t1-t0, t2-t1)
+    plt.imshow(a, cmap='gray')
     plt.show()
