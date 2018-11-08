@@ -57,7 +57,7 @@ class LMHologram(LorenzMie):
     def alpha(self, alpha):
         self._alpha = float(alpha)
 
-    def hologram(self, cuda=True):
+    def hologram(self):
         '''Return hologram of sphere
 
         Returns
@@ -65,7 +65,7 @@ class LMHologram(LorenzMie):
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        field = self.alpha * self.field(cuda=cuda)
+        field = self.alpha * self.field()
         field[0, :] += 1.
         res = np.sum(np.real(field * np.conj(field)), axis=0)
         return res.reshape(self.shape)
