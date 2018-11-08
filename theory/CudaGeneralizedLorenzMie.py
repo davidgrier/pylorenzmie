@@ -220,11 +220,10 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             ec[1, :] += es[2, :] * cosphi
 
             ec[2, :] = es[0, :] * costheta - es[1, :] * sintheta
-            return ec.get()
+            return ec
         else:
-            return es.get()
+            return es
 
-"""
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
@@ -237,7 +236,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
                                   self.instrument.wavelength)
             field = self.compute(ab, krv,
                                  cartesian=cartesian, bohren=bohren)
-            field *= np.exp(-1j * k * self.particle.z_p)
+            field *= np.complex64(np.exp(-1j * k * self.particle.z_p))
         except AttributeError:  # list of particles
             for p in self.particle:
                 krv = k * (self.coordinates - p.r_p)
@@ -245,13 +244,13 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
                           self.instrument.wavelength)
                 this = self.compute(ab, krv,
                                     cartesian=cartesian, bohren=bohren)
-                this *= np.exp(-1j * k * p.z_p)
+                this *= np.complex64(np.exp(-1j * k * p.z_p))
                 try:
                     field += this
                 except NameError:
                     field = this
-        return field
-"""
+        return field.get()
+
 
 if __name__ == '__main__':
     from Instrument import Instrument
