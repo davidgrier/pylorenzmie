@@ -28,7 +28,6 @@ def cuda_field(ab, krv, cartesian=True, bohren=True):
         scattered field at each coordinate.
     '''
 
-    ab = ab.astype(np.complex64)
     nc = ab.shape[0]  # number of partial waves in sum
 
     # GEOMETRY
