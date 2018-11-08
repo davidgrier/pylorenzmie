@@ -65,17 +65,18 @@ class CudaLMHologram(CudaLorenzMie):
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        field = self.alpha * self.field()
-        field[0, :] += 1.
-        res = np.sum(np.real(field * np.conj(field)), axis=0)
-        return res.reshape(self.shape)
+        gpufield = self.alpha * self.field(return_gpu=True)
+        gpufield[0, :] += 1.
+        gpufield = gpufield * gpufield.conj()
+        holo = np.sum(gpufield.real.get(), axis=0)
+        return holo.reshape(self.shape)
 
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     h = CudaLMHologram(shape=[201, 251])
-    h.particle.r_p = [125, 75, 100]
+    h.particle.r_p = [125.1, 75, 100]
     h.instrument.wavelength = 0.447
     plt.imshow(h.hologram(), cmap='gray')
     plt.show()

@@ -115,6 +115,8 @@ class GeneralizedLorenzMie(object):
     @coordinates.setter
     def coordinates(self, coordinates):
         self._coordinates = coordinates
+        self.npts = len(coordinates[:, 0])
+        self.allocate()
 
     @property
     def particle(self):
@@ -139,6 +141,9 @@ class GeneralizedLorenzMie(object):
     def instrument(self, instrument):
         if isinstance(instrument, Instrument):
             self._instrument = instrument
+
+    def allocate(self):
+        pass
 
     def compute(self, ab, krv, cartesian=True, bohren=True):
         '''Returns the field scattered by the particle at each coordinate
