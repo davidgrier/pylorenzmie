@@ -224,7 +224,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         else:
             return es
 
-    def field(self, cartesian=True, bohren=True):
+    def field(self, cartesian=True, bohren=True, return_gpu=False):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
@@ -249,7 +249,10 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
                     field += this
                 except NameError:
                     field = this
-        return field.get()
+        if return_gpu:
+            return field
+        else:
+            return field.get()
 
 
 if __name__ == '__main__':
@@ -280,7 +283,7 @@ if __name__ == '__main__':
     kernel = CudaGeneralizedLorenzMie(coordinates, particle, instrument)
     field = kernel.field()
     # Compute hologram from field and show it
-    field *= np.exp(-1.j * k * particle.z_p)
+    field *= np.complex64(np.exp(-1.j * k * particle.z_p))
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
