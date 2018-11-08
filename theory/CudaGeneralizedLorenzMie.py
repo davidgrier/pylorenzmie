@@ -109,9 +109,9 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         # Accounting for this by flipping the axial coordinate
         # is equivalent to using a mirrored (left-handed)
         # coordinate system.
-        kx = gpuarray.to_gpu(krv[:, 0]).astype(np.float32)
-        ky = gpuarray.to_gpu(krv[:, 1]).astype(np.float32)
-        kz = gpuarray.to_gpu(-krv[:, 2]).astype(np.float32)
+        kx = gpuarray.to_gpu(krv[0, :]).astype(np.float32)
+        ky = gpuarray.to_gpu(krv[1, :]).astype(np.float32)
+        kz = gpuarray.to_gpu(-krv[2, :]).astype(np.float32)
         npts = len(kx)
 
         # 2. geometric factors
@@ -231,7 +231,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
         k = self.instrument.wavenumber()
         try:               # one particle in field of view
-            krv = k * (self.coordinates - self.particle.r_p)
+            krv = k * (self.coordinates - self.particle.r_p[:, None])
             ab = self.particle.ab(self.instrument.n_m,
                                   self.instrument.wavelength)
             field = self.compute(ab, krv,
@@ -239,7 +239,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             field *= np.complex64(np.exp(-1j * k * self.particle.z_p))
         except AttributeError:  # list of particles
             for p in self.particle:
-                krv = k * (self.coordinates - p.r_p)
+                krv = k * (self.coordinates - p.r_p[:, None])
                 ab = p.ab(self.instrument.n_m,
                           self.instrument.wavelength)
                 this = self.compute(ab, krv,
@@ -267,7 +267,7 @@ if __name__ == '__main__':
     xv = xv.flatten()
     yv = yv.flatten()
     zv = np.zeros_like(xv)
-    coordinates = np.stack((xv, yv, zv)).T
+    coordinates = np.stack((xv, yv, zv))
     # Place a sphere in the field of view, above the focal plane
     particle = Sphere()
     particle.r_p = [125, 75, 100]

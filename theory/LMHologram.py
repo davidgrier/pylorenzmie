@@ -46,7 +46,7 @@ class LMHologram(LorenzMie):
         xv = xv.flatten()
         yv = yv.flatten()
         zv = np.zeros_like(xv)
-        self.coordinates = np.stack((xv, yv, zv)).T
+        self.coordinates = np.stack((xv, yv, zv))
         self._shape = shape
 
     @property
