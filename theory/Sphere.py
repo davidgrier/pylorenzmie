@@ -73,7 +73,7 @@ def wiscombe_yang(x, m):
     return int(nstop)
 
 
-def mie_coefficients(a_p, n_p, n_m, wavelength):
+def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     '''Calculate the Mie scattering coefficients for a sphere
 
     This works for a (multilayered) sphere illuminated by
@@ -84,8 +84,10 @@ def mie_coefficients(a_p, n_p, n_m, wavelength):
     ----------
     a_p : float or numpy.ndarray
         radii of the layers in the sphere [um]
-    n_p : complex or numpy.ndarray
-        (complex) refractive indexes of sphere's layers
+    n_p : float or numpy.ndarray
+        Refractive indexes of sphere's layers
+    k_p : float or numpy.ndarray
+        Absorption coefficient of sphere's layers
     n_m : complex
         (complex) refractive index of medium
     wavelength : float
@@ -99,12 +101,13 @@ def mie_coefficients(a_p, n_p, n_m, wavelength):
 
     a_p = np.atleast_1d(np.asarray(a_p))
     n_p = np.atleast_1d(np.asarray(n_p))
+    k_p = np.atleast_1d(np.asarray(k_p))
     nlayers = a_p.size
 
     # size parameters for layers
     k = 2. * np.pi * np.real(n_m) / wavelength  # wave number in medium [um^-1]
     x = [k * a_j for a_j in a_p]      # size parameter in each layer
-    m = n_p / n_m                       # relative refractive index
+    m = np.complex(n_p, k_p) / n_m    # relative refractive index
 
     # number of terms in partial-wave expansion
     nmax = wiscombe_yang(x, m)
@@ -213,9 +216,12 @@ class Sphere(Particle):
     a_p : float or numpy.ndarray
         radius of particle [um]
         or array containing radii of concentric shells
-    n_p : complex or numpy.ndarray
+    n_p : float or numpy.ndarray
         refractive index of particle
         or array containing refractive indexes of shells
+    k_p : float or numpy.ndarray
+        absorption coefficient of particle
+        or array containing absorption coefficients of shells
 
     Methods
     -------
@@ -226,15 +232,17 @@ class Sphere(Particle):
     def __init__(self,
                  a_p=1.,   # radius of sphere [um]
                  n_p=1.5,  # refractive index of sphere
-                 **kwargs):
+                 k_p=0.,   # absorption coefficient
+                 ** kwargs):
         super(Sphere, self).__init__(**kwargs)
         self.a_p = a_p
         self.n_p = n_p
+        self.k_p = k_p
 
     def __str__(self):
-        str = '{}(a_p={}, n_p={}, r_p={})'
+        str = '{}(a_p={}, n_p={}, k_p={}, r_p={})'
         return str.format(self.__class__.__name__,
-                          self.a_p, self.n_p, self.r_p)
+                          self.a_p, self.n_p, self.k_p, self.r_p)
 
     @property
     def a_p(self):
@@ -250,7 +258,7 @@ class Sphere(Particle):
 
     @property
     def n_p(self):
-        '''Complex refractive index of sphere'''
+        '''Refractive index of sphere'''
         if self._n_p.size == 1:
             return np.asscalar(self._n_p)
         else:
@@ -258,7 +266,19 @@ class Sphere(Particle):
 
     @n_p.setter
     def n_p(self, n_p):
-        self._n_p = np.asarray(n_p, dtype=complex)
+        self._n_p = np.asarray(n_p, dtype=float)
+
+    @property
+    def k_p(self):
+        '''Absorption coefficient of sphere'''
+        if self._k_p.size == 1:
+            return np.asscalar(self._k_p)
+        else:
+            return self._k_p
+
+    @k_p.setter
+    def k_p(self, k_p):
+        self._k_p = np.asarray(k_p, dtype=float)
 
     def ab(self, n_m, wavelength):
         '''Returns the Mie scattering coefficients
