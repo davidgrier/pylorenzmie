@@ -4,7 +4,6 @@
 import numpy as np
 from Particle import Particle
 from Instrument import Instrument
-from cuda_field import cuda_field
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the
@@ -61,7 +60,7 @@ class GeneralizedLorenzMie(object):
     instrument : Instrument
         Object resprenting the light-scattering instrument
     coordinates : numpy.ndarray
-        [npts, 3] array of x, y and z coordinates where field
+        [3, npts] array of x, y and z coordinates where field
         is calculated
 
     Methods
@@ -81,7 +80,7 @@ class GeneralizedLorenzMie(object):
         Parameters
         ----------
         coordinates : numpy.ndarray
-           [npts, 3] array of x, y and z coordinates where field
+           [3, npts] array of x, y and z coordinates where field
            is calculated
         particle : Particle
            Object representing the particle scattering light
@@ -115,7 +114,10 @@ class GeneralizedLorenzMie(object):
     @coordinates.setter
     def coordinates(self, coordinates):
         self._coordinates = coordinates
-        self.allocate()
+        try:
+            self._allocate(coordinates.shape)
+        except AttributeError:
+            pass
 
     @property
     def particle(self):
@@ -141,7 +143,8 @@ class GeneralizedLorenzMie(object):
         if isinstance(instrument, Instrument):
             self._instrument = instrument
 
-    def allocate(self):
+    def _allocate(self, shape):
+        '''Allocates data structures for calculation'''
         pass
 
     def compute(self, ab, krv, cartesian=True, bohren=True):
@@ -150,7 +153,7 @@ class GeneralizedLorenzMie(object):
         Parameters
         ----------
         ab : numpy.ndarray
-            Mie scattering coefficients
+            [2, norders] Mie scattering coefficients
         krv : numpy.ndarray
             Reduced vector displacements of particle from image coordinates
         cartesian : bool
@@ -167,7 +170,7 @@ class GeneralizedLorenzMie(object):
             scattered field at each coordinate.
         '''
 
-        nc = ab.shape[0]  # number of partial waves in sum
+        norders = ab.shape[0]  # number of partial waves in sum
 
         # GEOMETRY
         # 1. particle displacement [pixel]
@@ -178,10 +181,10 @@ class GeneralizedLorenzMie(object):
         # Accounting for this by flipping the axial coordinate
         # is equivalent to using a mirrored (left-handed)
         # coordinate system.
+        shape = krv.shape
         kx = krv[0, :]
         ky = krv[1, :]
         kz = -krv[2, :]
-        npts = len(kx)
 
         # 2. geometric factors
         phi = np.arctan2(ky, kx)
@@ -219,15 +222,15 @@ class GeneralizedLorenzMie(object):
         pi_n = 1.                        # \pi_1(\cos\theta)
 
         # 3. Vector spherical harmonics: [r,theta,phi]
-        mo1n = np.empty([3, npts], complex)
+        mo1n = np.empty(shape, complex)
         mo1n[0, :] = 0.j                 # no radial component
-        ne1n = np.empty([3, npts], complex)
+        ne1n = np.empty(shape, complex)
 
         # storage for scattered field
-        es = np.zeros([3, npts], complex)
+        es = np.zeros(shape, complex)
 
         # COMPUTE field by summing partial waves
-        for n in range(1, nc):
+        for n in range(1, norders):
             # upward recurrences ...
             # 4. Legendre factor (4.47)
             # Method described by Wiscombe (1980)
@@ -302,6 +305,7 @@ class GeneralizedLorenzMie(object):
             return None
 
         k = self.instrument.wavenumber()
+        '''
         try:               # one particle in field of view
             krv = k * (self.coordinates - self.particle.r_p[:, None])
             ab = self.particle.ab(self.instrument.n_m,
@@ -310,17 +314,18 @@ class GeneralizedLorenzMie(object):
                                  cartesian=cartesian, bohren=bohren)
             field *= np.exp(-1j * k * self.particle.z_p)
         except AttributeError:  # list of particles
-            for p in self.particle:
-                krv = k * (self.coordinates - p.r_p[:, None])
-                ab = p.ab(self.instrument.n_m,
-                          self.instrument.wavelength)
-                this = self.compute(ab, krv,
-                                    cartesian=cartesian, bohren=bohren)
-                this *= np.exp(-1j * k * p.z_p)
-                try:
-                    field += this
-                except NameError:
-                    field = this
+        '''
+        for p in np.atleast_1d(self.particle):
+            krv = k * (self.coordinates - p.r_p[:, None])
+            ab = p.ab(self.instrument.n_m,
+                      self.instrument.wavelength)
+            this = self.compute(ab, krv,
+                                cartesian=cartesian, bohren=bohren)
+            this *= np.exp(-1j * k * p.z_p)
+            try:
+                field += this
+            except NameError:
+                field = this
         return field
 
 

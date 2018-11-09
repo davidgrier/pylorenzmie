@@ -14,8 +14,6 @@ class CudaLMHologram(CudaLorenzMie):
 
     Attributes
     ----------
-    shape : list
-        [height, width] specification of hologram shape
     alpha : float, optional
         weight of scattered field in superposition
 
@@ -26,28 +24,10 @@ class CudaLMHologram(CudaLorenzMie):
     '''
 
     def __init__(self,
-                 shape=[201, 201],
                  alpha=1.,
                  *args, **kwargs):
         super(CudaLMHologram, self).__init__(*args, **kwargs)
-        self.shape = shape
         self.alpha = alpha
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @shape.setter
-    def shape(self, shape):
-        (ny, nx) = shape
-        x = np.arange(0, nx)
-        y = np.arange(0, ny)
-        xv, yv = np.meshgrid(x, y)
-        xv = xv.flatten()
-        yv = yv.flatten()
-        zv = np.zeros_like(xv)
-        self.coordinates = np.stack((xv, yv, zv))
-        self._shape = shape
 
     @property
     def alpha(self):
@@ -68,15 +48,16 @@ class CudaLMHologram(CudaLorenzMie):
         gpufield = self.alpha * self.field(return_gpu=True)
         gpufield[0, :] += 1.
         gpufield = gpufield * gpufield.conj()
-        holo = np.sum(gpufield.real.get(), axis=0)
-        return holo.reshape(self.shape)
+        return np.sum(gpufield.real.get(), axis=0)
 
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
+    from Instrument import coordinates
 
-    h = CudaLMHologram(shape=[201, 251])
-    h.particle.r_p = [125.1, 75, 100]
+    shape = [201, 251]
+    h = CudaLMHologram(coordinates=coordinates(shape))
+    h.particle.r_p = [125, 75, 100]
     h.instrument.wavelength = 0.447
-    plt.imshow(h.hologram(), cmap='gray')
+    plt.imshow(h.hologram().reshape(shape), cmap='gray')
     plt.show()

@@ -4,7 +4,20 @@
 import numpy as np
 
 
+def coordinates(shape):
+    '''Return coordinate system for Lorenz-Mie microscopy images'''
+    (ny, nx) = shape
+    x = np.arange(0, nx)
+    y = np.arange(0, ny)
+    xv, yv = np.meshgrid(x, y)
+    xv = xv.flatten()
+    yv = yv.flatten()
+    zv = np.zeros_like(xv)
+    return np.stack((xv, yv, zv))
+
+
 class Instrument(object):
+
     '''
     Abstraction of an in-line holographic microscope
 
@@ -80,7 +93,7 @@ class Instrument(object):
         k : float
             Wave number
         '''
-        k = 2.*np.pi/self.wavelength  # wave number in vacuum
+        k = 2. * np.pi / self.wavelength  # wave number in vacuum
         if in_medium:
             k *= np.real(self.n_m)    # wave number in medium
         if magnified:
