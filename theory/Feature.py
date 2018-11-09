@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from LMHologram import LMHologram as Model
-from lmfit import Parameters, Minimizer
+from lmfit import Parameters, Minimizer, report_fit
 
 
 class Feature(object):
@@ -16,7 +16,7 @@ class Feature(object):
         self.model = Model(**kwargs)
         self.data = data
         self.noise = noise
-        self._keys = ('x_p', 'y_p', 'z_p', 'a_p', 'n_p')
+        self._keys = ('x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p')
 
     @property
     def data(self):
@@ -49,6 +49,7 @@ class Feature(object):
         particle = self.model.particle
         for key in self._keys:
             params.add(key, getattr(particle, key))
+            print(key, params[key].value)
         optimizer = Minimizer(self._loss, params)
         return optimizer.minimize(ftol=1e-5, xtol=1e-5)
 
@@ -74,7 +75,8 @@ if __name__ == '__main__':
     p.a_p += np.random.normal(0., 0.01, 1)
     p.n_p += np.random.normal(0., 0.01, 1)
     # ... and now fit
-    print(a.optimize().message)
+    result = a.optimize()
+    report_fit(result)
     # plot residuals
     # plt.imshow(a.residuals().reshape(shape), cmap='gray')
     # plt.show()
