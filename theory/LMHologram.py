@@ -57,6 +57,8 @@ if __name__ == '__main__':
     shape = [201, 251]
     h = LMHologram(coordinates=coordinates(shape))
     h.particle.r_p = [125, 75, 100]
+    h.particle.a_p = 0.9
+    h.particle.n_p = 1.45
     h.instrument.wavelength = 0.447
     plt.imshow(h.hologram().reshape(shape), cmap='gray')
     plt.show()

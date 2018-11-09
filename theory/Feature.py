@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from LMHologram import LMHologram as Model
+from lmfit import Parameters, Minimizer
 
 
 class Feature(object):
@@ -15,6 +16,7 @@ class Feature(object):
         self.model = Model(**kwargs)
         self.data = data
         self.noise = noise
+        self._keys = ('x_p', 'y_p', 'z_p', 'a_p', 'n_p')
 
     @property
     def data(self):
@@ -36,6 +38,21 @@ class Feature(object):
         '''Returns difference bewteen data and current model'''
         return (self.model.hologram() - self.data) / self.noise
 
+    def _loss(self, params):
+        particle = self.model.particle
+        for key in self._keys:
+            setattr(particle, key, params[key].value)
+        return self.residuals()
+
+    def optimize(self):
+        params = Parameters()
+        particle = self.model.particle
+        for key in self._keys:
+            params.add(key, getattr(particle, key))
+        optimizer = Minimizer(self._loss, params)
+        return optimizer.minimize(ftol=1e-5, xtol=1e-5)
+
+
 if __name__ == '__main__':
     from Instrument import coordinates
     import numpy as np
@@ -43,10 +60,10 @@ if __name__ == '__main__':
 
     a = Feature()
     # Use model to generate synthetic data
-    shape = [480, 640]
+    shape = [201, 201]
     a.model.coordinates = coordinates(shape)
     p = a.model.particle
-    p.r_p = [150, 150, 100]
+    p.r_p = [100, 100, 100]
     p.a_p = 0.75
     p.n_p = 1.45
     h = a.model.hologram()
@@ -56,6 +73,8 @@ if __name__ == '__main__':
     p.r_p += np.random.normal(0., 1, 3)
     p.a_p += np.random.normal(0., 0.01, 1)
     p.n_p += np.random.normal(0., 0.01, 1)
+    # ... and now fit
+    print(a.optimize().message)
     # plot residuals
-    plt.imshow(a.residuals().reshape(shape), cmap='gray')
-    plt.show()
+    # plt.imshow(a.residuals().reshape(shape), cmap='gray')
+    # plt.show()
