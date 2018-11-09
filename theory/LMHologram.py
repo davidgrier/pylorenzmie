@@ -15,7 +15,9 @@ class LMHologram(LorenzMie):
     Attributes
     ----------
     shape : list
-        [height, width] specification of hologram shape
+        [height, width] specification of hologram shape.
+        If coordinates are specified instead of the shape,
+        the shape reflects the length of the list of coordinates.
     alpha : float, optional
         weight of scattered field in superposition
 
@@ -26,7 +28,7 @@ class LMHologram(LorenzMie):
     '''
 
     def __init__(self,
-                 shape=[201, 201],
+                 shape=None,
                  alpha=1.,
                  **kwargs):
         super(LMHologram, self).__init__(**kwargs)
@@ -39,6 +41,8 @@ class LMHologram(LorenzMie):
 
     @shape.setter
     def shape(self, shape):
+        if shape is None:
+            return
         (ny, nx) = shape
         x = np.arange(0, nx)
         y = np.arange(0, ny)
@@ -48,6 +52,11 @@ class LMHologram(LorenzMie):
         zv = np.zeros_like(xv)
         self.coordinates = np.stack((xv, yv, zv))
         self._shape = shape
+
+    @LorenzMie.coordinates.setter
+    def coordinates(self, coordinates):
+        LorenzMie.coordinates.fset(self, coordinates)
+        self._shape = (coordinates.shape[1],)
 
     @property
     def alpha(self):
