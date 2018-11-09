@@ -63,7 +63,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
     instrument : Instrument
         Object resprenting the light-scattering instrument
     coordinates : numpy.ndarray
-        [npts, 3] array of x, y and z coordinates where field
+        [3, npts] array of x, y and z coordinates where field
         is calculated
 
     Methods
@@ -75,13 +75,22 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
     def __init__(self, *args, **kwargs):
         super(CudaGeneralizedLorenzMie, self).__init__(*args, **kwargs)
 
+    def _allocate(self, shape):
+        '''Allocates GPUArrays for calculation'''
+        self.krv = gpuarray.empty(shape, dtype=np.float32)
+        self.mo1n = gpuarray.empty(shape, dtype=np.complex64)
+        self.ne1n = gpuarray.empty(shape, dtype=np.complex64)
+        self.es = gpuarray.empty(shape, dtype=np.complex64)
+        self.ec = gpuarray.empty(shape, dtype=np.complex64)
+        self.result = gpuarray.empty(shape, dtype=np.complex64)
+
     def compute(self, ab, krv, cartesian=True, bohren=True):
         '''Returns the field scattered by the particle at each coordinate
 
         Parameters
         ----------
         ab : numpy.ndarray
-            Mie scattering coefficients
+            [2, norders] Mie scattering coefficients
         krv : numpy.ndarray
             Reduced vector displacements of particle from image coordinates
         cartesian : bool
@@ -98,7 +107,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             scattered field at each coordinate.
         '''
 
-        nc = ab.shape[0]  # number of partial waves in sum
+        norders = ab.shape[0]  # number of partial waves in sum
 
         # GEOMETRY
         # 1. particle displacement [pixel]
@@ -109,20 +118,23 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         # Accounting for this by flipping the axial coordinate
         # is equivalent to using a mirrored (left-handed)
         # coordinate system.
-        kx = gpuarray.to_gpu(krv[0, :]).astype(np.float32)
-        ky = gpuarray.to_gpu(krv[1, :]).astype(np.float32)
-        kz = gpuarray.to_gpu(-krv[2, :]).astype(np.float32)
-        npts = len(kx)
+        self.krv.set(krv.astype(np.float32))
+        kx = self.krv[0, :]
+        ky = self.krv[1, :]
+        kz = self.krv[2, :]
+        # rather than setting kz = -kz, we propagate the - sign below
 
         # 2. geometric factors
-        krho = cumath.sqrt(kx * kx + ky * ky)
+        krho = kx * kx
+        krho += ky * ky
+        kr = krho + kz * kz
+        kr = cumath.sqrt(kr)
+        krho = cumath.sqrt(krho)
+
         cosphi = kx / krho
         sinphi = ky / krho
-
-        kr = cumath.sqrt(krho * krho + kz * kz)
-        costheta = kz / kr
+        costheta = -kz / kr  # z convention
         sintheta = krho / kr
-
         sinkr = cumath.sin(kr)
         coskr = cumath.cos(kr)
 
@@ -137,7 +149,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         # appropriate case by applying the correct sign of the imaginary
         # part of the starting functions...
         factor = 1.j * kz / abs(kz)
-        if not bohren:
+        if bohren:           # z convention
             factor *= -1.
         xi_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
         xi_nm1 = sinkr - factor * coskr  # \xi_0(kr)
@@ -147,14 +159,13 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         pi_n = 1.                        # \pi_1(\cos\theta)
 
         # 3. Vector spherical harmonics: [r,theta,phi]
-        mo1n = gpuarray.zeros([3, npts], dtype=np.complex64)
-        ne1n = gpuarray.empty([3, npts], dtype=np.complex64)
+        self.mo1n.fill(np.complex64(0.j))
 
-        # storage for scattered field
-        es = gpuarray.zeros([3, npts], dtype=np.complex64)
+        # 4. Scattered field
+        self.es.fill(np.complex64(0.j))
 
         # COMPUTE field by summing partial waves
-        for n in range(1, nc):
+        for n in range(1, norders):
             # upward recurrences ...
             # 4. Legendre factor (4.47)
             # Method described by Wiscombe (1980)
@@ -170,20 +181,20 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
             # vector spherical harmonics (4.50)
             # mo1n[0, :] = 0.j           # no radial component
-            mo1n[1, :] = pi_n * xi_n     # ... divided by cosphi/kr
-            mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
+            self.mo1n[1, :] = pi_n * xi_n     # ... divided by cosphi/kr
+            self.mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
 
             # ... divided by cosphi sintheta/kr^2
-            ne1n[0, :] = n * (n + 1.) * pi_n * xi_n
-            ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
-            ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
+            self.ne1n[0, :] = n * (n + 1.) * pi_n * xi_n
+            self.ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
+            self.ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
 
             # prefactor, page 93
             en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
 
             # the scattered field in spherical coordinates (4.45)
-            es += np.complex64(1.j * en * ab[n, 0]) * ne1n
-            es -= np.complex64(en * ab[n, 1]) * mo1n
+            self.es += np.complex64(1.j * en * ab[n, 0]) * self.ne1n
+            self.es -= np.complex64(en * ab[n, 1]) * self.mo1n
 
             # upward recurrences ...
             # ... angular functions (4.47)
@@ -200,29 +211,27 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         # spherical harmonics for accuracy and efficiency ...
         # ... put them back at the end.
         radialfactor = 1. / kr
-        es[0, :] *= cosphi * sintheta * radialfactor**2
-        es[1, :] *= cosphi * radialfactor
-        es[2, :] *= sinphi * radialfactor
+        self.es[0, :] *= cosphi * sintheta * radialfactor**2
+        self.es[1, :] *= cosphi * radialfactor
+        self.es[2, :] *= sinphi * radialfactor
 
         # By default, the scattered wave is returned in spherical
         # coordinates.  Project components onto Cartesian coordinates.
         # Assumes that the incident wave propagates along z and
         # is linearly polarized along x
         if cartesian:
-            ec = gpuarray.empty_like(es)
+            self.ec[0, :] = self.es[0, :] * sintheta * cosphi
+            self.ec[0, :] += self.es[1, :] * costheta * cosphi
+            self.ec[0, :] -= self.es[2, :] * sinphi
 
-            ec[0, :] = es[0, :] * sintheta * cosphi
-            ec[0, :] += es[1, :] * costheta * cosphi
-            ec[0, :] -= es[2, :] * sinphi
+            self.ec[1, :] = self.es[0, :] * sintheta * sinphi
+            self.ec[1, :] += self.es[1, :] * costheta * sinphi
+            self.ec[1, :] += self.es[2, :] * cosphi
 
-            ec[1, :] = es[0, :] * sintheta * sinphi
-            ec[1, :] += es[1, :] * costheta * sinphi
-            ec[1, :] += es[2, :] * cosphi
-
-            ec[2, :] = es[0, :] * costheta - es[1, :] * sintheta
-            return ec
+            self.ec[2, :] = self.es[0, :] * costheta - self.es[1, :] * sintheta
+            return self.ec
         else:
-            return es
+            return self.es
 
     def field(self, cartesian=True, bohren=True, return_gpu=False):
         '''Return field scattered by particles in the system'''
@@ -230,29 +239,19 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             return None
 
         k = self.instrument.wavenumber()
-        try:               # one particle in field of view
-            krv = k * (self.coordinates - self.particle.r_p[:, None])
-            ab = self.particle.ab(self.instrument.n_m,
-                                  self.instrument.wavelength)
-            field = self.compute(ab, krv,
-                                 cartesian=cartesian, bohren=bohren)
-            field *= np.complex64(np.exp(-1j * k * self.particle.z_p))
-        except AttributeError:  # list of particles
-            for p in self.particle:
-                krv = k * (self.coordinates - p.r_p[:, None])
-                ab = p.ab(self.instrument.n_m,
-                          self.instrument.wavelength)
-                this = self.compute(ab, krv,
-                                    cartesian=cartesian, bohren=bohren)
-                this *= np.complex64(np.exp(-1j * k * p.z_p))
-                try:
-                    field += this
-                except NameError:
-                    field = this
+        self.result.fill(np.complex64(0.j))
+        for p in np.atleast_1d(self.particle):
+            krv = k * (self.coordinates - p.r_p[:, None])
+            ab = p.ab(self.instrument.n_m,
+                      self.instrument.wavelength)
+            this = self.compute(ab, krv,
+                                cartesian=cartesian, bohren=bohren)
+            this *= np.complex64(np.exp(-1j * k * p.z_p))
+            self.result += this
         if return_gpu:
-            return field
+            return self.result
         else:
-            return field.get()
+            return self.result.get()
 
 
 if __name__ == '__main__':

@@ -14,10 +14,6 @@ class LMHologram(LorenzMie):
 
     Attributes
     ----------
-    shape : list
-        [height, width] specification of hologram shape.
-        If coordinates are specified instead of the shape,
-        the shape reflects the length of the list of coordinates.
     alpha : float, optional
         weight of scattered field in superposition
 
@@ -28,35 +24,10 @@ class LMHologram(LorenzMie):
     '''
 
     def __init__(self,
-                 shape=None,
                  alpha=1.,
-                 **kwargs):
-        super(LMHologram, self).__init__(**kwargs)
-        self.shape = shape
+                 *args, **kwargs):
+        super(LMHologram, self).__init__(*args, **kwargs)
         self.alpha = alpha
-
-    @property
-    def shape(self):
-        return self._shape
-
-    @shape.setter
-    def shape(self, shape):
-        if shape is None:
-            return
-        (ny, nx) = shape
-        x = np.arange(0, nx)
-        y = np.arange(0, ny)
-        xv, yv = np.meshgrid(x, y)
-        xv = xv.flatten()
-        yv = yv.flatten()
-        zv = np.zeros_like(xv)
-        self.coordinates = np.stack((xv, yv, zv))
-        self._shape = shape
-
-    @LorenzMie.coordinates.setter
-    def coordinates(self, coordinates):
-        LorenzMie.coordinates.fset(self, coordinates)
-        self._shape = (coordinates.shape[1],)
 
     @property
     def alpha(self):
@@ -76,15 +47,16 @@ class LMHologram(LorenzMie):
         '''
         field = self.alpha * self.field()
         field[0, :] += 1.
-        res = np.sum(np.real(field * np.conj(field)), axis=0)
-        return res.reshape(self.shape)
+        return np.sum(np.real(field * np.conj(field)), axis=0)
 
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
+    from Instrument import coordinates
 
-    h = LMHologram(shape=[201, 251])
+    shape = [201, 251]
+    h = LMHologram(coordinates=coordinates(shape))
     h.particle.r_p = [125, 75, 100]
     h.instrument.wavelength = 0.447
-    plt.imshow(h.hologram(), cmap='gray')
+    plt.imshow(h.hologram().reshape(shape), cmap='gray')
     plt.show()
