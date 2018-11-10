@@ -130,7 +130,6 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         kr = krho + kz * kz
         kr = cumath.sqrt(kr)
         krho = cumath.sqrt(krho)
-        krho += 1e-5
 
         cosphi = kx / krho
         sinphi = ky / krho

@@ -98,8 +98,8 @@ class Feature(object):
         particle = self.model.particle
         for key in self._keys:
             params.add(key, getattr(particle, key))
-            print(key, params[key].value)
         optimizer = Minimizer(self._loss, params)
+        optimizer.nan_policy = 'omit'
         return optimizer.minimize()
 
 
