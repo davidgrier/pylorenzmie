@@ -32,7 +32,7 @@ class Instrument(object):
         Vacuum wavelength of light [um]
     magnification : float
         Effective size of pixels [um/pixel]
-    n_m : complex
+    n_m : float
         Refractive index of medium
 
     Methods
@@ -81,7 +81,7 @@ class Instrument(object):
 
     @n_m.setter
     def n_m(self, n_m):
-        self._n_m = complex(n_m)
+        self._n_m = float(n_m)
 
     def wavenumber(self, in_medium=True, magnified=True):
         '''Return the wave number of light
@@ -102,9 +102,9 @@ class Instrument(object):
         '''
         k = 2. * np.pi / self.wavelength  # wave number in vacuum
         if in_medium:
-            k *= np.real(self.n_m)    # wave number in medium
+            k *= self.n_m                 # ... in medium
         if magnified:
-            k *= self.magnification
+            k *= self.magnification       # ... in image units
         return k
 
 
