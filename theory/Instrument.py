@@ -33,6 +33,8 @@ class Instrument(object):
         Effective size of pixels [um/pixel]
     n_m : float
         Refractive index of medium
+    background : float or numpy.ndarray
+        Background image
     dark_count : float
         Dark count of camera
 
@@ -46,6 +48,7 @@ class Instrument(object):
                  wavelength=0.532,
                  magnification=0.135,
                  n_m=1.335,
+                 background=1.,
                  dark_count=0.):
         self.wavelength = wavelength
         self.magnification = magnification
@@ -86,6 +89,15 @@ class Instrument(object):
         self._n_m = float(n_m)
 
     @property
+    def background(self):
+        '''Background image'''
+        return self._background
+
+    @background.setter
+    def background(self, background):
+        self._background = background
+
+    @property
     def dark_count(self):
         '''Dark count of camera'''
         return self._dark_count
@@ -94,6 +106,19 @@ class Instrument(object):
     def dark_count(self, dark_count):
         assert dark_count >= 0, 'dark count is non-negative'
         self._dark_count = dark_count
+
+    @property
+    def properties(self):
+        props = {'n_m': self.n_m,
+                 'wavelength': self.wavelength,
+                 'magnification': self.magnification}
+        return props
+
+    @properties.setter
+    def properties(self, properties):
+        for name, value in properties.iteritem():
+            if hasattr(self, name):
+                setattr(self, name, value)
 
     def wavenumber(self, in_medium=True, magnified=True):
         '''Return the wave number of light
