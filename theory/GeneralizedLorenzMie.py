@@ -169,7 +169,6 @@ class GeneralizedLorenzMie(object):
             [3, npts] array of complex vector values of the
             scattered field at each coordinate.
         '''
-
         norders = ab.shape[0]  # number of partial waves in sum
 
         # GEOMETRY
@@ -279,6 +278,8 @@ class GeneralizedLorenzMie(object):
         es[0, :] *= cosphi * sintheta * radialfactor**2
         es[1, :] *= cosphi * radialfactor
         es[2, :] *= sinphi * radialfactor
+
+        np.seterr(all='raise')
 
         # By default, the scattered wave is returned in spherical
         # coordinates.  Project components onto Cartesian coordinates.
