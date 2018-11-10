@@ -21,6 +21,8 @@ class Particle(object):
         y coordinate
     z_p : float
         z coordinate
+    properties : dict
+        dictionary of values to get or set simultaneously
 
     Methods
     -------
@@ -73,6 +75,19 @@ class Particle(object):
     @z_p.setter
     def z_p(self, z_p):
         self._r_p[2] = float(z_p)
+
+    @property
+    def properties(self):
+        p = {'x_p': self.x_p,
+             'y_p': self.y_p,
+             'z_p': self.z_p}
+        return p
+
+    @properties.setter
+    def properties(self, properties):
+        for name, value in properties.iteritems():
+            if hasattr(self, name):
+                setattr(self, name, value)
 
     def ab(self, n_m=1. + 0.j, wavelength=0.):
         '''Returns the Mie scattering coefficients

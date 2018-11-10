@@ -258,12 +258,12 @@ class GeneralizedLorenzMie(object):
             mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
 
             # ... divided by cosphi sintheta/kr^2
-            ne1n[0, :]=n * (n + 1.) * pi_n * xi_n
-            ne1n[1, :]=tau_n * dn      # ... divided by cosphi/kr
-            ne1n[2, :]=pi_n * dn       # ... divided by sinphi/kr
+            ne1n[0, :] = n * (n + 1.) * pi_n * xi_n
+            ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
+            ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
 
             # prefactor, page 93
-            en=1.j**n * (2. * n + 1.) / n / (n + 1.)
+            en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
 
             # the scattered field in spherical coordinates (4.45)
             es += (1.j * en * ab[n, 0]) * ne1n
@@ -272,18 +272,18 @@ class GeneralizedLorenzMie(object):
             # upward recurrences ...
             # ... angular functions (4.47)
             # Method described by Wiscombe (1980)
-            pi_nm1=pi_n
-            pi_n=swisc + ((n + 1.) / n) * twisc
+            pi_nm1 = pi_n
+            pi_n = swisc + ((n + 1.) / n) * twisc
 
             # ... Riccati-Bessel function
-            xi_nm2=xi_nm1
-            xi_nm1=xi_n
+            xi_nm2 = xi_nm1
+            xi_nm1 = xi_n
         # n: multipole sum
 
         # geometric factors were divided out of the vector
         # spherical harmonics for accuracy and efficiency ...
         # ... put them back at the end.
-        radialfactor=1. / kr
+        radialfactor = 1. / kr
         es[0, :] *= cosphi * sintheta * radialfactor**2
         es[1, :] *= cosphi * radialfactor
         es[2, :] *= sinphi * radialfactor
@@ -295,16 +295,16 @@ class GeneralizedLorenzMie(object):
         # Assumes that the incident wave propagates along z and
         # is linearly polarized along x
         if cartesian:
-            ec=np.empty_like(es)
+            ec = np.empty_like(es)
 
-            ec[0, :]=es[0, :] * sintheta * cosphi
+            ec[0, :] = es[0, :] * sintheta * cosphi
             ec[0, :] += es[1, :] * costheta * cosphi
             ec[0, :] -= es[2, :] * sinphi
 
-            ec[1, :]=es[0, :] * sintheta * sinphi
+            ec[1, :] = es[0, :] * sintheta * sinphi
             ec[1, :] += es[1, :] * costheta * sinphi
             ec[1, :] += es[2, :] * cosphi
-            ec[2, :]=es[0, :] * costheta - es[1, :] * sintheta
+            ec[2, :] = es[0, :] * costheta - es[1, :] * sintheta
             return ec
         else:
             return es
@@ -314,7 +314,7 @@ class GeneralizedLorenzMie(object):
         if (self.coordinates is None or self.particle is None):
             return None
 
-        k=self.instrument.wavenumber()
+        k = self.instrument.wavenumber()
         '''
         try:               # one particle in field of view
             krv = k * (self.coordinates - self.particle.r_p[:, None])
@@ -326,16 +326,16 @@ class GeneralizedLorenzMie(object):
         except AttributeError:  # list of particles
         '''
         for p in np.atleast_1d(self.particle):
-            krv=k * (self.coordinates - p.r_p[:, None])
-            ab=p.ab(self.instrument.n_m,
+            krv = k * (self.coordinates - p.r_p[:, None])
+            ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            this=self.compute(ab, krv,
+            this = self.compute(ab, krv,
                                 cartesian=cartesian, bohren=bohren)
             this *= np.exp(-1j * k * p.z_p)
             try:
                 field += this
             except NameError:
-                field=this
+                field = this
         return field
 
 
@@ -344,18 +344,18 @@ if __name__ == '__main__':
     import matplotlib.pyplot as plt
 
     # Create coordinate grid for image
-    x=np.arange(0, 201)
-    y=np.arange(0, 201)
-    xv, yv=np.meshgrid(x, y)
-    xv=xv.flatten()
-    yv=yv.flatten()
-    zv=np.zeros_like(xv)
-    coordinates=np.stack((xv, yv, zv))
+    x = np.arange(0, 201)
+    y = np.arange(0, 201)
+    xv, yv = np.meshgrid(x, y)
+    xv = xv.flatten()
+    yv = yv.flatten()
+    zv = np.zeros_like(xv)
+    coordinates = np.stack((xv, yv, zv))
     # Place a sphere in the field of view, above the focal plane
-    particle=Sphere()
-    particle.r_p=[125, 75, 100]
-    particle.a_p=0.5
-    particle.n_p=1.45
+    particle = Sphere()
+    particle.r_p = [125, 75, 100]
+    particle.a_p = 0.5
+    particle.n_p = 1.45
     # Form image with default instrument
     instrument=Instrument()
     instrument.magnification=0.135
