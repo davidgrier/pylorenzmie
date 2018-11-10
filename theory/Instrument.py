@@ -49,6 +49,13 @@ class Instrument(object):
         self.magnification = magnification
         self.n_m = n_m
 
+    def __str__(self):
+        str = '{}(wavelength={}, magnification={}, n_m={})'
+        return str.format(self.__class__.__name__,
+                          self.wavelength,
+                          self.magnification,
+                          self.n_m)
+
     @property
     def wavelength(self):
         '''Wavelength of light in vacuum [um]'''
