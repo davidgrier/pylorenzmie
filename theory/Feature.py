@@ -7,7 +7,37 @@ from lmfit import Parameters, Minimizer, report_fit
 
 class Feature(object):
 
-    '''Abstraction for a feature in an in-line hologram'''
+    '''
+    Abstraction of a feature in an in-line hologram
+
+    ...
+
+    Attributes
+    ----------
+    data : numpy.ndarray
+        [npts] normalized intensity values
+    noise : float
+        Estimate for the additive noise value at each data pixel
+    coordinates : numpy.ndarray
+        [npts, 3] array of pixel coordinates
+        Note: This property is shared with the underlying Model
+    model : LMHologram
+        Incorporates information about the Particle and the Instrument
+        and uses this information to compute a hologram at the
+        specified coordinates.  Keywords for the Model can be
+        provided at initialization.
+
+    Methods
+    -------
+    residuals() : numpy.ndarray
+        Difference between the current model and the data,
+        normalized by the noise estimate.
+    optimize() : lmfit.MinimzerResult
+        Optimize the Model to fit the data.  Results are
+        returned in a comprehensive report and are reflected
+        in updates to the properties of the Model.
+
+    '''
 
     def __init__(self,
                  data=None,
@@ -15,11 +45,13 @@ class Feature(object):
                  **kwargs):
         self.model = Model(**kwargs)
         self.data = data
+        self.coordinates = self.model.coordinates
         self.noise = noise
         self._keys = ('x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p')
 
     @property
     def data(self):
+        '''Values of the (normalized) hologram at each pixel'''
         return self._data
 
     @data.setter
@@ -28,6 +60,7 @@ class Feature(object):
 
     @property
     def model(self):
+        '''Model for hologram formation'''
         return self._model
 
     @model.setter
@@ -35,16 +68,32 @@ class Feature(object):
         self._model = model
 
     def residuals(self):
-        '''Returns difference bewteen data and current model'''
+        '''Returns difference bewteen data and current model
+
+        Returns
+        -------
+        residuals : numpy.ndarray
+            Difference between model and data at each pixel
+        '''
         return (self.model.hologram() - self.data) / self.noise
 
     def _loss(self, params):
+        '''Updates particle properties and returns residuals'''
         particle = self.model.particle
         for key in self._keys:
             setattr(particle, key, params[key].value)
         return self.residuals()
 
     def optimize(self):
+        '''Fit Model to data
+
+        Returns
+        -------
+        results : lmfit.MinimzerResult
+            Comprehensive report on the outcome of fitting the
+            Model to the provided data.  The format is described
+            in the documentation for lmfit.
+        '''
         params = Parameters()
         particle = self.model.particle
         for key in self._keys:
