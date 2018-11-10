@@ -107,7 +107,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     # size parameters for layers
     k = 2. * np.pi * np.real(n_m) / wavelength  # wave number in medium [um^-1]
     x = [k * a_j for a_j in a_p]      # size parameter in each layer
-    m = np.complex(n_p, k_p) / n_m    # relative refractive index
+    m = (n_p + 1.j*k_p) / n_m    # relative refractive index
 
     # number of terms in partial-wave expansion
     nmax = wiscombe_yang(x, m)
@@ -295,7 +295,7 @@ class Sphere(Particle):
         ab : numpy.ndarray
             Mie AB scattering coefficients
         '''
-        return mie_coefficients(self.a_p, self.n_p, n_m, wavelength)
+        return mie_coefficients(self.a_p, self.n_p, self.k_p, n_m, wavelength)
 
 
 if __name__ == '__main__':

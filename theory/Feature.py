@@ -51,7 +51,7 @@ class Feature(object):
             params.add(key, getattr(particle, key))
             print(key, params[key].value)
         optimizer = Minimizer(self._loss, params)
-        return optimizer.minimize(ftol=1e-5, xtol=1e-5)
+        return optimizer.minimize()
 
 
 if __name__ == '__main__':
@@ -78,5 +78,5 @@ if __name__ == '__main__':
     result = a.optimize()
     report_fit(result)
     # plot residuals
-    # plt.imshow(a.residuals().reshape(shape), cmap='gray')
-    # plt.show()
+    plt.imshow(a.residuals().reshape(shape), cmap='gray')
+    plt.show()
