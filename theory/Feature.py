@@ -45,9 +45,11 @@ class Feature(object):
                  **kwargs):
         self.model = Model(**kwargs)
         self.data = data
-        self.coordinates = self.model.coordinates
         self.noise = noise
+        self.coordinates = self.model.coordinates
         self._keys = ('x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p')
+        self._minimizer = Minimizer(self._loss, None)
+        self._minimizer.nan_policy = 'omit'
 
     @property
     def data(self):
@@ -98,9 +100,8 @@ class Feature(object):
         particle = self.model.particle
         for key in self._keys:
             params.add(key, getattr(particle, key))
-        optimizer = Minimizer(self._loss, params)
-        optimizer.nan_policy = 'omit'
-        return optimizer.minimize()
+        self._minimizer.params = params
+        return self._minimizer.minimize()
 
 
 if __name__ == '__main__':
