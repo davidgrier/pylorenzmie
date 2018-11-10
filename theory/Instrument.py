@@ -12,8 +12,7 @@ def coordinates(shape):
     xv, yv = np.meshgrid(x, y)
     xv = xv.flatten()
     yv = yv.flatten()
-    zv = np.zeros_like(xv)
-    return np.stack((xv, yv, zv))
+    return np.stack((xv, yv))
 
 
 class Instrument(object):
