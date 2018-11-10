@@ -33,6 +33,8 @@ class Instrument(object):
         Effective size of pixels [um/pixel]
     n_m : float
         Refractive index of medium
+    dark_count : float
+        Dark count of camera
 
     Methods
     -------
@@ -43,7 +45,8 @@ class Instrument(object):
     def __init__(self,
                  wavelength=0.532,
                  magnification=0.135,
-                 n_m=1.335):
+                 n_m=1.335,
+                 dark_count=0.):
         self.wavelength = wavelength
         self.magnification = magnification
         self.n_m = n_m
@@ -81,6 +84,16 @@ class Instrument(object):
     @n_m.setter
     def n_m(self, n_m):
         self._n_m = float(n_m)
+
+    @property
+    def dark_count(self):
+        '''Dark count of camera'''
+        return self._dark_count
+
+    @dark_count.setter
+    def dark_count(self, dark_count):
+        assert dark_count >= 0, 'dark count is non-negative'
+        self._dark_count = dark_count
 
     def wavenumber(self, in_medium=True, magnified=True):
         '''Return the wave number of light
