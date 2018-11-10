@@ -43,6 +43,9 @@ class Particle(object):
         str = '{}(r_p={})'
         return str.format(self.__class__.__name__, self.r_p)
 
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def r_p(self):
         '''Three-dimensional coordinates of particle's center'''
