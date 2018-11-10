@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from LMHologram import LMHologram as Model
-from lmfit import Parameters, Minimizer, report_fit
+from lmfit import Parameters, Minimizer
 
 
 class Feature(object):
@@ -36,7 +36,6 @@ class Feature(object):
         Optimize the Model to fit the data.  Results are
         returned in a comprehensive report and are reflected
         in updates to the properties of the Model.
-
     '''
 
     def __init__(self,
@@ -107,6 +106,7 @@ class Feature(object):
 if __name__ == '__main__':
     from Instrument import coordinates
     import numpy as np
+    from lmfit import report_fit
     import matplotlib.pyplot as plt
 
     a = Feature()
