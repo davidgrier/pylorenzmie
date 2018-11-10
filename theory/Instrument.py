@@ -116,7 +116,7 @@ class Instrument(object):
 
     @properties.setter
     def properties(self, properties):
-        for name, value in properties.iteritem():
+        for name, value in properties.iteritems():
             if hasattr(self, name):
                 setattr(self, name, value)
 
