@@ -233,16 +233,16 @@ class Sphere(Particle):
                  a_p=1.,   # radius of sphere [um]
                  n_p=1.5,  # refractive index of sphere
                  k_p=0.,   # absorption coefficient
-                 ** kwargs):
+                 **kwargs):
         super(Sphere, self).__init__(**kwargs)
         self.a_p = a_p
         self.n_p = n_p
         self.k_p = k_p
 
     def __str__(self):
+        name = self.__class__.__name__
         str = '{}(a_p={}, n_p={}, k_p={}, r_p={})'
-        return str.format(self.__class__.__name__,
-                          self.a_p, self.n_p, self.k_p, self.r_p)
+        return str.format(name, self.a_p, self.n_p, self.k_p, self.r_p)
 
     @property
     def a_p(self):

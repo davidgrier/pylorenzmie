@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import json
 
 
 class Particle(object):
@@ -91,6 +92,30 @@ class Particle(object):
         for name, value in properties.iteritems():
             if hasattr(self, name):
                 setattr(self, name, value)
+
+    def dumps(self, **kwargs):
+        '''Returns JSON string of adjustable properties
+
+        Parameters
+        ----------
+        Accepts all keywords of json.dumps()
+
+        Returns
+        -------
+        str : string
+            JSON-encoded string of properties
+        '''
+        return json.dumps(self.properties, **kwargs)
+
+    def loads(self, str):
+        '''Loads JSON strong of adjustable properties
+
+        Parameters
+        ----------
+        str : string
+            JSON-encoded string of properties
+        '''
+        self.properties = json.loads(str)
 
     def ab(self, n_m=1. + 0.j, wavelength=0.):
         '''Returns the Mie scattering coefficients
