@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import json
 
 
 def coordinates(shape):
@@ -119,6 +120,30 @@ class Instrument(object):
         for name, value in properties.iteritems():
             if hasattr(self, name):
                 setattr(self, name, value)
+
+    def dumps(self, **kwargs):
+        '''Returns JSON string of adjustable properties
+
+        Parameters
+        ----------
+        Accepts all keywords of json.dumps()
+
+        Returns
+        -------
+        str : string
+            JSON-encoded string of properties
+        '''
+        return json.dumps(self.properties, **kwargs)
+
+    def loads(self, str):
+        '''Loads JSON strong of adjustable properties
+
+        Parameters
+        ----------
+        str : string
+            JSON-encoded string of properties
+        '''
+        self.properties = json.loads(str)
 
     def wavenumber(self, in_medium=True, magnified=True):
         '''Return the wave number of light
