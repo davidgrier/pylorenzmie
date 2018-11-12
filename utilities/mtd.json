@@ -1,0 +1,20 @@
+{
+    "instrument": {
+	"wavelength": 0.447,
+	"magnification": 0.135,
+	"n_m": 1.335
+    },
+    "particle": {
+	"nspheres": [0, 5],
+	"a_p": [0.5, 5],
+	"n_p": [1.35, 2.5],
+	"k_p": [0, 0],
+	"x_p": [100, 540],
+	"y_p": [100, 380],
+	"z_p": [100, 600]
+    },
+    "directory": "~/data/yolo/training/",
+    "shape": [480, 640],
+    "noise": 0.05,
+    "nframes": 3
+}
