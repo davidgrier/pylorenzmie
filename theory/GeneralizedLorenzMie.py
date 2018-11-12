@@ -4,6 +4,7 @@
 import numpy as np
 from Particle import Particle
 from Instrument import Instrument
+import json
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the
@@ -151,6 +152,35 @@ class GeneralizedLorenzMie(object):
     def instrument(self, instrument):
         if isinstance(instrument, Instrument):
             self._instrument = instrument
+
+    def dumps(self, **kwargs):
+        '''Returns JSON string of adjustable properties
+
+        Parameters
+        ----------
+        Accepts all keywords of json.dumps()
+
+        Returns
+        -------
+        str : string
+            JSON-encoded string of properties
+        '''
+        return json.dumps(self.properties, **kwargs)
+        s = {'particle': self.particle.dumps(**kwargs),
+             'instrument': self.instrument.dumps(**kwargs)}
+        return json.dumps(s, **kwargs)
+
+    def loads(self, str):
+        '''Loads JSON strong of adjustable properties
+
+        Parameters
+        ----------
+        str : string
+            JSON-encoded string of properties
+        '''
+        s = json.loads(str)
+        self.particle.loads(s['particle'])
+        self.instrument.loads(s['instrument'])
 
     def _allocate(self, shape):
         '''Allocates data structures for calculation'''
@@ -357,17 +387,17 @@ if __name__ == '__main__':
     particle.a_p = 0.5
     particle.n_p = 1.45
     # Form image with default instrument
-    instrument=Instrument()
-    instrument.magnification=0.135
-    instrument.wavelength=0.447
-    instrument.n_m=1.335
-    k=instrument.wavenumber()
+    instrument = Instrument()
+    instrument.magnification = 0.135
+    instrument.wavelength = 0.447
+    instrument.n_m = 1.335
+    k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
-    kernel=GeneralizedLorenzMie(coordinates, particle, instrument)
-    field=kernel.field()
+    kernel = GeneralizedLorenzMie(coordinates, particle, instrument)
+    field = kernel.field()
     # Compute hologram from field and show it
     field *= np.exp(-1.j * k * particle.z_p)
     field[0, :] += 1.
-    hologram=np.sum(np.real(field * np.conj(field)), axis=0)
+    hologram = np.sum(np.real(field * np.conj(field)), axis=0)
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
