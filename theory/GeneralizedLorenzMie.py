@@ -127,7 +127,7 @@ class GeneralizedLorenzMie(object):
             self._coordinates[[0, 1], :] = coordinates
         else:
             self._coordinates = coordinates
-        self._allocate(coordinates.shape)
+        self._allocate(self._coordinates.shape)
 
     @property
     def particle(self):

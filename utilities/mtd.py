@@ -4,7 +4,7 @@
 '''Make Training Data'''
 
 import json
-from pylorenzmie.theory.LMHologram import LMHologram
+from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as LMHologram
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.Sphere import Sphere
 import numpy as np
@@ -25,7 +25,7 @@ def feature_extent(sphere, config, nfringes=20):
     h.particle = sphere
     # roughly estimate radii of zero crossings
     b = h.hologram() - 1.
-    ndx = np.where(np.diff(np.sign(b)))[0]+1
+    ndx = np.where(np.diff(np.sign(b)))[0] + 1
     return float(ndx[nfringes])
 
 
@@ -36,11 +36,11 @@ def format_yolo(sample, config):
     fmt = '{}' + 4 * ' {:.6f}' + '\n'
     annotation = ''
     for sphere in sample:
-        diameter = 2.*feature_extent(sphere, config)
-        x_p = sphere.x_p/w
-        y_p = sphere.y_p/h
-        w_p = diameter/w
-        h_p = diameter/h
+        diameter = 2. * feature_extent(sphere, config)
+        x_p = sphere.x_p / w
+        y_p = sphere.y_p / h
+        w_p = diameter / w
+        h_p = diameter / h
         annotation += fmt.format(type, x_p, y_p, w_p, h_p)
     return annotation
 
@@ -105,7 +105,7 @@ def mtd(configfile='mtd.json'):
             frame += holo.hologram().reshape(shape)
         else:
             frame += 1.
-        frame = np.clip(100*frame, 0, 255).astype(np.uint8)
+        frame = np.clip(100 * frame, 0, 255).astype(np.uint8)
         # ... and save the results
         cv2.imwrite(imgname.format(n), frame)
         with open(jsonname.format(n), 'w') as fp:
