@@ -56,12 +56,21 @@ def format_json(sample, config):
     return json.dumps(annotation, indent=4)
 
 
+def make_value(range):
+    if np.isscalar(range):
+        return range
+    if range[0] == range[1]:
+        return range[0]
+    return np.random.uniform(range[0], range[1])
+
+
 def make_sample(config):
     '''Returns an array of Sphere objects'''
     particle = config['particle']
     nrange = particle['nspheres']
     a_p = particle['a_p']
     n_p = particle['n_p']
+    k_p = particle['k_p']
     x_p = particle['x_p']
     y_p = particle['y_p']
     z_p = particle['z_p']
@@ -69,11 +78,12 @@ def make_sample(config):
     sample = []
     for n in range(nspheres):
         sphere = Sphere()
-        sphere.a_p = np.random.uniform(a_p[0], a_p[1])
-        sphere.n_p = np.random.uniform(n_p[0], n_p[1])
-        sphere.x_p = np.random.uniform(x_p[0], x_p[1])
-        sphere.y_p = np.random.uniform(y_p[0], y_p[1])
-        sphere.z_p = np.random.uniform(z_p[0], z_p[1])
+        sphere.a_p = make_value(a_p)
+        sphere.n_p = make_value(n_p)
+        sphere.k_p = make_value(k_p)
+        sphere.x_p = make_value(x_p)
+        sphere.y_p = make_value(y_p)
+        sphere.z_p = make_value(z_p)
         sample.append(sphere)
     return sample
 
