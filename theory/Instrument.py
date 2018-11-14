@@ -3,6 +3,7 @@
 
 import numpy as np
 import json
+from future.utils import iteritems
 
 
 def coordinates(shape):
@@ -117,7 +118,7 @@ class Instrument(object):
 
     @properties.setter
     def properties(self, properties):
-        for name, value in properties.iteritems():
+        for (name, value) in iteritems(properties):
             if hasattr(self, name):
                 setattr(self, name, value)
 

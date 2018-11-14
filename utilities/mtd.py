@@ -4,7 +4,10 @@
 '''Make Training Data'''
 
 import json
-from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as LMHologram
+try:
+    from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as LMHologram
+except ImportError:
+    from pylorenzmie.theory.LMHologram import LMHologram
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.Sphere import Sphere
 import numpy as np
@@ -87,16 +90,18 @@ def mtd(configfile='mtd.json'):
 
     # create directories and filenames
     directory = os.path.expanduser(config['directory'])
+    imgtype = config['imgtype']
     if not os.path.exists(os.path.join(directory, 'images')):
         os.makedirs(os.path.join(directory, 'images'))
+        os.makedirs(os.path.join(directory, 'params'))
         os.makedirs(os.path.join(directory, 'labels'))
     shutil.copy2(configfile, directory)
-    imgname = os.path.join(directory, 'images', 'image{:04d}.jpg')
-    jsonname = os.path.join(directory, 'images', 'image{:04d}.json')
+    imgname = os.path.join(directory, 'images', 'image{:04d}.' + imgtype)
+    jsonname = os.path.join(directory, 'params', 'image{:04d}.json')
     yoloname = os.path.join(directory, 'labels', 'image{:04d}.txt')
 
     for n in range(config['nframes']):  # for each frame ...
-        print imgname.format(n)
+        print(imgname.format(n))
         sample = make_sample(config)   # ... get params for particles
         # ... calculate hologram
         frame = np.random.normal(0, config['noise'], shape)
