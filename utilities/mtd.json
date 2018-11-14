@@ -14,7 +14,8 @@
 	"z_p": [100, 600]
     },
     "directory": "~/data/yolo/training/",
+    "imgtype": "png",
     "shape": [480, 640],
     "noise": 0.05,
-    "nframes": 3
+    "nframes": 20
 }
