@@ -57,6 +57,7 @@ def format_json(sample, config):
 
 
 def make_value(range, decimals=3):
+    '''Returns the value for a property'''
     if np.isscalar(range):
         value = range
     elif range[0] == range[1]:
