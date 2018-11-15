@@ -56,34 +56,26 @@ def format_json(sample, config):
     return json.dumps(annotation, indent=4)
 
 
-def make_value(range):
+def make_value(range, decimals=3):
     if np.isscalar(range):
-        return range
-    if range[0] == range[1]:
-        return range[0]
-    return np.random.uniform(range[0], range[1])
+        value = range
+    elif range[0] == range[1]:
+        value = range[0]
+    else:
+        value = np.random.uniform(range[0], range[1])
+    return np.around(value, decimals=decimals)
 
 
 def make_sample(config):
     '''Returns an array of Sphere objects'''
     particle = config['particle']
     nrange = particle['nspheres']
-    a_p = particle['a_p']
-    n_p = particle['n_p']
-    k_p = particle['k_p']
-    x_p = particle['x_p']
-    y_p = particle['y_p']
-    z_p = particle['z_p']
     nspheres = np.random.randint(nrange[0], nrange[1])
     sample = []
     for n in range(nspheres):
         sphere = Sphere()
-        sphere.a_p = make_value(a_p)
-        sphere.n_p = make_value(n_p)
-        sphere.k_p = make_value(k_p)
-        sphere.x_p = make_value(x_p)
-        sphere.y_p = make_value(y_p)
-        sphere.z_p = make_value(z_p)
+        for prop in ('a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p'):
+            setattr(sphere, prop, make_value(particle[prop]))
         sample.append(sphere)
     return sample
 
@@ -101,10 +93,9 @@ def mtd(configfile='mtd.json'):
     # create directories and filenames
     directory = os.path.expanduser(config['directory'])
     imgtype = config['imgtype']
-    if not os.path.exists(os.path.join(directory, 'images')):
-        os.makedirs(os.path.join(directory, 'images'))
-        os.makedirs(os.path.join(directory, 'params'))
-        os.makedirs(os.path.join(directory, 'labels'))
+    for dir in ('images', 'params', 'labels'):
+        if not os.path.exists(os.path.join(directory, dir)):
+            os.makedirs(os.path.join(directory, dir))
     shutil.copy2(configfile, directory)
     imgname = os.path.join(directory, 'images', 'image{:04d}.' + imgtype)
     jsonname = os.path.join(directory, 'params', 'image{:04d}.json')
