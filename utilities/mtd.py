@@ -49,7 +49,7 @@ def format_yolo(sample, config):
 
 
 def format_json(sample, config):
-    '''Returns a strong of JSON annotations'''
+    '''Returns a string of JSON annotations'''
     annotation = []
     for s in sample:
         annotation.append(s.dumps(sort_keys=True))
@@ -82,6 +82,7 @@ def make_sample(config):
 
 
 def mtd(configfile='mtd.json'):
+    '''Make Training Data'''
     # read configuration
     with open(configfile, 'r') as f:
         config = json.load(f)

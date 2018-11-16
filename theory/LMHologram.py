@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from LorenzMie import LorenzMie
+from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
 
 

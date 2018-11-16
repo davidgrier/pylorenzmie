@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from LMHologram import LMHologram as Model
+from pylorenzmie.theory.LMHologram import LMHologram as Model
 from lmfit import Parameters, Minimizer
 
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from CudaGeneralizedLorenzMie import CudaGeneralizedLorenzMie
+from pylorenzmie.theory.CudaGeneralizedLorenzMie import CudaGeneralizedLorenzMie
 from Sphere import Sphere
 
 
