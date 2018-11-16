@@ -200,7 +200,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             self.ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
 
             # prefactor, page 93
-            en = 1.j**n * (2. * n + 1.) / (n * (n + 1.))
+            en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
 
             # the scattered field in spherical coordinates (4.45)
             self.es += np.complex64(1.j * en * ab[n, 0]) * self.ne1n
