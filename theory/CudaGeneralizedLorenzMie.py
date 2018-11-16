@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from GeneralizedLorenzMie import GeneralizedLorenzMie
+from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
 import pycuda.driver as cuda
 import pycuda.autoinit
 import pycuda.gpuarray as gpuarray

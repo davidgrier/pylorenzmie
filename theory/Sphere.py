@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from Particle import Particle
+from pylorenzmie.theory.Particle import Particle
 import numpy as np
 
 '''

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from CudaLorenzMie import CudaLorenzMie
+from pylorenzmie.theory.CudaLorenzMie import CudaLorenzMie
 import numpy as np
 
 
