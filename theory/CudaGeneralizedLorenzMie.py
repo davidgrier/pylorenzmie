@@ -6,6 +6,7 @@ import pycuda.driver as cuda
 import pycuda.autoinit
 import pycuda.gpuarray as gpuarray
 import pycuda.cumath as cumath
+from pycuda.elementwise import ElementwiseKernel
 import numpy as np
 
 '''
@@ -48,6 +49,11 @@ This version is
 Copyright (c) 2018 David G. Grier
 '''
 
+safe_division = ElementwiseKernel(
+    "float *x, float *y, float a, float *z",
+    "if (abs(y[i]) > 1e-6) { z[i] = x[i]/y[i]; } else {z[i] = a;};",
+    "safe_division",)
+
 
 class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
@@ -77,6 +83,8 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     def _allocate(self, shape):
         '''Allocates GPUArrays for calculation'''
+        self.sinphi = gpuarray.empty(shape[1], dtype=np.float32)
+        self.cosphi = gpuarray.empty(shape[1], dtype=np.float32)
         self.krv = gpuarray.empty(shape, dtype=np.float32)
         self.mo1n = gpuarray.empty(shape, dtype=np.complex64)
         self.ne1n = gpuarray.empty(shape, dtype=np.complex64)
@@ -131,8 +139,8 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         kr = cumath.sqrt(kr)
         krho = cumath.sqrt(krho)
 
-        cosphi = kx / krho
-        sinphi = ky / krho
+        safe_division(kx, krho, 1., self.cosphi)
+        safe_division(ky, krho, 0., self.sinphi)
         costheta = -kz / kr  # z convention
         sintheta = krho / kr
         sinkr = cumath.sin(kr)
@@ -211,22 +219,22 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         # spherical harmonics for accuracy and efficiency ...
         # ... put them back at the end.
         radialfactor = 1. / kr
-        self.es[0, :] *= cosphi * sintheta * radialfactor**2
-        self.es[1, :] *= cosphi * radialfactor
-        self.es[2, :] *= sinphi * radialfactor
+        self.es[0, :] *= self.cosphi * sintheta * radialfactor**2
+        self.es[1, :] *= self.cosphi * radialfactor
+        self.es[2, :] *= self.sinphi * radialfactor
 
         # By default, the scattered wave is returned in spherical
         # coordinates.  Project components onto Cartesian coordinates.
         # Assumes that the incident wave propagates along z and
         # is linearly polarized along x
         if cartesian:
-            self.ec[0, :] = self.es[0, :] * sintheta * cosphi
-            self.ec[0, :] += self.es[1, :] * costheta * cosphi
-            self.ec[0, :] -= self.es[2, :] * sinphi
+            self.ec[0, :] = self.es[0, :] * sintheta * self.cosphi
+            self.ec[0, :] += self.es[1, :] * costheta * self.cosphi
+            self.ec[0, :] -= self.es[2, :] * self.sinphi
 
-            self.ec[1, :] = self.es[0, :] * sintheta * sinphi
-            self.ec[1, :] += self.es[1, :] * costheta * sinphi
-            self.ec[1, :] += self.es[2, :] * cosphi
+            self.ec[1, :] = self.es[0, :] * sintheta * self.sinphi
+            self.ec[1, :] += self.es[1, :] * costheta * self.sinphi
+            self.ec[1, :] += self.es[2, :] * self.cosphi
 
             self.ec[2, :] = self.es[0, :] * costheta - self.es[1, :] * sintheta
             return self.ec
@@ -255,8 +263,8 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
 
 if __name__ == '__main__':
-    from Instrument import Instrument
-    from Sphere import Sphere
+    from pylorenzmie.theory.Instrument import Instrument
+    from pylorenzmie.theory.Sphere import Sphere
     import matplotlib.pyplot as plt
 
     # Create coordinate grid for image
@@ -279,7 +287,9 @@ if __name__ == '__main__':
     instrument.n_m = 1.335
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
-    kernel = CudaGeneralizedLorenzMie(coordinates, particle, instrument)
+    kernel = CudaGeneralizedLorenzMie(coordinates=coordinates,
+                                      particle=particle,
+                                      instrument=instrument)
     field = kernel.field()
     # Compute hologram from field and show it
     field *= np.complex64(np.exp(-1.j * k * particle.z_p))
