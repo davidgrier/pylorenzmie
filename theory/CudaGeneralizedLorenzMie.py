@@ -85,6 +85,8 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         '''Allocates GPUArrays for calculation'''
         self.sinphi = gpuarray.empty(shape[1], dtype=np.float32)
         self.cosphi = gpuarray.empty(shape[1], dtype=np.float32)
+        self.sintheta = gpuarray.empty(shape[1], dtype=np.float32)
+        self.costheta = gpuarray.empty(shape[1], dtype=np.float32)
         self.krv = gpuarray.empty(shape, dtype=np.float32)
         self.mo1n = gpuarray.empty(shape, dtype=np.complex64)
         self.ne1n = gpuarray.empty(shape, dtype=np.complex64)
@@ -141,8 +143,8 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
         safe_division(kx, krho, 1., self.cosphi)
         safe_division(ky, krho, 0., self.sinphi)
-        costheta = -kz / kr  # z convention
-        sintheta = krho / kr
+        safe_division(-kz, kr, 1., self.costheta)  # z convention
+        safe_division(krho, kr, 0., self.sintheta)
         sinkr = cumath.sin(kr)
         coskr = cumath.cos(kr)
 
@@ -177,7 +179,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             # upward recurrences ...
             # 4. Legendre factor (4.47)
             # Method described by Wiscombe (1980)
-            swisc = pi_n * costheta
+            swisc = pi_n * self.costheta
             twisc = swisc - pi_nm1
             tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
 
@@ -198,7 +200,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             self.ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
 
             # prefactor, page 93
-            en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
+            en = 1.j**n * (2. * n + 1.) / (n * (n + 1.))
 
             # the scattered field in spherical coordinates (4.45)
             self.es += np.complex64(1.j * en * ab[n, 0]) * self.ne1n
@@ -219,7 +221,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         # spherical harmonics for accuracy and efficiency ...
         # ... put them back at the end.
         radialfactor = 1. / kr
-        self.es[0, :] *= self.cosphi * sintheta * radialfactor**2
+        self.es[0, :] *= self.cosphi * self.sintheta * radialfactor**2
         self.es[1, :] *= self.cosphi * radialfactor
         self.es[2, :] *= self.sinphi * radialfactor
 
@@ -228,15 +230,16 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         # Assumes that the incident wave propagates along z and
         # is linearly polarized along x
         if cartesian:
-            self.ec[0, :] = self.es[0, :] * sintheta * self.cosphi
-            self.ec[0, :] += self.es[1, :] * costheta * self.cosphi
+            self.ec[0, :] = self.es[0, :] * self.sintheta * self.cosphi
+            self.ec[0, :] += self.es[1, :] * self.costheta * self.cosphi
             self.ec[0, :] -= self.es[2, :] * self.sinphi
 
-            self.ec[1, :] = self.es[0, :] * sintheta * self.sinphi
-            self.ec[1, :] += self.es[1, :] * costheta * self.sinphi
+            self.ec[1, :] = self.es[0, :] * self.sintheta * self.sinphi
+            self.ec[1, :] += self.es[1, :] * self.costheta * self.sinphi
             self.ec[1, :] += self.es[2, :] * self.cosphi
 
-            self.ec[2, :] = self.es[0, :] * costheta - self.es[1, :] * sintheta
+            self.ec[2, :] = (self.es[0, :] * self.costheta -
+                             self.es[1, :] * self.sintheta)
             return self.ec
         else:
             return self.es
