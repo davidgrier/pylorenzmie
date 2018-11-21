@@ -17,19 +17,22 @@ import os
 import shutil
 
 
-def feature_extent(sphere, config, nfringes=20):
+def feature_extent(sphere, config, nfringes=20, maxrange=300):
     '''Radius of holographic feature in pixels'''
     s = Sphere()
     s.a_p = sphere.a_p
     s.n_p = sphere.n_p
     s.z_p = sphere.z_p
-    h = LMHologram(coordinates=np.arange(300))
+    h = LMHologram(coordinates=np.arange(maxrange))
     h.instrument.properties = config['instrument']
     h.particle = sphere
     # roughly estimate radii of zero crossings
     b = h.hologram() - 1.
     ndx = np.where(np.diff(np.sign(b)))[0] + 1
-    return float(ndx[nfringes])
+    if len(ndx) < nfringes:
+        return maxrange
+    else:
+        return float(ndx[nfringes])
 
 
 def format_yolo(sample, config):
