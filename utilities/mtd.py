@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 '''Make Training Data'''
-
+import sys
+sys.path.append('/home/lea336/')
 import json
 try:
     from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as LMHologram
