@@ -38,13 +38,13 @@ class LMTool(QtWidgets.QMainWindow):
         self.setupImageTab()
         self.setupProfileTab()
         self.setupFitTab()
-        self.setupParameters()
+        # self.setupParameters()
+        self.setupParams()
         self.setupTheory()
         self.connectSignals()
         self.openFile('sample.png')
         self.updateRp()
 
-    #####
     #
     # Set up widgets
     #
@@ -98,52 +98,28 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.fitTab.addViewBox(**options).addItem(self.residuals)
 
     def setupParameters(self):
-        self.ui.wavelength.setText('wavelength')
-        self.ui.wavelength.spinbox.setSuffix(' μm')
-        self.ui.wavelength.setRange(0.405, 1.070)
-        self.ui.wavelength.setValue(0.447)
-        self.ui.wavelength.fixed = True
-
-        self.ui.magnification.setText('magnification')
-        self.ui.magnification.spinbox.setSuffix(' μm/pixel')
-        self.ui.magnification.setRange(0.046, 0.135)
-        self.ui.magnification.setValue(0.135)
-        self.ui.magnification.fixed = True
-
-        self.ui.n_m.setText('n<sub>m</sub>')
-        self.ui.n_m.setRange(1.330, 1.342)
-        self.ui.n_m.setValue(1.340)
-        self.ui.n_m.fixed = True
-
-        self.ui.a_p.setText('a<sub>p</sub>')
-        self.ui.a_p.spinbox.setSuffix(' μm')
-        self.ui.a_p.setRange(0.3, 10.)
-        self.ui.a_p.setValue(0.75)
-
-        self.ui.n_p.setText('n<sub>p</sub>')
-        self.ui.n_p.setRange(1.345, 2.5)
-        self.ui.n_p.setValue(1.45)
-
-        self.ui.k_p.setText('k<sub>p</sub>')
-        self.ui.k_p.setRange(0., 10.)
-        self.ui.k_p.setValue(0.)
-        self.ui.k_p.fixed = True
-
-        self.ui.x_p.setText('x<sub>p</sub>')
-        self.ui.x_p.spinbox.setSuffix(' pixel')
-        self.ui.x_p.setDecimals(2)
-        self.ui.x_p.setValue(100)
-
-        self.ui.y_p.setText('y<sub>p</sub>')
-        self.ui.y_p.spinbox.setSuffix(' pixel')
-        self.ui.y_p.setDecimals(2)
-        self.ui.y_p.setValue(100)
-
-        self.ui.z_p.setText('z<sub>p</sub>')
-        self.ui.z_p.spinbox.setSuffix(' pixel')
-        self.ui.z_p.setDecimals(2)
-        self.ui.z_p.setRange(20, 600)
-        self.ui.z_p.setValue(100)
+        with open('LMTool.json', 'r') as file:
+            settings = json.load(file)
+        names = ['wavelength', 'magnification', 'n_m',
+                 'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p']
+        for name in names:
+            prop = getattr(self.ui, name)
+            setting = settings[name]
+            if 'text' in setting:
+                prop.setText(setting['text'])
+            if 'suffix' in setting:
+                prop.spinbox.setSuffix(setting['suffix'])
+            if 'range' in setting:
+                range = setting['range']
+                prop.setRange(range[0], range[1])
+            if 'decimals' in setting:
+                prop.setDecimals(setting['decimals'])
+            if 'step' in setting:
+                prop.setSingleStep(setting['step'])
+            if 'value' in setting:
+                prop.setValue(setting['value'])
+            if 'fixed' in setting:
+                prop.fixed = setting['fixed']
 
     def setupTheory(self):
         self.theory = LMHologram(coordinates=self.coordinates)
@@ -170,7 +146,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
 
-    #####
+    #
     #
     # Slots for handling user interaction
     #
@@ -229,7 +205,7 @@ class LMTool(QtWidgets.QMainWindow):
         except IOError:
             print('error')
 
-    #####
+    #
     #
     # Routines to update plots
     #
@@ -241,7 +217,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.regionLower.setData(avg - std)
 
     def updateTheoryProfile(self):
-        xsmooth = np.linspace(0, self.maxrange-1, 300)
+        xsmooth = np.linspace(0, self.maxrange - 1, 300)
         y = self.theory.hologram()
         ysmooth = spline(self.coordinates, y, xsmooth)
         self.theoryProfile.setData(xsmooth, ysmooth)
