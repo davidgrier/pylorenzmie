@@ -30,7 +30,7 @@ def feature_extent(sphere, config, nfringes=20, maxrange=300):
     # roughly estimate radii of zero crossings
     b = h.hologram() - 1.
     ndx = np.where(np.diff(np.sign(b)))[0] + 1
-    if len(ndx) < nfringes:
+    if len(ndx) < (nfringes+1):
         return maxrange
     else:
         return float(ndx[nfringes])
