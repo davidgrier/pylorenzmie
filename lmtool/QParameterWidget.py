@@ -100,10 +100,10 @@ class QParameterWidget(QtWidgets.QWidget):
         self.value = self.spinbox.value
 
         # Slots
-        self.setValue = self.spinbox.setValue
+        self.setValue = self.slider.setValue
 
         # Signals
-        self.valueChanged = self.spinbox.valueChanged
+        self.valueChanged = self.slider.valueChanged
 
     @QtCore.pyqtSlot(int)
     def fixValue(self, state):
