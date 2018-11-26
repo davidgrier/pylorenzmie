@@ -254,8 +254,8 @@ if __name__ == '__main__':
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        'filename', type=str, default='sample.png', nargs='?', action='store')
+    parser.add_argument('filename', type=str, default='sample.png',
+                        nargs='?', action='store')
     args, unparsed = parser.parse_known_args()
     qt_args = sys.argv[:1] + unparsed
 
