@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>800</width>
+    <height>600</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>LMTool</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QVBoxLayout" name="verticalLayout">
+    <item>
+     <widget class="QTabWidget" name="tabs">
+      <property name="currentIndex">
+       <number>0</number>
+      </property>
+      <widget class="GraphicsLayoutWidget" name="imageTab">
+       <attribute name="title">
+        <string>image</string>
+       </attribute>
+      </widget>
+      <widget class="PlotWidget" name="plot">
+       <attribute name="title">
+        <string>profile</string>
+       </attribute>
+      </widget>
+      <widget class="GraphicsLayoutWidget" name="fitTab">
+       <attribute name="title">
+        <string>fit</string>
+       </attribute>
+      </widget>
+     </widget>
+    </item>
+    <item>
+     <widget class="QFrame" name="parameterFrame">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <layout class="QGridLayout" name="gridLayout">
+       <property name="horizontalSpacing">
+        <number>4</number>
+       </property>
+       <property name="verticalSpacing">
+        <number>1</number>
+       </property>
+       <property name="margin">
+        <number>0</number>
+       </property>
+       <item row="0" column="0">
+        <widget class="QParameterWidget" name="wavelength" native="true">
+         <property name="statusTip">
+          <string>Wavelength of illumination [micrometers]</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="QParameterWidget" name="magnification" native="true">
+         <property name="statusTip">
+          <string>Magnification [micrometers/pixel]</string>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="QParameterWidget" name="n_m" native="true">
+         <property name="statusTip">
+          <string>Refractive index of medium</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="QParameterWidget" name="a_p" native="true">
+         <property name="statusTip">
+          <string>Radius of particle [micrometers]</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="QParameterWidget" name="n_p" native="true">
+         <property name="statusTip">
+          <string>Refractive index of particle</string>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="QParameterWidget" name="k_p" native="true">
+         <property name="statusTip">
+          <string>Absorption coefficient of particle</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QParameterWidget" name="x_p" native="true">
+         <property name="statusTip">
+          <string>x coordinate [pixel]</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QParameterWidget" name="y_p" native="true">
+         <property name="statusTip">
+          <string>y coordinate [pixel]</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="QParameterWidget" name="z_p" native="true">
+         <property name="statusTip">
+          <string>Axial position of particle [pixel]</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>800</width>
+     <height>22</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="actionOpen"/>
+    <addaction name="actionSave_Parameters"/>
+    <addaction name="separator"/>
+    <addaction name="actionQuit"/>
+   </widget>
+   <addaction name="menuFile"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="actionQuit">
+   <property name="text">
+    <string>Quit</string>
+   </property>
+  </action>
+  <action name="actionOpen">
+   <property name="text">
+    <string>Open ...</string>
+   </property>
+  </action>
+  <action name="actionSave_Parameters">
+   <property name="text">
+    <string>Save Parameters ...</string>
+   </property>
+  </action>
+  <action name="actionSave_Parameters_As">
+   <property name="text">
+    <string>Save Parameters As ...</string>
+   </property>
+  </action>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QParameterWidget</class>
+   <extends>QWidget</extends>
+   <header>QParameterWidget</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>PlotWidget</class>
+   <extends>QWidget</extends>
+   <header>pyqtgraph</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>GraphicsLayoutWidget</class>
+   <extends>QWidget</extends>
+   <header>pyqtgraph</header>
+   <container>1</container>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>actionQuit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>399</x>
+     <y>299</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
