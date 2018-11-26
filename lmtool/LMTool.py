@@ -26,7 +26,7 @@ def aziavg(data, center):
 
 class LMTool(QtWidgets.QMainWindow):
 
-    def __init__(self):
+    def __init__(self, filename=None):
         super(LMTool, self).__init__()
         self.maxrange = 100
         self.coordinates = np.arange(self.maxrange)
@@ -38,11 +38,10 @@ class LMTool(QtWidgets.QMainWindow):
         self.setupImageTab()
         self.setupProfileTab()
         self.setupFitTab()
-        # self.setupParameters()
-        self.setupParams()
+        self.setupParameters()
         self.setupTheory()
         self.connectSignals()
-        self.openFile('sample.png')
+        self.openFile(filename)
         self.updateRp()
 
     #
@@ -147,7 +146,6 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
 
     #
-    #
     # Slots for handling user interaction
     #
     @pyqtSlot(int)
@@ -206,7 +204,6 @@ class LMTool(QtWidgets.QMainWindow):
             print('error')
 
     #
-    #
     # Routines to update plots
     #
     def updateDataProfile(self):
@@ -252,11 +249,17 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.y_p.setRange(0, data.shape[0])
         self.updateDataProfile()
 
-
 if __name__ == '__main__':
     import sys
+    import argparse
 
-    app = QtWidgets.QApplication(sys.argv)
-    lmtool = LMTool()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'filename', type=str, default='sample.png', nargs='?', action='store')
+    args, unparsed = parser.parse_known_args()
+    qt_args = sys.argv[:1] + unparsed
+
+    app = QtWidgets.QApplication(qt_args)
+    lmtool = LMTool(args.filename)
     lmtool.show()
     sys.exit(app.exec_())
