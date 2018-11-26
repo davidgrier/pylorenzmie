@@ -20,11 +20,11 @@ class QDoubleSlider(QSlider):
             self.reemitValueChanged)
 
     def _convert_i2f(self, ivalue):
-        frac = float(ivalue - self._imin)/(self._imax - self._imin)
+        frac = float(ivalue - self._imin) / (self._imax - self._imin)
         return frac * (self._max - self._min) + self._min
 
     def _convert_f2i(self, value):
-        frac = (value - self._min)/(self._max - self._min)
+        frac = (value - self._min) / (self._max - self._min)
         return int(frac * (self._imax - self._imin) + self._imin)
 
     @pyqtSlot(int)
@@ -52,3 +52,7 @@ class QDoubleSlider(QSlider):
         self._min = minimum
         self._max = maximum
         self.setValue(ovalue)
+
+    def setSingleStep(self, value):
+        ivalue = self._convert_f2i(value)
+        super(QDoubleSlider, self).setSingleStep(ivalue)
