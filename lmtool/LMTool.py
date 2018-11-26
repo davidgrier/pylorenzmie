@@ -257,10 +257,10 @@ class LMTool(QtWidgets.QMainWindow):
         h, w = self.data.shape
         x_p = self.ui.x_p.value()
         y_p = self.ui.y_p.value()
-        x0 = int(np.clip(x_p - dim, 0, w - 1))
-        y0 = int(np.clip(y_p - dim, 0, h - 1))
-        x1 = int(np.clip(x_p + dim, 0, w - 1))
-        y1 = int(np.clip(y_p + dim, 0, h - 1))
+        x0 = int(np.clip(x_p - dim, 0, w - 2))
+        y0 = int(np.clip(y_p - dim, 0, h - 2))
+        x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
+        y1 = int(np.clip(y_p + dim, y0 + 1, h - 1))
         print(x0, x1, y0, y1)
         img = self.data[x0:x1, y0:y1]
         self.region.setImage(img)

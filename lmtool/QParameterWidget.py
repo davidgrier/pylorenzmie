@@ -81,9 +81,13 @@ class QParameterWidget(QtWidgets.QWidget):
         self.layout.addWidget(self.checkbox, 0, 2, 1, 1)
         self.layout.addWidget(self.slider, 1, 0, 1, 3)
 
-        self.spinbox.valueChanged['double'].connect(self.slider.setValue)
+        self.spinbox.editingFinished.connect(self.updateValues)
         self.slider.valueChanged['double'].connect(self.spinbox.setValue)
         self.checkbox.stateChanged.connect(self.fixValue)
+
+    @QtCore.pyqtSlot()
+    def updateValues(self):
+        self.slider.setValue(self.spinbox.value())
 
     def setupAPI(self):
         # Methods
