@@ -6,6 +6,7 @@ from QDoubleSlider import QDoubleSlider
 
 
 class QParameterWidget(QtWidgets.QWidget):
+
     '''Widget for adjusting a floating-point parameter
 
     QParameterWidget combines a QDoubleSpinBox with
@@ -130,6 +131,10 @@ class QParameterWidget(QtWidgets.QWidget):
     def setRange(self, min, max):
         self.spinbox.setRange(min, max)
         self.slider.setRange(min, max)
+
+    def setSingleStep(self, value):
+        self.spinbox.setSingleStep(value)
+        self.slider.setSingleStep(value)
 
 
 if __name__ == '__main__':
