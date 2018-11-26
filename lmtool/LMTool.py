@@ -90,13 +90,13 @@ class LMTool(QtWidgets.QMainWindow):
                    'enableMouse': False,
                    'invertY': False,
                    'lockAspect': True}
-        self.region = pg.ImageItem()
+        self.region = pg.ImageItem(pen=pg.mkPen('k'))
         regionbox = self.ui.fitTab.addViewBox(**options)
         regionbox.addItem(self.region)
-        self.fit = pg.ImageItem()
+        self.fit = pg.ImageItem(pen=pg.mkPen('k'))
         fitbox = self.ui.fitTab.addViewBox(**options)
         fitbox.addItem(self.fit)
-        self.residuals = pg.ImageItem()
+        self.residuals = pg.ImageItem(pen=pg.mkPen('k'))
         residualbox = self.ui.fitTab.addViewBox(**options)
         residualbox.addItem(self.residuals)
 
