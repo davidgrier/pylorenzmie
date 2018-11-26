@@ -91,17 +91,14 @@ class LMTool(QtWidgets.QMainWindow):
                    'invertY': False,
                    'lockAspect': True}
         self.region = pg.ImageItem()
-        regionbox = pg.ViewBox(**options)
+        regionbox = self.ui.fitTab.addViewBox(**options)
         regionbox.addItem(self.region)
         self.fit = pg.ImageItem()
-        fitbox = pg.ViewBox(**options)
-        regionbox.addItem(self.fit)
+        fitbox = self.ui.fitTab.addViewBox(**options)
+        fitbox.addItem(self.fit)
         self.residuals = pg.ImageItem()
-        residualbox = pg.ViewBox(**options)
+        residualbox = self.ui.fitTab.addViewBox(**options)
         residualbox.addItem(self.residuals)
-        self.ui.fitTab.addItem(regionbox, 0, 0)
-        self.ui.fitTab.addItem(fitbox, 0, 1)
-        self.ui.fitTab.addItem(residualbox, 0, 2)
 
     def setupParameters(self):
         self.ui.wavelength.setText('wavelength')
@@ -261,8 +258,7 @@ class LMTool(QtWidgets.QMainWindow):
         y0 = int(np.clip(y_p - dim, 0, h - 2))
         x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
         y1 = int(np.clip(y_p + dim, y0 + 1, h - 1))
-        print(x0, x1, y0, y1)
-        img = self.data[x0:x1, y0:y1]
+        img = self.data[y0:y1, x0:x1]
         self.region.setImage(img)
         self.fit.setImage(img)
         self.residuals.setImage(img)
