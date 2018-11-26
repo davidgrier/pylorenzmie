@@ -91,14 +91,11 @@ class LMTool(QtWidgets.QMainWindow):
                    'invertY': False,
                    'lockAspect': True}
         self.region = pg.ImageItem(pen=pg.mkPen('k'))
-        regionbox = self.ui.fitTab.addViewBox(**options)
-        regionbox.addItem(self.region)
         self.fit = pg.ImageItem(pen=pg.mkPen('k'))
-        fitbox = self.ui.fitTab.addViewBox(**options)
-        fitbox.addItem(self.fit)
         self.residuals = pg.ImageItem(pen=pg.mkPen('k'))
-        residualbox = self.ui.fitTab.addViewBox(**options)
-        residualbox.addItem(self.residuals)
+        self.ui.fitTab.addViewBox(**options).addItem(self.region)
+        self.ui.fitTab.addViewBox(**options).addItem(self.fit)
+        self.ui.fitTab.addViewBox(**options).addItem(self.residuals)
 
     def setupParameters(self):
         self.ui.wavelength.setText('wavelength')
@@ -179,12 +176,12 @@ class LMTool(QtWidgets.QMainWindow):
     #
     @pyqtSlot(int)
     def handleTabChanged(self, tab):
-        self.ui.a_p.fixed = (tab == 0)
-        self.ui.n_p.fixed = (tab == 0)
-        self.ui.k_p.fixed = (tab == 0)
-        self.ui.z_p.fixed = (tab == 0)
-        self.ui.x_p.fixed = (tab == 1)
-        self.ui.y_p.fixed = (tab == 1)
+        self.ui.a_p.fixed = (tab != 1)
+        self.ui.n_p.fixed = (tab != 1)
+        self.ui.k_p.fixed = (tab != 1)
+        self.ui.z_p.fixed = (tab != 1)
+        self.ui.x_p.fixed = (tab != 0)
+        self.ui.y_p.fixed = (tab != 0)
         if (tab == 1):
             self.updateDataProfile()
         if (tab == 2):
