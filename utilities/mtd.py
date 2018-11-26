@@ -3,7 +3,7 @@
 
 '''Make Training Data'''
 import sys
-sys.path.append('/home/lea336/')
+
 import json
 try:
     from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as LMHologram
@@ -30,7 +30,11 @@ def feature_extent(sphere, config, nfringes=20, maxrange=300):
     # roughly estimate radii of zero crossings
     b = h.hologram() - 1.
     ndx = np.where(np.diff(np.sign(b)))[0] + 1
+<<<<<<< HEAD
     if len(ndx) < (nfringes+1):
+=======
+    if len(ndx) <= nfringes:
+>>>>>>> 9806440363da6f76baf353ea37ecf1006291d0b9
         return maxrange
     else:
         return float(ndx[nfringes])
