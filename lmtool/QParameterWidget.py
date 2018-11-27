@@ -77,9 +77,9 @@ class QParameterWidget(QtWidgets.QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setHorizontalSpacing(4)
         self.layout.setVerticalSpacing(0)
-        self.layout.addWidget(self.label, 0, 0, 1, 1)
-        self.layout.addWidget(self.spinbox, 0, 1, 1, 1)
-        self.layout.addWidget(self.checkbox, 0, 2, 1, 1)
+        self.layout.addWidget(self.label, 0, 0)
+        self.layout.addWidget(self.spinbox, 0, 1)
+        self.layout.addWidget(self.checkbox, 0, 2)
         self.layout.addWidget(self.slider, 1, 0, 1, 3)
 
         self.spinbox.editingFinished.connect(self.updateValues)
