@@ -5,7 +5,7 @@ from PyQt5 import QtCore, QtWidgets
 from QDoubleSlider import QDoubleSlider
 
 
-class QParameterWidget(QtWidgets.QWidget):
+class QParameterWidget(QtWidgets.QFrame):
 
     '''Widget for adjusting a floating-point parameter
 

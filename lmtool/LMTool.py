@@ -249,6 +249,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.y_p.setRange(0, data.shape[0])
         self.updateDataProfile()
 
+
 if __name__ == '__main__':
     import sys
     import argparse
