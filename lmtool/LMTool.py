@@ -26,8 +26,17 @@ def aziavg(data, center):
 
 class LMTool(QtWidgets.QMainWindow):
 
-    def __init__(self, filename=None):
+    def __init__(self,
+                 filename=None,
+                 background=None,
+                 normalization=None):
         super(LMTool, self).__init__()
+        if background is not None:
+            self.openBackground(background)
+        elif normalization is not None:
+            self.background = normalization
+        else:
+            self.background = 1.
         self.maxrange = 100
         self.coordinates = np.arange(self.maxrange)
         pg.setConfigOption('background', 'w')
@@ -186,7 +195,15 @@ class LMTool(QtWidgets.QMainWindow):
         if filename is None:
             filename, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self, 'Open Hologram', '', 'Images (*.png)')
-        self.data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+        self.data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+
+    @pyqtSlot()
+    def openBackground(self, filename=None):
+        if filename is None:
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self, 'Open Background', '', 'Images (*.png)')
+        self.background = cv2.imread(
+            filename, cv2.IMREAD_GRAYSCALE).astype(float)
 
     @pyqtSlot()
     def saveParameters(self, filename=None):
@@ -239,11 +256,7 @@ class LMTool(QtWidgets.QMainWindow):
 
     @data.setter
     def data(self, data):
-        data = data.astype(float)
-        med = np.median(data)
-        if med > 2:
-            data /= med
-        self._data = data
+        self._data = data / self.background
         self.image.setImage(self._data)
         self.ui.x_p.setRange(0, data.shape[1])
         self.ui.y_p.setRange(0, data.shape[0])
@@ -257,10 +270,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', type=str, default='sample.png',
                         nargs='?', action='store')
+    parser.add_argument('-b', '--background', metavar='filename',
+                        dest='background', type=str, default=None,
+                        action='store',
+                        help='name of background image file')
+    parser.add_argument('-n', '--normalization', metavar='value',
+                        dest='normalization', type=float, default=1.,
+                        action='store',
+                        help='Ignored if background is supplied.')
     args, unparsed = parser.parse_known_args()
     qt_args = sys.argv[:1] + unparsed
 
     app = QtWidgets.QApplication(qt_args)
-    lmtool = LMTool(args.filename)
+    lmtool = LMTool(args.filename, args.background, args.normalization)
     lmtool.show()
     sys.exit(app.exec_())
