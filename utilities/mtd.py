@@ -2,7 +2,9 @@
 # -*- coding: utf-8 -*-
 
 '''Make Training Data'''
-
+import sys
+sys.path.append('/home/lea336/pylorenzmie/')
+sys.path.append('/home/lea336/')
 import json
 try:
     from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as LMHologram
@@ -98,14 +100,16 @@ def mtd(configfile='mtd.json'):
     # create directories and filenames
     directory = os.path.expanduser(config['directory'])
     imgtype = config['imgtype']
-    for dir in ('images', 'params', 'labels'):
+    for dir in ('images_labels', 'params'):
         if not os.path.exists(os.path.join(directory, dir)):
             os.makedirs(os.path.join(directory, dir))
     shutil.copy2(configfile, directory)
-    imgname = os.path.join(directory, 'images', 'image{:04d}.' + imgtype)
+    filetxtname = os.path.join(directory, 'filenames.txt')
+    imgname = os.path.join(directory, 'images_labels', 'image{:04d}.' + imgtype)
     jsonname = os.path.join(directory, 'params', 'image{:04d}.json')
-    yoloname = os.path.join(directory, 'labels', 'image{:04d}.txt')
+    yoloname = os.path.join(directory, 'images_labels' , 'image{:04d}.txt')
 
+    filetxt = open(filetxtname, 'w')
     for n in range(config['nframes']):  # for each frame ...
         print(imgname.format(n))
         sample = make_sample(config)   # ... get params for particles
@@ -123,6 +127,7 @@ def mtd(configfile='mtd.json'):
             fp.write(format_json(sample, config))
         with open(yoloname.format(n), 'w') as fp:
             fp.write(format_yolo(sample, config))
+        filetxt.write(imgname.format(n) + '\n')
 
 
 if __name__ == '__main__':
