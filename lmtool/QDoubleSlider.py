@@ -8,9 +8,11 @@ class QDoubleSlider(QSlider):
     '''
     Slider widget with double-precision floating point values
 
+    ...
+
     Methods
     -------
-    value() :
+    value() : float
         Returns current floating point value
     setMinimum(value) :
         Set minimum floating point value
@@ -61,32 +63,63 @@ class QDoubleSlider(QSlider):
         self.valueChanged[float].emit(value)
 
     def value(self):
-        '''Current floating point value'''
+        '''Current floating point value
+
+        Returns
+        -------
+        value : float
+        '''
         ivalue = float(super(QDoubleSlider, self).value())
         return self._convert_i2f(ivalue)
 
     @pyqtSlot(float)
     def setValue(self, value):
-        '''Set slider value programmatically'''
+        '''Set slider value programmatically
+
+        Parameters
+        ----------
+        value : float
+        '''
         ivalue = self._convert_f2i(value)
         super(QDoubleSlider, self).setValue(ivalue)
 
-    def setMinimum(self, value):
-        '''Set minimum end of slider range'''
-        self.setRange(value, self._max)
+    def setMinimum(self, minimum):
+        '''Set minimum end of slider range
 
-    def setMaximum(self, value):
-        '''Set maximum end of slider range'''
-        self.setRange(self._min, value)
+        Parameters
+        ----------
+        minimum : float
+        '''
+        self.setRange(minimum, self._max)
+
+    def setMaximum(self, maximum):
+        '''Set maximum end of slider range
+
+        Parameters
+        ----------
+        maximum : float
+        '''
+        self.setRange(self._min, maximum)
 
     def setRange(self, minimum, maximum):
-        '''Set minimum and maximum of slider range'''
+        '''Set minimum and maximum of slider range
+
+        Parameters
+        ----------
+        minimum : float
+        maximum : float
+        '''
         ovalue = self.value()
         self._min = minimum
         self._max = maximum
         self.setValue(ovalue)
 
     def setSingleStep(self, value):
-        '''Set value change associated with single slider step'''
+        '''Set value change associated with single slider step
+
+        Parameters
+        ----------
+        value : float
+        '''
         ivalue = self._convert_f2i(value)
         super(QDoubleSlider, self).setSingleStep(ivalue)
