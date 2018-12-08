@@ -263,7 +263,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.updateDataProfile()
 
 
-if __name__ == '__main__':
+def main():
     import sys
     import argparse
 
@@ -285,3 +285,7 @@ if __name__ == '__main__':
     lmtool = LMTool(args.filename, args.background, args.normalization)
     lmtool.show()
     sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    main()
