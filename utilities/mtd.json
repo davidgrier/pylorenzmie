@@ -17,6 +17,5 @@
     "imgtype": "png",
     "shape": [1024, 1280],
     "noise": 0.05,
-    "separation": 50,
     "nframes": 500
 }
