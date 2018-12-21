@@ -5,7 +5,8 @@ from PyQt5 import QtCore, QtWidgets
 from QDoubleSlider import QDoubleSlider
 
 
-class QParameterWidget(QtWidgets.QWidget):
+class QParameterWidget(QtWidgets.QFrame):
+
     '''Widget for adjusting a floating-point parameter
 
     QParameterWidget combines a QDoubleSpinBox with
@@ -37,6 +38,14 @@ class QParameterWidget(QtWidgets.QWidget):
         Current value of parameter
     decimals() : int
         Number of decimal places to display
+    setMinimum(minimum) :
+        Set minimum end of value range
+    setMaximum(maximum) :
+        Set maximum end of value range
+    setRange(minimum, maximum) :
+        Set value range
+    setSingleStep(value) :
+        Set value change associated with single widget step
 
     Slots
     -----
@@ -76,9 +85,9 @@ class QParameterWidget(QtWidgets.QWidget):
         self.layout.setContentsMargins(0, 0, 0, 0)
         self.layout.setHorizontalSpacing(4)
         self.layout.setVerticalSpacing(0)
-        self.layout.addWidget(self.label, 0, 0, 1, 1)
-        self.layout.addWidget(self.spinbox, 0, 1, 1, 1)
-        self.layout.addWidget(self.checkbox, 0, 2, 1, 1)
+        self.layout.addWidget(self.label, 0, 0)
+        self.layout.addWidget(self.spinbox, 0, 1)
+        self.layout.addWidget(self.checkbox, 0, 2)
         self.layout.addWidget(self.slider, 1, 0, 1, 3)
 
         self.spinbox.editingFinished.connect(self.updateValues)
@@ -120,16 +129,45 @@ class QParameterWidget(QtWidgets.QWidget):
         self.checkbox.setChecked(state)
 
     def setMinimum(self, min):
+        '''Set minimum end of value range
+
+        Parameters
+        ----------
+        min : float
+        '''
         self.spinbox.setMinimum(min)
         self.slider.setMinimum(min)
 
     def setMaximum(self, max):
+        '''Set maximum end of value range
+
+        Parameters
+        ----------
+        max : float
+        '''
         self.spinbox.setMaximum(max)
         self.slider.setMaximum(max)
 
     def setRange(self, min, max):
+        '''Set range of values
+
+        Parameters
+        ----------
+        min : float
+        max : float
+        '''
         self.spinbox.setRange(min, max)
         self.slider.setRange(min, max)
+
+    def setSingleStep(self, value):
+        '''Set value change associated with single step
+
+        Parameters
+        ----------
+        value : float
+        '''
+        self.spinbox.setSingleStep(value)
+        self.slider.setSingleStep(value)
 
 
 if __name__ == '__main__':

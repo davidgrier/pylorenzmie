@@ -26,8 +26,17 @@ def aziavg(data, center):
 
 class LMTool(QtWidgets.QMainWindow):
 
-    def __init__(self):
+    def __init__(self,
+                 filename=None,
+                 background=None,
+                 normalization=None):
         super(LMTool, self).__init__()
+        if background is not None:
+            self.openBackground(background)
+        elif normalization is not None:
+            self.background = normalization
+        else:
+            self.background = 1.
         self.maxrange = 100
         self.coordinates = np.arange(self.maxrange)
         pg.setConfigOption('background', 'w')
@@ -41,10 +50,9 @@ class LMTool(QtWidgets.QMainWindow):
         self.setupParameters()
         self.setupTheory()
         self.connectSignals()
-        self.openFile('sample.png')
+        self.openFile(filename)
         self.updateRp()
 
-    #####
     #
     # Set up widgets
     #
@@ -98,52 +106,28 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.fitTab.addViewBox(**options).addItem(self.residuals)
 
     def setupParameters(self):
-        self.ui.wavelength.setText('wavelength')
-        self.ui.wavelength.spinbox.setSuffix(' μm')
-        self.ui.wavelength.setRange(0.405, 1.070)
-        self.ui.wavelength.setValue(0.447)
-        self.ui.wavelength.fixed = True
-
-        self.ui.magnification.setText('magnification')
-        self.ui.magnification.spinbox.setSuffix(' μm/pixel')
-        self.ui.magnification.setRange(0.046, 0.135)
-        self.ui.magnification.setValue(0.135)
-        self.ui.magnification.fixed = True
-
-        self.ui.n_m.setText('n<sub>m</sub>')
-        self.ui.n_m.setRange(1.330, 1.342)
-        self.ui.n_m.setValue(1.340)
-        self.ui.n_m.fixed = True
-
-        self.ui.a_p.setText('a<sub>p</sub>')
-        self.ui.a_p.spinbox.setSuffix(' μm')
-        self.ui.a_p.setRange(0.3, 10.)
-        self.ui.a_p.setValue(0.75)
-
-        self.ui.n_p.setText('n<sub>p</sub>')
-        self.ui.n_p.setRange(1.345, 2.5)
-        self.ui.n_p.setValue(1.45)
-
-        self.ui.k_p.setText('k<sub>p</sub>')
-        self.ui.k_p.setRange(0., 10.)
-        self.ui.k_p.setValue(0.)
-        self.ui.k_p.fixed = True
-
-        self.ui.x_p.setText('x<sub>p</sub>')
-        self.ui.x_p.spinbox.setSuffix(' pixel')
-        self.ui.x_p.setDecimals(2)
-        self.ui.x_p.setValue(100)
-
-        self.ui.y_p.setText('y<sub>p</sub>')
-        self.ui.y_p.spinbox.setSuffix(' pixel')
-        self.ui.y_p.setDecimals(2)
-        self.ui.y_p.setValue(100)
-
-        self.ui.z_p.setText('z<sub>p</sub>')
-        self.ui.z_p.spinbox.setSuffix(' pixel')
-        self.ui.z_p.setDecimals(2)
-        self.ui.z_p.setRange(20, 600)
-        self.ui.z_p.setValue(100)
+        with open('LMTool.json', 'r') as file:
+            settings = json.load(file)
+        names = ['wavelength', 'magnification', 'n_m',
+                 'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p']
+        for name in names:
+            prop = getattr(self.ui, name)
+            setting = settings[name]
+            if 'text' in setting:
+                prop.setText(setting['text'])
+            if 'suffix' in setting:
+                prop.spinbox.setSuffix(setting['suffix'])
+            if 'range' in setting:
+                range = setting['range']
+                prop.setRange(range[0], range[1])
+            if 'decimals' in setting:
+                prop.setDecimals(setting['decimals'])
+            if 'step' in setting:
+                prop.setSingleStep(setting['step'])
+            if 'value' in setting:
+                prop.setValue(setting['value'])
+            if 'fixed' in setting:
+                prop.fixed = setting['fixed']
 
     def setupTheory(self):
         self.theory = LMHologram(coordinates=self.coordinates)
@@ -170,7 +154,6 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
 
-    #####
     #
     # Slots for handling user interaction
     #
@@ -212,7 +195,15 @@ class LMTool(QtWidgets.QMainWindow):
         if filename is None:
             filename, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self, 'Open Hologram', '', 'Images (*.png)')
-        self.data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+        self.data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+
+    @pyqtSlot()
+    def openBackground(self, filename=None):
+        if filename is None:
+            filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+                self, 'Open Background', '', 'Images (*.png)')
+        self.background = cv2.imread(
+            filename, cv2.IMREAD_GRAYSCALE).astype(float)
 
     @pyqtSlot()
     def saveParameters(self, filename=None):
@@ -229,7 +220,6 @@ class LMTool(QtWidgets.QMainWindow):
         except IOError:
             print('error')
 
-    #####
     #
     # Routines to update plots
     #
@@ -241,7 +231,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.regionLower.setData(avg - std)
 
     def updateTheoryProfile(self):
-        xsmooth = np.linspace(0, self.maxrange-1, 300)
+        xsmooth = np.linspace(0, self.maxrange - 1, 300)
         y = self.theory.hologram()
         ysmooth = spline(self.coordinates, y, xsmooth)
         self.theoryProfile.setData(xsmooth, ysmooth)
@@ -266,21 +256,36 @@ class LMTool(QtWidgets.QMainWindow):
 
     @data.setter
     def data(self, data):
-        data = data.astype(float)
-        med = np.median(data)
-        if med > 2:
-            data /= med
-        self._data = data
+        self._data = data / self.background
         self.image.setImage(self._data)
         self.ui.x_p.setRange(0, data.shape[1])
         self.ui.y_p.setRange(0, data.shape[0])
         self.updateDataProfile()
 
 
-if __name__ == '__main__':
+def main():
     import sys
+    import argparse
 
-    app = QtWidgets.QApplication(sys.argv)
-    lmtool = LMTool()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filename', type=str, default='sample.png',
+                        nargs='?', action='store')
+    parser.add_argument('-b', '--background', metavar='filename',
+                        dest='background', type=str, default=None,
+                        action='store',
+                        help='name of background image file')
+    parser.add_argument('-n', '--normalization', metavar='value',
+                        dest='normalization', type=float, default=1.,
+                        action='store',
+                        help='Ignored if background is supplied.')
+    args, unparsed = parser.parse_known_args()
+    qt_args = sys.argv[:1] + unparsed
+
+    app = QtWidgets.QApplication(qt_args)
+    lmtool = LMTool(args.filename, args.background, args.normalization)
     lmtool.show()
     sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    main()
