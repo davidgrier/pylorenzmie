@@ -78,9 +78,23 @@ def make_sample(config):
     nrange = particle['nspheres']
     nspheres = np.random.randint(nrange[0], nrange[1])
     sample = []
+    threshold = config['separation']
     for n in range(nspheres):
         sphere = Sphere()
-        for prop in ('a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p'):
+        ##Making sure separation between particles is large enough##
+        close = True
+        while close:
+            close=False
+            xval = make_value(particle['x_p'])
+            yval = make_value(particle['y_p'])
+            for s in sample:
+                xs, ys = s.x_p, s.y_p
+                dist = np.sqrt((xs-xval)**2 + (ys-yval)**2)
+                if dist<threshold:
+                    close=True
+        setattr(sphere, 'x_p', xval)
+        setattr(sphere, 'y_p', yval)
+        for prop in ('a_p', 'n_p', 'k_p', 'z_p'):
             setattr(sphere, prop, make_value(particle[prop]))
         sample.append(sphere)
     return sample
