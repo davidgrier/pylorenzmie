@@ -13,9 +13,10 @@
 	"y_p": [100, 900],
 	"z_p": [50, 600]
     },
-    "directory": "~/darknet/datasets/pylm_yolo/test",
+    "directory": "~/darknet/datasets/pylm_notclose/test",
     "imgtype": "png",
     "shape": [1024, 1280],
     "noise": 0.05,
-    "nframes": 30
+    "separation": 50,
+    "nframes": 500
 }
