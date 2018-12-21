@@ -100,8 +100,6 @@ def make_sample(config):
                     close=True
         setattr(sphere, 'x_p', xval)
         setattr(sphere, 'y_p', yval)
-        print(xval, yval, zval)
-        print('a',round(aval/mpp,3))
         sample.append(sphere)
     return sample
 
