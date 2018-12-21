@@ -76,26 +76,32 @@ def make_sample(config):
     '''Returns an array of Sphere objects'''
     particle = config['particle']
     nrange = particle['nspheres']
+    mpp = config['instrument']['magnification']
     nspheres = np.random.randint(nrange[0], nrange[1])
     sample = []
-    threshold = config['separation']
     for n in range(nspheres):
         sphere = Sphere()
+        for prop in ('a_p', 'n_p', 'k_p', 'z_p'):
+            setattr(sphere, prop, make_value(particle[prop]))
         ##Making sure separation between particles is large enough##
         close = True
+        aval = sphere.a_p
+        zval = sphere.z_p
         while close:
             close=False
             xval = make_value(particle['x_p'])
             yval = make_value(particle['y_p'])
             for s in sample:
-                xs, ys = s.x_p, s.y_p
-                dist = np.sqrt((xs-xval)**2 + (ys-yval)**2)
+                xs, ys, zs = s.x_p, s.y_p, s.z_p
+                atest = s.a_p
+                dist = np.sqrt((xs-xval)**2 + (ys-yval)**2 + (zs-zval)**2)
+                threshold = (atest + aval)/mpp
                 if dist<threshold:
                     close=True
         setattr(sphere, 'x_p', xval)
         setattr(sphere, 'y_p', yval)
-        for prop in ('a_p', 'n_p', 'k_p', 'z_p'):
-            setattr(sphere, prop, make_value(particle[prop]))
+        print(xval, yval, zval)
+        print('a',round(aval/mpp,3))
         sample.append(sphere)
     return sample
 
