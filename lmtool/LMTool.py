@@ -3,9 +3,9 @@
 
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import pyqtSlot
-import pylorenzmie
 import os
 from pylorenzmie.lmtool.LMTool_Ui import Ui_MainWindow
+import pylorenzmie
 import pyqtgraph as pg
 import numpy as np
 import cv2
@@ -116,7 +116,6 @@ class LMTool(QtWidgets.QMainWindow):
         folder += str('/lmtool')
         with open(folder+'/LMTool.json', 'r') as file:
             settings = json.load(file)
-            print(settings)
         names = ['wavelength', 'magnification', 'n_m',
                  'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p']
         for name in names:
