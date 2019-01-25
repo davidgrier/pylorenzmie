@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from PyQt5 import QtCore, QtWidgets
-from QDoubleSlider import QDoubleSlider
+from .QDoubleSlider import QDoubleSlider
 
 
 class QParameterWidget(QtWidgets.QFrame):

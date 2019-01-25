@@ -10,7 +10,7 @@
 	"text": "magnification",
 	"suffix": " μm/pixel",
 	"range": [0.046, 0.135],
-	"value": 0.135,
+	"value": 0.048,
 	"step": 0.001,
 	"fixed": true
     },
