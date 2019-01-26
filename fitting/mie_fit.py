@@ -1,17 +1,16 @@
 from lmfit import Minimizer, Parameters, report_fit
 import numpy as np
-from  lorenzmie.theory import spheredhm as sph
+import logging
+try:
+    from pylorenzmie.theory.CudaLMHologram import LMHologram
+except ImportError as err:
+    logging.warning("Could not load CudaLMHologram. Using LMHologram.")
+    from pylorenzmie.theory.LMHologram import LMHologram
+from pylorenzmie.theory.Instrument import coordinates
 import matplotlib.pyplot as plt
 import seaborn as sns
 import matplotlib as mpl
 
-def mie_loss(params, image, dim):
-    """Returns the residual between the image and our Mie model."""
-    p = params.valuesdict()
-    mie_model = sph.spheredhm([p['x'], p['y'], p['z']], p['a_p'],
-                              p['n_p'], p['n_m'], dim,
-                              mpp=p['mpp'], lamb=p['lamb'])
-    return mie_model - image
 
 class Mie_Fitter(object):
     '''
@@ -67,6 +66,19 @@ class Mie_Fitter(object):
         """Fix parameter 'name' to not vary during fitting"""
         self.p[name].vary = choice
 
+    def mie_loss(self, params, image, dim, noise=0.05):
+        """Returns the residual between the image and our Mie model."""
+        p = params.valuesdict()
+        h = LMHologram(coordinates=coordinates(dim))
+        h.particle.r_p = [p['x'] + dim[0] // 2, p['y'] + dim[1] // 2, p['z']]
+        h.particle.a_p = p['a_p']
+        h.particle.n_p = p['n_p']
+        h.instrument.wavelength = p['lamb']
+        h.instrument.magnification = p['mpp']
+        h.instrument.n_m = p['n_m']
+        hologram = h.hologram().reshape(dim)
+        return (hologram - image) / noise
+
     def fit(self, image):
         """Fit a image of a hologram with the current attribute 
         parameters.
@@ -78,7 +90,7 @@ class Mie_Fitter(object):
         >>> mit_fit.result(image)
         """
         dim = image.shape
-        minner = Minimizer(mie_loss, self.p, fcn_args=(image, dim))
+        minner = Minimizer(self.mie_loss, self.p, fcn_args=(image, dim))
         self.result = minner.minimize()
         return self.result
 
