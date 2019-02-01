@@ -77,7 +77,10 @@ def make_sample(config):
     particle = config['particle']
     nrange = particle['nspheres']
     mpp = config['instrument']['magnification']
-    nspheres = np.random.randint(nrange[0], nrange[1])
+    if nrange[0]==nrange[1]:
+        nspheres = nrange[0]
+    else:
+        nspheres = np.random.randint(nrange[0], nrange[1])
     sample = []
     for n in range(nspheres):
         sphere = Sphere()
