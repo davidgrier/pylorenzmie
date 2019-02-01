@@ -132,7 +132,7 @@ class Ui_MainWindow(object):
         self.actionSave_Parameters.setText(_translate("MainWindow", "Save Parameters ..."))
         self.actionSave_Parameters_As.setText(_translate("MainWindow", "Save Parameters As ..."))
 
-from QParameterWidget import QParameterWidget
+from .QParameterWidget import QParameterWidget
 from pyqtgraph import GraphicsLayoutWidget, PlotWidget
 
 if __name__ == "__main__":

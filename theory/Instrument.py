@@ -6,11 +6,15 @@ import json
 from future.utils import iteritems
 
 
-def coordinates(shape):
+def coordinates(shape, corner=None):
     '''Return coordinate system for Lorenz-Mie microscopy images'''
     (ny, nx) = shape
-    x = np.arange(0, nx)
-    y = np.arange(0, ny)
+    if corner is None:
+        (left, top) = (0,0)
+    else:
+        (left, top) = corner
+    x = np.arange(left, nx+left)
+    y = np.arange(top, ny+top)
     xv, yv = np.meshgrid(x, y)
     xv = xv.flatten()
     yv = yv.flatten()

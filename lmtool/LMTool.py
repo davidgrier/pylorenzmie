@@ -3,7 +3,9 @@
 
 from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import pyqtSlot
-from LMTool_Ui import Ui_MainWindow
+import os
+from pylorenzmie.lmtool.LMTool_Ui import Ui_MainWindow
+import pylorenzmie
 import pyqtgraph as pg
 import numpy as np
 import cv2
@@ -29,7 +31,8 @@ class LMTool(QtWidgets.QMainWindow):
     def __init__(self,
                  filename=None,
                  background=None,
-                 normalization=None):
+                 normalization=None,
+                 data=None):
         super(LMTool, self).__init__()
         if background is not None:
             self.openBackground(background)
@@ -50,7 +53,10 @@ class LMTool(QtWidgets.QMainWindow):
         self.setupParameters()
         self.setupTheory()
         self.connectSignals()
-        self.openFile(filename)
+        if data is None:
+            self.openFile(filename)
+        else:
+            self.data = data.astype(np.float)
         self.updateRp()
 
     #
@@ -106,7 +112,9 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.fitTab.addViewBox(**options).addItem(self.residuals)
 
     def setupParameters(self):
-        with open('LMTool.json', 'r') as file:
+        folder = os.path.dirname(pylorenzmie.__file__)
+        folder += str('/lmtool')
+        with open(folder+'/LMTool.json', 'r') as file:
             settings = json.load(file)
         names = ['wavelength', 'magnification', 'n_m',
                  'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p']
