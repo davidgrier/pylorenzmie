@@ -1,18 +1,20 @@
-from lmfit import Minimizer, Parameters, report_fit
 import numpy as np
-import logging
-try:
-    from pylorenzmie.theory.CudaLMHologram import LMHologram
-except ImportError as err:
-    logging.warning("Could not load CudaLMHologram. Using LMHologram.")
-    from pylorenzmie.theory.LMHologram import LMHologram
-from pylorenzmie.theory.Instrument import coordinates
 import matplotlib.pyplot as plt
 import seaborn as sns
-import matplotlib as mpl
+from pylorenzmie.theory.Instrument import coordinates
+from lmfit import Minimizer, Parameters, report_fit
+import logging
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
+try:
+    from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as LMHologram
+except Exception:
+    logging.info("Could not load Cuda LMHologram. Falling back to CPU")
+    from pylorenzmie.theory.LMHologram import LMHologram
 
 
 class Mie_Fitter(object):
+
     '''
     Mie_Fitter provides a method for fitting holographic images to the
     Lorenz-Mie theory of light scattering via the Levenberg-Marquardt
@@ -38,7 +40,7 @@ class Mie_Fitter(object):
             result contains the parameter estimates, standard devs,
             covariances, . (See lmfit result object docs).
     '''
-    def __init__(self, init_params, fixed=['n_m', 'mpp', 'lamb']):
+    def __init__(self, init_params, fixed=['n_m', 'mpp', 'lamb'], noise=.05):
         # Instantiate parameters.
         self.__init_params__()
 
@@ -49,6 +51,9 @@ class Mie_Fitter(object):
         # Set parameters which should NOT be varied.
         for name in fixed:
             self.fix_param(name)
+
+        # Set noise estimate
+        self.noise = noise
         
         self.result = None
 
@@ -59,15 +64,16 @@ class Mie_Fitter(object):
             self.p.add(p)
 
     def set_param(self, name, value):
-        """Set parameter 'name' to 'value'"""
+        '''Set parameter 'name' to 'value'
+        '''
         self.p[name].value = value
 
     def fix_param(self, name, choice=False):
-        """Fix parameter 'name' to not vary during fitting"""
+        '''Fix parameter 'name' to not vary during fitting'''
         self.p[name].vary = choice
 
-    def mie_loss(self, params, image, dim, noise=0.05):
-        """Returns the residual between the image and our Mie model."""
+    def mie_loss(self, params, image, dim):
+        '''Returns the residual between the image and our Mie model.'''
         p = params.valuesdict()
         h = LMHologram(coordinates=coordinates(dim))
         h.particle.r_p = [p['x'] + dim[0] // 2, p['y'] + dim[1] // 2, p['z']]
@@ -77,10 +83,10 @@ class Mie_Fitter(object):
         h.instrument.magnification = p['mpp']
         h.instrument.n_m = p['n_m']
         hologram = h.hologram().reshape(dim)
-        return (hologram - image) / noise
+        return (hologram - image) / self.noise
 
     def fit(self, image):
-        """Fit a image of a hologram with the current attribute 
+        '''Fit a image of a hologram with the current attribute 
         parameters.
 
         Example:
@@ -88,42 +94,52 @@ class Mie_Fitter(object):
         ...      'mpp':0.135, 'lamb':0.447}
         >>> mie_fit = Mie_Fitter(p)
         >>> mit_fit.result(image)
-        """
+        '''
         dim = image.shape
         minner = Minimizer(self.mie_loss, self.p, fcn_args=(image, dim))
         self.result = minner.minimize()
         return self.result
 
-        
+      
 def example():
     '''
     Make a "noisy" hologram. Then fit the noisy hologram. Plot the results.
     '''
     ## Make Noisy Hologram.
     # Create hologram to be fitted.
+    from time import time
     x,y,z = 0., 0., 100.
     a_p = 0.5
     n_p = 1.5
     n_m = 1.339
     dim = [201,201]
     lamb = 0.447
-    mpp = 0.135
-    hologram = sph.spheredhm([x,y,z], a_p, n_p, n_m, dim, mpp, lamb)
+    mpp = 0.048
+    h = LMHologram(coordinates=coordinates(dim))
+    h.particle.r_p = [x + dim[0] // 2, y + dim[1] // 2, z]
+    h.particle.a_p = a_p
+    h.particle.n_p = n_p
+    h.instrument.wavelength = lamb
+    h.instrument.magnification = mpp
+    h.instrument.n_m = n_m
+    hologram = h.hologram().reshape(dim)
     
     # Add noise.
-    std = 0.03
+    std = 0.05
     noise = np.random.normal(size=hologram.shape)*std
     noisy_hologram = hologram + noise
 
-    ## Fit the noisy hologram.
-    init_params = {'x':x, 'y':y, 'z':z, 'a_p':a_p, 'n_p':n_p, 'n_m':n_m,
+    # Fit the noisy hologram.
+    init_params = {'x':x, 'y':y, 'z':z+8, 'a_p':a_p-.3, 'n_p':n_p+.03, 'n_m':n_m,
                    'mpp':mpp, 'lamb':lamb}
     mie_fit = Mie_Fitter(init_params)
+    t = time()
     result = mie_fit.fit(noisy_hologram)
+    print("Time to fit: {:.05f}".format(time()-t))
 
     # Calculate the resulting image.
     residual = result.residual.reshape(*dim)
-    final = hologram + residual
+    final = hologram
 
     # Write error report.
     report_fit(result)
@@ -131,7 +147,7 @@ def example():
     ## Make plots.
     # Plot images.
     sns.set(style='white', font_scale=1.4)
-    plt.imshow(np.hstack([hologram, final, residual+1]))
+    plt.imshow(np.hstack([noisy_hologram, final, residual+1]))
     plt.title('Image, Fit, Residual')
     plt.gray()
     plt.show()
@@ -150,3 +166,4 @@ def example():
 
 if __name__ == '__main__':
     example()
+
