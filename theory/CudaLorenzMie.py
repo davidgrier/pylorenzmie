@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from pylorenzmie.theory.CudaGeneralizedLorenzMie import CudaGeneralizedLorenzMie
-from Sphere import Sphere
+from pylorenzmie.theory.Sphere import Sphere
 
 
 class CudaLorenzMie(CudaGeneralizedLorenzMie):
