@@ -9,7 +9,7 @@ logger.setLevel(logging.INFO)
 try:
     from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as LMHologram
 except Exception:
-    logging.info("Could not load Cuda LMHologram. Falling back to CPU")
+    logging.info("Could not load CudaLMHologram. Falling back to CPU.")
     from pylorenzmie.theory.LMHologram import LMHologram
 
 
@@ -130,16 +130,25 @@ def example():
     noisy_hologram = hologram + noise
 
     # Fit the noisy hologram.
-    init_params = {'x':x, 'y':y, 'z':z+8, 'a_p':a_p-.3, 'n_p':n_p+.03, 'n_m':n_m,
+    init_params = {'x':x, 'y':y, 'z':z+3, 'a_p':a_p+.1, 'n_p':n_p-.02, 'n_m':n_m,
                    'mpp':mpp, 'lamb':lamb}
     mie_fit = Mie_Fitter(init_params)
     t = time()
     result = mie_fit.fit(noisy_hologram)
     print("Time to fit: {:.05f}".format(time()-t))
 
-    # Calculate the resulting image.
+    # Calculate residual.
     residual = result.residual.reshape(*dim)
-    final = hologram
+    # Calculate resulting image
+    p = result.params.valuesdict()
+    h = LMHologram(coordinates=coordinates(dim))
+    h.particle.r_p = [p['x'] + dim[0] // 2, p['y'] + dim[1] // 2, p['z']]
+    h.particle.a_p = p['a_p']
+    h.particle.n_p = p['n_p']
+    h.instrument.wavelength = p['lamb']
+    h.instrument.magnification = p['mpp']
+    h.instrument.n_m = p['n_m']
+    final = h.hologram().reshape(dim)
 
     # Write error report.
     report_fit(result)
@@ -157,12 +166,12 @@ def example():
     #cmap = sns.diverging_palette(220, 10, as_cmap=True)
 
     sns.set(font_scale=1.5)
-    plt.title('Log Covariance Matrix')
-    sns.heatmap(np.log(result.covar), cmap='PuBu',
-                square=True, cbar_kws={}, ax=ax)
-    ax.set_xticklabels(['x', 'y', 'z', r'a$_p$', r'n$_p$'])
-    ax.set_yticklabels([r'n$_p$', r'a$_p$', 'z', 'y', 'x'])
-    plt.show()
+    #plt.title('Log Covariance Matrix')
+    #sns.heatmap(np.log(result.covar), cmap='PuBu',
+    #            square=True, cbar_kws={}, ax=ax)
+    #ax.set_xticklabels(['x', 'y', 'z', r'a$_p$', r'n$_p$'])
+    #ax.set_yticklabels([r'n$_p$', r'a$_p$', 'z', 'y', 'x'])
+    #plt.show()
 
 if __name__ == '__main__':
     example()
