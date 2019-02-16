@@ -59,6 +59,8 @@ class Instrument(object):
         self.wavelength = wavelength
         self.magnification = magnification
         self.n_m = n_m
+        self.dark_count = dark_count
+        self.background = background
 
     def __str__(self):
         str = '{}(wavelength={}, magnification={}, n_m={})'
