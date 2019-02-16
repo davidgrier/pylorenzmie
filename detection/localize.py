@@ -1,4 +1,4 @@
-'''Module for localizing particle trajectories with tensorflow tracking.'''
+'''Routine to localize particle trajectories with circle transform technique.'''
 
 from pylorenzmie.detection.h5video import TagArray
 from pylorenzmie.detection.circletransform import circletransform
@@ -6,19 +6,23 @@ import trackpy as tp
 import numpy as np
 
 
-def localize(image, frame_no=None,
+def localize(image,
              locate_params={'diameter': 31,
                             'minmass': 30.},
              nfringes=25,
              maxrange=400.,
-             crop_threshold=None):
+             crop_threshold=None,
+             frame_no=None):
     '''
     Localize features in image using circletransform
-    and trackpy.locate
-    on every pixel of an image and return features.
+    and trackpy.locate and return features.
     
     Args:
         image: normalized image with median near 1.
+    Keywords:
+        locate_params: dict of keywords for trackpy.locate
+        nfringes, maxrange: keywords for feature_extent
+        crop_threshold: maximum bounding box
     '''
     circ = circletransform(image, theory='orientTrans')
     circ = circ / np.amax(circ)
