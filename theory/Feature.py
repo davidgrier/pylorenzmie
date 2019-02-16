@@ -1,7 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pylorenzmie.theory.LMHologram import LMHologram as Model
+try:
+    from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as Model
+    print("CudaLMHologram loaded.")
+except Exception:
+    from pylorenzmie.theory.LMHologram import LMHologram as Model
 from lmfit import Parameters, Minimizer
 
 
@@ -44,6 +48,7 @@ class Feature(object):
                  **kwargs):
         self.model = Model(**kwargs)
         self.data = data
+        self.fixed = ['k_p']
         self.noise = noise
         self.coordinates = self.model.coordinates
         self._keys = ('x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p')
@@ -67,6 +72,15 @@ class Feature(object):
     @model.setter
     def model(self, model):
         self._model = model
+
+    @property
+    def fixed(self):
+        '''Parameters to fix during optimization'''
+        return self._fixed
+
+    @fixed.setter
+    def fixed(self, fixed):
+        self._fixed = fixed
 
     def residuals(self):
         '''Returns difference bewteen data and current model
@@ -99,6 +113,8 @@ class Feature(object):
         particle = self.model.particle
         for key in self._keys:
             params.add(key, getattr(particle, key))
+        for key in self.fixed:
+            params[key].vary = False
         self._minimizer.params = params
         return self._minimizer.minimize()
 
@@ -108,6 +124,7 @@ if __name__ == '__main__':
     import numpy as np
     from lmfit import report_fit
     import matplotlib.pyplot as plt
+    from time import time
 
     a = Feature()
     # Use model to generate synthetic data
@@ -122,10 +139,12 @@ if __name__ == '__main__':
     a.data = h
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
-    p.a_p += np.random.normal(0., 0.01, 1)
-    p.n_p += np.random.normal(0., 0.01, 1)
+    p.a_p += np.random.normal(0., 0.3, 1)
+    p.n_p += np.random.normal(0., 0.1, 1)
     # ... and now fit
+    start = time()
     result = a.optimize()
+    print("Time to fit: {:03f}".format(time() - start))
     report_fit(result)
     # plot residuals
     plt.imshow(a.residuals().reshape(shape), cmap='gray')
