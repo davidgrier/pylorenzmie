@@ -7,6 +7,7 @@ try:
 except Exception:
     from pylorenzmie.theory.LMHologram import LMHologram as Model
 from lmfit import Parameters, Minimizer
+import pickle
 
 
 class Feature(object):
@@ -45,6 +46,7 @@ class Feature(object):
     def __init__(self,
                  data=None,
                  noise=0.05,
+                 info=None,
                  **kwargs):
         self.model = Model(**kwargs)
         self.data = data
@@ -54,6 +56,7 @@ class Feature(object):
         self._keys = ('x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p')
         self._minimizer = Minimizer(self._loss, None)
         self._minimizer.nan_policy = 'omit'
+        self.deserialize(info)
 
     @property
     def data(self):
@@ -118,6 +121,43 @@ class Feature(object):
         self._minimizer.params = params
         return self._minimizer.minimize()
 
+    def serialize(self, filename=None):
+        '''Save state of Feature
+
+        Arguments
+        ---------
+        filename: str
+            If provided, write data to file
+
+        Returns
+        -------
+        dict: serialized data
+        '''
+        info = {'data': self.data,
+                'coordinates': self.coordinates,
+                'noise': self.noise}
+        if filename is not None:
+            with open(filename, 'wb') as f:
+                pickle.dump(info, f, pickle.HIGHEST_PROTOCOL)
+        return info
+
+    def deserialize(self, info):
+        '''Restore serialized state of Feature
+
+        Arguments
+        ---------
+        info: dict | str
+            Restore keyword/value pairs from dict.
+            Alternatively restore dict from named file.
+        '''
+        if info is None:
+            return
+        if isinstance(info, str):
+            with open(info, 'rb') as f:
+                info = pickle.load(f)
+        for key in info:
+            if hasattr(self, key):
+                setattr(self, key, info[key])
 
 if __name__ == '__main__':
     from Instrument import coordinates

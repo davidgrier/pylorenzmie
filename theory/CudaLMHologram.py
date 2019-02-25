@@ -54,10 +54,15 @@ class CudaLMHologram(CudaLorenzMie):
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from Instrument import coordinates
+    import time
 
     shape = [201, 251]
+    # shape = [1024, 1280]
     h = CudaLMHologram(coordinates=coordinates(shape))
     h.particle.r_p = [125, 75, 100]
     h.instrument.wavelength = 0.447
-    plt.imshow(h.hologram().reshape(shape), cmap='gray')
+    start = time.time()
+    img = h.hologram().reshape(shape)
+    print(time.time() - start)
+    plt.imshow(img, cmap='gray')
     plt.show()
