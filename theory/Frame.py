@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from Instrument import Instrument
+from pylorenzmie.theory.Instrument import Instrument
 
 
 class Frame(object):
