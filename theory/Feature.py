@@ -1,12 +1,28 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-
+import sys
+sys.path.append('/home/group/endtoend/OOe2e/')
 try:
     from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as Model
     print("CudaLMHologram loaded.")
 except Exception:
     from pylorenzmie.theory.LMHologram import LMHologram as Model
 from lmfit import Parameters, Minimizer
+
+
+'''
+callback function for timing out of least-squares fit
+
+if the result is not found after stopiter # of iterations, the fit stops,
+and the parameters have the value from the last iteration.
+'''
+def timeoutwrapper(stopiter=1000):
+    def timeoutCB(params, iter, resid, *args, **kws):
+        if iter >= stopiter:
+            return True
+        else:
+            return False
+    return timeoutCB
 
 
 class Feature(object):
@@ -99,7 +115,7 @@ class Feature(object):
             setattr(particle, key, params[key].value)
         return self.residuals()
 
-    def optimize(self):
+    def optimize(self,stopiter=None):
         '''Fit Model to data
 
         Returns
@@ -109,6 +125,8 @@ class Feature(object):
             Model to the provided data.  The format is described
             in the documentation for lmfit.
         '''
+        if stopiter is not None:
+            self._minimizer.iter_cb = timeoutwrapper(stopiter=stopiter)
         params = Parameters()
         particle = self.model.particle
         for key in self._keys:
@@ -131,19 +149,22 @@ if __name__ == '__main__':
     shape = [201, 201]
     a.model.coordinates = coordinates(shape)
     p = a.model.particle
-    p.r_p = [100, 100, 100]
-    p.a_p = 0.75
-    p.n_p = 1.45
+    p.r_p = [100, 100, 420]
+    p.a_p = 1.3
+    p.n_p = 1.65
     h = a.model.hologram()
-    h += np.random.normal(0., 0.05, h.size)
+#    h += np.random.normal(0., 0.05, h.size)
     a.data = h
+    #plt.imshow(a.data.reshape(shape), cmap='gray')
+    #plt.show()
+
     # add errors to parameters
-    p.r_p += np.random.normal(0., 1, 3)
-    p.a_p += np.random.normal(0., 0.3, 1)
-    p.n_p += np.random.normal(0., 0.1, 1)
+ #   p.r_p += np.random.normal(0., 1, 3)
+ #   p.a_p += np.random.normal(0., 0.3, 1)
+#    p.n_p += np.random.normal(0., 0.1, 1)
     # ... and now fit
     start = time()
-    result = a.optimize()
+    result = a.optimize(stopiter=5)
     print("Time to fit: {:03f}".format(time() - start))
     report_fit(result)
     # plot residuals
