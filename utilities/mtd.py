@@ -21,13 +21,12 @@ import shutil
 
 def feature_extent(sphere, config, nfringes=20, maxrange=300):
     '''Radius of holographic feature in pixels'''
-    s = Sphere()
-    s.a_p = sphere.a_p
-    s.n_p = sphere.n_p
-    s.z_p = sphere.z_p
+
     h = LMHologram(coordinates=np.arange(maxrange))
     h.instrument.properties = config['instrument']
-    h.particle = sphere
+    h.particle.a_p = sphere.a_p
+    h.particle.n_p = sphere.n_p
+    h.particle.z_p = sphere.z_p
     # roughly estimate radii of zero crossings
     b = h.hologram() - 1.
     ndx = np.where(np.diff(np.sign(b)))[0] + 1
@@ -77,7 +76,7 @@ def make_sample(config):
     particle = config['particle']
     nrange = particle['nspheres']
     mpp = config['instrument']['magnification']
-    if nrange[0]==nrange[1]:
+    if nrange[0] == nrange[1]:
         nspheres = nrange[0]
     else:
         nspheres = np.random.randint(nrange[0], nrange[1])
@@ -86,21 +85,22 @@ def make_sample(config):
         sphere = Sphere()
         for prop in ('a_p', 'n_p', 'k_p', 'z_p'):
             setattr(sphere, prop, make_value(particle[prop]))
-        ##Making sure separation between particles is large enough##
+        # Making sure separation between particles is large enough##
         close = True
         aval = sphere.a_p
         zval = sphere.z_p
         while close:
-            close=False
+            close = False
             xval = make_value(particle['x_p'])
             yval = make_value(particle['y_p'])
             for s in sample:
                 xs, ys, zs = s.x_p, s.y_p, s.z_p
                 atest = s.a_p
-                dist = np.sqrt((xs-xval)**2 + (ys-yval)**2 + (zs-zval)**2)
-                threshold = (atest + aval)/mpp
-                if dist<threshold:
-                    close=True
+                dist = np.sqrt(
+                    (xs - xval)**2 + (ys - yval)**2 + (zs - zval)**2)
+                threshold = (atest + aval) / mpp
+                if dist < threshold:
+                    close = True
         setattr(sphere, 'x_p', xval)
         setattr(sphere, 'y_p', yval)
         sample.append(sphere)
@@ -126,9 +126,10 @@ def mtd(configfile='mtd.json'):
             os.makedirs(os.path.join(directory, dir))
     shutil.copy2(configfile, directory)
     filetxtname = os.path.join(directory, 'filenames.txt')
-    imgname = os.path.join(directory, 'images_labels', 'image{:04d}.' + imgtype)
+    imgname = os.path.join(
+        directory, 'images_labels', 'image{:04d}.' + imgtype)
     jsonname = os.path.join(directory, 'params', 'image{:04d}.json')
-    yoloname = os.path.join(directory, 'images_labels' , 'image{:04d}.txt')
+    yoloname = os.path.join(directory, 'images_labels', 'image{:04d}.txt')
 
     filetxt = open(filetxtname, 'w')
     for n in range(config['nframes']):  # for each frame ...
