@@ -193,18 +193,18 @@ if __name__ == '__main__':
     p.a_p = 1.3
     p.n_p = 1.65
     h = a.model.hologram()
-#    h += np.random.normal(0., 0.05, h.size)
+    h += np.random.normal(0., 0.05, h.size)
     a.data = h
-    #plt.imshow(a.data.reshape(shape), cmap='gray')
-    #plt.show()
+    plt.imshow(a.data.reshape(shape), cmap='gray')
+    plt.show()
 
     # add errors to parameters
- #   p.r_p += np.random.normal(0., 1, 3)
- #   p.a_p += np.random.normal(0., 0.3, 1)
-#    p.n_p += np.random.normal(0., 0.1, 1)
+    p.r_p += np.random.normal(0., 1, 3)
+    p.a_p += np.random.normal(0., 0.3, 1)
+    p.n_p += np.random.normal(0., 0.1, 1)
     # ... and now fit
     start = time()
-    result = a.optimize(stopiter=5)
+    result = a.optimize(stopiter=100)
     print("Time to fit: {:03f}".format(time() - start))
     report_fit(result)
     # plot residuals
