@@ -14,7 +14,7 @@ def localize(image,
              crop_threshold=None,
              frame_no=None):
     '''
-    Localize features in image using circletransform
+    Wrapper to localize features in image using circletransform
     and trackpy.locate and return features.
     
     Args:
@@ -45,13 +45,26 @@ def localize(image,
 
 
 def feature_extent(norm, center, nfringes=20, maxrange=400.):
+    '''
+    Computes a side length for a holograms bounding box
+    by counting fringes, starting from the center of a feature.
+    
+    Args:
+        norm: normalized image
+        center: center of feature of interest
+    Keywords:
+        nfringes: number of fringes to count. This value should be
+                  overestimating due to noise
+        maxrange: default value if we don't count enough fringes
+    '''
     ravg, rstd = aziavg(norm, center)
     b = ravg - 1.
     ndx = np.where(np.diff(np.sign(b)))[0] + 1.
     if len(ndx) <= nfringes:
         return maxrange
     else:
-        return float(ndx[nfringes])
+        s = float(ndx[nfringes])
+        return s
 
 
 def aziavg(data, center):
