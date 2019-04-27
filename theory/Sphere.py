@@ -124,12 +124,13 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     q = np.empty(nmax+1, complex)
 
     # initialization
+    d1_z1[-1] = 0.                                            # Eq. (16a)
+    d1_z2[-1] = 0.
     d3_z1[0] = 1.j                                            # Eq. (18b)
     d3_z2[0] = 1.j
 
     # iterate outward from the sphere's core
     z1 = x[0] * m[0]
-    d1_z1[nmax] = (nmax+1.)/z1 - z1/(nmax+1.)
     for n in range(nmax, 0, -1):
         d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)              # Eq. (16b)
     ha = d1_z1.copy()                                         # Eq. (7a)
@@ -140,18 +141,16 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
         z1 = m[ii] * x[ii]
         z2 = m[ii] * x[ii-1]
 
-        # downward recurrence for D1
-        d1_z1[nmax] = (nmax+1.)/z1 - z1/(nmax+1.)
-        d1_z2[nmax] = (nmax+1.)/z1 - z1/(nmax+1.)
+        # downward recurrence for D1 (D1[nmax] = 0)
         for n in range(nmax, 0, -1):
             d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)          # Eq. (16b)
             d1_z2[n-1] = n/z2 - 1./(d1_z2[n] + n/z2)
 
         # upward recurrence for PsiZeta, D3, Q
-        psizeta_z1 = 0.5 * (1. - np.exp(2.j * z1))            # Eq. (18a)
-        psizeta_z2 = 0.5 * (1. - np.exp(2.j * z2))
         a1, b1 = np.real(z1), np.imag(z1)
         a2, b2 = np.real(z2), np.imag(z2)
+        psizeta_z1 = 0.5*(1.-np.exp(2.j*a1)*np.exp(-2.*b1))   # Eq. (18a)
+        psizeta_z2 = 0.5*(1.-np.exp(2.j*a2)*np.exp(-2.*b2))   # Eq. (18a)
         q[0] = ((np.exp(-2.j*a1) - np.exp(-2.*b1)) /
                 (np.exp(-2.j*a2) - np.exp(-2.*b2))) * \
             np.exp(-2.*(b2 - b1))                             # Eq. (19a)
@@ -177,8 +176,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
 
     # iterate into medium (m = 1.)
     z1 = x[-1]
-    # downward recurrence for D1
-    d1_z1[nmax] = (nmax+1.)/z1 - z1/(nmax+1.)
+    # downward recurrence for D1 (D1[nmax] = 0)
     for n in range(nmax, 0, -1):
         d1_z1[n-1] = n/z1 - (1./(d1_z1[n] + n/z1))            # Eq. (16b)
 
