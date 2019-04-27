@@ -69,7 +69,7 @@ def wiscombe_yang(x, m):
     # Yang (2003) Eq. (30)
     xm = abs(x * m)
     xm_1 = abs(np.roll(x, -1) * m)
-    nstop = max(ns, xm, xm_1)
+    nstop = max(ns, xm.max(), xm_1.max())
     return int(nstop)
 
 
@@ -105,100 +105,101 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     nlayers = a_p.size
 
     # size parameters for layers
-    k = 2. * np.pi * np.real(n_m) / wavelength  # wave number in medium [um^-1]
-    x = [k * a_j for a_j in a_p]      # size parameter in each layer
-    m = (n_p + 1.j*k_p) / n_m    # relative refractive index
+    k = 2.*np.pi/wavelength     # wave number in vacuum [um^-1]
+    k *= np.real(n_m)           # wave number in medium
+    x = k * a_p                 # size parameter in each layer
+    m = (n_p + 1.j*k_p) / n_m   # relative refractive index ineach layer
 
     # number of terms in partial-wave expansion
     nmax = wiscombe_yang(x, m)
 
     # storage for results
-    ab = np.empty([nmax + 1, 2], complex)
-    d1_z1 = np.empty(nmax + 2, complex)
-    d1_z2 = np.empty(nmax + 2, complex)
-    d3_z1 = np.empty(nmax + 1, complex)
-    d3_z2 = np.empty(nmax + 1, complex)
-    psi = np.empty(nmax + 1, complex)
-    zeta = np.empty(nmax + 1, complex)
-    q = np.empty(nmax + 1, complex)
+    ab = np.empty([nmax+1, 2], complex)
+    d1_z1 = np.empty(nmax+1, complex)
+    d1_z2 = np.empty(nmax+1, complex)
+    d3_z1 = np.empty(nmax+1, complex)
+    d3_z2 = np.empty(nmax+1, complex)
+    psi = np.empty(nmax+1, complex)
+    zeta = np.empty(nmax+1, complex)
+    q = np.empty(nmax+1, complex)
 
     # initialization
-    d1_z1[-1] = 0.j                                           # Eq. (16a)
-    d1_z2[-1] = 0.j
     d3_z1[0] = 1.j                                            # Eq. (18b)
     d3_z2[0] = 1.j
 
     # iterate outward from the sphere's core
     z1 = x[0] * m[0]
-    for n in range(nmax + 1, 0, -1):
-        d1_z1[n - 1] = n / z1 - 1. / \
-            (d1_z1[n] + n / z1)              # Eq. (16b)
-    ha = d1_z1[0:-1].copy()                                   # Eq. (7a)
-    hb = d1_z1[0:-1].copy()                                   # Eq. (8a)
+    d1_z1[nmax] = (nmax+1.)/z1 - z1/(nmax+1.)
+    for n in range(nmax, 0, -1):
+        d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)              # Eq. (16b)
+    ha = d1_z1.copy()                                         # Eq. (7a)
+    hb = d1_z1.copy()                                         # Eq. (8a)
 
     # iterate outward from layer 2 to layer L
     for ii in range(1, nlayers):
-        z1 = x[ii] * m[ii]
-        z2 = x[ii - 1] * m[ii]
+        z1 = m[ii] * x[ii]
+        z2 = m[ii] * x[ii-1]
 
         # downward recurrence for D1
-        for n in range(nmax + 1, 0, -1):
-            d1_z1[n - 1] = n / z1 - 1. / \
-                (d1_z1[n] + n / z1)          # Eq. (16b)
-            d1_z2[n - 1] = n / z2 - 1. / (d1_z2[n] + n / z2)
+        d1_z1[nmax] = (nmax+1.)/z1 - z1/(nmax+1.)
+        d1_z2[nmax] = (nmax+1.)/z1 - z1/(nmax+1.)
+        for n in range(nmax, 0, -1):
+            d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)          # Eq. (16b)
+            d1_z2[n-1] = n/z2 - 1./(d1_z2[n] + n/z2)
 
         # upward recurrence for PsiZeta, D3, Q
         psizeta_z1 = 0.5 * (1. - np.exp(2.j * z1))            # Eq. (18a)
         psizeta_z2 = 0.5 * (1. - np.exp(2.j * z2))
-        q[0] = (np.exp(-2.j * z2) - 1.) / (np.exp(-2.j * z1) - 1.)  # Eq. (19a)
-        for n in range(1, nmax + 1):
-            psizeta_z1 *= (n / z1 - d1_z1[n - 1]) * \
-                          (n / z1 - d3_z1[n - 1])                 # Eq. (18c)
-            psizeta_z2 *= (n / z2 - d1_z2[n - 1]) * \
-                          (n / z2 - d3_z2[n - 1])
-            d3_z1[n] = d1_z1[n] + 1.j / psizeta_z1              # Eq. (18d)
-            d3_z2[n] = d1_z2[n] + 1.j / psizeta_z2
-            q[n] = q[n - 1] * (x[ii - 1] / x[ii])**2 * \
-                (z2 * d1_z2[n] + n) / (z1 * d1_z1[n] + n) * \
-                (n - z2 * d3_z2[n]) / (n - z1 * d3_z1[n])       # Eq. (19b)
+        a1, b1 = np.real(z1), np.imag(z1)
+        a2, b2 = np.real(z2), np.imag(z2)
+        q[0] = ((np.exp(-2.j*a1) - np.exp(-2.*b1)) /
+                (np.exp(-2.j*a2) - np.exp(-2.*b2))) * \
+            np.exp(-2.*(b2 - b1))                             # Eq. (19a)
+        for n in range(1, nmax+1):
+            psizeta_z1 *= (n/z1 - d1_z1[n-1]) * \
+                          (n/z1 - d3_z1[n-1])                 # Eq. (18c)
+            psizeta_z2 *= (n/z2 - d1_z2[n-1]) * \
+                          (n/z2 - d3_z2[n-1])
+            d3_z1[n] = d1_z1[n] + 1.j/psizeta_z1              # Eq. (18d)
+            d3_z2[n] = d1_z2[n] + 1.j/psizeta_z2
+            q[n] = q[n-1] * (x[ii-1]/x[ii])**2 * \
+                (z2 * d1_z2[n] + n)/(z1 * d1_z1[n] + n) * \
+                (n - z2 * d3_z2[n-1])/(n - z1 * d3_z1[n-1])   # Eq. (19b)
         # update Ha and Hb
-        g1 = m[ii] * ha - m[ii - 1] * d1_z2                     # Eq. (12)
-        g2 = m[ii] * ha - m[ii - 1] * d3_z2                     # Eq. (13)
-        ha = (g2 * d1_z1 - g1 * q * d3_z1) / \
-            (g2 - g1 * q)              # Eq. (7b)
+        g1 = m[ii] * ha - m[ii-1] * d1_z2                     # Eq. (12)
+        g2 = m[ii] * ha - m[ii-1] * d3_z2                     # Eq. (13)
+        ha = (g2 * d1_z1 - q * g1 * d3_z1) / (g2 - q * g1)    # Eq. (7b)
 
-        g1 = m[ii - 1] * hb - m[ii] * d1_z2                     # Eq. (14)
-        g2 = m[ii - 1] * hb - m[ii] * d3_z2                     # Eq. (15)
-        hb = (g2 * d1_z1 - g1 * q * d3_z1) / \
-            (g2 - g1 * q)              # Eq. (8b)
+        g1 = m[ii-1] * hb - m[ii] * d1_z2                     # Eq. (14)
+        g2 = m[ii-1] * hb - m[ii] * d3_z2                     # Eq. (15)
+        hb = (g2 * d1_z1 - q * g1 * d3_z1) / (g2 - q * g1)    # Eq. (8b)
     # ii (layers)
 
-    # iterate into medium
+    # iterate into medium (m = 1.)
     z1 = x[-1]
     # downward recurrence for D1
-    for n in range(nmax + 1, 0, -1):
-        d1_z1[n - 1] = n / z1 - \
-            (1. / (d1_z1[n] + n / z1))            # Eq. (16b)
+    d1_z1[nmax] = (nmax+1.)/z1 - z1/(nmax+1.)
+    for n in range(nmax, 0, -1):
+        d1_z1[n-1] = n/z1 - (1./(d1_z1[n] + n/z1))            # Eq. (16b)
 
     # upward recurrence for Psi, Zeta, PsiZeta and D3
     psi[0] = np.sin(z1)                                       # Eq. (20a)
     zeta[0] = -1.j * np.exp(1.j * z1)                         # Eq. (21a)
     psizeta = 0.5 * (1. - np.exp(2.j * z1))                   # Eq. (18a)
-    for n in range(1, nmax + 1):
-        psi[n] = psi[n - 1] * (n / z1 - d1_z1[n - 1])               # Eq. (20b)
-        zeta[n] = zeta[n - 1] * (n / z1 - d3_z1[n - 1])             # Eq. (21b)
-        psizeta *= (n / z1 - d1_z1[n - 1]) * \
-                   (n / z1 - d3_z1[n - 1])                        # Eq. (18c)
-        d3_z1[n] = d1_z1[n] + 1.j / psizeta                     # Eq. (18d)
+    for n in range(1, nmax+1):
+        psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])               # Eq. (20b)
+        zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])             # Eq. (21b)
+        psizeta *= (n/z1 - d1_z1[n-1]) * (n/z1 - d3_z1[n-1])  # Eq. (18c)
+        d3_z1[n] = d1_z1[n] + 1.j / psizeta                   # Eq. (18d)
 
     # Scattering coefficients
-    n = np.arange(nmax + 1)
-    fac = ha / m[-1] + n / x[-1]
+    n = np.arange(nmax+1)
+    fac = ha/m[-1] + n/x[-1]
     ab[:, 0] = (fac * psi - np.roll(psi, 1)) / \
-               (fac * zeta - np.roll(zeta, 1))                  # Eq. (5)
-    fac = hb * m[-1] + n / x[-1]
+        (fac * zeta - np.roll(zeta, 1))                 # Eq. (5)
+    fac = hb*m[-1] + n/x[-1]
     ab[:, 1] = (fac * psi - np.roll(psi, 1)) / \
-               (fac * zeta - np.roll(zeta, 1))                  # Eq. (6)
+        (fac * zeta - np.roll(zeta, 1))                 # Eq. (6)
     ab[0, :] = complex(0., 0.)
 
     return ab
