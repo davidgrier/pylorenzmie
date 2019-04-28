@@ -124,8 +124,8 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     q = np.empty(nmax+1, complex)
 
     # initialization
-    d1_z1[-1] = 0.                                            # Eq. (16a)
-    d1_z2[-1] = 0.
+    d1_z1[nmax] = 0.                                          # Eq. (16a)
+    d1_z2[nmax] = 0.
     d3_z1[0] = 1.j                                            # Eq. (18b)
     d3_z2[0] = 1.j
 
