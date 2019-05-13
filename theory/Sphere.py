@@ -108,7 +108,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     k = 2.*np.pi/wavelength     # wave number in vacuum [um^-1]
     k *= np.real(n_m)           # wave number in medium
     x = k * a_p                 # size parameter in each layer
-    m = (n_p + 1.j*k_p) / n_m   # relative refractive index ineach layer
+    m = (n_p + 1.j*k_p) / n_m   # relative refractive index in each layer
 
     # number of terms in partial-wave expansion
     nmax = wiscombe_yang(x, m)
@@ -137,6 +137,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     hb = d1_z1.copy()                                         # Eq. (8a)
 
     # iterate outward from layer 2 to layer L
+    # account for 0-based python indexing (ii = l-1)
     for ii in range(1, nlayers):
         z1 = m[ii] * x[ii]
         z2 = m[ii] * x[ii-1]
@@ -188,7 +189,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
         psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])               # Eq. (20b)
         zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])             # Eq. (21b)
         psizeta *= (n/z1 - d1_z1[n-1]) * (n/z1 - d3_z1[n-1])  # Eq. (18c)
-        d3_z1[n] = d1_z1[n] + 1.j / psizeta                   # Eq. (18d)
+        d3_z1[n] = d1_z1[n] + 1.j/psizeta                     # Eq. (18d)
 
     # Scattering coefficients
     n = np.arange(nmax+1)
