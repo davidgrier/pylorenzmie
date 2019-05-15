@@ -12,8 +12,8 @@ def hanning(nx, ny):
         print("Array dimensions must be >= 0")
         raise TypeError
 
-    row_window = 0.5*(1-np.cos(2*np.pi*np.arange(0, int(nx))/nx))
-    col_window = 0.5*(1-np.cos(2*np.pi*np.arange(0, int(ny))/ny))
+    row_window = 0.5 * (1 - np.cos(2 * np.pi * np.arange(0, int(nx)) / nx))
+    col_window = 0.5 * (1 - np.cos(2 * np.pi * np.arange(0, int(ny)) / ny))
     if ny > 0:
         return np.outer(row_window, col_window)
     else:
@@ -28,8 +28,8 @@ def rayleighsommerfeld(a, z,
                        nozphase=False,
                        hanning_win=False):
     """
-    Compute electric fields propagated by a distance or 
-    set of distances above the imaging plane via 
+    Compute electric fields propagated by a distance or
+    set of distances above the imaging plane via
     Rayleigh-Sommerfeld approximation.
 
     Args:
@@ -63,13 +63,14 @@ def rayleighsommerfeld(a, z,
         print("a must be two-dimensional hologram")
         raise TypeError
 
-    ny, nx = map(float, a.shape)
+    # ny, nx = map(float, a.shape)
+    ny, nx = a.shape
 
     # A single slice or volumetric slices?
     nz = 1 if type(z) == int else len(z)
 
     # important factors
-    k = 2.*np.pi*mpp/lamb      # wavenumber in radians/pixels
+    k = 2. * np.pi * mpp / lamb      # wavenumber in radians/pixels
 
     # phase factor for Rayleigh-Sommerfeld propagator in Fourier space
     # Compute factor k*sqrt(1-qx**2+qy**2)
@@ -78,7 +79,7 @@ def rayleighsommerfeld(a, z,
     qy = np.linspace(-0.5, 0.5, ny, endpoint=False, dtype=complex)
     qx, qy = np.meshgrid(qx, qy)
     qsq = qx**2 + qy**2
-    qsq *= (lamb/mpp)**2
+    qsq *= (lamb / mpp)**2
 
     qfactor = k * np.sqrt(1. - qsq)
 
