@@ -4,17 +4,21 @@
 import numpy as np
 import json
 from future.utils import iteritems
+import logging
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 def coordinates(shape, corner=None):
     '''Return coordinate system for Lorenz-Mie microscopy images'''
     (ny, nx) = shape
     if corner is None:
-        (left, top) = (0,0)
+        (left, top) = (0, 0)
     else:
         (left, top) = corner
-    x = np.arange(left, nx+left)
-    y = np.arange(top, ny+top)
+    x = np.arange(left, nx + left)
+    y = np.arange(top, ny + top)
     xv, yv = np.meshgrid(x, y)
     xv = xv.flatten()
     yv = yv.flatten()
@@ -76,6 +80,7 @@ class Instrument(object):
 
     @wavelength.setter
     def wavelength(self, wavelength):
+        logger.debug('wavelength: {} [um]'.format(wavelength))
         self._wavelength = float(wavelength)
 
     @property
@@ -85,6 +90,7 @@ class Instrument(object):
 
     @magnification.setter
     def magnification(self, magnification):
+        logger.debug('magnification: {} [um/pixel]'.format(magnification))
         self._magnification = float(magnification)
 
     @property
@@ -94,6 +100,7 @@ class Instrument(object):
 
     @n_m.setter
     def n_m(self, n_m):
+        logger.debug('medium index: {}'.format(n_m))
         self._n_m = float(n_m)
 
     @property
