@@ -117,7 +117,10 @@ class Feature(object):
                  epsfcn = 1.e-5,
                  maxfev = 2e3):
         '''Fit Model to data
-
+        Arguments
+        ________
+        see arguments for scipy.optimize.leastsq()
+        
         Returns
         -------
         results : lmfit.MinimzerResult
