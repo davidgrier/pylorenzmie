@@ -118,7 +118,12 @@ class Feature(object):
             setattr(particle, key, params[key].value)
         return self.residuals()
 
-    def optimize(self,stopiter=None):
+    def optimize(self,
+                 diag = [1.e-4, 1.e-4, 1.e-3, 1.e-4, 1.e-5, 1.e-7],
+                 ftol = 1.e-3,
+                 xtol = 1.e-6,
+                 epsfcn = 1.e-5,
+                 stopiter = None):
         '''Fit Model to data
 
         Returns
@@ -137,7 +142,7 @@ class Feature(object):
         for key in self.fixed:
             params[key].vary = False
         self._minimizer.params = params
-        return self._minimizer.minimize()
+        return self._minimizer.minimize(diag=diag, ftol=ftol, xtol=xtol, epsfcn=epsfcn)
 
     def serialize(self, filename=None):
         '''Save state of Feature
@@ -188,23 +193,29 @@ if __name__ == '__main__':
     # Use model to generate synthetic data
     shape = [201, 201]
     a.model.coordinates = coordinates(shape)
+    ins = a.model.instrument
+    ins.wavelength=0.447
+    ins.magnification=0.048
+    ins.n_m=1.34
     p = a.model.particle
-    p.r_p = [100, 100, 420]
+    p.r_p = [100, 100, 252]
     p.a_p = 1.3
-    p.n_p = 1.65
+    p.n_p = 1.44
     h = a.model.hologram()
     h += np.random.normal(0., 0.05, h.size)
     a.data = h
-    plt.imshow(a.data.reshape(shape), cmap='gray')
-    plt.show()
+    #plt.imshow(a.data.reshape(shape), cmap='gray')
+    #plt.show()
 
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
+    p.z_p += np.random.normal(0., 5, 1)
     p.a_p += np.random.normal(0., 0.3, 1)
     p.n_p += np.random.normal(0., 0.1, 1)
+    print(p)
     # ... and now fit
     start = time()
-    result = a.optimize(stopiter=100)
+    result = a.optimize()
     print("Time to fit: {:03f}".format(time() - start))
     report_fit(result)
     # plot residuals
