@@ -9,21 +9,7 @@ except Exception:
     from pylorenzmie.theory.LMHologram import LMHologram as Model
 from lmfit import Parameters, Minimizer
 import pickle
-
-
-'''
-callback function for timing out of least-squares fit
-
-if the result is not found after stopiter # of iterations, the fit stops,
-and the parameters have the value from the last iteration.
-'''
-def timeoutwrapper(stopiter=1000):
-    def timeoutCB(params, iter, resid, *args, **kws):
-        if iter >= stopiter:
-            return True
-        else:
-            return False
-    return timeoutCB
+import numpy as np
 
 
 class Feature(object):
@@ -116,14 +102,20 @@ class Feature(object):
         particle = self.model.particle
         for key in self._keys:
             setattr(particle, key, params[key].value)
-        return self.residuals()
+        #don't fit on saturated pixels
+        saturatedval = np.max(self.data)
+        indices = [i for i, x in enumerate(self.data) if x == saturatedval]
+        resid = self.residuals()
+        for index in indices:
+            resid[index] = 0
+        return resid
 
     def optimize(self,
                  diag = [1.e-4, 1.e-4, 1.e-3, 1.e-4, 1.e-5, 1.e-7],
                  ftol = 1.e-3,
                  xtol = 1.e-6,
                  epsfcn = 1.e-5,
-                 stopiter = None):
+                 maxfev = 2e3):
         '''Fit Model to data
 
         Returns
@@ -133,8 +125,6 @@ class Feature(object):
             Model to the provided data.  The format is described
             in the documentation for lmfit.
         '''
-        if stopiter is not None:
-            self._minimizer.iter_cb = timeoutwrapper(stopiter=stopiter)
         params = Parameters()
         particle = self.model.particle
         for key in self._keys:
@@ -142,7 +132,8 @@ class Feature(object):
         for key in self.fixed:
             params[key].vary = False
         self._minimizer.params = params
-        return self._minimizer.minimize(diag=diag, ftol=ftol, xtol=xtol, epsfcn=epsfcn)
+        maxfev = int(maxfev)
+        return self._minimizer.minimize(diag=diag, ftol=ftol, xtol=xtol, epsfcn=epsfcn, maxfev = maxfev)
 
     def serialize(self, filename=None):
         '''Save state of Feature
@@ -204,8 +195,8 @@ if __name__ == '__main__':
     h = a.model.hologram()
     h += np.random.normal(0., 0.05, h.size)
     a.data = h
-    #plt.imshow(a.data.reshape(shape), cmap='gray')
-    #plt.show()
+    plt.imshow(a.data.reshape(shape), cmap='gray')
+    plt.show()
 
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
