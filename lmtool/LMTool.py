@@ -11,7 +11,7 @@ import numpy as np
 import cv2
 import json
 from scipy.interpolate import BSpline, splrep
-from pylorenzmie.theory.LMHologram import LMHologram
+from pylorenzmie.theory.Feature import Feature
 
 
 def aziavg(data, center):
@@ -27,6 +27,7 @@ def aziavg(data, center):
 
 
 class LMTool(QtWidgets.QMainWindow):
+
 
     def __init__(self,
                  filename=None,
@@ -138,7 +139,9 @@ class LMTool(QtWidgets.QMainWindow):
                 prop.fixed = setting['fixed']
 
     def setupTheory(self):
-        self.theory = LMHologram(coordinates=self.coordinates)
+        self.feature = Feature()
+        self.theory = self.feature.model
+        self.theory.coordinates = self.coordinates
         self.theory.instrument.wavelength = self.ui.wavelength.value()
         self.theory.instrument.magnification = self.ui.magnification.value()
         self.theory.instrument.n_m = self.ui.n_m.value()
