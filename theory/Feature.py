@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 import sys
-sys.path.append('/home/group/endtoend/OOe2e/')
-try:
-    from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as Model
-    print("CudaLMHologram loaded.")
-except Exception:
-    from pylorenzmie.theory.LMHologram import LMHologram as Model
-from lmfit import Parameters, Minimizer
 import pickle
 import numpy as np
+from lmfit import Parameters, Minimizer
+#try:
+#    from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as Model
+#    print("CudaLMHologram loaded.")
+#except Exception:
+from pylorenzmie.theory.LMHologram import LMHologram as Model
+
+sys.path.append('/home/group/endtoend/OOe2e/')
 
 
 class Feature(object):
-
     '''
     Abstraction of a feature in an in-line hologram
 
@@ -33,6 +33,13 @@ class Feature(object):
         and uses this information to compute a hologram at the
         specified coordinates.  Keywords for the Model can be
         provided at initialization.
+    parameterBounds : dict of tuples
+        Allows user to select range over which fitting parameters
+        may vary. Set each entry as a tuple of format (min, max)
+    parameterVary : dict of booleans
+        Allows user to select whether or not to vary parameter
+        during fitting. True means the parameter will vary.
+    
 
     Methods
     -------
@@ -52,12 +59,25 @@ class Feature(object):
                  **kwargs):
         self.model = Model(**kwargs)
         self.data = data
-        self.fixed = ['k_p']
         self.noise = noise
         self.coordinates = self.model.coordinates
-        self._keys = ('x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p')
+        # Create minimizer and set settings
         self._minimizer = Minimizer(self._loss, None)
         self._minimizer.nan_policy = 'omit'
+        # Initialize options for fitting
+        self._properties = list(self.model.particle.properties.keys())
+        self._properties.extend(list(self.model.instrument.properties.keys()))
+        self._properties = tuple(self._properties)
+        self.parameterBounds = dict(zip(self._properties,
+                                        [(-np.inf, np.inf) for i in range(len(self._properties))]))
+        self.parameterVary = dict(zip(self._properties,
+                                      [True for i in range(len(self._properties))]))
+        # Default settings
+        self.parameterVary['k_p'] = False
+        self.parameterVary['n_m'] = False
+        self.parameterVary['wavelength'] = False
+        self.parameterVary['magnification'] = False
+        # Deserialize if needed
         self.deserialize(info)
 
     @property
@@ -78,15 +98,6 @@ class Feature(object):
     def model(self, model):
         self._model = model
 
-    @property
-    def fixed(self):
-        '''Parameters to fix during optimization'''
-        return self._fixed
-
-    @fixed.setter
-    def fixed(self, fixed):
-        self._fixed = fixed
-
     def residuals(self):
         '''Returns difference bewteen data and current model
 
@@ -96,19 +107,6 @@ class Feature(object):
             Difference between model and data at each pixel
         '''
         return (self.model.hologram() - self.data) / self.noise
-
-    def _loss(self, params):
-        '''Updates particle properties and returns residuals'''
-        particle = self.model.particle
-        for key in self._keys:
-            setattr(particle, key, params[key].value)
-        #don't fit on saturated pixels
-        saturatedval = np.max(self.data)
-        indices = [i for i, x in enumerate(self.data) if x == saturatedval]
-        resid = self.residuals()
-        for index in indices:
-            resid[index] = 0
-        return resid
 
     def optimize(self,
                  diag=[1.e-4, 1.e-4, 1.e-3, 1.e-4, 1.e-5, 1.e-7],
@@ -128,11 +126,15 @@ class Feature(object):
             in the documentation for lmfit.
         '''
         params = Parameters()
-        particle = self.model.particle
-        for key in self._keys:
-            params.add(key, getattr(particle, key))
-        for key in self.fixed:
-            params[key].vary = False
+        particle, instrument = self.model.particle, self.model.instrument
+        for key in self._properties:
+            if hasattr(particle, key):
+                params.add(key, getattr(particle, key))
+            else:
+                params.add(key, getattr(instrument, key))
+            params[key].vary = self.parameterVary[key]
+            params[key].min = self.parameterBounds[key][0]
+            params[key].max = self.parameterBounds[key][1]
         self._minimizer.params = params
         if default:
             maxfev = int(maxfev)
@@ -181,6 +183,23 @@ class Feature(object):
             if hasattr(self, key):
                 setattr(self, key, info[key])
 
+    def _loss(self, params):
+        '''Updates particle properties and returns residuals'''
+        particle, instrument = self.model.particle, self.model.instrument
+        particleprops, instrumentprops = particle.properties.keys(), instrument.properties.keys()
+        for key in particleprops:
+            setattr(particle, key, params[key].value)
+        for key in instrumentprops:
+            setattr(instrument, key, params[key].value)
+        #don't fit on saturated pixels
+        saturatedval = np.max(self.data)
+        indices = [i for i, x in enumerate(self.data) if x == saturatedval]
+        resid = self.residuals()
+        for index in indices:
+            resid[index] = 0
+        return resid
+
+
 if __name__ == '__main__':
     from Instrument import coordinates
     import numpy as np
@@ -193,9 +212,9 @@ if __name__ == '__main__':
     shape = [201, 201]
     a.model.coordinates = coordinates(shape)
     ins = a.model.instrument
-    ins.wavelength=0.447
-    ins.magnification=0.048
-    ins.n_m=1.34
+    ins.wavelength = 0.447
+    ins.magnification = 0.048
+    ins.n_m = 1.34
     p = a.model.particle
     p.r_p = [100, 100, 252]
     p.a_p = 1.3
@@ -203,9 +222,8 @@ if __name__ == '__main__':
     h = a.model.hologram()
     h += np.random.normal(0., 0.05, h.size)
     a.data = h
-    plt.imshow(a.data.reshape(shape), cmap='gray')
-    plt.show()
-
+    #plt.imshow(a.data.reshape(shape), cmap='gray')
+    #plt.show()
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
     p.z_p += np.random.normal(0., 5, 1)
