@@ -10,7 +10,7 @@ import pyqtgraph as pg
 import numpy as np
 import cv2
 import json
-from scipy.interpolate import spline
+from scipy.interpolate import BSpline, splrep
 from pylorenzmie.theory.LMHologram import LMHologram
 
 
@@ -241,7 +241,9 @@ class LMTool(QtWidgets.QMainWindow):
     def updateTheoryProfile(self):
         xsmooth = np.linspace(0, self.maxrange - 1, 300)
         y = self.theory.hologram()
-        ysmooth = spline(self.coordinates, y, xsmooth)
+        t, c, k = splrep(self.coordinates, y)
+        spline = BSpline(t, c, k)
+        ysmooth = spline(xsmooth)
         self.theoryProfile.setData(xsmooth, ysmooth)
 
     def updateFit(self):
