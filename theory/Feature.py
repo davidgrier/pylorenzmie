@@ -111,11 +111,10 @@ class Feature(object):
         return resid
 
     def optimize(self,
-                 diag = [1.e-4, 1.e-4, 1.e-3, 1.e-4, 1.e-5, 1.e-7],
-                 ftol = 1.e-3,
-                 xtol = 1.e-6,
-                 epsfcn = 1.e-5,
-                 maxfev = 2e3):
+                 diag=[1.e-4, 1.e-4, 1.e-3, 1.e-4, 1.e-5, 1.e-7],
+                 ftol=1.e-3, xtol=1.e-6, epsfcn=1.e-5, maxfev=2e3,
+                 default=True,
+                 **kwargs):
         '''Fit Model to data
         Arguments
         ________
@@ -135,8 +134,14 @@ class Feature(object):
         for key in self.fixed:
             params[key].vary = False
         self._minimizer.params = params
-        maxfev = int(maxfev)
-        return self._minimizer.minimize(diag=diag, ftol=ftol, xtol=xtol, epsfcn=epsfcn, maxfev = maxfev)
+        if default:
+            maxfev = int(maxfev)
+            result = self._minimizer.minimize(diag=diag, ftol=ftol,
+                                              xtol=xtol, epsfcn=epsfcn,
+                                              maxfev=maxfev)
+        else:
+            result = self._minimizer.minimize(**kwargs)
+        return result
 
     def serialize(self, filename=None):
         '''Save state of Feature
