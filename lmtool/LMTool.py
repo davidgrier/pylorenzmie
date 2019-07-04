@@ -10,8 +10,8 @@ import pyqtgraph as pg
 import numpy as np
 import cv2
 import json
-from scipy.interpolate import splrep, splev
-from pylorenzmie.theory.LMHologram import LMHologram
+from scipy.interpolate import BSpline, splrep
+from pylorenzmie.theory.Feature import Feature
 
 
 def aziavg(data, center):
@@ -138,7 +138,9 @@ class LMTool(QtWidgets.QMainWindow):
                 prop.fixed = setting['fixed']
 
     def setupTheory(self):
-        self.theory = LMHologram(coordinates=self.coordinates)
+        self.feature = Feature()
+        self.theory = self.feature.model
+        self.theory.coordinates = self.coordinates
         self.theory.instrument.wavelength = self.ui.wavelength.value()
         self.theory.instrument.magnification = self.ui.magnification.value()
         self.theory.instrument.n_m = self.ui.n_m.value()
@@ -241,8 +243,9 @@ class LMTool(QtWidgets.QMainWindow):
     def updateTheoryProfile(self):
         xsmooth = np.linspace(0, self.maxrange - 1, 300)
         y = self.theory.hologram()
-        rep = splrep(self.coordinates, y, s=0)
-        ysmooth = splev(xsmooth, rep, der=0)
+        t, c, k = splrep(self.coordinates, y)
+        spline = BSpline(t, c, k)
+        ysmooth = spline(xsmooth)
         self.theoryProfile.setData(xsmooth, ysmooth)
 
     def updateFit(self):
