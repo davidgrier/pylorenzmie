@@ -28,7 +28,6 @@ def aziavg(data, center):
 
 class LMTool(QtWidgets.QMainWindow):
 
-
     def __init__(self,
                  filename=None,
                  background=None,
