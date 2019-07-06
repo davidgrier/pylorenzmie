@@ -269,6 +269,7 @@ if __name__ == '__main__':
     from pylorenzmie.theory.Instrument import Instrument
     from pylorenzmie.theory.Sphere import Sphere
     import matplotlib.pyplot as plt
+    from time import time
 
     # Create coordinate grid for image
     x = np.arange(0, 201)
@@ -293,10 +294,12 @@ if __name__ == '__main__':
     kernel = CudaGeneralizedLorenzMie(coordinates=coordinates,
                                       particle=particle,
                                       instrument=instrument)
+    start = time()
     field = kernel.field()
     # Compute hologram from field and show it
     field *= np.complex64(np.exp(-1.j * k * particle.z_p))
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
+    print("Time to calculate: {}".format(time() - start))
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()

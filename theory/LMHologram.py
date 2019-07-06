@@ -3,6 +3,10 @@
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
+try:
+    import cupy as cp
+except ImportError:
+    cp = None
 
 
 class LMHologram(LorenzMie):
@@ -37,7 +41,7 @@ class LMHologram(LorenzMie):
     def alpha(self, alpha):
         self._alpha = float(alpha)
 
-    def hologram(self):
+    def hologram(self, return_gpu=False):
         '''Return hologram of sphere
 
         Returns
@@ -45,14 +49,19 @@ class LMHologram(LorenzMie):
         hologram : numpy.ndarray
             Computed hologram.
         '''
+        xp = cp if self.using_gpu else np
         field = self.alpha * self.field()
         field[0, :] += 1.
-        return np.sum(np.real(field * np.conj(field)), axis=0)
+        hologram = xp.sum(xp.real(field * xp.conj(field)), axis=0)
+        if return_gpu is False and xp == cp:
+            hologram = hologram.get()
+        return hologram
 
 
 if __name__ == '__main__':
     import matplotlib.pyplot as plt
     from Instrument import coordinates
+    from time import time
 
     shape = [201, 251]
     h = LMHologram(coordinates=coordinates(shape))
@@ -60,5 +69,8 @@ if __name__ == '__main__':
     h.particle.a_p = 0.9
     h.particle.n_p = 1.45
     h.instrument.wavelength = 0.447
-    plt.imshow(h.hologram().reshape(shape), cmap='gray')
+    start = time()
+    hol = h.hologram()
+    print("Time to calculate {}".format(time() - start))
+    plt.imshow(hol.reshape(shape), cmap='gray')
     plt.show()

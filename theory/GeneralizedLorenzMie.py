@@ -5,7 +5,13 @@ import numpy as np
 from pylorenzmie.theory.Particle import Particle
 from pylorenzmie.theory.Instrument import Instrument
 import json
-
+try:
+    import cupy as cp
+    cp.cuda.Device()
+    using_gpu = True
+except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+    cp = None
+    using_gpu = False
 '''
 This object uses generalized Lorenz-Mie theory to compute the
 in-line hologram of a particle with specified Lorenz-Mie scattering
@@ -46,6 +52,12 @@ This version is
 Copyright (c) 2018 David G. Grier
 '''
 
+if using_gpu:
+    safe_division = cp.ElementwiseKernel(
+        "float32 x, float32 y, float32 a",
+        "float32 z",
+        "if (abs(y) > 1e-6) { z = x/y; } else { z = a; };",
+        name="safe_division")
 
 class GeneralizedLorenzMie(object):
 
@@ -94,6 +106,7 @@ class GeneralizedLorenzMie(object):
         wavelength : float, optional
            Vacuum wavelength of light [um]
         '''
+        self.using_gpu = using_gpu
         self.coordinates = coordinates
         self.particle = particle
         if instrument is None:
@@ -171,7 +184,7 @@ class GeneralizedLorenzMie(object):
         return json.dumps(s, **kwargs)
 
     def loads(self, str):
-        '''Loads JSON strong of adjustable properties
+        '''Loads JSON string of adjustable properties
 
         Parameters
         ----------
@@ -183,8 +196,18 @@ class GeneralizedLorenzMie(object):
         self.instrument.loads(s['instrument'])
 
     def _allocate(self, shape):
-        '''Allocates data structures for calculation'''
-        pass
+        '''Allocates ndarrays for calculation'''
+        (xp, cmplx, flt) = (cp, np.complex64, np.float32) if self.using_gpu else (np, complex, float)
+        self.sinphi = xp.empty(shape[1], dtype=flt)
+        self.cosphi = xp.empty(shape[1], dtype=flt)
+        self.sintheta = xp.empty(shape[1], dtype=flt)
+        self.costheta = xp.empty(shape[1], dtype=flt)
+        self.krv = xp.empty(shape, dtype=flt)
+        self.mo1n = xp.empty(shape, dtype=cmplx)
+        self.ne1n = xp.empty(shape, dtype=cmplx)
+        self.es = xp.empty(shape, dtype=cmplx)
+        self.ec = xp.empty(shape, dtype=cmplx)
+        self.result = xp.empty(shape, dtype=cmplx)
 
     def compute(self, ab, krv, cartesian=True, bohren=True):
         '''Returns the field scattered by the particle at each coordinate
@@ -201,13 +224,14 @@ class GeneralizedLorenzMie(object):
         bohren : bool
             If set, use sign convention from Bohren and Huffman.
             Otherwise, use opposite sign convention.
-
         Returns
         -------
         field : numpy.ndarray
             [3, npts] array of complex vector values of the
             scattered field at each coordinate.
         '''
+        xp = cp if self.using_gpu else np
+        
         norders = ab.shape[0]  # number of partial waves in sum
 
         # GEOMETRY
@@ -225,18 +249,24 @@ class GeneralizedLorenzMie(object):
         kz = -krv[2, :]
 
         # 2. geometric factors
-        phi = np.arctan2(ky, kx)
-        cosphi = np.cos(phi)
-        sinphi = np.sin(phi)
-
-        krho = np.sqrt(kx**2 + ky**2)
-        theta = np.arctan2(krho, kz)
-        costheta = np.cos(theta)
-        sintheta = np.sin(theta)
-
-        kr = np.sqrt(krho**2 + kz**2)
-        sinkr = np.sin(kr)
-        coskr = np.cos(kr)
+        krho = xp.sqrt(kx**2 + ky**2)
+        kr = xp.sqrt(krho**2 + kz**2)
+        
+        if xp == cp:
+            self.cosphi[...] = safe_division(kx, krho, 1.)
+            self.sinphi[...] = safe_division(ky, krho, 0.)
+            self.costheta[...] = safe_division(kz, kr, 1.)  # z convention
+            self.sintheta[...] = safe_division(krho, kr, 0.)
+        else:
+            phi = xp.arctan2(ky, kx)
+            self.cosphi[...] = xp.cos(phi)
+            self.sinphi[...] = xp.sin(phi)
+            theta = xp.arctan2(krho, kz)
+            self.costheta[...] = xp.cos(theta)
+            self.sintheta[...] = xp.sin(theta)
+            xp.seterr(all='raise')
+        sinkr = xp.sin(kr)
+        coskr = xp.cos(kr)
 
         # SPECIAL FUNCTIONS
         # starting points for recursive function evaluation ...
@@ -249,9 +279,9 @@ class GeneralizedLorenzMie(object):
         # appropriate case by applying the correct sign of the imaginary
         # part of the starting functions...
         if bohren:
-            factor = 1.j * np.sign(kz)
+            factor = 1.j * xp.sign(kz)
         else:
-            factor = -1.j * np.sign(kz)
+            factor = -1.j * xp.sign(kz)
         xi_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
         xi_nm1 = sinkr - factor * coskr  # \xi_0(kr)
 
@@ -260,19 +290,17 @@ class GeneralizedLorenzMie(object):
         pi_n = 1.                        # \pi_1(\cos\theta)
 
         # 3. Vector spherical harmonics: [r,theta,phi]
-        mo1n = np.empty(shape, complex)
-        mo1n[0, :] = 0.j                 # no radial component
-        ne1n = np.empty(shape, complex)
+        self.mo1n[0, :] = 0.j                 # no radial component
 
         # storage for scattered field
-        es = np.zeros(shape, complex)
+        self.es.fill(0.j)
 
         # COMPUTE field by summing partial waves
         for n in range(1, norders):
             # upward recurrences ...
             # 4. Legendre factor (4.47)
             # Method described by Wiscombe (1980)
-            swisc = pi_n * costheta
+            swisc = pi_n * self.costheta
             twisc = swisc - pi_nm1
             tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
 
@@ -283,21 +311,20 @@ class GeneralizedLorenzMie(object):
             dn = (n * xi_n) / kr - xi_nm1
 
             # vector spherical harmonics (4.50)
-            # mo1n[0, :] = 0.j           # no radial component
-            mo1n[1, :] = pi_n * xi_n     # ... divided by cosphi/kr
-            mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
+            self.mo1n[1, :] = pi_n * xi_n     # ... divided by cosphi/kr
+            self.mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
 
             # ... divided by cosphi sintheta/kr^2
-            ne1n[0, :] = n * (n + 1.) * pi_n * xi_n
-            ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
-            ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
+            self.ne1n[0, :] = n * (n + 1.) * pi_n * xi_n
+            self.ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
+            self.ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
 
             # prefactor, page 93
             en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
 
             # the scattered field in spherical coordinates (4.45)
-            es += (1.j * en * ab[n, 0]) * ne1n
-            es -= (en * ab[n, 1]) * mo1n
+            self.es += (1.j * en * ab[n, 0]) * self.ne1n
+            self.es -= (en * ab[n, 1]) * self.mo1n
 
             # upward recurrences ...
             # ... angular functions (4.47)
@@ -314,35 +341,33 @@ class GeneralizedLorenzMie(object):
         # spherical harmonics for accuracy and efficiency ...
         # ... put them back at the end.
         radialfactor = 1. / kr
-        es[0, :] *= cosphi * sintheta * radialfactor**2
-        es[1, :] *= cosphi * radialfactor
-        es[2, :] *= sinphi * radialfactor
-
-        np.seterr(all='raise')
+        self.es[0, :] *= self.cosphi * self.sintheta * radialfactor**2
+        self.es[1, :] *= self.cosphi * radialfactor
+        self.es[2, :] *= self.sinphi * radialfactor
 
         # By default, the scattered wave is returned in spherical
         # coordinates.  Project components onto Cartesian coordinates.
         # Assumes that the incident wave propagates along z and
         # is linearly polarized along x
         if cartesian:
-            ec = np.empty_like(es)
+            self.ec[0, :] = self.es[0, :] * self.sintheta * self.cosphi
+            self.ec[0, :] += self.es[1, :] * self.costheta * self.cosphi
+            self.ec[0, :] -= self.es[2, :] * self.sinphi
 
-            ec[0, :] = es[0, :] * sintheta * cosphi
-            ec[0, :] += es[1, :] * costheta * cosphi
-            ec[0, :] -= es[2, :] * sinphi
-
-            ec[1, :] = es[0, :] * sintheta * sinphi
-            ec[1, :] += es[1, :] * costheta * sinphi
-            ec[1, :] += es[2, :] * cosphi
-            ec[2, :] = es[0, :] * costheta - es[1, :] * sintheta
-            return ec
+            self.ec[1, :] = self.es[0, :] * self.sintheta * self.sinphi
+            self.ec[1, :] += self.es[1, :] * self.costheta * self.sinphi
+            self.ec[1, :] += self.es[2, :] * self.cosphi
+            self.ec[2, :] = (self.es[0, :] * self.costheta -
+                             self.es[1, :] * self.sintheta)
+            return self.ec
         else:
-            return es
+            return self.es
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
+        xp = cp if self.using_gpu else np
 
         k = self.instrument.wavenumber()
         '''
@@ -355,23 +380,26 @@ class GeneralizedLorenzMie(object):
             field *= np.exp(-1j * k * self.particle.z_p)
         except AttributeError:  # list of particles
         '''
+        self.result.fill(0.j)
         for p in np.atleast_1d(self.particle):
-            krv = k * (self.coordinates - p.r_p[:, None])
+            self.krv[...] = xp.asarray(k * (self.coordinates -
+                                            p.r_p[:, None]))
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            this = self.compute(ab, krv,
+            this = self.compute(ab, self.krv,
                                 cartesian=cartesian, bohren=bohren)
-            this *= np.exp(-1j * k * p.z_p)
+            this *= xp.exp(-1j * k * p.z_p)
             try:
-                field += this
+                self.result += this
             except NameError:
-                field = this
-        return field
+                self.result = this
+        return self.result
 
 
 if __name__ == '__main__':
     from Sphere import Sphere
     import matplotlib.pyplot as plt
+    from time import time
 
     # Create coordinate grid for image
     x = np.arange(0, 201)
@@ -394,10 +422,14 @@ if __name__ == '__main__':
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
     kernel = GeneralizedLorenzMie(coordinates, particle, instrument)
+    start = time()
     field = kernel.field()
+    if kernel.using_gpu:
+        field = field.get()
     # Compute hologram from field and show it
     field *= np.exp(-1.j * k * particle.z_p)
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
+    print("Time to calculate: {}".format(time() - start))
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
