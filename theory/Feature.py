@@ -4,10 +4,6 @@ import sys
 import pickle
 import numpy as np
 from lmfit import Parameters, Minimizer
-#try:
-#    from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as Model
-#    print("CudaLMHologram loaded.")
-#except Exception:
 from pylorenzmie.theory.LMHologram import LMHologram as Model
 
 sys.path.append('/home/group/endtoend/OOe2e/')
@@ -62,7 +58,7 @@ class Feature(object):
         self.noise = noise
         self.coordinates = self.model.coordinates
         # Create minimizer and set settings
-        self._minimizer = Minimizer(self._loss, None)
+        self._minimizer = Minimizer(self._loss, None, reduce_fcn=self._chisq)
         self._minimizer.nan_policy = 'omit'
         # Initialize options for fitting
         self._properties = list(self.model.particle.properties.keys())
@@ -87,6 +83,7 @@ class Feature(object):
 
     @data.setter
     def data(self, data):
+        self.saturated = np.where(data == np.max(data))
         self._data = data
 
     @property
@@ -106,7 +103,7 @@ class Feature(object):
         residuals : numpy.ndarray
             Difference between model and data at each pixel
         '''
-        return (self.model.hologram() - self.data) / self.noise
+        return self.model.hologram() - self.data
 
     def optimize(self,
                  diag=[1.e-4, 1.e-4, 1.e-3, 1.e-4, 1.e-5, 1.e-7],
@@ -186,18 +183,23 @@ class Feature(object):
     def _loss(self, params):
         '''Updates particle properties and returns residuals'''
         particle, instrument = self.model.particle, self.model.instrument
-        particleprops, instrumentprops = particle.properties.keys(), instrument.properties.keys()
-        for key in particleprops:
+        for key in particle.properties.keys():
             setattr(particle, key, params[key].value)
-        for key in instrumentprops:
+        for key in instrument.properties.keys():
             setattr(instrument, key, params[key].value)
+        residuals = self._residuals()
         #don't fit on saturated pixels
-        saturatedval = np.max(self.data)
-        indices = [i for i, x in enumerate(self.data) if x == saturatedval]
-        resid = self.residuals()
-        for index in indices:
-            resid[index] = 0
-        return resid
+        np.put(residuals, self.saturated, 0.)
+        return residuals
+
+    def _residuals(self):
+        return (self.model.hologram() - self.data) / self.noise
+
+    def _chisq(self, r):
+        chisq = r.dot(r)
+        if self.model.using_gpu:
+            chisq = chisq.get()
+        return chisq
 
 
 if __name__ == '__main__':
@@ -227,8 +229,8 @@ if __name__ == '__main__':
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
     p.z_p += np.random.normal(0., 5, 1)
-    p.a_p += np.random.normal(0., 0.3, 1)
-    p.n_p += np.random.normal(0., 0.1, 1)
+    p.a_p += np.random.normal(0., 0.1, 1)
+    p.n_p += np.random.normal(0., 0.05, 1)
     print(p)
     # ... and now fit
     start = time()
