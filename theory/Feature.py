@@ -83,7 +83,7 @@ class Feature(object):
 
     @data.setter
     def data(self, data):
-        self.saturated = np.where(data == np.max(data))
+        self.saturated = np.where(data == np.max(data))[0]
         self._data = data
 
     @property
@@ -189,17 +189,14 @@ class Feature(object):
             setattr(instrument, key, params[key].value)
         residuals = self._residuals()
         #don't fit on saturated pixels
-        np.put(residuals, self.saturated, 0.)
+        residuals.put(self.saturated, 0.)
         return residuals
 
     def _residuals(self):
-        return (self.model.hologram() - self.data) / self.noise
+        return (self.model.hologram() - self._data) / self.noise
 
     def _chisq(self, r):
-        chisq = r.dot(r)
-        if self.model.using_gpu:
-            chisq = chisq.get()
-        return chisq
+        return r.dot(r)
 
 
 if __name__ == '__main__':
@@ -234,7 +231,7 @@ if __name__ == '__main__':
     print(p)
     # ... and now fit
     start = time()
-    result = a.optimize()
+    result = a.optimize(default=False, method='nelder')
     print("Time to fit: {:03f}".format(time() - start))
     report_fit(result)
     # plot residuals
