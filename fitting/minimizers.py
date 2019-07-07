@@ -4,7 +4,7 @@ from lmfit.minimizer import MinimizerResult
 
 def nelder_mead(objective, params, ndata, initial_simplex=None,
                 delta=.1, xtol=1e-7, ftol=1e-7):
-    '''Nelder-mead optimization adapted from scipy.optimize'''
+    '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
     x0, xtol, simplex, scale, offset, init_vals = _prepareFit(params, xtol,
                                                               initial_simplex,
                                                               delta)

@@ -82,7 +82,7 @@ class Feature(object):
         self.parameterVary['n_m'] = False
         self.parameterVary['wavelength'] = False
         self.parameterVary['magnification'] = False
-        self.parameterTol['x_p'] = .1
+        self.parameterTol['x_p'] = .1  # parameterTol works with Nelder-Mead
         self.parameterTol['y_p'] = .1
         self.parameterTol['z_p'] = .1
         self.parameterTol['a_p'] = .005
@@ -97,8 +97,8 @@ class Feature(object):
 
     @data.setter
     def data(self, data):
-        # Find indices where data is saturated or nan/inf
-        if data is not None:
+        if type(data) is np.ndarray:
+            # Find indices where data is saturated or nan/inf
             self.saturated = np.where(data == np.max(data))[0]
             self.nan = np.append(np.where(np.isnan(data))[0], np.where(np.isinf(data))[0])
         self._data = data
@@ -130,11 +130,14 @@ class Feature(object):
         '''Fit Model to data
         Arguments
         ________
-        see arguments for scipy.optimize.leastsq()
         method  : str
             Optimization method. Use 'lm' for Levenberg-Marquardt,
             'nelder' for Nelder-Mead, and 'custom' to pass custom
             kwargs into lmfit's Minimizer.minimize.
+        For Levenberg-Marquardt fitting, see arguments for
+        scipy.optimize.leastsq()
+        For Nelder-Mead fitting, see arguments for nelder_mead in
+        pylorenzmie/fitting/minimizers.py
         
         Returns
         -------
@@ -165,8 +168,7 @@ class Feature(object):
             result = nelder_mead(self._chisq, params,
                                  ndata=self.data.size,
                                  xtol=self.parameterTol,
-                                 ftol=ftol,
-                                 **kwargs)
+                                 ftol=ftol)
             if self.model.using_gpu:
                 self._data = cp.asnumpy(self._data)
         elif method == 'custom':
