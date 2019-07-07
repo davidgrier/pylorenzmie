@@ -1,1 +1,1 @@
-__all__ = ['mie_fit.py']
+__all__ = ['mie_fit.py', 'minimizers.py']
