@@ -59,6 +59,7 @@ if using_gpu:
         "if (abs(y) > 1e-6) { z = x/y; } else { z = a; };",
         name="safe_division")
 
+
 class GeneralizedLorenzMie(object):
 
     '''
