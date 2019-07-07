@@ -74,8 +74,8 @@ class LMTool(QtWidgets.QMainWindow):
         self.viewbox.addItem(self.overlay)
 
     def setupProfileTab(self):
-        plot = self.ui.plot
-        plot.setXRange(0., self.maxrange)
+        plot = self.ui.profilePlot
+        #plot.setXRange(0., self.maxrange)
         plot.showGrid(True, True, 0.2)
         plot.setLabel('bottom', 'r [pixel]')
         plot.setLabel('left', 'b(r)')
