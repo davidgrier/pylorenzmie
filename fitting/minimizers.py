@@ -1,9 +1,30 @@
 import numpy as np
+import multiprocessing
 from lmfit.minimizer import MinimizerResult
 
 
-def nelder_mead(objective, params, ndata, initial_simplex=None,
-                delta=.1, xtol=1e-7, ftol=1e-7):
+def amoebas(objective, params, ndata, initial_simplices=None,
+            maxdelta=.1, xtol=1e-7, ftol=1e-7):
+    if initial_simplices is None:
+        #nsimp = 
+        deltas = np.linspace(maxdelta/nsimp, maxdelta, nsimp)
+        initial_simplices = []
+        
+    minresult = None
+    minchi = np.inf
+    nsimp = len(initial_simplices)
+    for idx, simplex in enumerate(initial_simplices):
+        result = amoeba(objective, params, ndata,
+                        initial_simplex=simplex,
+                        xtol=xtol, ftol=ftol)
+        if result.redchi < minchi:
+            minresult = result
+            minchi = result.redchi
+    return minresult
+
+
+def amoeba(objective, params, ndata, initial_simplex=None,
+           delta=.1, xtol=1e-7, ftol=1e-7):
     '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
     x0, xtol, simplex, scale, offset, init_vals = _prepareFit(params, xtol,
                                                               initial_simplex,
