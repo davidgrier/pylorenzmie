@@ -3,16 +3,30 @@ import multiprocessing
 from lmfit.minimizer import MinimizerResult
 
 
-def amoebas(objective, params, ndata, initial_simplices=None,
-            maxdelta=.1, xtol=1e-7, ftol=1e-7):
-    if initial_simplices is None:
-        #nsimp = 
-        deltas = np.linspace(maxdelta/nsimp, maxdelta, nsimp)
+def amoebas(objective, params, ndata, initial_simplex=None,
+            delta=.1, xtol=1e-7, ftol=1e-7):
+    x0 = []
+    for param in params.keys():
+        if params[param].vary:
+            x0.append(params[param].value)
+    x0 = np.array(x0)
+    N = len(x0)
+    if initial_simplex is None:
+        #nsimp = multiprocessing.cpu_count() // 2
+        #deltas = np.linspace(delta/nsimp, delta, nsimp)
+        deltas = [-delta, delta]
         initial_simplices = []
-        
+        for delta in deltas:
+            if type(delta) is float:
+                delta = np.full(N, delta)
+            simplex = np.vstack([x0, np.diag(delta) + x0])
+            # Make initial guess centroid of simplex
+            xbar = np.add.reduce(simplex[:-1], 0) / N
+            simplex = simplex - (xbar - x0)
+            initial_simplices.append(simplex)
     minresult = None
     minchi = np.inf
-    nsimp = len(initial_simplices)
+    #nsimp = len(initial_simplices)
     for idx, simplex in enumerate(initial_simplices):
         result = amoeba(objective, params, ndata,
                         initial_simplex=simplex,
@@ -176,6 +190,10 @@ def _prepareFit(params, xtol, initial_simplex, delta):
         # Make initial guess centroid of simplex
         xbar = np.add.reduce(simplex[:-1], 0) / N
         simplex = simplex - (xbar - x0)
+    else:
+        if initial_simplex.shape != (N+1, N):
+            raise ValueError("Initial simplex must be dimension (N+1, N)")
+        simplex = (initial_simplex - offset) / scale
     return x0, xtol, simplex, scale, offset, init_vals
 
 
