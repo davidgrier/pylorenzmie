@@ -75,18 +75,27 @@ class Feature(object):
                                         [(-np.inf, np.inf) for i in N]))
         self.parameterVary = dict(zip(self._properties,
                                       [True for i in N]))
-        self.parameterTol = dict(zip(self._properties,
-                                     [0. for i in N]))
+        nelderTol = dict(zip(self._properties,
+                             [0. for i in N]))
+        nelderTol['x_p'] = .1  # for Nelder-Mead
+        nelderTol['y_p'] = .1
+        nelderTol['z_p'] = .1
+        nelderTol['a_p'] = .005
+        nelderTol['n_p'] = .002
         # Default settings
         self.parameterVary['k_p'] = False
         self.parameterVary['n_m'] = False
         self.parameterVary['wavelength'] = False
         self.parameterVary['magnification'] = False
-        self.parameterTol['x_p'] = .1  # parameterTol works with Nelder-Mead
-        self.parameterTol['y_p'] = .1
-        self.parameterTol['z_p'] = .1
-        self.parameterTol['a_p'] = .005
-        self.parameterTol['n_p'] = .002
+        # Set default kwargs to pass to levenberg and nelder
+        self.lm_kwargs = {'diag': [1.e-4, 1.e-4, 1.e-3, 1.e-4, 1.e-5, 1.e-7],
+                          'ftol': 1.e-3, 'xtol': 1.e-6, 'epsfcn': 1.e-5,
+                          'maxfev': int(2e3)}
+        self.nelder_kwargs = {'initial_simplex': None,
+                              'delta': .1,
+                              'ftol': 1e-3,
+                              'xtol': nelderTol}
+
         # Deserialize if needed
         self.deserialize(info)
 
@@ -100,7 +109,8 @@ class Feature(object):
         if type(data) is np.ndarray:
             # Find indices where data is saturated or nan/inf
             self.saturated = np.where(data == np.max(data))[0]
-            self.nan = np.append(np.where(np.isnan(data))[0], np.where(np.isinf(data))[0])
+            self.nan = np.append(np.where(np.isnan(data))[0],
+                                 np.where(np.isinf(data))[0])
         self._data = data
 
     @property
@@ -122,11 +132,7 @@ class Feature(object):
         '''
         return self.model.hologram() - self.data
 
-    def optimize(self,
-                 diag=[1.e-4, 1.e-4, 1.e-3, 1.e-4, 1.e-5, 1.e-7],
-                 ftol=1.e-3, xtol=1.e-6, epsfcn=1.e-5, maxfev=2e3,
-                 method='lm',
-                 **kwargs):
+    def optimize(self, method='lm', **kwargs):
         '''Fit Model to data
         Arguments
         ________
@@ -158,19 +164,15 @@ class Feature(object):
             params[key].max = self.parameterBounds[key][1]
         self._minimizer.params = params
         if method == 'lm':
-            maxfev = int(maxfev)
-            result = self._minimizer.minimize(diag=diag, ftol=ftol,
-                                              xtol=xtol, epsfcn=epsfcn,
-                                              maxfev=maxfev)
+            result = self._minimizer.minimize(**self.lm_kwargs)
         elif method == 'nelder':
-            if self.model.using_gpu:
-                self._data = cp.asarray(self._data)
-            result = nelder_mead(self._chisq, params,
-                                 ndata=self.data.size,
-                                 xtol=self.parameterTol,
-                                 ftol=ftol)
-            if self.model.using_gpu:
-                self._data = cp.asnumpy(self._data)
+            result = self._amoeba(params)
+        elif method == 'nelder-lm':
+            resultNM = self._amoeba(params)
+            self._minimizer.params = resultNM.params
+            result = self._minimizer.minimize(**self.lm_kwargs)
+            result.method = method
+            result.nfev = '{}+{}'.format(resultNM.nfev, result.nfev)
         elif method == 'custom':
             result = self._minimizer.minimize(**kwargs)
         else:
@@ -238,6 +240,15 @@ class Feature(object):
             chisq = chisq.get()
         return chisq
 
+    def _amoeba(self, params):
+        if self.model.using_gpu:
+            self._data = cp.asarray(self._data)
+        result = nelder_mead(self._chisq, params,
+                             ndata=self.data.size,
+                             **self.nelder_kwargs)
+        if self.model.using_gpu:
+            self._data = cp.asnumpy(self._data)
+        return result
 
 if __name__ == '__main__':
     from Instrument import coordinates
@@ -269,14 +280,22 @@ if __name__ == '__main__':
     p.a_p += np.random.normal(0., 0.05, 1)
     p.n_p += np.random.normal(0., 0.05, 1)
     print(p)
-    # ... and now fit
+    # set settings
     a.parameterBounds["x_p"] = (p.x_p-20., p.x_p+20)
     a.parameterBounds["y_p"] = (p.y_p-20., p.y_p+20)
     a.parameterBounds["z_p"] = (20., 1000.)
     a.parameterBounds["a_p"] = (.2, 4.)
     a.parameterBounds["n_p"] = (1., 3.)
+    ptol = a.nelder_kwargs['xtol']
+    ptol['x_p'] = 2.
+    ptol['y_p'] = 2.
+    ptol['z_p'] = 15
+    ptol['a_p'] = .4
+    ptol['n_p'] = .025
+    a.nelder_kwargs['ftol'] = 1e-2
     start = time()
-    result = a.optimize(method='nelder')
+    # ... and now fit
+    result = a.optimize(method='nelder-lm')
     print("Time to fit: {:03f}".format(time() - start))
     report_fit(result)
     # plot residuals
