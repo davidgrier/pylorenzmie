@@ -152,6 +152,9 @@ def _prepareFit(params, xtol, initial_simplex, delta):
         if type(delta) is float:
             delta = np.full(N, delta)
         simplex = np.vstack([x0, np.diag(delta) + x0])
+        # Make initial guess centroid of simplex
+        xbar = np.add.reduce(simplex[:-1], 0) / N
+        simplex = simplex - (xbar - x0)
     return x0, xtol, simplex, scale, offset, init_vals
 
 
