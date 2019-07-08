@@ -100,7 +100,7 @@ class Feature(object):
                           'max_nfev': int(2e3),
                           'diff_step': .00001,
                           'verbose': 0}
-        self.nelder_kwargs = {'initial_simplex': None,
+        self.amoeba_kwargs = {'initial_simplex': None,
                               'delta': .1,
                               'ftol': 1e-3,
                               'xtol': nelderTol}
@@ -109,7 +109,7 @@ class Feature(object):
         nelderTol['z_p'] = 15
         nelderTol['a_p'] = .05
         nelderTol['n_p'] = .025
-        self.nelderLM_kwargs = {'initial_simplex': None,
+        self.amoebaLM_kwargs = {'initial_simplex': None,
                                 'delta': .1,
                                 'ftol': 1e-2,
                                 'xtol': nelderTol}
@@ -155,11 +155,11 @@ class Feature(object):
         ________
         method  : str
             Optimization method. Use 'lm' for Levenberg-Marquardt,
-            'nelder' for Nelder-Mead, and 'custom' to pass custom
+            'amoeba' for Nelder-Mead, and 'custom' to pass custom
             kwargs into lmfit's Minimizer.minimize.
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.leastsq()
-        For Nelder-Mead fitting, see arguments for nelder_mead in
+        For Nelder-Mead fitting, see arguments for amoeba in
         pylorenzmie/fitting/minimizers.py
         
         Returns
@@ -189,10 +189,12 @@ class Feature(object):
                 self._minimizer.params[param].max = np.inf
                 self._minimizer.params[param].min = -np.inf
             result = self._minimizer.least_squares(**self.lm_kwargs)
-        elif method == 'nelder':
-            result = self._amoeba(params, **self.nelder_kwargs)
-        elif method == 'nelder-lm':
-            resultNM = self._amoeba(params, **self.nelderLM_kwargs)
+        elif method == 'amoeba':
+            result = self._amoeba(params, **self.amoeba_kwargs)
+        elif 'amoeba' in method and 'lm' in method:
+            multi = True if 'amoebas' in method else False
+            resultNM = self._amoeba(params, multi=multi,
+                                    **self.amoebaLM_kwargs)
             for param in params:
                 resultNM.params[param].max = np.inf
                 resultNM.params[param].min = -np.inf
@@ -203,7 +205,7 @@ class Feature(object):
         elif method == 'custom':
             result = self._minimizer.minimize(**kwargs)
         else:
-            raise ValueError("method keyword must either be \'lm\', \'nelder\', or \'custom\'")
+            raise ValueError("method keyword must either be \'lm\', \'amoeba\', or \'custom\'")
         return result
 
     def serialize(self, filename=None):
@@ -267,12 +269,13 @@ class Feature(object):
             chisq = chisq.get()
         return chisq
 
-    def _amoeba(self, params, **kwargs):
+    def _amoeba(self, params, multi=False, **kwargs):
         if self.model.using_gpu:
             self._data = cp.asarray(self._data)
-        result = amoeba(self._chisq, params,
-                        ndata=self.data.size,
-                        **kwargs)
+        prokaryote = amoebas if multi else amoeba 
+        result = prokaryote(self._chisq, params,
+                            ndata=self.data.size,
+                            **kwargs)
         if self.model.using_gpu:
             self._data = cp.asnumpy(self._data)
         return result
@@ -313,7 +316,7 @@ if __name__ == '__main__':
     # set settings
     start = time()
     # ... and now fit
-    result = a.optimize(method='nelder-lm')
+    result = a.optimize(method='amoebas-lm')
     print("Time to fit: {:03f}".format(time() - start))
     report_fit(result)
     # plot residuals
