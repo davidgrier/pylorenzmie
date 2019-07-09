@@ -1,10 +1,10 @@
 import numpy as np
-import multiprocessing
+import multiprocessing as mp
 from lmfit.minimizer import MinimizerResult
 
 
 def amoebas(objective, params, ndata, initial_simplex=None,
-            delta=.1, xtol=1e-7, ftol=1e-7):
+            delta=.1, namoebas=2, xtol=1e-7, ftol=1e-7):
     x0 = []
     for param in params.keys():
         if params[param].vary:
@@ -12,10 +12,8 @@ def amoebas(objective, params, ndata, initial_simplex=None,
     x0 = np.array(x0)
     N = len(x0)
     if initial_simplex is None:
-        #nsimp = multiprocessing.cpu_count() // 2
-        #deltas = np.linspace(delta/nsimp, delta, nsimp)
-        deltas = [-delta, delta]
-        initial_simplices = []
+        deltas = np.linspace(-delta, delta, namoebas)
+        initial_simplex = []
         for delta in deltas:
             if type(delta) is float:
                 delta = np.full(N, delta)
@@ -23,17 +21,35 @@ def amoebas(objective, params, ndata, initial_simplex=None,
             # Make initial guess centroid of simplex
             xbar = np.add.reduce(simplex[:-1], 0) / N
             simplex = simplex - (xbar - x0)
-            initial_simplices.append(simplex)
+            initial_simplex.append(simplex)
     minresult = None
     minchi = np.inf
-    #nsimp = len(initial_simplices)
-    for idx, simplex in enumerate(initial_simplices):
+
+    '''
+    mp.set_start_method('spawn')
+    pool = mp.Pool(nsimp)
+    args = [(objective, params, ndata,
+             simplex, delta, xtol, ftol) for simplex in initial_simplex]
+    results = pool.starmap(amoeba, args)
+    pool.close()
+    pool.terminate()
+    pool.join()
+    for result in results:
+        if result.redchi < minchi:
+            minresult = result
+            minchi = result.redchi
+        #report_fit(result)
+    
+    '''
+    
+    for idx, simplex in enumerate(initial_simplex):
         result = amoeba(objective, params, ndata,
                         initial_simplex=simplex,
                         xtol=xtol, ftol=ftol)
         if result.redchi < minchi:
             minresult = result
             minchi = result.redchi
+    
     return minresult
 
 
@@ -70,7 +86,7 @@ def amoeba(objective, params, ndata, initial_simplex=None,
             break
         # Reflect
         xbar = np.add.reduce(simplex[:-1], 0) / N
-        xr = clip((1 + rho) * xbar - rho * simplex[-1], 0, 1)
+        xr = clip((1 + rho) * xbar - rho * simplex[-1], 0.01, 1)
         params = _updateParams(xr, params,
                                scale, offset)
         fxr = objective(params)
@@ -79,7 +95,7 @@ def amoeba(objective, params, ndata, initial_simplex=None,
         # Check if reflection is better than best estimate
         if fxr < evals[0]:
             # If so, reflect double and see if that's even better
-            xe = clip((1 + rho * chi) * xbar - rho * chi * simplex[-1], 0, 1)
+            xe = clip((1 + rho * chi) * xbar - rho * chi * simplex[-1], 0.01, 1)
             params = _updateParams(xe, params,
                                    scale, offset)
             fxe = objective(params)
@@ -97,7 +113,7 @@ def amoeba(objective, params, ndata, initial_simplex=None,
             else:
                 # If reflection is not better, contract.
                 if fxr < evals[-1]:
-                    xc = clip((1 + psi * rho) * xbar - psi * rho * simplex[-1], 0, 1)
+                    xc = clip((1 + psi * rho) * xbar - psi * rho * simplex[-1], 0.01, 1)
                     params = _updateParams(xc, params,
                                            scale, offset)
                     fxc = objective(params)
@@ -109,7 +125,7 @@ def amoeba(objective, params, ndata, initial_simplex=None,
                         doshrink = 1
                 else:
                     # Do 'inside' contraction
-                    xcc = clip((1 - psi) * xbar + psi * simplex[-1], 0, 1)
+                    xcc = clip((1 - psi) * xbar + psi * simplex[-1], 0.01, 1)
                     params = _updateParams(xcc, params,
                                            scale, offset)
                     fxcc = objective(params)
@@ -122,7 +138,7 @@ def amoeba(objective, params, ndata, initial_simplex=None,
                 if doshrink:
                     for j in one2np1:
                         simplex[j] = simplex[0] + sigma * (simplex[j] - simplex[0])
-                        simplex[j] = clip(simplex[j], 0, 1)
+                        simplex[j] = clip(simplex[j], 0.01, 1)
                         params = _updateParams(simplex[j], params,
                                                scale, offset)
                         evals[j] = objective(params)
