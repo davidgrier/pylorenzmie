@@ -104,7 +104,7 @@ class Feature(object):
                           'diff_step': .00001,
                           'verbose': 0}
         self.amoeba_kwargs = {'initial_simplex': None,
-                              'delta': np.array([1., 1., 100.,
+                              'simplex_scale': np.array([1., 1., 100.,
                                                  .5, .3]),
                               'namoebas': 1,
                               'ftol': 1e-2,
