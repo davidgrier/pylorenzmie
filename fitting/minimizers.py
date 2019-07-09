@@ -15,7 +15,7 @@ def amoebas(objective, params, ndata, initial_simplex=None,
         deltas = np.linspace(-delta, delta, namoebas)
         initial_simplex = []
         for delta in deltas:
-            if type(delta) is float:
+            if type(delta) is np.float64:
                 delta = np.full(N, delta)
             simplex = np.vstack([x0, np.diag(delta) + x0])
             # Make initial guess centroid of simplex
