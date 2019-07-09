@@ -9,9 +9,10 @@ try:
     import cupy as cp
     cp.cuda.Device()
     using_gpu = True
-except (ImportError, cp.cuda.runtime.CUDARuntimeError):
+except Exception as ex:
     cp = None
     using_gpu = False
+
 '''
 This object uses generalized Lorenz-Mie theory to compute the
 in-line hologram of a particle with specified Lorenz-Mie scattering
@@ -198,7 +199,8 @@ class GeneralizedLorenzMie(object):
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
-        (xp, cmplx, flt) = (cp, np.complex64, np.float32) if self.using_gpu else (np, complex, float)
+        (xp, cmplx, flt) = (cp, np.complex64,
+                            np.float32) if self.using_gpu else (np, complex, float)
         self.sinphi = xp.empty(shape[1], dtype=flt)
         self.cosphi = xp.empty(shape[1], dtype=flt)
         self.sintheta = xp.empty(shape[1], dtype=flt)
@@ -232,7 +234,7 @@ class GeneralizedLorenzMie(object):
             scattered field at each coordinate.
         '''
         xp = cp if self.using_gpu else np
-        
+
         norders = ab.shape[0]  # number of partial waves in sum
 
         # GEOMETRY
@@ -252,7 +254,7 @@ class GeneralizedLorenzMie(object):
         # 2. geometric factors
         krho = xp.sqrt(kx**2 + ky**2)
         kr = xp.sqrt(krho**2 + kz**2)
-        
+
         if xp == cp:
             self.cosphi[...] = safe_division(kx, krho, 1.)
             self.sinphi[...] = safe_division(ky, krho, 0.)

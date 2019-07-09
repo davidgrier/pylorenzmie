@@ -9,9 +9,10 @@ from pylorenzmie.theory.LMHologram import LMHologram as Model
 try:
     import cupy as cp
     cp.cuda.Device()
-except(ImportError, cp.cuda.runtime.CUDARuntimeError):
+except ImportError:
     cp = None
-
+except cp.cuda.runtime.CUDARuntimeError:
+    cp = None
 sys.path.append('/home/group/endtoend/OOe2e/')
 
 
@@ -41,7 +42,7 @@ class Feature(object):
     parameterVary : dict of booleans
         Allows user to select whether or not to vary parameter
         during fitting. True means the parameter will vary.
-    
+
 
     Methods
     -------
@@ -101,8 +102,8 @@ class Feature(object):
                           'diff_step': .00001,
                           'verbose': 0}
         self.amoeba_kwargs = {'initial_simplex': None,
-                              'delta': np.array([1.,1.,100.,
-                                                 .5,.3]),
+                              'delta': np.array([1., 1., 100.,
+                                                 .5, .3]),
                               'ftol': 1e-3,
                               'xtol': nelderTol}
         nelderTol['x_p'] = 1.
@@ -163,7 +164,7 @@ class Feature(object):
         scipy.optimize.leastsq()
         For Nelder-Mead fitting, see arguments for amoeba in
         pylorenzmie/fitting/minimizers.py
-        
+
         Returns
         -------
         results : lmfit.MinimzerResult
@@ -207,7 +208,8 @@ class Feature(object):
         elif method == 'custom':
             result = self._minimizer.minimize(**kwargs)
         else:
-            raise ValueError("method keyword must either be \'lm\', \'amoeba\', or \'custom\'")
+            raise ValueError(
+                "method keyword must either be \'lm\', \'amoeba\', or \'custom\'")
         return result
 
     def serialize(self, filename=None):
@@ -256,7 +258,7 @@ class Feature(object):
         for key in instrument.properties.keys():
             setattr(instrument, key, params[key].value)
         residuals = self._residuals(return_gpu)
-        #don't fit on saturated or nan/infinite pixels
+        # don't fit on saturated or nan/infinite pixels
         residuals[self.saturated] = 0.
         residuals[self.nan] = 0.
         return residuals
@@ -274,7 +276,7 @@ class Feature(object):
     def _amoeba(self, params, multi=False, **kwargs):
         if self.model.using_gpu:
             self._data = cp.asarray(self._data)
-        prokaryote = amoebas if multi else amoeba 
+        prokaryote = amoebas if multi else amoeba
         result = prokaryote(self._chisq, params,
                             ndata=self.data.size,
                             **kwargs)
@@ -286,10 +288,10 @@ class Feature(object):
 if __name__ == '__main__':
     from Instrument import coordinates
     import cv2
-    import numpy as np
     from lmfit import report_fit
     import matplotlib.pyplot as plt
     from time import time
+
     a = Feature()
     # Read example image
     img = cv2.imread('../tutorials/image0400.png')
