@@ -3,7 +3,7 @@ import multiprocessing as mp
 from lmfit.minimizer import MinimizerResult
 
 
-def amoebas(objective, params, ndata, initial_simplex=None,
+def amoebas(objective, params, initial_simplex=None,
             delta=.1, namoebas=2, xtol=1e-7, ftol=1e-7):
     x0 = []
     for param in params.keys():
@@ -28,7 +28,7 @@ def amoebas(objective, params, ndata, initial_simplex=None,
     '''
     mp.set_start_method('spawn')
     pool = mp.Pool(nsimp)
-    args = [(objective, params, ndata,
+    args = [(objective, params,
              simplex, delta, xtol, ftol) for simplex in initial_simplex]
     results = pool.starmap(amoeba, args)
     pool.close()
@@ -41,24 +41,70 @@ def amoebas(objective, params, ndata, initial_simplex=None,
         #report_fit(result)
     
     '''
-    
+    chis = []
     for idx, simplex in enumerate(initial_simplex):
-        result = amoeba(objective, params, ndata,
+        result = amoeba(objective, params,
                         initial_simplex=simplex,
                         xtol=xtol, ftol=ftol)
-        if result.redchi < minchi:
+        if result.chisqr < minchi:
             minresult = result
-            minchi = result.redchi
-    
+            minchi = result.chisqr
+        chis.append(result.chisqr)
+    minresult.chis = np.array(chis)
     return minresult
 
 
-def amoeba(objective, params, ndata, initial_simplex=None,
+def amoeba(objective, params, initial_simplex=None,
            delta=.1, xtol=1e-7, ftol=1e-7):
     '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
-    x0, xtol, simplex, scale, offset, init_vals = _prepareFit(params, xtol,
-                                                              initial_simplex,
-                                                              delta)
+    parameters = list(params.keys())
+    if type(delta) == list:
+        delta = np.array(delta)
+    # Raise exception if any params are unbounded
+    for param in parameters:
+        if params[param].vary:
+            min, max = (params[param].min, params[param].max)
+            if not np.isfinite(min) or not np.isfinite(max):
+                msg = "Nelder-mead requires finite parameter bounds"
+                raise ValueError(msg)
+    # If xtol is a dict then convert to array
+    temp = []
+    if type(xtol) == dict:
+        for param in parameters:
+            if params[param].vary:
+                temp.append(xtol[param])
+    xtol = np.array(temp)
+    # Initialize first guess normalization
+    x0, scale, offset = ([], [], [])
+    init_vals = {}
+    for param in parameters:
+        init_vals[param] = params[param].value
+        if params[param].vary:
+            x0.append(params[param].value)
+            scale.append(params[param].max -
+                         params[param].min)
+            offset.append(params[param].min)
+    x0, scale, offset = (np.array(x0), np.array(scale), np.array(offset))
+    # Normalize
+    if type(delta) is np.ndarray:
+        delta /= scale
+    if type(xtol) is np.ndarray:
+        xtol /= scale
+    x0 = (x0 - offset) / scale
+    # Initialize simplex
+    N = len(x0)
+    if initial_simplex is None:
+        if type(delta) is float:
+            delta = np.full(N, delta)
+        simplex = np.vstack([x0, np.diag(delta) + x0])
+        # Make initial guess centroid of simplex
+        xbar = np.add.reduce(simplex[:-1], 0) / N
+        simplex = simplex - (xbar - x0)
+    else:
+        if initial_simplex.shape != (N+1, N):
+            raise ValueError("Initial simplex must be dimension (N+1, N)")
+        simplex = (initial_simplex - offset) / scale
+    # Initialize algorithm
     N = len(x0)
     clip = np.clip
     maxevals = 1000
@@ -80,6 +126,7 @@ def amoeba(objective, params, ndata, initial_simplex=None,
     psi = 0.5
     sigma = 0.5
 
+    # START FITTING
     while(neval < maxevals):
         if (all(np.amax(np.abs(simplex[1:] - simplex[0]), axis=0) <= xtol) and
                 np.max(np.abs(simplex[0] - simplex[1:])) <= ftol):
@@ -153,64 +200,13 @@ def amoeba(objective, params, ndata, initial_simplex=None,
     chi = evals[0]
     success = False if neval == maxevals else True
     result = MinimizerResult(params=params,
-                             nvarys=len(x0), ndata=ndata,
-                             chisqr=chi, redchi=chi/(ndata-len(x0)),
+                             nvarys=len(x0),
+                             chisqr=chi,
                              nfev=neval, success=success,
                              init_vals=init_vals,
                              errorbars=False)
     result.method = 'Nelder-Mead (custom)'
     return result
-
-
-def _prepareFit(params, xtol, initial_simplex, delta):
-    parameters = list(params.keys())
-    if type(delta) == list:
-        delta = np.array(delta)
-    # Raise exception if any params are unbounded
-    for param in parameters:
-        if params[param].vary:
-            min, max = (params[param].min, params[param].max)
-            if not np.isfinite(min) or not np.isfinite(max):
-                msg = "Nelder-mead requires finite parameter bounds"
-                raise ValueError(msg)
-    # If xtol is a dict then convert to array
-    temp = []
-    if type(xtol) == dict:
-        for param in parameters:
-            if params[param].vary:
-                temp.append(xtol[param])
-    xtol = np.array(temp)
-    # Initialize first guess normalization
-    x0, scale, offset = ([], [], [])
-    init_vals = {}
-    for param in parameters:
-        init_vals[param] = params[param].value
-        if params[param].vary:
-            x0.append(params[param].value)
-            scale.append(params[param].max -
-                         params[param].min)
-            offset.append(params[param].min)
-    x0, scale, offset = (np.array(x0), np.array(scale), np.array(offset))
-    # Normalize
-    if type(delta) is np.ndarray:
-        delta /= scale
-    if type(xtol) is np.ndarray:
-        xtol /= scale
-    x0 = (x0 - offset) / scale
-    # Initialize simplex
-    N = len(x0)
-    if initial_simplex is None:
-        if type(delta) is float:
-            delta = np.full(N, delta)
-        simplex = np.vstack([x0, np.diag(delta) + x0])
-        # Make initial guess centroid of simplex
-        xbar = np.add.reduce(simplex[:-1], 0) / N
-        simplex = simplex - (xbar - x0)
-    else:
-        if initial_simplex.shape != (N+1, N):
-            raise ValueError("Initial simplex must be dimension (N+1, N)")
-        simplex = (initial_simplex - offset) / scale
-    return x0, xtol, simplex, scale, offset, init_vals
 
 
 def _updateParams(xn, params, scale, offset):
