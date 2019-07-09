@@ -101,16 +101,18 @@ class Feature(object):
                           'diff_step': .00001,
                           'verbose': 0}
         self.amoeba_kwargs = {'initial_simplex': None,
-                              'delta': .1,
+                              'delta': np.array([1.,1.,100.,
+                                                 .5,.3]),
                               'ftol': 1e-3,
                               'xtol': nelderTol}
         nelderTol['x_p'] = 1.
         nelderTol['y_p'] = 1.
-        nelderTol['z_p'] = 15
+        nelderTol['z_p'] = 15.
         nelderTol['a_p'] = .05
         nelderTol['n_p'] = .025
         self.amoebaLM_kwargs = {'initial_simplex': None,
-                                'delta': .1,
+                                'delta': np.array([1., 1., 50.,
+                                                   -.2, .3]),
                                 'ftol': 1e-2,
                                 'xtol': nelderTol}
         # Deserialize if needed
@@ -309,9 +311,9 @@ if __name__ == '__main__':
     p.n_p = 1.4
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
-    p.z_p += np.random.normal(0., 5, 1)
+    p.z_p += np.random.normal(0., 20, 1)
     p.a_p += np.random.normal(0., 0.05, 1)
-    p.n_p += np.random.normal(0., 0.02, 1)
+    p.n_p += np.random.normal(0., 0.08, 1)
     print(p)
     # set settings
     start = time()
