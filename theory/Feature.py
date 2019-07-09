@@ -4,7 +4,7 @@ import sys
 import pickle
 import numpy as np
 from lmfit import Parameters, Minimizer
-from pylorenzmie.fitting.minimizers import amoeba, amoebas
+from pylorenzmie.fitting.minimizers import amoebas
 from pylorenzmie.theory.LMHologram import LMHologram as Model
 try:
     import cupy as cp
@@ -13,6 +13,7 @@ except ImportError:
     cp = None
 except cp.cuda.runtime.CUDARuntimeError:
     cp = None
+
 sys.path.append('/home/group/endtoend/OOe2e/')
 
 
@@ -67,55 +68,47 @@ class Feature(object):
         # Create minimizer and set settings
         self._minimizer = Minimizer(self._loss, None)
         self._minimizer.nan_policy = 'omit'
-        self._minimizer.calc_covar = False
         # Initialize options for fitting
         self._properties = list(self.model.particle.properties.keys())
         self._properties.extend(list(self.model.instrument.properties.keys()))
         self._properties = tuple(self._properties)
         N = range(len(self._properties))
-        self.parameterBounds = dict(zip(self._properties,
-                                        [(-np.inf, np.inf) for i in N]))
-        self.parameterBounds["z_p"] = (50., 1000.)
-        self.parameterBounds["a_p"] = (.2, 5.)
-        self.parameterBounds["n_p"] = (1.1, 3.)
         self.parameterVary = dict(zip(self._properties,
                                       [True for i in N]))
-        nelderTol = dict(zip(self._properties,
-                             [0. for i in N]))
-        nelderTol['x_p'] = .1  # for Nelder-Mead
-        nelderTol['y_p'] = .1
-        nelderTol['z_p'] = .1
-        nelderTol['a_p'] = .005
-        nelderTol['n_p'] = .002
+        self.amoebaBounds = dict(zip(self._properties,
+                                     [(-np.inf, np.inf) for i in N]))
+        self.amoebaTol = dict(zip(self._properties,
+                                  [0. for i in N]))
         # Default settings
         self.parameterVary['k_p'] = False
         self.parameterVary['n_m'] = False
         self.parameterVary['wavelength'] = False
         self.parameterVary['magnification'] = False
+        self.amoebaTol['x_p'] = 1.
+        self.amoebaTol['y_p'] = 1.
+        self.amoebaTol['z_p'] = 15.
+        self.amoebaTol['a_p'] = .05
+        self.amoebaTol['n_p'] = .025
+        self.amoebaBounds["x_p"] = (-20, 20)
+        self.amoebaBounds["y_p"] = (-20, 20)
+        self.amoebaBounds["z_p"] = (50., 1000.)
+        self.amoebaBounds["a_p"] = (.2, 5.)
+        self.amoebaBounds["n_p"] = (1.1, 3.)
         # Set default kwargs to pass to levenberg and nelder
         self.lm_kwargs = {'method': 'lm',
                           'x_scale': [1.e3, 1.e3, 1.e3,
                                       1.e4, 1.e5],
                           'xtol': 1.e-6, 'ftol': .001,
-                          'gtol': None,
+                          'gtol': None,  # requires scipy 1.13
                           'max_nfev': int(2e3),
                           'diff_step': .00001,
                           'verbose': 0}
         self.amoeba_kwargs = {'initial_simplex': None,
                               'delta': np.array([1., 1., 100.,
                                                  .5, .3]),
-                              'ftol': 1e-3,
-                              'xtol': nelderTol}
-        nelderTol['x_p'] = 1.
-        nelderTol['y_p'] = 1.
-        nelderTol['z_p'] = 15.
-        nelderTol['a_p'] = .05
-        nelderTol['n_p'] = .025
-        self.amoebaLM_kwargs = {'initial_simplex': None,
-                                'delta': np.array([1., 1., 50.,
-                                                   -.2, .3]),
-                                'ftol': 1e-2,
-                                'xtol': nelderTol}
+                              'namoebas': 1,
+                              'ftol': 1e-2,
+                              'xtol': self.amoebaTol}
         # Deserialize if needed
         self.deserialize(info)
 
@@ -158,11 +151,13 @@ class Feature(object):
         ________
         method  : str
             Optimization method. Use 'lm' for Levenberg-Marquardt,
-            'amoeba' for Nelder-Mead, and 'custom' to pass custom
-            kwargs into lmfit's Minimizer.minimize.
+            'amoeba-lm' for Nelder-Mead/Levenberg-Marquardt hybrid,
+            and 'custom' to pass custom kwargs into lmfit's 
+            Minimizer.minimize.
+
         For Levenberg-Marquardt fitting, see arguments for
-        scipy.optimize.leastsq()
-        For Nelder-Mead fitting, see arguments for amoeba in
+        scipy.optimize.least_squares()
+        For Nelder-Mead fitting, see arguments for amoebas in
         pylorenzmie/fitting/minimizers.py
 
         Returns
@@ -172,10 +167,6 @@ class Feature(object):
             Model to the provided data.  The format is described
             in the documentation for lmfit.
         '''
-        x_p, y_p = (self.model.particle.x_p, self.model.particle.y_p)
-        range = 20.
-        self.parameterBounds['x_p'] = (x_p-range, x_p+range)
-        self.parameterBounds['y_p'] = (y_p-range, y_p+range)
         params = Parameters()
         particle, instrument = self.model.particle, self.model.instrument
         for key in self._properties:
@@ -184,32 +175,16 @@ class Feature(object):
             else:
                 params.add(key, getattr(instrument, key))
             params[key].vary = self.parameterVary[key]
-            params[key].min = self.parameterBounds[key][0]
-            params[key].max = self.parameterBounds[key][1]
         self._minimizer.params = params
         if method == 'lm':
-            for param in params:
-                self._minimizer.params[param].max = np.inf
-                self._minimizer.params[param].min = -np.inf
             result = self._minimizer.least_squares(**self.lm_kwargs)
-        elif method == 'amoeba':
-            result = self._amoeba(params, **self.amoeba_kwargs)
-        elif 'amoeba' in method and 'lm' in method:
-            multi = True if 'amoebas' in method else False
-            resultNM = self._amoeba(params, multi=multi,
-                                    **self.amoebaLM_kwargs)
-            for param in params:
-                resultNM.params[param].max = np.inf
-                resultNM.params[param].min = -np.inf
-            self._minimizer.params = resultNM.params
-            result = self._minimizer.least_squares(**self.lm_kwargs)
-            result.method = method
-            result.nfev = '{}+{}'.format(resultNM.nfev, result.nfev)
+        elif method == 'amoeba-lm':
+            result = self._amoebaLM(params, **self.amoeba_kwargs)
         elif method == 'custom':
             result = self._minimizer.minimize(**kwargs)
         else:
             raise ValueError(
-                "method keyword must either be \'lm\', \'amoeba\', or \'custom\'")
+                "method keyword must either be \'lm\', \'amoeba-lm\', or \'custom\'")
         return result
 
     def serialize(self, filename=None):
@@ -273,15 +248,30 @@ class Feature(object):
             chisq = chisq.get()
         return chisq
 
-    def _amoeba(self, params, multi=False, **kwargs):
+    def _amoebaLM(self, params, **kwargs):
+        for param in params:
+            if param == 'x_p' or param == 'y_p':
+                attr = getattr(self.model.particle, param)
+                params[param].min = attr+self.amoebaBounds[param][0]
+                params[param].max = attr+self.amoebaBounds[param][1]
+            else:
+                params[param].min = self.amoebaBounds[param][0]
+                params[param].max = self.amoebaBounds[param][1]
         if self.model.using_gpu:
             self._data = cp.asarray(self._data)
-        prokaryote = amoebas if multi else amoeba
-        result = prokaryote(self._chisq, params,
-                            ndata=self.data.size,
-                            **kwargs)
+        resultNM = amoebas(self._chisq, params, **kwargs)
+        resultNM.ndata = self.data.size
+        resultNM.redchi = resultNM.chisqr / (resultNM.ndata-resultNM.nvarys)
         if self.model.using_gpu:
             self._data = cp.asnumpy(self._data)
+        for param in params:
+            resultNM.params[param].max = np.inf
+            resultNM.params[param].min = -np.inf
+        self._minimizer.params = resultNM.params
+        result = self._minimizer.least_squares(**self.lm_kwargs)
+        result.method = 'Nelder-Mead/least_squares hybrid'
+        result.nfev = '{}+{}'.format(resultNM.nfev, result.nfev)
+        result.chis = resultNM.chis / result.nfree
         return result
 
 
@@ -320,12 +310,13 @@ if __name__ == '__main__':
     # set settings
     start = time()
     # ... and now fit
-    result = a.optimize(method='amoebas-lm')
+    result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
+    print("Reduced chi values from Amoeba fits {}".format(result.chis))
     report_fit(result)
     # plot residuals
     resid = a.residuals().reshape(shape)
     hol = a.model.hologram().reshape(shape)
     data = a.data.reshape(shape)
-    plt.imshow(np.hstack([hol, data, resid]), cmap='gray')
+    plt.imshow(np.hstack([hol, data, resid+1]), cmap='gray')
     plt.show()
