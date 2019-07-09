@@ -5,13 +5,14 @@ from PyQt5 import QtWidgets, QtCore
 from PyQt5.QtCore import pyqtSlot
 import os
 from pylorenzmie.lmtool.LMTool_Ui import Ui_MainWindow
+from pylorenzmie.theory.Instrument import coordinates
+from pylorenzmie.theory.Feature import Feature
 import pylorenzmie
 import pyqtgraph as pg
 import numpy as np
 import cv2
 import json
 from scipy.interpolate import BSpline, splrep
-from pylorenzmie.theory.Feature import Feature
 
 
 def aziavg(data, center):
@@ -40,17 +41,20 @@ class LMTool(QtWidgets.QMainWindow):
             self.background = normalization
         else:
             self.background = 1.
-        self.maxrange = 100
-        self.coordinates = np.arange(self.maxrange)
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
         pg.setConfigOption('imageAxisOrder', 'row-major')
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
+        self.setupParameters()
+        self.maxrange = int(self.ui.bbox.value() // 2)
+        self._profileCoordinates = np.arange(self.maxrange)
+        self._fitCoordinates = coordinates((self.maxrange*2,
+                                           self.maxrange*2))
+        self._coordinates = self._profileCoordinates
         self.setupImageTab()
         self.setupProfileTab()
         self.setupFitTab()
-        self.setupParameters()
         self.setupTheory()
         self.connectSignals()
         if data is None:
@@ -75,7 +79,7 @@ class LMTool(QtWidgets.QMainWindow):
 
     def setupProfileTab(self):
         plot = self.ui.profilePlot
-        #plot.setXRange(0., self.maxrange)
+        plot.setXRange(0., self.maxrange)
         plot.showGrid(True, True, 0.2)
         plot.setLabel('bottom', 'r [pixel]')
         plot.setLabel('left', 'b(r)')
@@ -117,7 +121,7 @@ class LMTool(QtWidgets.QMainWindow):
         with open(folder+'/LMTool.json', 'r') as file:
             settings = json.load(file)
         names = ['wavelength', 'magnification', 'n_m',
-                 'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p']
+                 'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p', 'bbox']
         for name in names:
             prop = getattr(self.ui, name)
             setting = settings[name]
@@ -163,6 +167,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.x_p.valueChanged['double'].connect(self.updateRp)
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
+        #self.ui.bbox.valueChanged['double'].connect(self.updateTheoryProfile)
 
     #
     # Slots for handling user interaction
@@ -234,6 +239,7 @@ class LMTool(QtWidgets.QMainWindow):
     # Routines to update plots
     #
     def updateDataProfile(self):
+        self.coordinates = self._profileCoordinates
         center = (self.ui.x_p.value(), self.ui.y_p.value())
         avg, std = aziavg(self.data, center)
         self.dataProfile.setData(avg)
@@ -249,18 +255,23 @@ class LMTool(QtWidgets.QMainWindow):
         self.theoryProfile.setData(xsmooth, ysmooth)
 
     def updateFit(self):
-        dim = 100
-        h, w = self.data.shape
+        dim = self.maxrange
         x_p = self.ui.x_p.value()
         y_p = self.ui.y_p.value()
+        h, w = self.data.shape
+        self.coordinates = self._fitCoordinates
+        self.theory.particle.x_p = x_p
+        self.theory.particle.y_p = y_p
         x0 = int(np.clip(x_p - dim, 0, w - 2))
         y0 = int(np.clip(y_p - dim, 0, h - 2))
         x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
         y1 = int(np.clip(y_p + dim, y0 + 1, h - 1))
-        img = self.data[y0:y1, x0:x1]
-        self.region.setImage(img)
-        self.fit.setImage(img)
-        self.residuals.setImage(img)
+        img = self.data[y0:y1+1, x0:x1+1]
+        self.feature.data = img.flatten()
+        self.region.setImage()
+        self.fit.setImage(self.theory.hologram().reshape(dim*2, dim*2))
+        self.residuals.setImage(self.feature.residuals()
+                                .reshape(dim*2, dim*2)+1)
 
     @property
     def data(self):
@@ -269,10 +280,22 @@ class LMTool(QtWidgets.QMainWindow):
     @data.setter
     def data(self, data):
         self._data = data / self.background
+        mean = np.mean(data)
+        if round(mean) != 1:
+            self._data = self._data / mean 
         self.image.setImage(self._data)
         self.ui.x_p.setRange(0, data.shape[1])
         self.ui.y_p.setRange(0, data.shape[0])
         self.updateDataProfile()
+
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @coordinates.setter
+    def coordinates(self, coordinates):
+        self._coordinates = coordinates
+        self.theory.coordinates = coordinates
 
 
 def main():
