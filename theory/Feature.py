@@ -271,7 +271,7 @@ class Feature(object):
         result = self._minimizer.least_squares(**self.lm_kwargs)
         result.method = 'Nelder-Mead/least_squares hybrid'
         result.nfev = '{}+{}'.format(resultNM.nfev, result.nfev)
-        result.chis = resultNM.chis / result.nfree
+        result.amoeba_chi = resultNM.chis / result.nfree
         return result
 
 
@@ -312,7 +312,7 @@ if __name__ == '__main__':
     # ... and now fit
     result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
-    print("Reduced chi values from Amoeba fits {}".format(result.chis))
+    print("Reduced chi values from Amoeba fits {}".format(result.amoeba_chi))
     report_fit(result)
     # plot residuals
     resid = a.residuals().reshape(shape)
