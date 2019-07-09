@@ -4,7 +4,7 @@ from lmfit.minimizer import MinimizerResult
 
 
 def amoebas(objective, params, initial_simplex=None,
-            delta=.1, namoebas=2, xtol=1e-7, ftol=1e-7):
+            simplex_scale=.1, namoebas=2, xtol=1e-7, ftol=1e-7):
     x0 = []
     for param in params.keys():
         if params[param].vary:
@@ -12,12 +12,18 @@ def amoebas(objective, params, initial_simplex=None,
     x0 = np.array(x0)
     N = len(x0)
     if initial_simplex is None:
-        deltas = np.linspace(-delta, delta, namoebas)
+        if namoebas == 1:
+            scales = np.array([simplex_scale])
+        else:
+            scales = np.linspace(-simplex_scale,
+                                 simplex_scale*(1+simplex_scale*.1),
+                                 namoebas)
+        print(scales)
         initial_simplex = []
-        for delta in deltas:
-            if type(delta) is np.float64:
-                delta = np.full(N, delta)
-            simplex = np.vstack([x0, np.diag(delta) + x0])
+        for scale in scales:
+            if type(scale) is np.float64:
+                scale = np.full(N, scale)
+            simplex = np.vstack([x0, np.diag(scale) + x0])
             # Make initial guess centroid of simplex
             xbar = np.add.reduce(simplex[:-1], 0) / N
             simplex = simplex - (xbar - x0)
@@ -55,11 +61,11 @@ def amoebas(objective, params, initial_simplex=None,
 
 
 def amoeba(objective, params, initial_simplex=None,
-           delta=.1, xtol=1e-7, ftol=1e-7):
+           simplex_scale=.1, xtol=1e-7, ftol=1e-7):
     '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
     parameters = list(params.keys())
-    if type(delta) == list:
-        delta = np.array(delta)
+    if type(simplex_scale) == list:
+        simplex_scale = np.array(simplex_scale)
     # Raise exception if any params are unbounded
     for param in parameters:
         if params[param].vary:
@@ -86,17 +92,17 @@ def amoeba(objective, params, initial_simplex=None,
             offset.append(params[param].min)
     x0, scale, offset = (np.array(x0), np.array(scale), np.array(offset))
     # Normalize
-    if type(delta) is np.ndarray:
-        delta /= scale
+    if type(simplex_scale) is np.ndarray:
+        simplex_scale /= scale
     if type(xtol) is np.ndarray:
         xtol /= scale
     x0 = (x0 - offset) / scale
     # Initialize simplex
     N = len(x0)
     if initial_simplex is None:
-        if type(delta) is float:
-            delta = np.full(N, delta)
-        simplex = np.vstack([x0, np.diag(delta) + x0])
+        if type(simplex_scale) is float:
+            simplex_scale = np.full(N, simplex_scale)
+        simplex = np.vstack([x0, np.diag(simplex_scale) + x0])
         # Make initial guess centroid of simplex
         xbar = np.add.reduce(simplex[:-1], 0) / N
         simplex = simplex - (xbar - x0)
