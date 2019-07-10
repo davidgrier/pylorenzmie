@@ -5,8 +5,8 @@ import pickle
 import logging
 import numpy as np
 from lmfit import Parameters, Minimizer
-from Instrument import coordinates
-from LMHologram import LMHologram as Model
+from pylorenzmie.theory.Instrument import coordinates
+from pylorenzmie.theory.LMHologram import LMHologram as Model
 from pylorenzmie.fitting.minimizers import amoebas
 try:
     import cupy as cp
