@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import sys
 import pickle
+import logging
 import numpy as np
 from lmfit import Parameters, Minimizer
 from Instrument import coordinates
@@ -14,6 +15,9 @@ except ImportError:
     cp = None
 except cp.cuda.runtime.CUDARuntimeError:
     cp = None
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 sys.path.append('/home/group/endtoend/OOe2e/')
 
@@ -109,7 +113,8 @@ class Feature(object):
                                                          .05, .05]),
                               'namoebas': 1,
                               'ftol': 1e-2,
-                              'xtol': self.amoebaTol}
+                              'xtol': self.amoebaTol,
+                              'maxevals': int(1e3)}
         # Deserialize if needed
         self.deserialize(info)
         # Initialize a dummy hologram to start CuPy
@@ -125,6 +130,10 @@ class Feature(object):
     @data.setter
     def data(self, data):
         if type(data) is np.ndarray:
+            avg = np.mean(data)
+            if not np.isclose(avg, 1., rtol=0, atol=.05):
+                msg = "Mean of data ({:.02f}) is not near 1. Fit may not converge."
+                logger.warning(msg.format(avg))
             # Find indices where data is saturated or nan/inf
             self.saturated = np.where(data == np.max(data))[0]
             self.nan = np.append(np.where(np.isnan(data))[0],
@@ -190,6 +199,9 @@ class Feature(object):
         else:
             raise ValueError(
                 "method keyword must either be \'lm\', \'amoeba-lm\', or \'custom\'")
+        if not result.success:
+            msg = "Fit did not converge. Max number of function evaluations exceeded"
+            logging.warning(msg)
         return result
 
     def serialize(self, filename=None):
