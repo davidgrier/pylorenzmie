@@ -110,7 +110,7 @@ class Feature(object):
                           'verbose': 0}
         self.amoeba_kwargs = {'initial_simplex': None,
                               'simplex_scale': np.array([ 4., 4., 95.,
-                                                          0.48, 0.19],
+                                                          0.48, 0.19]),
                               'namoebas': 1,
                               'ftol': 1e-2,
                               'xtol': self.amoebaTol,
