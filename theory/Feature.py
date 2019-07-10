@@ -104,7 +104,7 @@ class Feature(object):
                           'x_scale': [1.e3, 1.e3, 1.e3,
                                       1.e4, 1.e5],
                           'xtol': 1.e-6, 'ftol': 1.e-3,
-                          'gtol': None,  # requires scipy 1.13
+                          'gtol': 1e-6,
                           'max_nfev': int(2e3),
                           'diff_step': 1e-5,
                           'verbose': 0}
