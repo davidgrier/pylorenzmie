@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(1062, 767)
+        MainWindow.resize(1161, 767)
         MainWindow.setWindowOpacity(1.0)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
@@ -115,6 +115,7 @@ class Ui_MainWindow(object):
         self.methodLayout.setSizeConstraint(QtWidgets.QLayout.SetDefaultConstraint)
         self.methodLayout.setObjectName("methodLayout")
         self.LMButton = QtWidgets.QRadioButton(self.optimizerFrame)
+        self.LMButton.setChecked(True)
         self.LMButton.setObjectName("LMButton")
         self.methodLayout.addWidget(self.LMButton)
         self.NMButton = QtWidgets.QRadioButton(self.optimizerFrame)
@@ -124,7 +125,7 @@ class Ui_MainWindow(object):
         self.verticalLayout.addWidget(self.optimizerFrame)
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
-        self.menubar.setGeometry(QtCore.QRect(0, 0, 1062, 20))
+        self.menubar.setGeometry(QtCore.QRect(0, 0, 1161, 20))
         self.menubar.setObjectName("menubar")
         self.menuFile = QtWidgets.QMenu(self.menubar)
         self.menuFile.setObjectName("menuFile")

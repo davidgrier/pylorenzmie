@@ -168,6 +168,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
         #self.ui.bbox.valueChanged['double'].connect(self.updateTheoryProfile)
+        self.ui.optimizeButton.clicked.connect(self.optimize)
 
     #
     # Slots for handling user interaction
@@ -204,6 +205,10 @@ class LMTool(QtWidgets.QMainWindow):
         x_p = [self.ui.x_p.value()]
         y_p = [self.ui.y_p.value()]
         self.overlay.setData(x_p, y_p)
+
+    @pyqtSlot()
+    def optimize(self):
+        print('connected')
 
     @pyqtSlot()
     def openFile(self, filename=None):
@@ -266,10 +271,16 @@ class LMTool(QtWidgets.QMainWindow):
         y0 = int(np.clip(y_p - dim, 0, h - 2))
         x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
         y1 = int(np.clip(y_p + dim, y0 + 1, h - 1))
-        img = self.data[y0:y1+1, x0:x1+1]
+        hol = self.theory.hologram().reshape(dim*2, dim*2)
+        img = self.data[y0:y1, x0:x1]
+        if img.shape != hol.shape:
+            s1 = img.shape[0] - hol.shape[0]
+            s2 = img.shape[1] - hol.shape[1]
+            img = self.data[y0:y1-s1, :]
+            img = img[:, x0:x1-s2]
         self.feature.data = img.flatten()
-        self.region.setImage()
-        self.fit.setImage(self.theory.hologram().reshape(dim*2, dim*2))
+        self.region.setImage(img)
+        self.fit.setImage(hol)
         self.residuals.setImage(self.feature.residuals()
                                 .reshape(dim*2, dim*2)+1)
 
