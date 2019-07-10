@@ -18,7 +18,6 @@ def amoebas(objective, params, initial_simplex=None,
             scales = np.linspace(-simplex_scale,
                                  simplex_scale*(1+simplex_scale*.1),
                                  namoebas)
-        print(scales)
         initial_simplex = []
         for scale in scales:
             if type(scale) is np.float64:
