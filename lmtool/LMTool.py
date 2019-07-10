@@ -175,12 +175,12 @@ class LMTool(QtWidgets.QMainWindow):
     #
     @pyqtSlot(int)
     def handleTabChanged(self, tab):
-        self.ui.a_p.fixed = (tab != 1)
-        self.ui.n_p.fixed = (tab != 1)
-        self.ui.k_p.fixed = (tab != 1)
-        self.ui.z_p.fixed = (tab != 1)
-        self.ui.x_p.fixed = (tab != 0)
-        self.ui.y_p.fixed = (tab != 0)
+        #self.ui.a_p.fixed = (tab != 1)
+        #self.ui.n_p.fixed = (tab != 1)
+        #self.ui.k_p.fixed = (tab != 1)
+        #self.ui.z_p.fixed = (tab != 1)
+        #self.ui.x_p.fixed = (tab != 0)
+        #self.ui.y_p.fixed = (tab != 0)
         if (tab == 1):
             self.updateDataProfile()
         if (tab == 2):
@@ -205,10 +205,31 @@ class LMTool(QtWidgets.QMainWindow):
         x_p = [self.ui.x_p.value()]
         y_p = [self.ui.y_p.value()]
         self.overlay.setData(x_p, y_p)
+        self.updateDataProfile()
 
     @pyqtSlot()
     def optimize(self):
-        print('connected')
+        self.updateFit()
+        #(xc, yc) = (self.theory.particle.x_p, self.theory.particle.y_p)
+        method = 'lm' if self.ui.LMButton.isChecked() else 'amoeba-lm'
+        for prop in self.feature.properties:
+            propUi = getattr(self.ui, prop)
+            self.feature.parameterVary[prop] = not propUi.fixed
+        self.feature.optimize(method=method)
+        #self.updateParameters()
+        for prop in self.feature.properties:
+            attrUi = getattr(self.ui, prop)
+            particle, instrument = (self.theory.particle,
+                                    self.theory.instrument)
+            if prop in particle.properties:
+                #if prop == 'x_p' or prop == 'y_p':
+                #    attrUi.setValue(attrUi.prop+
+                #                    (x_p-getattr(particle, prop))
+                #else:
+                attrUi.setValue(getattr(particle, prop))
+            elif prop in instrument.properties:
+                attrUi.setValue(getattr(instrument, prop))
+        
 
     @pyqtSlot()
     def openFile(self, filename=None):
@@ -252,6 +273,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.regionLower.setData(avg - std)
 
     def updateTheoryProfile(self):
+        self.coordinates = self._profileCoordinates
         xsmooth = np.linspace(0, self.maxrange - 1, 300)
         y = self.theory.hologram()
         t, c, k = splrep(self.coordinates, y)
@@ -264,9 +286,9 @@ class LMTool(QtWidgets.QMainWindow):
         x_p = self.ui.x_p.value()
         y_p = self.ui.y_p.value()
         h, w = self.data.shape
+        self.theory.particle.x_p = dim
+        self.theory.particle.y_p = dim
         self.coordinates = self._fitCoordinates
-        self.theory.particle.x_p = x_p
-        self.theory.particle.y_p = y_p
         x0 = int(np.clip(x_p - dim, 0, w - 2))
         y0 = int(np.clip(y_p - dim, 0, h - 2))
         x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
@@ -276,8 +298,7 @@ class LMTool(QtWidgets.QMainWindow):
         if img.shape != hol.shape:
             s1 = img.shape[0] - hol.shape[0]
             s2 = img.shape[1] - hol.shape[1]
-            img = self.data[y0:y1-s1, :]
-            img = img[:, x0:x1-s2]
+            img = self.data[y0:y1-s1, x0:x1-s2]
         self.feature.data = img.flatten()
         self.region.setImage(img)
         self.fit.setImage(hol)

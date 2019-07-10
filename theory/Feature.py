@@ -74,15 +74,15 @@ class Feature(object):
         self._minimizer = Minimizer(self._loss, None)
         self._minimizer.nan_policy = 'omit'
         # Initialize options for fitting
-        self._properties = list(self.model.particle.properties.keys())
-        self._properties.extend(list(self.model.instrument.properties.keys()))
-        self._properties = tuple(self._properties)
-        N = range(len(self._properties))
-        self.parameterVary = dict(zip(self._properties,
+        self.properties = list(self.model.particle.properties.keys())
+        self.properties.extend(list(self.model.instrument.properties.keys()))
+        self.properties = tuple(self.properties)
+        N = range(len(self.properties))
+        self.parameterVary = dict(zip(self.properties,
                                       [True for i in N]))
-        self.amoebaBounds = dict(zip(self._properties,
+        self.amoebaBounds = dict(zip(self.properties,
                                      [(-np.inf, np.inf) for i in N]))
-        self.amoebaTol = dict(zip(self._properties,
+        self.amoebaTol = dict(zip(self.properties,
                                   [0. for i in N]))
         # Default settings
         self.parameterVary['k_p'] = False
@@ -183,7 +183,7 @@ class Feature(object):
         '''
         params = Parameters()
         particle, instrument = self.model.particle, self.model.instrument
-        for key in self._properties:
+        for key in self.properties:
             if hasattr(particle, key):
                 params.add(key, getattr(particle, key))
             else:

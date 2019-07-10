@@ -38,7 +38,8 @@
 	"text": "k<sub>p</sub>",
 	"range": [0.0, 10.0],
 	"step": 0.1,
-	"value": 0.0
+	"value": 0.0,
+	"fixed": true
     },
     "x_p": {
 	"text": "x<sub>p</sub>",
