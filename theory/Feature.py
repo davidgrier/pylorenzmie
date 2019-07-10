@@ -99,14 +99,14 @@ class Feature(object):
         self.lm_kwargs = {'method': 'lm',
                           'x_scale': [1.e3, 1.e3, 1.e3,
                                       1.e4, 1.e5],
-                          'xtol': 1.e-6, 'ftol': .001,
+                          'xtol': 1.e-6, 'ftol': 1.e-3,
                           'gtol': None,  # requires scipy 1.13
                           'max_nfev': int(2e3),
-                          'diff_step': .00001,
+                          'diff_step': 1e-5,
                           'verbose': 0}
         self.amoeba_kwargs = {'initial_simplex': None,
-                              'simplex_scale': np.array([1., 1., 100.,
-                                                         .5, .3]),
+                              'simplex_scale': np.array([1., 1., 30.,
+                                                         .05, .05]),
                               'namoebas': 1,
                               'ftol': 1e-2,
                               'xtol': self.amoebaTol}

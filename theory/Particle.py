@@ -32,7 +32,7 @@ class Particle(object):
         Returns the Mie scattering coefficients
     '''
 
-    def __init__(self, r_p=[0, 0, 0]):
+    def __init__(self, r_p=[0, 0, 100]):
         '''
         Parameters
         ----------
