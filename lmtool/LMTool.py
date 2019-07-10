@@ -174,16 +174,6 @@ class LMTool(QtWidgets.QMainWindow):
         #self.ui.bbox.valueChanged['double'].connect(self.updateTheoryProfile)
         self.ui.optimizeButton.clicked.connect(self.optimize)
 
-    def disconnectSignals(self):
-        self.ui.wavelength.valueChanged['double'].disconnect(
-            self.updateInstrument)
-        self.ui.magnification.valueChanged['double'].disconnect(
-            self.updateInstrument)
-        self.ui.n_m.valueChanged['double'].disconnect(self.updateInstrument)
-        self.ui.a_p.valueChanged['double'].disconnect(self.updateParticle)
-        self.ui.n_p.valueChanged['double'].disconnect(self.updateParticle)
-        self.ui.z_p.valueChanged['double'].disconnect(self.updateParticle)
-
     #
     # Slots for handling user interaction
     #
@@ -237,7 +227,16 @@ class LMTool(QtWidgets.QMainWindow):
         report_fit(result)
 
     def updateParameterUi(self, x_p, y_p):
-        self.disconnectSignals()
+        # Disconnect
+        self.ui.wavelength.valueChanged['double'].disconnect(
+            self.updateInstrument)
+        self.ui.magnification.valueChanged['double'].disconnect(
+            self.updateInstrument)
+        self.ui.n_m.valueChanged['double'].disconnect(self.updateInstrument)
+        self.ui.a_p.valueChanged['double'].disconnect(self.updateParticle)
+        self.ui.n_p.valueChanged['double'].disconnect(self.updateParticle)
+        self.ui.z_p.valueChanged['double'].disconnect(self.updateParticle)
+        # Update
         particle, instrument = (self.theory.particle,
                                 self.theory.instrument)
         for prop in self.feature.properties:
@@ -250,7 +249,15 @@ class LMTool(QtWidgets.QMainWindow):
                     attrUi.setValue(getattr(particle, prop))
             elif prop in instrument.properties:
                 attrUi.setValue(getattr(instrument, prop))
-        self.connectSignals()
+        # Reconnect
+        self.ui.wavelength.valueChanged['double'].connect(
+            self.updateInstrument)
+        self.ui.magnification.valueChanged['double'].connect(
+            self.updateInstrument)
+        self.ui.n_m.valueChanged['double'].connect(self.updateInstrument)
+        self.ui.a_p.valueChanged['double'].connect(self.updateParticle)
+        self.ui.n_p.valueChanged['double'].connect(self.updateParticle)
+        self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
         
 
     @pyqtSlot()

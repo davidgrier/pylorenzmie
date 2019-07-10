@@ -197,7 +197,6 @@ class Feature(object):
             if self.parameterVary[key]:
                 x_scale.append(self.x_scale[key])
         self.lm_kwargs['x_scale'] = x_scale
-        print(x_scale)
         self._minimizer.params = params
         if method == 'lm':
             result = self._minimizer.least_squares(**self.lm_kwargs)

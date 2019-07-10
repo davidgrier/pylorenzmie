@@ -23,7 +23,7 @@ def amoebas(objective, params, initial_simplex=None, maxevals=int(1e3),
             scales = [np.array(simplex_scale)]
         else:
             scales = np.linspace(-simplex_scale,
-                                 simplex_scale*(1+simplex_scale*.1),
+                                 simplex_scale,
                                  namoebas)
         initial_simplex = []
         for scale in scales:
