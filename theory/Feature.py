@@ -89,28 +89,32 @@ class Feature(object):
         self.parameterVary['n_m'] = False
         self.parameterVary['wavelength'] = False
         self.parameterVary['magnification'] = False
-        self.amoebaTol['x_p'] = 1.
-        self.amoebaTol['y_p'] = 1.
+        self.amoebaTol['x_p'] = 2.
+        self.amoebaTol['y_p'] = 2.
         self.amoebaTol['z_p'] = 15.
-        self.amoebaTol['a_p'] = .05
+        self.amoebaTol['a_p'] = .4
         self.amoebaTol['n_p'] = .025
         self.amoebaBounds["x_p"] = (-20, 20)
         self.amoebaBounds["y_p"] = (-20, 20)
-        self.amoebaBounds["z_p"] = (50., 1000.)
+        self.amoebaBounds["z_p"] = (20., 1000.)
         self.amoebaBounds["a_p"] = (.2, 5.)
-        self.amoebaBounds["n_p"] = (1.1, 3.)
+        self.amoebaBounds["n_p"] = (1., 3.)
         # Set default kwargs to pass to levenberg and nelder
+        xscale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
+        self.x_scale = dict(zip(self.properties,
+                                  xscale))
         self.lm_kwargs = {'method': 'lm',
-                          'x_scale': [1.e3, 1.e3, 1.e3,
-                                      1.e4, 1.e5],
+                          'x_scale': self.x_scale,
                           'xtol': 1.e-6, 'ftol': 1.e-3,
                           'gtol': 1e-6,
                           'max_nfev': int(2e3),
                           'diff_step': 1e-5,
                           'verbose': 0}
+        simplex_scale = -np.array([4., 4., 95., 0.48, 0.19,
+                                  .2, .1, .1, .05])
+        self.simplex_scale = dict(zip(self.properties, simplex_scale))
         self.amoeba_kwargs = {'initial_simplex': None,
-                              'simplex_scale': np.array([ 4., 4., 95.,
-                                                          0.48, 0.19]),
+                              'simplex_scale': self.simplex_scale,
                               'namoebas': 1,
                               'ftol': 1e-2,
                               'xtol': self.amoebaTol,
@@ -183,12 +187,17 @@ class Feature(object):
         '''
         params = Parameters()
         particle, instrument = self.model.particle, self.model.instrument
+        x_scale = []
         for key in self.properties:
             if hasattr(particle, key):
                 params.add(key, getattr(particle, key))
             else:
                 params.add(key, getattr(instrument, key))
             params[key].vary = self.parameterVary[key]
+            if self.parameterVary[key]:
+                x_scale.append(self.x_scale[key])
+        self.lm_kwargs['x_scale'] = x_scale
+        print(x_scale)
         self._minimizer.params = params
         if method == 'lm':
             result = self._minimizer.least_squares(**self.lm_kwargs)
@@ -199,6 +208,7 @@ class Feature(object):
         else:
             raise ValueError(
                 "method keyword must either be \'lm\', \'amoeba-lm\', or \'custom\'")
+        self.lm_kwargs['x_scale'] = self.x_scale
         if not result.success:
             msg = "Fit did not converge. Max number of function evaluations exceeded"
             logging.warning(msg)
