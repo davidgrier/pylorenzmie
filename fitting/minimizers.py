@@ -3,7 +3,7 @@ import multiprocessing as mp
 from lmfit.minimizer import MinimizerResult
 
 
-def amoebas(objective, params, initial_simplex=None,
+def amoebas(objective, params, initial_simplex=None, maxevals=int(1e3),
             simplex_scale=.1, namoebas=2, xtol=1e-7, ftol=1e-7):
     x0 = []
     for param in params.keys():
@@ -50,7 +50,8 @@ def amoebas(objective, params, initial_simplex=None,
     for idx, simplex in enumerate(initial_simplex):
         result = amoeba(objective, params,
                         initial_simplex=simplex,
-                        xtol=xtol, ftol=ftol)
+                        xtol=xtol, ftol=ftol,
+                        maxevals=maxevals)
         if result.chisqr < minchi:
             minresult = result
             minchi = result.chisqr
@@ -59,7 +60,7 @@ def amoebas(objective, params, initial_simplex=None,
     return minresult
 
 
-def amoeba(objective, params, initial_simplex=None,
+def amoeba(objective, params, maxevals=int(1e3), initial_simplex=None,
            simplex_scale=.1, xtol=1e-7, ftol=1e-7):
     '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
     parameters = list(params.keys())
@@ -112,7 +113,7 @@ def amoeba(objective, params, initial_simplex=None,
     # Initialize algorithm
     N = len(x0)
     clip = np.clip
-    maxevals = 1000
+    maxevals = maxevals
     neval = 1
     niter = 1
     one2np1 = list(range(1, N + 1))
