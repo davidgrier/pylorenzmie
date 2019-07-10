@@ -4,8 +4,9 @@ import sys
 import pickle
 import numpy as np
 from lmfit import Parameters, Minimizer
+from Instrument import coordinates
+from LMHologram import LMHologram as Model
 from pylorenzmie.fitting.minimizers import amoebas
-from pylorenzmie.theory.LMHologram import LMHologram as Model
 try:
     import cupy as cp
     cp.cuda.Device()
@@ -105,12 +106,16 @@ class Feature(object):
                           'verbose': 0}
         self.amoeba_kwargs = {'initial_simplex': None,
                               'simplex_scale': np.array([1., 1., 100.,
-                                                 .5, .3]),
+                                                         .5, .3]),
                               'namoebas': 1,
                               'ftol': 1e-2,
                               'xtol': self.amoebaTol}
         # Deserialize if needed
         self.deserialize(info)
+        # Initialize a dummy hologram to start CuPy
+        self.model.coordinates = coordinates((5, 5))
+        self.model.hologram()
+        self.model.coordinates = self.coordinates
 
     @property
     def data(self):
@@ -306,7 +311,7 @@ if __name__ == '__main__':
     p.z_p += np.random.normal(0., 20, 1)
     p.a_p += np.random.normal(0., 0.05, 1)
     p.n_p += np.random.normal(0., 0.08, 1)
-    print(p)
+    print("Initial guess:\n{}".format(p))
     # set settings
     start = time()
     # ... and now fit
