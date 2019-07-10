@@ -5,6 +5,13 @@ from lmfit.minimizer import MinimizerResult
 
 def amoebas(objective, params, initial_simplex=None, maxevals=int(1e3),
             simplex_scale=.1, namoebas=2, xtol=1e-7, ftol=1e-7):
+    parameters = list(params.keys())
+    temp = []
+    if type(simplex_scale) == dict:
+        for param in parameters:
+            if params[param].vary:
+                temp.append(simplex_scale[param])
+        simplex_scale = np.array(temp)
     x0 = []
     for param in params.keys():
         if params[param].vary:
@@ -13,7 +20,7 @@ def amoebas(objective, params, initial_simplex=None, maxevals=int(1e3),
     N = len(x0)
     if initial_simplex is None:
         if namoebas == 1:
-            scales = np.array([simplex_scale])
+            scales = [np.array(simplex_scale)]
         else:
             scales = np.linspace(-simplex_scale,
                                  simplex_scale*(1+simplex_scale*.1),
