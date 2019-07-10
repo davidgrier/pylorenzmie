@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1062</width>
+    <width>1161</width>
     <height>767</height>
    </rect>
   </property>
@@ -270,6 +270,9 @@
            <property name="text">
             <string>Levenberg-Marquardt</string>
            </property>
+           <property name="checked">
+            <bool>true</bool>
+           </property>
           </widget>
          </item>
          <item>
@@ -294,7 +297,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1062</width>
+     <width>1161</width>
      <height>20</height>
     </rect>
    </property>
