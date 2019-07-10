@@ -8,11 +8,15 @@ from pylorenzmie.lmtool.LMTool_Ui import Ui_MainWindow
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.Feature import Feature
 import pylorenzmie
+from lmfit import report_fit
 import pyqtgraph as pg
 import numpy as np
 import cv2
 import json
 from scipy.interpolate import BSpline, splrep
+import logging
+logger = logging.getLogger('LMTool')
+logger.setLevel(logging.INFO)
 
 
 def aziavg(data, center):
@@ -170,6 +174,16 @@ class LMTool(QtWidgets.QMainWindow):
         #self.ui.bbox.valueChanged['double'].connect(self.updateTheoryProfile)
         self.ui.optimizeButton.clicked.connect(self.optimize)
 
+    def disconnectSignals(self):
+        self.ui.wavelength.valueChanged['double'].disconnect(
+            self.updateInstrument)
+        self.ui.magnification.valueChanged['double'].disconnect(
+            self.updateInstrument)
+        self.ui.n_m.valueChanged['double'].disconnect(self.updateInstrument)
+        self.ui.a_p.valueChanged['double'].disconnect(self.updateParticle)
+        self.ui.n_p.valueChanged['double'].disconnect(self.updateParticle)
+        self.ui.z_p.valueChanged['double'].disconnect(self.updateParticle)
+
     #
     # Slots for handling user interaction
     #
@@ -209,26 +223,34 @@ class LMTool(QtWidgets.QMainWindow):
 
     @pyqtSlot()
     def optimize(self):
+        logger.info("Starting optimization...")
         self.updateFit()
-        #(xc, yc) = (self.theory.particle.x_p, self.theory.particle.y_p)
         method = 'lm' if self.ui.LMButton.isChecked() else 'amoeba-lm'
         for prop in self.feature.properties:
             propUi = getattr(self.ui, prop)
             self.feature.parameterVary[prop] = not propUi.fixed
-        self.feature.optimize(method=method)
-        #self.updateParameters()
+        (x_old, y_old) = (self.theory.particle.x_p, self.theory.particle.y_p)
+        result = self.feature.optimize(method=method)
+        self.updateParameterUi(x_old, y_old)
+        self.updateFit()
+        logger.info("Finished!")
+        report_fit(result)
+
+    def updateParameterUi(self, x_p, y_p):
+        self.disconnectSignals()
+        particle, instrument = (self.theory.particle,
+                                self.theory.instrument)
         for prop in self.feature.properties:
             attrUi = getattr(self.ui, prop)
-            particle, instrument = (self.theory.particle,
-                                    self.theory.instrument)
             if prop in particle.properties:
-                #if prop == 'x_p' or prop == 'y_p':
-                #    attrUi.setValue(attrUi.prop+
-                #                    (x_p-getattr(particle, prop))
-                #else:
-                attrUi.setValue(getattr(particle, prop))
+                if prop == 'x_p' or prop == 'y_p':
+                    delta = getattr(particle, prop)-eval(prop)
+                    attrUi.setValue(attrUi.value()+delta)
+                else:
+                    attrUi.setValue(getattr(particle, prop))
             elif prop in instrument.properties:
                 attrUi.setValue(getattr(instrument, prop))
+        self.connectSignals()
         
 
     @pyqtSlot()
@@ -274,6 +296,7 @@ class LMTool(QtWidgets.QMainWindow):
 
     def updateTheoryProfile(self):
         self.coordinates = self._profileCoordinates
+        self.theory.particle.x_p, self.theory.particle.y_p = (0, 0)
         xsmooth = np.linspace(0, self.maxrange - 1, 300)
         y = self.theory.hologram()
         t, c, k = splrep(self.coordinates, y)
