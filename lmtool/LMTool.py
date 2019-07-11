@@ -237,6 +237,8 @@ class LMTool(QtWidgets.QMainWindow):
         result = self.feature.optimize(method=method)
         self.updateParameterUi(x_old, y_old)
         self.updateFit()
+        self.updateDataProfile()
+        self.updateTheoryProfile()
         logger.info("Finished!")
         report_fit(result)
 
@@ -329,13 +331,13 @@ class LMTool(QtWidgets.QMainWindow):
         x_p = self.ui.x_p.value()
         y_p = self.ui.y_p.value()
         h, w = self.data.shape
-        self.theory.particle.x_p = dim
-        self.theory.particle.y_p = dim
         self.coordinates = self._fitCoordinates
         x0 = int(np.clip(x_p - dim, 0, w - 2))
         y0 = int(np.clip(y_p - dim, 0, h - 2))
         x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
         y1 = int(np.clip(y_p + dim, y0 + 1, h - 1))
+        self.theory.particle.x_p = x_p - x0
+        self.theory.particle.y_p = y_p - y0
         hol = self.theory.hologram().reshape(dim*2, dim*2)
         img = self.data[y0:y1, x0:x1]
         if img.shape != hol.shape:
