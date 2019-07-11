@@ -68,7 +68,7 @@ def amoebas(objective, params, initial_simplex=None, maxevals=int(1e3),
 
 
 def amoeba(objective, params, maxevals=int(1e3), initial_simplex=None,
-           simplex_scale=.1, xtol=1e-7, ftol=1e-7):
+           simplex_scale=.1, xtol=1e-7, ftol=1e-7, adaptive=True):
     '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
     parameters = list(params.keys())
     if type(simplex_scale) == list:
@@ -134,6 +134,17 @@ def amoeba(objective, params, maxevals=int(1e3), initial_simplex=None,
     evals = np.take(evals, idxs, 0)
     simplex = np.take(simplex, idxs, 0)
 
+    if adaptive:
+        dim = float(len(x0))
+        rho = 1
+        chi = 1 + 2/dim
+        psi = 0.75 - 1/(2*dim)
+        sigma = 1 - 1/dim
+    else:
+        rho = 1
+        chi = 2
+        psi = 0.5
+        sigma = 0.5
     rho = 1
     chi = 2.
     psi = 0.5
