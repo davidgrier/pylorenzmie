@@ -155,7 +155,8 @@ def amoeba(objective, params, maxevals=int(1e3), initial_simplex=None,
         # Check if reflection is better than best estimate
         if fxr < evals[0]:
             # If so, reflect double and see if that's even better
-            xe = clip((1 + rho * chi) * xbar - rho * chi * simplex[-1], 0.01, 1)
+            xe = clip((1 + rho * chi) * xbar - rho *
+                      chi * simplex[-1], 0.01, 1)
             params = _updateParams(xe, params,
                                    scale, offset)
             fxe = objective(params)
@@ -173,7 +174,8 @@ def amoeba(objective, params, maxevals=int(1e3), initial_simplex=None,
             else:
                 # If reflection is not better, contract.
                 if fxr < evals[-1]:
-                    xc = clip((1 + psi * rho) * xbar - psi * rho * simplex[-1], 0.01, 1)
+                    xc = clip((1 + psi * rho) * xbar - psi *
+                              rho * simplex[-1], 0.01, 1)
                     params = _updateParams(xc, params,
                                            scale, offset)
                     fxc = objective(params)
@@ -197,7 +199,8 @@ def amoeba(objective, params, maxevals=int(1e3), initial_simplex=None,
                         doshrink = 1
                 if doshrink:
                     for j in one2np1:
-                        simplex[j] = simplex[0] + sigma * (simplex[j] - simplex[0])
+                        simplex[j] = simplex[0] + sigma * \
+                            (simplex[j] - simplex[0])
                         simplex[j] = clip(simplex[j], 0.01, 1)
                         params = _updateParams(simplex[j], params,
                                                scale, offset)
@@ -206,7 +209,7 @@ def amoeba(objective, params, maxevals=int(1e3), initial_simplex=None,
         idxs = np.argsort(evals)
         simplex = np.take(simplex, idxs, 0)
         evals = np.take(evals, idxs, 0)
-        
+
         niter += 1
     params = _updateParams(simplex[0], params,
                            scale, offset)
@@ -229,4 +232,3 @@ def _updateParams(xn, params, scale, offset):
         if params[param].vary:
             params[param].value = x[idx]
     return params
-
