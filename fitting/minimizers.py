@@ -239,7 +239,10 @@ def amoeba(objective, params, maxevals=int(1e3), initial_simplex=None,
 def _updateParams(xn, params, scale, offset):
     x = xn * scale + offset
     parameters = list(params.keys())
-    for idx, param in enumerate(parameters):
+    varying = []
+    for param in parameters:
         if params[param].vary:
-            params[param].value = x[idx]
+            varying.append(param)
+    for idx in range(len(x)):
+        params[varying[idx]].value = x[idx]
     return params
