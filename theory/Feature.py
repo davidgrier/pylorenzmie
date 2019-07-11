@@ -94,15 +94,19 @@ class Feature(object):
         self.amoebaTol['z_p'] = 15.
         self.amoebaTol['a_p'] = .4
         self.amoebaTol['n_p'] = .025
-        self.amoebaBounds["x_p"] = (-20, 20)
-        self.amoebaBounds["y_p"] = (-20, 20)
-        self.amoebaBounds["z_p"] = (20., 1000.)
-        self.amoebaBounds["a_p"] = (.2, 5.)
-        self.amoebaBounds["n_p"] = (1., 3.)
+        self.amoebaBounds['x_p'] = (-20, 20)
+        self.amoebaBounds['y_p'] = (-20, 20)
+        self.amoebaBounds['z_p'] = (20., 1000.)
+        self.amoebaBounds['a_p'] = (.2, 5.)
+        self.amoebaBounds['n_p'] = (1.0, 3.)
+        self.amoebaBounds['k_p'] = (0.0, 5.0)
+        self.amoebaBounds['n_m'] = (1., 2.)
+        self.amoebaBounds['wavelength'] = (.400, .800)
+        self.amoebaBounds['magnification'] = (.001, .14)
         # Set default kwargs to pass to levenberg and nelder
         xscale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
         self.x_scale = dict(zip(self.properties,
-                                  xscale))
+                                xscale))
         self.lm_kwargs = {'method': 'lm',
                           'x_scale': self.x_scale,
                           'xtol': 1.e-6, 'ftol': 1.e-3,
@@ -111,7 +115,7 @@ class Feature(object):
                           'diff_step': 1e-5,
                           'verbose': 0}
         simplex_scale = -np.array([4., 4., 95., 0.48, 0.19,
-                                  .2, .1, .1, .05])
+                                   .2, .1, .1, .05])
         self.simplex_scale = dict(zip(self.properties, simplex_scale))
         self.amoeba_kwargs = {'initial_simplex': None,
                               'simplex_scale': self.simplex_scale,
@@ -331,7 +335,7 @@ if __name__ == '__main__':
     p.r_p += np.random.normal(0., 1, 3)
     p.z_p += np.random.normal(0., 20, 1)
     p.a_p += np.random.normal(0., 0.05, 1)
-    p.n_p += np.random.normal(0., 0.08, 1)
+    p.n_p += np.random.normal(0., 0.05, 1)
     print("Initial guess:\n{}".format(p))
     # set settings
     start = time()
