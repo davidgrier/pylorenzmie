@@ -54,7 +54,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.maxrange = int(self.ui.bbox.value() // 2)
         self._profileCoordinates = np.arange(self.maxrange)
         self._fitCoordinates = coordinates((self.maxrange*2,
-                                           self.maxrange*2))
+                                            self.maxrange*2))
         self._coordinates = self._profileCoordinates
         self.setupImageTab()
         self.setupProfileTab()
@@ -171,7 +171,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.x_p.valueChanged['double'].connect(self.updateRp)
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
-        #self.ui.bbox.valueChanged['double'].connect(self.updateTheoryProfile)
+        self.ui.bbox.valueChanged['double'].connect(self.updateBBox)
         self.ui.optimizeButton.clicked.connect(self.optimize)
 
     #
@@ -203,6 +203,8 @@ class LMTool(QtWidgets.QMainWindow):
         self.theory.particle.n_p = self.ui.n_p.value()
         self.theory.particle.z_p = self.ui.z_p.value()
         self.updateTheoryProfile()
+        if self.ui.tabs.currentIndex() == 2:
+            self.updateFit()
 
     @pyqtSlot(float)
     def updateRp(self, r_p=0):
@@ -210,6 +212,18 @@ class LMTool(QtWidgets.QMainWindow):
         y_p = [self.ui.y_p.value()]
         self.overlay.setData(x_p, y_p)
         self.updateDataProfile()
+        if self.ui.tabs.currentIndex() == 2:
+            self.updateFit()
+
+    @pyqtSlot(float)
+    def updateBBox(self, count):
+        self.maxrange = int(self.ui.bbox.value() / 2)
+        self._profileCoordinates = np.arange(self.maxrange)
+        self._fitCoordinates = coordinates((self.maxrange*2,
+                                            self.maxrange*2))
+        self.updateDataProfile()
+        self.updateTheoryProfile()
+        self.updateFit()
 
     @pyqtSlot()
     def optimize(self):
@@ -258,7 +272,6 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.a_p.valueChanged['double'].connect(self.updateParticle)
         self.ui.n_p.valueChanged['double'].connect(self.updateParticle)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
-        
 
     @pyqtSlot()
     def openFile(self, filename=None):
@@ -344,10 +357,11 @@ class LMTool(QtWidgets.QMainWindow):
         self._data = data / self.background
         mean = np.mean(data)
         if round(mean) != 1:
-            self._data = self._data / mean 
+            self._data = self._data / mean
         self.image.setImage(self._data)
-        self.ui.x_p.setRange(0, data.shape[1])
-        self.ui.y_p.setRange(0, data.shape[0])
+        self.ui.x_p.setRange(0, data.shape[1]-1)
+        self.ui.y_p.setRange(0, data.shape[0]-1)
+        self.ui.bbox.setRange(0, min(data.shape[0]-1, data.shape[1]-1))
         self.updateDataProfile()
 
     @property
