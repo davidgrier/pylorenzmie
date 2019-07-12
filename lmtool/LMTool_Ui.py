@@ -167,7 +167,7 @@ class Ui_MainWindow(object):
         self.y_p.setStatusTip(_translate("MainWindow", "y coordinate [pixel]"))
         self.x_p.setStatusTip(_translate("MainWindow", "x coordinate [pixel]"))
         self.wavelength.setStatusTip(_translate("MainWindow", "Wavelength of illumination [micrometers]"))
-        self.bbox.setStatusTip(_translate("MainWindow", "Bounding box height"))
+        self.bbox.setStatusTip(_translate("MainWindow", "Bounding box size [pixels]"))
         self.optimizeButton.setStatusTip(_translate("MainWindow", "Optimize parameters"))
         self.optimizeButton.setText(_translate("MainWindow", "Optimize"))
         self.LMButton.setStatusTip(_translate("MainWindow", "Use Levenberg-Marquardt optimization"))

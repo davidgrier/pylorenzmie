@@ -144,6 +144,7 @@ class LMTool(QtWidgets.QMainWindow):
                 prop.setValue(setting['value'])
             if 'fixed' in setting:
                 prop.fixed = setting['fixed']
+        self.ui.bbox.checkbox.hide()
 
     def setupTheory(self):
         self.feature = Feature()

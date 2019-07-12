@@ -64,7 +64,8 @@ class QParameterWidget(QtWidgets.QFrame):
                  minimum=0,
                  maximum=100,
                  value=50,
-                 decimals=3, **kwargs):
+                 decimals=3,
+                 **kwargs):
         super(QParameterWidget, self).__init__(parent, **kwargs)
         self.setupUI()
         self.setupAPI()
@@ -87,9 +88,8 @@ class QParameterWidget(QtWidgets.QFrame):
         self.layout.setVerticalSpacing(0)
         self.layout.addWidget(self.label, 0, 0)
         self.layout.addWidget(self.spinbox, 0, 1)
-        self.layout.addWidget(self.checkbox, 0, 2)
         self.layout.addWidget(self.slider, 1, 0, 1, 3)
-
+        self.layout.addWidget(self.checkbox, 0, 2)
         self.spinbox.editingFinished.connect(self.updateValues)
         self.slider.valueChanged['double'].connect(self.spinbox.setValue)
         self.checkbox.stateChanged.connect(self.fixValue)
