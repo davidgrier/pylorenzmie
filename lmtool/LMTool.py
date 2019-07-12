@@ -125,7 +125,8 @@ class LMTool(QtWidgets.QMainWindow):
         with open(folder+'/LMTool.json', 'r') as file:
             settings = json.load(file)
         names = ['wavelength', 'magnification', 'n_m',
-                 'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p', 'bbox']
+                 'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p',
+                 'bbox', 'noise']
         for name in names:
             prop = getattr(self.ui, name)
             setting = settings[name]
@@ -145,6 +146,7 @@ class LMTool(QtWidgets.QMainWindow):
             if 'fixed' in setting:
                 prop.fixed = setting['fixed']
         self.ui.bbox.checkbox.hide()
+        self.ui.noise.checkbox.hide()
 
     def setupTheory(self):
         self.feature = Feature()
@@ -173,6 +175,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
         self.ui.bbox.valueChanged['double'].connect(self.updateBBox)
+        self.ui.noise.valueChanged['double'].connect(self.updateNoise)
         self.ui.optimizeButton.clicked.connect(self.optimize)
 
     #
@@ -226,6 +229,10 @@ class LMTool(QtWidgets.QMainWindow):
         self.updateDataProfile()
         self.updateTheoryProfile()
         self.updateFit()
+
+    @pyqtSlot(float)
+    def updateNoise(self, count):
+        self.feature.noise = self.ui.noise.value() / 100.
 
     @pyqtSlot()
     def optimize(self):
@@ -359,7 +366,7 @@ class LMTool(QtWidgets.QMainWindow):
     @data.setter
     def data(self, data):
         self._data = data / self.background
-        mean = np.mean(data)
+        mean = np.mean(self._data)
         if round(mean) != 1:
             self._data = self._data / mean
         self.image.setImage(self._data)

@@ -221,17 +221,34 @@
         <number>0</number>
        </property>
        <item>
-        <widget class="QParameterWidget" name="bbox">
-         <property name="statusTip">
-          <string>Bounding box size [pixels]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
+        <layout class="QVBoxLayout" name="tuningLayout">
+         <item>
+          <widget class="QParameterWidget" name="bbox">
+           <property name="statusTip">
+            <string>Bounding box size [pixels]</string>
+           </property>
+           <property name="frameShape">
+            <enum>QFrame::Panel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Sunken</enum>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QParameterWidget" name="noise">
+           <property name="statusTip">
+            <string>Noise level</string>
+           </property>
+           <property name="frameShape">
+            <enum>QFrame::Panel</enum>
+           </property>
+           <property name="frameShadow">
+            <enum>QFrame::Sunken</enum>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
        <item>
         <widget class="QPushButton" name="optimizeButton">
