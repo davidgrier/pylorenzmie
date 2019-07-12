@@ -264,5 +264,5 @@ def _updateParams(x, params, bounds, scale, offset):
             penalize = True
         if bounds[varying[idx]][0] > params[varying[idx]].value:
             penalize = True
-    print(penalize)
+    # print(penalize)
     return params, penalize
