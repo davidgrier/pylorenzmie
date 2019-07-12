@@ -7,7 +7,8 @@ import numpy as np
 from lmfit import Parameters, Minimizer
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
-from pylorenzmie.fitting.minimizers import amoebas
+#from pylorenzmie.fitting.minimizers import amoebas
+from pylorenzmie.fitting.minimizers import amoeba
 try:
     import cupy as cp
     cp.cuda.Device()
@@ -80,8 +81,10 @@ class Feature(object):
         N = range(len(self.properties))
         self.parameterVary = dict(zip(self.properties,
                                       [True for i in N]))
+        self.amoebaAbsoluteBounds = dict(zip(self.properties,
+                                             [(-np.inf, np.inf) for i in N]))
         self.amoebaBounds = dict(zip(self.properties,
-                                     [(-np.inf, np.inf) for i in N]))
+                                     [(-np.inf, np.inf) for i in N]))  # centered around initial guess
         self.amoebaTol = dict(zip(self.properties,
                                   [0. for i in N]))
         # Default settings
@@ -94,15 +97,24 @@ class Feature(object):
         self.amoebaTol['z_p'] = 15.
         self.amoebaTol['a_p'] = .4
         self.amoebaTol['n_p'] = .025
-        self.amoebaBounds['x_p'] = (-20, 20)
-        self.amoebaBounds['y_p'] = (-20, 20)
-        self.amoebaBounds['z_p'] = (20., 1000.)
-        self.amoebaBounds['a_p'] = (.2, 5.)
-        self.amoebaBounds['n_p'] = (1.0, 3.)
-        self.amoebaBounds['k_p'] = (0.0, 5.0)
-        self.amoebaBounds['n_m'] = (1., 2.)
-        self.amoebaBounds['wavelength'] = (.400, .800)
-        self.amoebaBounds['magnification'] = (.001, .14)
+        self.amoebaAbsoluteBounds['x_p'] = (-20, 20)
+        self.amoebaAbsoluteBounds['y_p'] = (-20, 20)
+        self.amoebaAbsoluteBounds['z_p'] = (20., 1000.)
+        self.amoebaAbsoluteBounds['a_p'] = (.2, 5.)
+        self.amoebaAbsoluteBounds['n_p'] = (1.32, 3.)
+        self.amoebaAbsoluteBounds['k_p'] = (0.0, 5.0)
+        self.amoebaAbsoluteBounds['n_m'] = (1., 2.)
+        self.amoebaAbsoluteBounds['wavelength'] = (.200, 1.100)
+        self.amoebaAbsoluteBounds['magnification'] = (.001, .140)
+        self.amoebaBounds['x_p'] = (-10., 10.)
+        self.amoebaBounds['y_p'] = (-10., 10.)
+        self.amoebaBounds['z_p'] = (-10., 10.)
+        self.amoebaBounds['a_p'] = (-.25, .25)
+        self.amoebaBounds['n_p'] = (-.2, .2)
+        self.amoebaBounds['k_p'] = (-.1, .1)
+        self.amoebaBounds['n_m'] = (-.1, .1)
+        self.amoebaBounds['wavelength'] = (-.3, .3)
+        self.amoebaBounds['magnification'] = (-.01, .01)
         # Set default kwargs to pass to levenberg and nelder
         xscale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
         self.x_scale = dict(zip(self.properties,
@@ -114,12 +126,14 @@ class Feature(object):
                           'max_nfev': int(2e3),
                           'diff_step': 1e-5,
                           'verbose': 0}
-        simplex_scale = -np.array([4., 4., 95., 0.48, 0.19,
-                                   .2, .1, .1, .05])
+        # simplex_scale = -np.array([4., 4., 95., 0.48, 0.19,
+        #                           .2, .1, .1, .05])
+        simplex_scale = np.array([10., 10., 200., 0.25, 0.2,
+                                  .1, .1, .3, .01])
         self.simplex_scale = dict(zip(self.properties, simplex_scale))
         self.amoeba_kwargs = {'initial_simplex': None,
                               'simplex_scale': self.simplex_scale,
-                              'namoebas': 1,
+                              # 'namoebas': 1,
                               'ftol': 1e-2,
                               'xtol': self.amoebaTol,
                               'maxevals': int(1e3)}
@@ -282,17 +296,35 @@ class Feature(object):
         return chisq
 
     def _amoebaLM(self, params, **kwargs):
+        bounds = {}
         for param in params:
-            if param == 'x_p' or param == 'y_p':
+            if param in self.model.particle.properties:
                 attr = getattr(self.model.particle, param)
-                params[param].min = attr+self.amoebaBounds[param][0]
-                params[param].max = attr+self.amoebaBounds[param][1]
+            elif param in self.model.instrument.properties:
+                attr = getattr(self.model.instrument, param)
+            if param == 'x_p' or param == 'y_p':
+                # params[param].min = attr + \
+                mini = attr + \
+                    max(self.amoebaBounds[param][0],
+                        self.amoebaAbsoluteBounds[param][0])
+                # params[param].max = attr + \
+                maxi = attr + \
+                    min(self.amoebaBounds[param][1],
+                        self.amoebaAbsoluteBounds[param][1])
             else:
-                params[param].min = self.amoebaBounds[param][0]
-                params[param].max = self.amoebaBounds[param][1]
+                # params[param].min = max(
+                mini = max(
+                    attr+self.amoebaBounds[param][0],
+                    self.amoebaAbsoluteBounds[param][0])
+                # params[param].max = min(
+                maxi = min(
+                    attr+self.amoebaBounds[param][1],
+                    self.amoebaAbsoluteBounds[param][1])
+            bounds[param] = mini, maxi
         if self.model.using_gpu:
             self._data = cp.asarray(self._data)
-        resultNM = amoebas(self._chisq, params, **kwargs)
+        #resultNM = amoebas(self._chisq, params, **kwargs)
+        resultNM = amoeba(self._chisq, params, bounds, **kwargs)
         resultNM.ndata = self.data.size
         resultNM.redchi = resultNM.chisqr / (resultNM.ndata-resultNM.nvarys)
         if self.model.using_gpu:
@@ -304,7 +336,7 @@ class Feature(object):
         result = self._minimizer.least_squares(**self.lm_kwargs)
         result.method = 'Nelder-Mead/least_squares hybrid'
         result.nfev = '{}+{}'.format(resultNM.nfev, result.nfev)
-        result.amoeba_chi = resultNM.chis / result.nfree
+        #result.amoeba_chi = resultNM.chis / result.nfree
         return result
 
 
@@ -345,7 +377,7 @@ if __name__ == '__main__':
     # ... and now fit
     result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
-    print("Reduced chi values from Amoeba fits {}".format(result.amoeba_chi))
+    #print("Reduced chi values from Amoeba fits {}".format(result.amoeba_chi))
     report_fit(result)
     # plot residuals
     resid = a.residuals().reshape(shape)
