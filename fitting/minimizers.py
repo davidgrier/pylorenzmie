@@ -117,7 +117,6 @@ def amoeba(objective, params, bounds, maxevals=int(1e3), initial_simplex=None,
     if initial_simplex is None:
         if type(simplex_scale) is float:
             simplex_scale = np.full(N, simplex_scale)
-        print(simplex_scale)
         simplex = np.vstack([x0, np.diag(simplex_scale) + x0])
         # Make initial guess centroid of simplex
         xbar = np.add.reduce(simplex[:-1], 0) / N
@@ -252,7 +251,6 @@ def amoeba(objective, params, bounds, maxevals=int(1e3), initial_simplex=None,
 
 
 def _updateParams(x, params, bounds, scale, offset):
-    # print(x)
     # x = xn * scale + offset
     parameters = list(params.keys())
     varying = []

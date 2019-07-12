@@ -108,7 +108,7 @@ class Feature(object):
         self.amoebaAbsoluteBounds['magnification'] = (.001, .140)
         self.amoebaBounds['x_p'] = (-10., 10.)
         self.amoebaBounds['y_p'] = (-10., 10.)
-        self.amoebaBounds['z_p'] = (-10., 10.)
+        self.amoebaBounds['z_p'] = (-100., 100.)
         self.amoebaBounds['a_p'] = (-.25, .25)
         self.amoebaBounds['n_p'] = (-.2, .2)
         self.amoebaBounds['k_p'] = (-.1, .1)
@@ -128,7 +128,7 @@ class Feature(object):
                           'verbose': 0}
         # simplex_scale = -np.array([4., 4., 95., 0.48, 0.19,
         #                           .2, .1, .1, .05])
-        simplex_scale = np.array([10., 10., 200., 0.25, 0.2,
+        simplex_scale = np.array([10., 10., 100., 0.25, 0.2,
                                   .1, .1, .3, .01])
         self.simplex_scale = dict(zip(self.properties, simplex_scale))
         self.amoeba_kwargs = {'initial_simplex': None,
