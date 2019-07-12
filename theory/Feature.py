@@ -189,6 +189,9 @@ class Feature(object):
             Model to the provided data.  The format is described
             in the documentation for lmfit.
         '''
+        if self.saturated.size > 1:
+            msg = "Discluding {} saturated pixels from optimization."
+            logger.warning(msg.format(self.saturated.size))
         params = Parameters()
         particle, instrument = self.model.particle, self.model.instrument
         x_scale = []

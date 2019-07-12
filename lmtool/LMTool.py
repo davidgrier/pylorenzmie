@@ -221,6 +221,7 @@ class LMTool(QtWidgets.QMainWindow):
         self._profileCoordinates = np.arange(self.maxrange)
         self._fitCoordinates = coordinates((self.maxrange*2,
                                             self.maxrange*2))
+        self.ui.profilePlot.setXRange(0., self.maxrange)
         self.updateDataProfile()
         self.updateTheoryProfile()
         self.updateFit()
