@@ -223,7 +223,7 @@
        <item>
         <widget class="QParameterWidget" name="bbox">
          <property name="statusTip">
-          <string>Bounding box height</string>
+          <string>Bounding box size [pixels]</string>
          </property>
          <property name="frameShape">
           <enum>QFrame::Panel</enum>
