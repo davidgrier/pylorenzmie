@@ -78,5 +78,13 @@
 	"step": 2.0,
 	"value": 201.0,
 	"decimals": 1
+    },
+    "noise": {
+	"text": "noise",
+	"suffix": " %",
+	"range": [1.0, 100],
+	"step": 1.0,
+	"value": 5.0,
+	"decimals": 1
     }
 }
