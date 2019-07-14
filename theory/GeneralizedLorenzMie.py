@@ -428,15 +428,15 @@ if __name__ == '__main__':
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
     kernel = GeneralizedLorenzMie(coordinates, particle, instrument)
-    field = kernel.field()
+    kernel.field()
     start = time()
     field = kernel.field()
+    print("Time to calculate: {}".format(time() - start))
     if kernel.using_gpu:
         field = field.get()
     # Compute hologram from field and show it
     field *= np.exp(-1.j * k * particle.z_p)
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
-    print("Time to calculate: {}".format(time() - start))
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
