@@ -77,6 +77,8 @@ def compute(krv, ab, result,
 
     startX = cuda.blockDim.x * cuda.blockIdx.x + cuda.threadIdx.x
     gridX = cuda.gridDim.x * cuda.blockDim.x
+    #startX = cuda.grid(1)
+    #gridX = cuda.gridsize(1)
     length = krv.shape[1]
 
     norders = ab.shape[0]  # number of partial waves in sum
@@ -404,15 +406,15 @@ class GeneralizedLorenzMie(object):
         k = self.instrument.wavenumber()
         self.result.fill(0.j)
         threadsperblock = 32
-        blockspergrid = (
-            self.krv.shape[1] + (threadsperblock - 1) // threadsperblock)
+        blockspergrid = (self.krv.shape[1] +
+                         (threadsperblock - 1)) // threadsperblock
         for p in np.atleast_1d(self.particle):
             self.krv[...] = cp.asarray(k * (self.coordinates -
                                             p.r_p[:, None]))
             self.krv[2, :] *= -1  # z convention
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            ab = ab.astype(np.complex64)
+            ab = ab.astype(cp.complex64)
             this = cp.empty_like(self.es)
             compute[blockspergrid, threadsperblock](self.krv, ab, this,
                                                     self.mo1n, self.ne1n, self.es, self.ec,
@@ -428,8 +430,8 @@ class GeneralizedLorenzMie(object):
 if __name__ == '__main__':
     from Sphere import Sphere
     import matplotlib.pyplot as plt
+    #from time import time
     from time import time
-
     # Create coordinate grid for image
     x = np.arange(0, 201)
     y = np.arange(0, 201)
@@ -451,15 +453,14 @@ if __name__ == '__main__':
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
     kernel = GeneralizedLorenzMie(coordinates, particle, instrument)
-    #start = time()
-    field = kernel.field()
-    start = time()
     kernel.field()
-    # Compute hologram from field and show it
-    field *= cp.exp(-1.j * k * particle.z_p)
-    field[0, :] += 1.
-    hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
-    hologram = hologram.get()
+    start = time()
+    field = kernel.field()
     print("Time to calculate: {}".format(time() - start))
+    # Compute hologram from field and show it
+    field = field.get()
+    field *= np.exp(-1.j * k * particle.z_p)
+    field[0, :] += 1.
+    hologram = np.sum(np.real(field * np.conj(field)), axis=0)
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
