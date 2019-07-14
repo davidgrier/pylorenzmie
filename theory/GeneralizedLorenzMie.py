@@ -285,6 +285,7 @@ class GeneralizedLorenzMie(object):
             factor = 1.j * xp.sign(kz)
         else:
             factor = -1.j * xp.sign(kz)
+
         xi_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
         xi_nm1 = sinkr - factor * coskr  # \xi_0(kr)
 
@@ -303,6 +304,7 @@ class GeneralizedLorenzMie(object):
             # upward recurrences ...
             # 4. Legendre factor (4.47)
             # Method described by Wiscombe (1980)
+
             swisc = pi_n * self.costheta
             twisc = swisc - pi_nm1
             tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
@@ -352,6 +354,7 @@ class GeneralizedLorenzMie(object):
         # coordinates.  Project components onto Cartesian coordinates.
         # Assumes that the incident wave propagates along z and
         # is linearly polarized along x
+
         if cartesian:
             self.ec[0, :] = self.es[0, :] * self.sintheta * self.cosphi
             self.ec[0, :] += self.es[1, :] * self.costheta * self.cosphi
@@ -414,7 +417,7 @@ if __name__ == '__main__':
     coordinates = np.stack((xv, yv, zv))
     # Place a sphere in the field of view, above the focal plane
     particle = Sphere()
-    particle.r_p = [125, 75, 100]
+    particle.r_p = [100, 75, 100]
     particle.a_p = 0.5
     particle.n_p = 1.45
     # Form image with default instrument
@@ -425,6 +428,7 @@ if __name__ == '__main__':
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
     kernel = GeneralizedLorenzMie(coordinates, particle, instrument)
+    field = kernel.field()
     start = time()
     field = kernel.field()
     if kernel.using_gpu:
