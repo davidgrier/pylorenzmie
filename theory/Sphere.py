@@ -3,6 +3,7 @@
 
 from pylorenzmie.theory.Particle import Particle
 import numpy as np
+from numba import jit
 
 '''
 REFERENCES
@@ -39,6 +40,60 @@ Copyright (c) 2018 Mark D. Hannel and David G. Grier
 '''
 
 
+def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
+    '''Calculate the Mie scattering coefficients for a sphere
+
+    This works for a (multilayered) sphere illuminated by
+    a coherent plane wave that is linearly polarized in the
+    x direction.
+
+    Parameters
+    ----------
+    a_p : float or numpy.ndarray
+        radii of the layers in the sphere [um]
+    n_p : float or numpy.ndarray
+        Refractive indexes of sphere's layers
+    k_p : float or numpy.ndarray
+        Absorption coefficient of sphere's layers
+    n_m : complex
+        (complex) refractive index of medium
+    wavelength : float
+        wavelength of light [um]
+
+    Returns
+    -------
+    ab : numpy.ndarray
+        Mie AB coefficients
+    '''
+    a_p = np.atleast_1d(np.asarray(a_p))
+    n_p = np.atleast_1d(np.asarray(n_p))
+    k_p = np.atleast_1d(np.asarray(k_p))
+
+    # size parameters for layers
+    k = 2.*np.pi/wavelength     # wave number in vacuum [um^-1]
+    k *= np.real(n_m)           # wave number in medium
+    x = k * a_p                 # size parameter in each layer
+    m = (n_p + 1.j*k_p) / n_m   # relative refractive index in each layer
+
+    # number of terms in partial-wave expansion
+    nmax = wiscombe_yang(x, m)
+
+    # storage for results
+    ab = np.empty([nmax+1, 2], complex)
+    d1_z1 = np.empty(nmax+1, complex)
+    d1_z2 = np.empty(nmax+1, complex)
+    d3_z1 = np.empty(nmax+1, complex)
+    d3_z2 = np.empty(nmax+1, complex)
+    psi = np.empty(nmax+1, complex)
+    zeta = np.empty(nmax+1, complex)
+    q = np.empty(nmax+1, complex)
+    return _mie_coefficients(a_p, n_p, k_p, n_m, wavelength,
+                             x, m, nmax,
+                             ab, d1_z1, d1_z2,
+                             d3_z1, d3_z2, psi, zeta, q)
+
+
+@jit(nopython=True)
 def wiscombe_yang(x, m):
     '''Return the number of terms to keep in partial wave expansion
 
@@ -67,62 +122,15 @@ def wiscombe_yang(x, m):
         ns = np.floor(xl + 4. * xl**(1. / 3.) + 2.)
 
     # Yang (2003) Eq. (30)
-    xm = abs(x * m)
-    xm_1 = abs(np.roll(x, -1) * m)
+    xm = np.abs(x * m)
+    xm_1 = np.abs(np.roll(x, -1) * m)
     nstop = max(ns, xm.max(), xm_1.max())
     return int(nstop)
 
 
-def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
-    '''Calculate the Mie scattering coefficients for a sphere
-
-    This works for a (multilayered) sphere illuminated by
-    a coherent plane wave that is linearly polarized in the
-    x direction.
-
-    Parameters
-    ----------
-    a_p : float or numpy.ndarray
-        radii of the layers in the sphere [um]
-    n_p : float or numpy.ndarray
-        Refractive indexes of sphere's layers
-    k_p : float or numpy.ndarray
-        Absorption coefficient of sphere's layers
-    n_m : complex
-        (complex) refractive index of medium
-    wavelength : float
-        wavelength of light [um]
-
-    Returns
-    -------
-    ab : numpy.ndarray
-        Mie AB coefficients
-    '''
-
-    a_p = np.atleast_1d(np.asarray(a_p))
-    n_p = np.atleast_1d(np.asarray(n_p))
-    k_p = np.atleast_1d(np.asarray(k_p))
-    nlayers = a_p.size
-
-    # size parameters for layers
-    k = 2.*np.pi/wavelength     # wave number in vacuum [um^-1]
-    k *= np.real(n_m)           # wave number in medium
-    x = k * a_p                 # size parameter in each layer
-    m = (n_p + 1.j*k_p) / n_m   # relative refractive index in each layer
-
-    # number of terms in partial-wave expansion
-    nmax = wiscombe_yang(x, m)
-
-    # storage for results
-    ab = np.empty([nmax+1, 2], complex)
-    d1_z1 = np.empty(nmax+1, complex)
-    d1_z2 = np.empty(nmax+1, complex)
-    d3_z1 = np.empty(nmax+1, complex)
-    d3_z2 = np.empty(nmax+1, complex)
-    psi = np.empty(nmax+1, complex)
-    zeta = np.empty(nmax+1, complex)
-    q = np.empty(nmax+1, complex)
-
+@jit(nopython=True)
+def _mie_coefficients(a_p, n_p, k_p, n_m, wavelength, x, m, nmax,
+                      ab, d1_z1, d1_z2, d3_z1, d3_z2, psi, zeta, q):
     # initialization
     d1_z1[nmax] = 0.                                          # Eq. (16a)
     d1_z2[nmax] = 0.
@@ -130,6 +138,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     d3_z2[0] = 1.j
 
     # iterate outward from the sphere's core
+    nlayers = a_p.size
     z1 = x[0] * m[0]
     for n in range(nmax, 0, -1):
         d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)              # Eq. (16b)
@@ -238,6 +247,7 @@ class Sphere(Particle):
         self.a_p = a_p
         self.n_p = n_p
         self.k_p = k_p
+        self.ab(1.339, 0.447)  # call dummy method for jit compilation
 
     def __str__(self):
         name = self.__class__.__name__
@@ -307,10 +317,14 @@ class Sphere(Particle):
         ab : numpy.ndarray
             Mie AB scattering coefficients
         '''
-        return mie_coefficients(self.a_p, self.n_p, self.k_p, n_m, wavelength)
+        return mie_coefficients(self.a_p, self.n_p, self.k_p, n_m,
+                                wavelength)
 
 
 if __name__ == '__main__':
+    from time import time
     s = Sphere(a_p=0.75, n_p=1.5)
     print(s.a_p, s.n_p)
-    print(s.ab(1.339, 0.447).shape)
+    start = time()
+    s.ab(1.339, 0.447)
+    print(time()-start)
