@@ -74,6 +74,7 @@ if __name__ == '__main__':
     h.particle.a_p = 0.9
     h.particle.n_p = 1.45
     h.instrument.wavelength = 0.447
+    h.hologram()
     start = time()
     hol = h.hologram()
     print("Time to calculate {}".format(time() - start))
