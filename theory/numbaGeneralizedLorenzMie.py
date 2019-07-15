@@ -15,7 +15,7 @@ in-line hologram of a particle with specified Lorenz-Mie scattering
 coefficients.  The hologram is calculated at specified
 three-dimensional coordinates under the assumption that the
 incident illumination is a plane wave linearly polarized along x.
-
+q
 REFERENCES:
 1. Adapted from Chapter 4 in
    C. F. Bohren and D. R. Huffman,
@@ -396,9 +396,10 @@ class GeneralizedLorenzMie(object):
         if (self.coordinates is None or self.particle is None):
             return None
         self.result.fill(0.j)
-        threadsperblock = 64
+        threadsperblock = 32
         blockspergrid = (self.krv.shape[1] +
                          (threadsperblock - 1)) // threadsperblock
+        #blockspergrid = self.krv.shape[1]
         k = self.instrument.wavenumber()
         for p in np.atleast_1d(self.particle):
             self.krv[...] = cp.asarray(k * (self.coordinates -
@@ -422,8 +423,8 @@ if __name__ == '__main__':
     # from time import time
     from time import time
     # Create coordinate grid for image
-    x = np.arange(0, 201)
-    y = np.arange(0, 201)
+    x = np.arange(0, 401)
+    y = np.arange(0, 401)
     xv, yv = np.meshgrid(x, y)
     xv = xv.flatten()
     yv = yv.flatten()
@@ -431,7 +432,7 @@ if __name__ == '__main__':
     coordinates = np.stack((xv, yv, zv))
     # Place a sphere in the field of view, above the focal plane
     particle = Sphere()
-    particle.r_p = [100, 75, 100]
+    particle.r_p = [150, 150, 200]
     particle.a_p = 0.5
     particle.n_p = 1.45
     # Form image with default instrument
@@ -451,5 +452,5 @@ if __name__ == '__main__':
     field *= np.exp(-1.j * k * particle.z_p)
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
-    plt.imshow(hologram.reshape(201, 201), cmap='gray')
+    plt.imshow(hologram.reshape(401, 401), cmap='gray')
     plt.show()
