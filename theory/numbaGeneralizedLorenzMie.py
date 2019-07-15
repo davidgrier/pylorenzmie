@@ -52,7 +52,6 @@ Copyright (c) 2018 David G. Grier
 
 @cuda.jit
 def compute(krv, ab, result,
-            mo1n, ne1n, es, ec,
             bohren, cartesian):
     '''Returns the field scattered by the particle at each coordinate
 
@@ -77,8 +76,9 @@ def compute(krv, ab, result,
 
     startX = cuda.blockDim.x * cuda.blockIdx.x + cuda.threadIdx.x
     gridX = cuda.gridDim.x * cuda.blockDim.x
-    #startX = cuda.grid(1)
-    #gridX = cuda.gridsize(1)
+    #startY = cuda.blockDim.y * cuda.blockIdx.y + cuda.threadIdx.y
+    #gridY = cuda.gridDim.y * cuda.blockDim.y
+
     length = krv.shape[1]
 
     norders = ab.shape[0]  # number of partial waves in sum
@@ -101,9 +101,10 @@ def compute(krv, ab, result,
     # for idx in range(kx.size):
     for idx in range(startX, length, gridX):
         # 2. geometric factors
+        kz[idx] *= -1  # z convention
         krho = math.sqrt(kx[idx]**2 + ky[idx]**2)
         kr = math.sqrt(krho**2 + kz[idx]**2)
-        if abs(krho) > 1e-6:
+        if abs(krho) > 1e-6:  # safe division
             cosphi = kx[idx] / krho
             sinphi = ky[idx] / krho
         else:
@@ -148,12 +149,17 @@ def compute(krv, ab, result,
         pi_n = np.float32(1.)                        # \pi_1(\cos\theta)
 
         # 3. Vector spherical harmonics: [r,theta,phi]
-        mo1n[0, idx] = np.complex64(0.j)
+        mo1nr = np.complex64(0.j)
+        mo1nt = np.complex64(0.j)
+        mo1np = np.complex64(0.j)
+        ne1nr = np.complex64(0.j)
+        ne1nt = np.complex64(0.j)
+        ne1np = np.complex64(0.j)
 
         # storage for scattered field
-        es[0, idx] = np.complex64(0.j)
-        es[1, idx] = np.complex64(0.j)
-        es[2, idx] = np.complex64(0.j)
+        esr = np.complex64(0.j)
+        est = np.complex64(0.j)
+        esp = np.complex64(0.j)
 
         # COMPUTE field by summing partial waves
         for n in range(1, norders):
@@ -174,13 +180,13 @@ def compute(krv, ab, result,
             dn = (n * xi_n) / kr - xi_nm1
 
             # vector spherical harmonics (4.50)
-            mo1n[1, idx] = pi_n * xi_n     # ... divided by cosphi/kr
-            mo1n[2, idx] = tau_n * xi_n    # ... divided by sinphi/kr
+            mo1nt = pi_n * xi_n     # ... divided by cosphi/kr
+            mo1np = tau_n * xi_n    # ... divided by sinphi/kr
 
             # ... divided by cosphi sintheta/kr^2
-            ne1n[0, idx] = n * (n + np.float32(1.)) * pi_n * xi_n
-            ne1n[1, idx] = tau_n * dn      # ... divided by cosphi/kr
-            ne1n[2, idx] = pi_n * dn       # ... divided by sinphi/kr
+            ne1nr = n * (n + np.float32(1.)) * pi_n * xi_n
+            ne1nt = tau_n * dn      # ... divided by cosphi/kr
+            ne1np = pi_n * dn       # ... divided by sinphi/kr
 
             mod = n % 4
             if mod == 1:
@@ -200,12 +206,12 @@ def compute(krv, ab, result,
                 n / (n + np.float32(1.))
 
             # the scattered field in spherical coordinates (4.45)
-            es[0, idx] += (imag * en * ab[int(n), 0]) * ne1n[0, idx]
-            es[1, idx] += (imag * en * ab[int(n), 0]) * ne1n[1, idx]
-            es[2, idx] += (imag * en * ab[int(n), 0]) * ne1n[2, idx]
-            es[0, idx] -= (en * ab[int(n), 1]) * mo1n[0, idx]
-            es[1, idx] -= (en * ab[int(n), 1]) * mo1n[1, idx]
-            es[2, idx] -= (en * ab[int(n), 1]) * mo1n[2, idx]
+            esr += (imag * en * ab[int(n), 0]) * ne1nr
+            est += (imag * en * ab[int(n), 0]) * ne1nt
+            esp += (imag * en * ab[int(n), 0]) * ne1np
+            esr -= (en * ab[int(n), 1]) * mo1nr
+            est -= (en * ab[int(n), 1]) * mo1nt
+            esp -= (en * ab[int(n), 1]) * mo1np
 
             # upward recurrences ...
             # ... angular functions (4.47)
@@ -216,15 +222,16 @@ def compute(krv, ab, result,
             # ... Riccati-Bessel function
             xi_nm2 = xi_nm1
             xi_nm1 = xi_n
+
         # n: multipole sum
 
         # geometric factors were divided out of the vector
         # spherical harmonics for accuracy and efficiency ...
         # ... put them back at the end.
         radialfactor = np.float32(1.) / kr
-        es[0, idx] *= cosphi * sintheta * radialfactor**2
-        es[1, idx] *= cosphi * radialfactor
-        es[2, idx] *= sinphi * radialfactor
+        esr *= cosphi * sintheta * radialfactor**2
+        est *= cosphi * radialfactor
+        esp *= sinphi * radialfactor
 
         # By default, the scattered wave is returned in spherical
         # coordinates.  Project components onto Cartesian coordinates.
@@ -232,22 +239,22 @@ def compute(krv, ab, result,
         # is linearly polarized along x
 
         if cartesian:
-            ec[0, idx] = es[0, idx] * sintheta * cosphi
-            ec[0, idx] += es[1, idx] * costheta * cosphi
-            ec[0, idx] -= es[2, idx] * sinphi
+            ecx = esr * sintheta * cosphi
+            ecx += est * costheta * cosphi
+            ecx -= esp * sinphi
 
-            ec[1, idx] = es[0, idx] * sintheta * sinphi
-            ec[1, idx] += es[1, idx] * costheta * sinphi
-            ec[1, idx] += es[2, idx] * cosphi
-            ec[2, idx] = (es[0, idx] * costheta -
-                          es[1, idx] * sintheta)
-            result[0, idx] = ec[0, idx]
-            result[1, idx] = ec[1, idx]
-            result[2, idx] = ec[2, idx]
+            ecy = esr * sintheta * sinphi
+            ecy += est * costheta * sinphi
+            ecy += esp * cosphi
+            ecz = (esr * costheta -
+                   est * sintheta)
+            result[0, idx] = ecx
+            result[1, idx] = ecy
+            result[2, idx] = ecz
         else:
-            result[0, idx] = es[0, idx]
-            result[1, idx] = es[1, idx]
-            result[2, idx] = es[2, idx]
+            result[0, idx] = esr
+            result[1, idx] = est
+            result[2, idx] = esp
 
 
 class GeneralizedLorenzMie(object):
@@ -388,36 +395,25 @@ class GeneralizedLorenzMie(object):
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
-        (cmplx, flt) = (np.complex64, np.float32)
-        self.krv = cp.empty(shape, dtype=flt)
-        self.mo1n = cp.empty(shape, dtype=cmplx)
-        self.mo1n[0, :] = cmplx(0.j)
-        self.ne1n = cp.empty(shape, dtype=cmplx)
-        self.es = cp.empty(shape, dtype=cmplx)
-        self.es.fill(cmplx(0.j))
-        self.ec = cp.empty(shape, dtype=cmplx)
-        self.result = cp.empty(shape, dtype=cmplx)
+        self.krv = cp.empty(shape, dtype=np.float32)
+        self.result = cp.zeros(shape, dtype=np.complex64)
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
-
-        k = self.instrument.wavenumber()
         self.result.fill(0.j)
         threadsperblock = 32
         blockspergrid = (self.krv.shape[1] +
                          (threadsperblock - 1)) // threadsperblock
+        k = self.instrument.wavenumber()
         for p in np.atleast_1d(self.particle):
             self.krv[...] = cp.asarray(k * (self.coordinates -
                                             p.r_p[:, None]))
-            self.krv[2, :] *= -1  # z convention
             ab = p.ab(self.instrument.n_m,
-                      self.instrument.wavelength)
-            ab = ab.astype(cp.complex64)
-            this = cp.empty_like(self.es)
+                      self.instrument.wavelength).astype(np.complex64)
+            this = cp.empty(shape=self.krv.shape, dtype=np.complex64)
             compute[blockspergrid, threadsperblock](self.krv, ab, this,
-                                                    self.mo1n, self.ne1n, self.es, self.ec,
                                                     cartesian, bohren)
             this *= cp.exp(-1j * k * p.z_p)
             try:
@@ -430,7 +426,7 @@ class GeneralizedLorenzMie(object):
 if __name__ == '__main__':
     from Sphere import Sphere
     import matplotlib.pyplot as plt
-    #from time import time
+    # from time import time
     from time import time
     # Create coordinate grid for image
     x = np.arange(0, 201)
