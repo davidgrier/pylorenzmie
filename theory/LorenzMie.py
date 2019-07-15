@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
-from pylorenzmie.theory.Sphere import Sphere
+from pylorenzmie.theory import GeneralizedLorenzMie
+from pylorenzmie.theory import Sphere
 
 
 class LorenzMie(GeneralizedLorenzMie):

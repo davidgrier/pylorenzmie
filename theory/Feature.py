@@ -11,10 +11,7 @@ from pylorenzmie.theory.LMHologram import LMHologram as Model
 from pylorenzmie.fitting.minimizers import amoeba
 try:
     import cupy as cp
-    cp.cuda.Device()
 except ImportError:
-    cp = None
-except cp.cuda.runtime.CUDARuntimeError:
     cp = None
 
 logger = logging.getLogger(__name__)
@@ -139,7 +136,7 @@ class Feature(object):
                               'maxevals': int(1e3)}
         # Deserialize if needed
         self.deserialize(info)
-        # Initialize a dummy hologram to start CuPy
+        # Initialize a dummy hologram to start cupy and jit compile
         self.model.coordinates = coordinates((5, 5))
         self.model.hologram()
         self.model.coordinates = self.coordinates
