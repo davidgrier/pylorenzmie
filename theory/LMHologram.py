@@ -2,6 +2,7 @@
 # -*- coding:utf-8 -*-
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
+from pylorenzmie.theory import GeneralizedLorenzMie
 import numpy as np
 try:
     import cupy as cp
@@ -31,6 +32,10 @@ class LMHologram(LorenzMie):
                  alpha=1.,
                  *args, **kwargs):
         super(LMHologram, self).__init__(*args, **kwargs)
+        if cp is not None and 'cuda' in str(GeneralizedLorenzMie):
+            self.using_gpu = True
+        else:
+            self.using_gpu = False
         self.alpha = alpha
 
     @property

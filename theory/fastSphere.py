@@ -3,6 +3,7 @@
 
 from pylorenzmie.theory.Particle import Particle
 import numpy as np
+from numba import jit
 
 '''
 REFERENCES
@@ -10,20 +11,25 @@ REFERENCES
    C. F. Bohren and D. R. Huffman,
    Absorption and Scattering of Light by Small Particles,
    (New York, Wiley, 1983).
+
 2. W. Yang,
    Improved recursive algorithm for light scattering
    by a multilayered sphere,
    Applied Optics 42, 1710--1720 (2003).
+
 3. O. Pena, U. Pal,
    Scattering of electromagnetic radiation by a multilayered sphere,
    Computer Physics Communications 180, 2348--2354 (2009).
    NB: Equation numbering follows this reference.
+
 4. W. J. Wiscombe,
    Improved Mie scattering algorithms,
    Applied Optics 19, 1505-1509 (1980).
+
 5. A. A. R. Neves and D. Pisignano,
    Effect of finite terms on the truncation error of Mie series,
    Optics Letters 37, 2481-2420 (2012).
+
 HISTORY
 Adapted from the IDL routine sphere_coefficients.pro
 which calculates scattering coefficients for layered spheres.
@@ -34,42 +40,13 @@ Copyright (c) 2018 Mark D. Hannel and David G. Grier
 '''
 
 
-def wiscombe_yang(x, m):
-    '''Return the number of terms to keep in partial wave expansion
-    Equation numbers refer to Wiscombe (1980) and Yang (2003).
-    Parameters
-    ----------
-    x : complex or numpy.ndarray
-        size parameters for each layer
-    m : complex or numpy.ndarray
-        relative refractive indexes of the layers
-    Returns
-    -------
-    ns : int
-        Number of terms to retain in the partial-wave expansion
-    '''
-
-    # Wiscombe (1980)
-    xl = np.abs(x[-1])
-    if xl <= 8.:
-        ns = np.floor(xl + 4. * xl**(1. / 3.) + 1.)
-    elif xl <= 4200.:
-        ns = np.floor(xl + 4.05 * xl**(1. / 3.) + 2.)
-    else:
-        ns = np.floor(xl + 4. * xl**(1. / 3.) + 2.)
-
-    # Yang (2003) Eq. (30)
-    xm = abs(x * m)
-    xm_1 = abs(np.roll(x, -1) * m)
-    nstop = max(ns, xm.max(), xm_1.max())
-    return int(nstop)
-
-
 def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     '''Calculate the Mie scattering coefficients for a sphere
+
     This works for a (multilayered) sphere illuminated by
     a coherent plane wave that is linearly polarized in the
     x direction.
+
     Parameters
     ----------
     a_p : float or numpy.ndarray
@@ -82,16 +59,15 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
         (complex) refractive index of medium
     wavelength : float
         wavelength of light [um]
+
     Returns
     -------
     ab : numpy.ndarray
         Mie AB coefficients
     '''
-
     a_p = np.atleast_1d(np.asarray(a_p))
     n_p = np.atleast_1d(np.asarray(n_p))
     k_p = np.atleast_1d(np.asarray(k_p))
-    nlayers = a_p.size
 
     # size parameters for layers
     k = 2.*np.pi/wavelength     # wave number in vacuum [um^-1]
@@ -111,7 +87,50 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     psi = np.empty(nmax+1, complex)
     zeta = np.empty(nmax+1, complex)
     q = np.empty(nmax+1, complex)
+    return _mie_coefficients(a_p, n_p, k_p, n_m, wavelength,
+                             x, m, nmax,
+                             ab, d1_z1, d1_z2,
+                             d3_z1, d3_z2, psi, zeta, q)
 
+
+@jit(nopython=True)
+def wiscombe_yang(x, m):
+    '''Return the number of terms to keep in partial wave expansion
+
+    Equation numbers refer to Wiscombe (1980) and Yang (2003).
+
+    Parameters
+    ----------
+    x : complex or numpy.ndarray
+        size parameters for each layer
+    m : complex or numpy.ndarray
+        relative refractive indexes of the layers
+
+    Returns
+    -------
+    ns : int
+        Number of terms to retain in the partial-wave expansion
+    '''
+
+    # Wiscombe (1980)
+    xl = np.abs(x[-1])
+    if xl <= 8.:
+        ns = np.floor(xl + 4. * xl**(1. / 3.) + 1.)
+    elif xl <= 4200.:
+        ns = np.floor(xl + 4.05 * xl**(1. / 3.) + 2.)
+    else:
+        ns = np.floor(xl + 4. * xl**(1. / 3.) + 2.)
+
+    # Yang (2003) Eq. (30)
+    xm = np.abs(x * m)
+    xm_1 = np.abs(np.roll(x, -1) * m)
+    nstop = max(ns, xm.max(), xm_1.max())
+    return int(nstop)
+
+
+@jit(nopython=True)
+def _mie_coefficients(a_p, n_p, k_p, n_m, wavelength, x, m, nmax,
+                      ab, d1_z1, d1_z2, d3_z1, d3_z2, psi, zeta, q):
     # initialization
     d1_z1[nmax] = 0.                                          # Eq. (16a)
     d1_z2[nmax] = 0.
@@ -119,6 +138,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     d3_z2[0] = 1.j
 
     # iterate outward from the sphere's core
+    nlayers = a_p.size
     z1 = x[0] * m[0]
     for n in range(nmax, 0, -1):
         d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)              # Eq. (16b)
@@ -197,7 +217,9 @@ class Sphere(Particle):
 
     '''
     Abstraction of a spherical particle for Lorenz-Mie micrsocopy
+
     ...
+
     Attributes
     ----------
     a_p : float or numpy.ndarray
@@ -209,6 +231,7 @@ class Sphere(Particle):
     k_p : float or numpy.ndarray
         absorption coefficient of particle
         or array containing absorption coefficients of shells
+
     Methods
     -------
     ab(n_m, wavelength) : numpy.ndarray
@@ -280,21 +303,28 @@ class Sphere(Particle):
 
     def ab(self, n_m, wavelength):
         '''Returns the Mie scattering coefficients
+
         Parameters
         ----------
         n_m : complex
             Refractive index of medium
         wavelength : float
             Vacuum wavelength of light [um]
+
         Returns
         -------
         ab : numpy.ndarray
             Mie AB scattering coefficients
         '''
-        return mie_coefficients(self.a_p, self.n_p, self.k_p, n_m, wavelength)
+        return mie_coefficients(self.a_p, self.n_p, self.k_p, n_m,
+                                wavelength)
 
 
 if __name__ == '__main__':
+    from time import time
     s = Sphere(a_p=0.75, n_p=1.5)
     print(s.a_p, s.n_p)
-    print(s.ab(1.339, 0.447).shape)
+    s.ab(1.339, .447)
+    start = time()
+    ab = s.ab(1.339, 0.447)
+    print(time()-start)
