@@ -66,7 +66,10 @@ class Feature(object):
                  noise=0.05,
                  info=None,
                  **kwargs):
+        # If using numba or CUDA accelerated model, good idea
+        # to pass in model as keyword if instantiating many Features.
         self.model = Model(**kwargs) if model is None else model
+        # Set fields
         self.data = data
         self.noise = noise
         self.coordinates = self.model.coordinates
@@ -149,19 +152,19 @@ class Feature(object):
             in the documentation for lmfit.
         '''
         x0 = self._prepareFit(method)
-        nmstats, lmstats = [None] * 2
+        nmresult, lmresult = [None] * 2
         if method == 'lm':
-            lmstats = least_squares(self._loss, x0, **self.lm_kwargs)
+            lmresult = least_squares(self._loss, x0, **self.lm_kwargs)
         elif method == 'amoeba-lm':
-            nmstats = amoeba(self._chisq, x0, **self.amoeba_kwargs)
+            nmresult = amoeba(self._chisq, x0, **self.amoeba_kwargs)
             if self.model.using_gpu:
                 self.data = cp.asnumpy(self._data)
-            lmstats = least_squares(self._loss, nmstats[0],
-                                    **self.lm_kwargs)
+            lmresult = least_squares(self._loss, nmresult.x,
+                                     **self.lm_kwargs)
         else:
             raise ValueError(
                 "method keyword must either be \'lm\', \'amoeba-lm\'")
-        result = self._generateResult(method, x0, lmstats, nmstats)
+        result = self._generateResult(method, x0, lmresult, nmresult)
         return result
 
     #
@@ -232,9 +235,10 @@ class Feature(object):
         for idx, prop in enumerate(self.properties):
             params.add(prop)
             params[prop].vary = vary[idx]
-            params[prop].amtol = amTol[idx]
             params[prop].max = amBounds[idx][1]
             params[prop].min = amBounds[idx][0]
+            # Custom properties for each lmfit Parameter
+            params[prop].tol = amTol[idx]
             params[prop].x_scale = x_scale[idx]
             params[prop].simplex_scale = simplex_scale[idx]
         # Keyword dictionaries for levenberg-marquardt and nelder-mead
@@ -264,7 +268,7 @@ class Feature(object):
                 x_scale = np.append(x_scale, param.x_scale)
                 simplex_scale = np.append(simplex_scale,
                                           param.simplex_scale)
-                xtol = np.append(xtol, param.amtol)
+                xtol = np.append(xtol, param.tol)
                 x0 = np.append(x0, val)  # initial guess
         self.lm_kwargs['x_scale'] = x_scale
         self.amoeba_kwargs['simplex_scale'] = simplex_scale
@@ -274,32 +278,47 @@ class Feature(object):
         return x0
 
     def _generateResult(self, method, x0,
-                        lmstats, nmstats=None):
+                        lmresult, nmresult=None):
         init_vals = []
         for prop in self.properties:
             init_vals.append(self.params[prop].init_value)
+        # Create result from levenberg-marquardt fit.
+        # If using amoeba fit, add extra fields to store results.
+        # TODO: better integrate amoeba and lm results together
         result = MinimizerResult(params=self.params,
-                                 residual=lmstats.fun,
+                                 method=method,
+                                 residual=lmresult.fun,
                                  errorbars=True,
                                  init_vals=init_vals,
                                  nvarys=len(x0),
                                  ndata=self.data.size,
-                                 success=lmstats.success)
-        result._calculate_statistics()
-        result.method = method
-        result.nfev = lmstats.nfev
-        result.njev = lmstats.njev
-        result.lmdif_message = lmstats.message
+                                 success=lmresult.success,
+                                 lmdif_message=lmresult.message)
+        # Calculate statistics
+        result.nvarys = x0.size
+        result.ndata = result.residual.size
+        result.nfree = result.ndata - result.nvarys
+        result.chisqr = (result.residual).dot(result.residual)
+        result.redchi = result.chisqr / max(1, result.nfree)
+        neg2_log_likel = result.ndata + np.log(result.chisqr) \
+            * result.nvarys
+        result.aic = neg2_log_likel + 2 * result.nvarys
+        result.bic = neg2_log_likel + np.log(result.ndata) \
+            * result.nvarys
+        result.nfev = lmresult.nfev
+        result.njev = lmresult.njev
         if method == 'amoeba-lm':
             idx = 0
             for prop in self.properties:
                 if self.params[prop].vary:
-                    result.params[prop].init_value = nmstats[0][idx]
+                    result.params[prop].init_value = nmresult.x[idx]
                     idx += 1
-            result.nfev = str(nmstats[2])+"+"+str(result.nfev)
-            result.amiter = nmstats[3]
-            result.amsuccess = nmstats[4]
-            result.amredchi = nmstats[1] / result.nfree
+            result.nfev = str(nmresult.nfev)+"+"+str(lmresult.nfev)
+            # Custom fields for amoeba fit
+            result.amoeba_message = nmresult.message
+            result.amoeba_iter = nmresult.nit
+            result.amoeba_success = nmresult.success
+            result.amoeba_redchi = nmresult.fun / result.nfree
         return result
 
     #
