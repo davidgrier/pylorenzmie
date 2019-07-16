@@ -4,7 +4,7 @@ import sys
 import pickle
 import logging
 import numpy as np
-from lmfit import Parameters, Minimizer
+from lmfit import Parameters
 from lmfit.minimizer import MinimizerResult
 from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
@@ -61,11 +61,12 @@ class Feature(object):
     '''
 
     def __init__(self,
+                 model=None,
                  data=None,
                  noise=0.05,
                  info=None,
                  **kwargs):
-        self.model = Model(**kwargs)
+        self.model = Model(**kwargs) if model is None else model
         self.data = data
         self.noise = noise
         self.coordinates = self.model.coordinates
@@ -74,7 +75,7 @@ class Feature(object):
         self.properties.extend(list(self.model.instrument.properties.keys()))
         self.properties = tuple(self.properties)
         # Set default options for fitting
-        self.params = self._init_params()
+        self.params = self._initParams()
         # Deserialize if needed
         self.deserialize(info)
         # Initialize a dummy hologram to start cupy and jit compile
@@ -132,7 +133,7 @@ class Feature(object):
         method  : str
             Optimization method. Use 'lm' for Levenberg-Marquardt,
             'amoeba-lm' for Nelder-Mead/Levenberg-Marquardt hybrid,
-            and 'custom' to pass custom kwargs into lmfit's 
+            and 'custom' to pass custom kwargs into lmfit's
             Minimizer.minimize.
 
         For Levenberg-Marquardt fitting, see arguments for
@@ -161,9 +162,6 @@ class Feature(object):
             raise ValueError(
                 "method keyword must either be \'lm\', \'amoeba-lm\'")
         result = self._generateResult(method, x0, lmstats, nmstats)
-        # if not result.success:
-        #    msg = "Fit did not converge. Max number of function evaluations exceeded."
-        #    logging.warning(msg)
         return result
 
     #
@@ -210,7 +208,7 @@ class Feature(object):
     #
     # Fitting preparation and cleanup
     #
-    def _init_params(self):
+    def _initParams(self):
         '''
         Initialize default settings for levenberg-marquardt and
         nelder-mead optimization
@@ -229,7 +227,7 @@ class Feature(object):
         # ... scale of initial simplex
         simplex_scale = np.array([4., 4., 95., 0.48, 0.19, .2, .1, .1, .05])
         # ... tolerance for nelder-mead termination
-        amTol = [2., 2., 15., .02, .025, .001, .01, .01, .01]
+        amTol = [2., 2., 5., .005, .005, .001, .01, .01, .01]
         params = Parameters()
         for idx, prop in enumerate(self.properties):
             params.add(prop)
@@ -244,7 +242,7 @@ class Feature(object):
                           'gtol': 1e-6, 'max_nfev': int(2e3),
                           'diff_step': 1e-5, 'verbose': 0}
         self.amoeba_kwargs = {'initial_simplex': None,
-                              'ftol': 1e-2, 'maxevals': int(1e3)}
+                              'ftol': 1000., 'maxevals': int(1e3)}
         return params
 
     def _prepareFit(self, method):
@@ -261,6 +259,7 @@ class Feature(object):
             param.max += val
             param.min += val
             param.value = val
+            param.init_value = val
             if param.vary:
                 x_scale = np.append(x_scale, param.x_scale)
                 simplex_scale = np.append(simplex_scale,
@@ -276,20 +275,31 @@ class Feature(object):
 
     def _generateResult(self, method, x0,
                         lmstats, nmstats=None):
-        result = MinimizerResult(params=self.params, method=method)
-        init_vals = {}
-        vals = x0 if nmstats is None else nmstats[0]
-        # for prop in self.properties:
-        #    if self.params[prop].vary:
-        #        init_vals[
-        # result.init_vals
-        # result.covar
-        # result.nvarys
-        # result.ndata
-        # result.nfree
-        # result.nfev
-        # result.chisqr
-        # result.redchi
+        init_vals = []
+        for prop in self.properties:
+            init_vals.append(self.params[prop].init_value)
+        result = MinimizerResult(params=self.params,
+                                 residual=lmstats.fun,
+                                 errorbars=True,
+                                 init_vals=init_vals,
+                                 nvarys=len(x0),
+                                 ndata=self.data.size,
+                                 success=lmstats.success)
+        result._calculate_statistics()
+        result.method = method
+        result.nfev = lmstats.nfev
+        result.njev = lmstats.njev
+        result.lmdif_message = lmstats.message
+        if method == 'amoeba-lm':
+            idx = 0
+            for prop in self.properties:
+                if self.params[prop].vary:
+                    result.params[prop].init_value = nmstats[0][idx]
+                    idx += 1
+            result.nfev = str(nmstats[2])+"+"+str(result.nfev)
+            result.amiter = nmstats[3]
+            result.amsuccess = nmstats[4]
+            result.amredchi = nmstats[1] / result.nfree
         return result
 
     #
@@ -361,7 +371,7 @@ if __name__ == '__main__':
     # ... and now fit
     result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
-    # report_fit(result)
+    report_fit(result)
     # plot residuals
     resid = a.residuals().reshape(shape)
     hol = a.model.hologram().reshape(shape)
