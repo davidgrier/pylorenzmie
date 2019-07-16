@@ -398,7 +398,6 @@ class GeneralizedLorenzMie(object):
         threadsperblock = 32
         blockspergrid = (self.krv.shape[1] +
                          (threadsperblock - 1)) // threadsperblock
-        #blockspergrid = self.krv.shape[1]
         k = self.instrument.wavenumber()
         for p in np.atleast_1d(self.particle):
             self.krv[...] = cp.asarray(k * (self.coordinates -
@@ -408,7 +407,7 @@ class GeneralizedLorenzMie(object):
             this = cp.empty(shape=self.krv.shape, dtype=np.complex128)
             compute[blockspergrid, threadsperblock](self.krv, ab, this,
                                                     cartesian, bohren)
-            this *= cp.exp(-1j * k * p.z_p)
+            this *= cp.exp(-1.j * k * p.z_p)
             try:
                 self.result += this
             except NameError:
@@ -445,11 +444,11 @@ if __name__ == '__main__':
     kernel.field()
     start = time()
     field = kernel.field()
-    print("Time to calculate: {}".format(time() - start))
     # Compute hologram from field and show it
     field = field.get()
-    field *= np.exp(-1.j * k * particle.z_p)
+    #field *= np.exp(-1.j * k * particle.z_p)
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
+    print("Time to calculate: {}".format(time() - start))
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
