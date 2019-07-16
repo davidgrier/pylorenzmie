@@ -9,6 +9,8 @@ from numba import cuda
 import cupy as cp
 import math
 
+cp.cuda.Device()
+
 '''
 This object uses generalized Lorenz-Mie theory to compute the
 in-line hologram of a particle with specified Lorenz-Mie scattering
