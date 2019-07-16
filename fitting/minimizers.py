@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.optimize import OptimizeResult
 
 
 def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
@@ -99,11 +100,11 @@ def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
         simplex = np.take(simplex, idxs, 0)
         evals = np.take(evals, idxs, 0)
         niter += 1
-
     best = simplex[0]
     chi = evals[0]
     success = False if neval == maxevals else True
-    return best, chi, neval, niter, success
+    return OptimizeResult(x=best, success=success, message='',
+                          nit=niter, nfev=neval, fun=chi)
 
 
 '''
