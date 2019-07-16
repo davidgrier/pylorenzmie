@@ -200,6 +200,8 @@ class LMTool(QtWidgets.QMainWindow):
         self.theory.instrument.magnification = self.ui.magnification.value()
         self.theory.instrument.n_m = self.ui.n_m.value()
         self.updateTheoryProfile()
+        if self.ui.tabs.currentIndex() == 2:
+            self.updateFit()
 
     @pyqtSlot(float)
     def updateParticle(self, count):
@@ -241,7 +243,7 @@ class LMTool(QtWidgets.QMainWindow):
         method = 'lm' if self.ui.LMButton.isChecked() else 'amoeba-lm'
         for prop in self.feature.properties:
             propUi = getattr(self.ui, prop)
-            self.feature.parameterVary[prop] = not propUi.fixed
+            self.feature.params[prop].vary = not propUi.fixed
         (x_old, y_old) = (self.theory.particle.x_p, self.theory.particle.y_p)
         result = self.feature.optimize(method=method)
         self.updateParameterUi(x_old, y_old)

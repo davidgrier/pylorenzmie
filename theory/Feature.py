@@ -5,9 +5,10 @@ import pickle
 import logging
 import numpy as np
 from lmfit import Parameters, Minimizer
+from lmfit.minimizer import MinimizerResult
+from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
-#from pylorenzmie.fitting.minimizers import amoebas
 from pylorenzmie.fitting.minimizers import amoeba
 try:
     import cupy as cp
@@ -68,72 +69,12 @@ class Feature(object):
         self.data = data
         self.noise = noise
         self.coordinates = self.model.coordinates
-        # Create minimizer and set settings
-        self._minimizer = Minimizer(self._loss, None)
-        self._minimizer.nan_policy = 'omit'
-        # Initialize options for fitting
+        # Initialize Feature properties
         self.properties = list(self.model.particle.properties.keys())
         self.properties.extend(list(self.model.instrument.properties.keys()))
         self.properties = tuple(self.properties)
-        N = range(len(self.properties))
-        self.parameterVary = dict(zip(self.properties,
-                                      [True for i in N]))
-        self.amoebaAbsoluteBounds = dict(zip(self.properties,
-                                             [(-np.inf, np.inf) for i in N]))
-        self.amoebaBounds = dict(zip(self.properties,
-                                     [(-np.inf, np.inf) for i in N]))  # centered around initial guess
-        self.amoebaTol = dict(zip(self.properties,
-                                  [0. for i in N]))
-        # Default settings
-        self.parameterVary['k_p'] = False
-        self.parameterVary['n_m'] = False
-        self.parameterVary['wavelength'] = False
-        self.parameterVary['magnification'] = False
-        self.amoebaTol['x_p'] = 2.
-        self.amoebaTol['y_p'] = 2.
-        self.amoebaTol['z_p'] = 15.
-        self.amoebaTol['a_p'] = .4
-        self.amoebaTol['n_p'] = .025
-        self.amoebaAbsoluteBounds['x_p'] = (-20, 20)
-        self.amoebaAbsoluteBounds['y_p'] = (-20, 20)
-        self.amoebaAbsoluteBounds['z_p'] = (20., 1000.)
-        self.amoebaAbsoluteBounds['a_p'] = (.2, 5.)
-        self.amoebaAbsoluteBounds['n_p'] = (1.32, 3.)
-        self.amoebaAbsoluteBounds['k_p'] = (0.0, 5.0)
-        self.amoebaAbsoluteBounds['n_m'] = (1., 2.)
-        self.amoebaAbsoluteBounds['wavelength'] = (.200, 1.100)
-        self.amoebaAbsoluteBounds['magnification'] = (.001, .140)
-        self.amoebaBounds['x_p'] = (-10., 10.)
-        self.amoebaBounds['y_p'] = (-10., 10.)
-        self.amoebaBounds['z_p'] = (-100., 100.)
-        self.amoebaBounds['a_p'] = (-.25, .25)
-        self.amoebaBounds['n_p'] = (-.2, .2)
-        self.amoebaBounds['k_p'] = (-.1, .1)
-        self.amoebaBounds['n_m'] = (-.1, .1)
-        self.amoebaBounds['wavelength'] = (-.3, .3)
-        self.amoebaBounds['magnification'] = (-.01, .01)
-        # Set default kwargs to pass to levenberg and nelder
-        xscale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
-        self.x_scale = dict(zip(self.properties,
-                                xscale))
-        self.lm_kwargs = {'method': 'lm',
-                          'x_scale': self.x_scale,
-                          'xtol': 1.e-6, 'ftol': 1.e-3,
-                          'gtol': 1e-6,
-                          'max_nfev': int(2e3),
-                          'diff_step': 1e-5,
-                          'verbose': 0}
-        # simplex_scale = -np.array([4., 4., 95., 0.48, 0.19,
-        #                           .2, .1, .1, .05])
-        simplex_scale = np.array([10., 10., 100., 0.25, 0.2,
-                                  .1, .1, .3, .01])
-        self.simplex_scale = dict(zip(self.properties, simplex_scale))
-        self.amoeba_kwargs = {'initial_simplex': None,
-                              'simplex_scale': self.simplex_scale,
-                              # 'namoebas': 1,
-                              'ftol': 1e-2,
-                              'xtol': self.amoebaTol,
-                              'maxevals': int(1e3)}
+        # Set default options for fitting
+        self.params = self._init_params()
         # Deserialize if needed
         self.deserialize(info)
         # Initialize a dummy hologram to start cupy and jit compile
@@ -141,6 +82,9 @@ class Feature(object):
         self.model.hologram()
         self.model.coordinates = self.coordinates
 
+    #
+    # Fields for user to set data and model's initial guesses
+    #
     @property
     def data(self):
         '''Values of the (normalized) hologram at each pixel'''
@@ -168,6 +112,9 @@ class Feature(object):
     def model(self, model):
         self._model = model
 
+    #
+    # Methods to show residuals and optimize
+    #
     def residuals(self):
         '''Returns difference bewteen data and current model
 
@@ -190,7 +137,7 @@ class Feature(object):
 
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.least_squares()
-        For Nelder-Mead fitting, see arguments for amoebas in
+        For Nelder-Mead fitting, see arguments for amoeba in
         pylorenzmie/fitting/minimizers.py
 
         Returns
@@ -200,37 +147,28 @@ class Feature(object):
             Model to the provided data.  The format is described
             in the documentation for lmfit.
         '''
-        if self.saturated.size > 1:
-            msg = "Discluding {} saturated pixels from optimization."
-            logger.warning(msg.format(self.saturated.size))
-        params = Parameters()
-        particle, instrument = self.model.particle, self.model.instrument
-        x_scale = []
-        for key in self.properties:
-            if hasattr(particle, key):
-                params.add(key, getattr(particle, key))
-            else:
-                params.add(key, getattr(instrument, key))
-            params[key].vary = self.parameterVary[key]
-            if self.parameterVary[key]:
-                x_scale.append(self.x_scale[key])
-        self.lm_kwargs['x_scale'] = x_scale
-        self._minimizer.params = params
+        x0 = self._prepareFit(method)
+        nmstats, lmstats = [None] * 2
         if method == 'lm':
-            result = self._minimizer.least_squares(**self.lm_kwargs)
+            lmstats = least_squares(self._loss, x0, **self.lm_kwargs)
         elif method == 'amoeba-lm':
-            result = self._amoebaLM(params, **self.amoeba_kwargs)
-        elif method == 'custom':
-            result = self._minimizer.minimize(**kwargs)
+            nmstats = amoeba(self._chisq, x0, **self.amoeba_kwargs)
+            if self.model.using_gpu:
+                self.data = cp.asnumpy(self._data)
+            lmstats = least_squares(self._loss, nmstats[0],
+                                    **self.lm_kwargs)
         else:
             raise ValueError(
-                "method keyword must either be \'lm\', \'amoeba-lm\', or \'custom\'")
-        self.lm_kwargs['x_scale'] = self.x_scale
-        if not result.success:
-            msg = "Fit did not converge. Max number of function evaluations exceeded"
-            logging.warning(msg)
+                "method keyword must either be \'lm\', \'amoeba-lm\'")
+        result = self._generateResult(method, x0, lmstats, nmstats)
+        # if not result.success:
+        #    msg = "Fit did not converge. Max number of function evaluations exceeded."
+        #    logging.warning(msg)
         return result
 
+    #
+    # Methods for saving data
+    #
     def serialize(self, filename=None):
         '''Save state of Feature
 
@@ -269,13 +207,107 @@ class Feature(object):
             if hasattr(self, key):
                 setattr(self, key, info[key])
 
-    def _loss(self, params, return_gpu=False):
-        '''Updates particle properties and returns residuals'''
+    #
+    # Fitting preparation and cleanup
+    #
+    def _init_params(self):
+        '''
+        Initialize default settings for levenberg-marquardt and
+        nelder-mead optimization
+        '''
+        # Default parameters to vary, in the following order:
+        # x_p, y_p, z_p [pixels], a_p [um], n_p,
+        # k_p, n_m, wavelength [um], magnification [um/pixel]
+        vary = [True] * 5
+        vary.extend([False] * 4)
+        # ... bounds around intial guess for bounded nelder-mead
+        amBounds = [(-100, 100), (-100, 100), (-200, 200), (-1., 1.),
+                    (-1., 1.), (-1., 1.), (-1., 1.), (-1., 1.),
+                    (-.5, .5)]
+        # ... levenberg-marquardt variable scale factor
+        x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
+        # ... scale of initial simplex
+        simplex_scale = np.array([4., 4., 95., 0.48, 0.19, .2, .1, .1, .05])
+        # ... tolerance for nelder-mead termination
+        amTol = [2., 2., 15., .02, .025, .001, .01, .01, .01]
+        params = Parameters()
+        for idx, prop in enumerate(self.properties):
+            params.add(prop)
+            params[prop].vary = vary[idx]
+            params[prop].amtol = amTol[idx]
+            params[prop].max = amBounds[idx][1]
+            params[prop].min = amBounds[idx][0]
+            params[prop].x_scale = x_scale[idx]
+            params[prop].simplex_scale = simplex_scale[idx]
+        # Keyword dictionaries for levenberg-marquardt and nelder-mead
+        self.lm_kwargs = {'method': 'lm', 'xtol': 1.e-6, 'ftol': 1.e-3,
+                          'gtol': 1e-6, 'max_nfev': int(2e3),
+                          'diff_step': 1e-5, 'verbose': 0}
+        self.amoeba_kwargs = {'initial_simplex': None,
+                              'ftol': 1e-2, 'maxevals': int(1e3)}
+        return params
+
+    def _prepareFit(self, method):
+        if self.saturated.size > 1:
+            msg = "Discluding {} saturated pixels from optimization."
+            logger.warning(msg.format(self.saturated.size))
+        x_scale, simplex_scale, xtol, x0 = [np.empty(0)] * 4
+        for key in self.properties:
+            param = self.params[key]
+            if hasattr(self.model.particle, key):
+                val = getattr(self.model.particle, key)
+            else:
+                val = getattr(self.model.instrument, key)
+            param.max += val
+            param.min += val
+            param.value = val
+            if param.vary:
+                x_scale = np.append(x_scale, param.x_scale)
+                simplex_scale = np.append(simplex_scale,
+                                          param.simplex_scale)
+                xtol = np.append(xtol, param.amtol)
+                x0 = np.append(x0, val)  # initial guess
+        self.lm_kwargs['x_scale'] = x_scale
+        self.amoeba_kwargs['simplex_scale'] = simplex_scale
+        self.amoeba_kwargs['xtol'] = xtol
+        if method == 'amoeba-lm' and self.model.using_gpu:
+            self._data = cp.asarray(self._data)
+        return x0
+
+    def _generateResult(self, method, x0,
+                        lmstats, nmstats=None):
+        result = MinimizerResult(params=self.params, method=method)
+        init_vals = {}
+        vals = x0 if nmstats is None else nmstats[0]
+        # for prop in self.properties:
+        #    if self.params[prop].vary:
+        #        init_vals[
+        # result.init_vals
+        # result.covar
+        # result.nvarys
+        # result.ndata
+        # result.nfree
+        # result.nfev
+        # result.chisqr
+        # result.redchi
+        return result
+
+    #
+    # Loss function, residuals, and chisqr for under the hood
+    #
+    def _loss(self, x, return_gpu=False):
+        '''Updates properties and returns residuals'''
         particle, instrument = self.model.particle, self.model.instrument
-        for key in particle.properties.keys():
-            setattr(particle, key, params[key].value)
-        for key in instrument.properties.keys():
-            setattr(instrument, key, params[key].value)
+        idx = 0
+        for key in self.properties:
+            param = self.params[key]
+            if param.vary:
+                if hasattr(particle, key):
+                    setattr(particle, key, x[idx])
+                else:
+                    setattr(instrument, key, x[idx])
+                setattr(param, 'value', x[idx])
+                idx += 1
         residuals = self._residuals(return_gpu)
         # don't fit on saturated or nan/infinite pixels
         residuals[self.saturated] = 0.
@@ -285,60 +317,15 @@ class Feature(object):
     def _residuals(self, return_gpu):
         return (self.model.hologram(return_gpu) - self._data) / self.noise
 
-    def _chisq(self, params):
-        r = self._loss(params, self.model.using_gpu)
+    def _chisq(self, x):
+        r = self._loss(x, self.model.using_gpu)
         chisq = r.dot(r)
         if self.model.using_gpu:
             chisq = chisq.get()
         return chisq
 
-    def _amoebaLM(self, params, **kwargs):
-        bounds = {}
-        for param in params:
-            if param in self.model.particle.properties:
-                attr = getattr(self.model.particle, param)
-            elif param in self.model.instrument.properties:
-                attr = getattr(self.model.instrument, param)
-            if param == 'x_p' or param == 'y_p':
-                # params[param].min = attr + \
-                mini = attr + \
-                    max(self.amoebaBounds[param][0],
-                        self.amoebaAbsoluteBounds[param][0])
-                # params[param].max = attr + \
-                maxi = attr + \
-                    min(self.amoebaBounds[param][1],
-                        self.amoebaAbsoluteBounds[param][1])
-            else:
-                # params[param].min = max(
-                mini = max(
-                    attr+self.amoebaBounds[param][0],
-                    self.amoebaAbsoluteBounds[param][0])
-                # params[param].max = min(
-                maxi = min(
-                    attr+self.amoebaBounds[param][1],
-                    self.amoebaAbsoluteBounds[param][1])
-            bounds[param] = mini, maxi
-        if self.model.using_gpu:
-            self._data = cp.asarray(self._data)
-        #resultNM = amoebas(self._chisq, params, **kwargs)
-        resultNM = amoeba(self._chisq, params, bounds, **kwargs)
-        resultNM.ndata = self.data.size
-        resultNM.redchi = resultNM.chisqr / (resultNM.ndata-resultNM.nvarys)
-        if self.model.using_gpu:
-            self._data = cp.asnumpy(self._data)
-        for param in params:
-            resultNM.params[param].max = np.inf
-            resultNM.params[param].min = -np.inf
-        self._minimizer.params = resultNM.params
-        result = self._minimizer.least_squares(**self.lm_kwargs)
-        result.method = 'Nelder-Mead/least_squares hybrid'
-        result.nfev = '{}+{}'.format(resultNM.nfev, result.nfev)
-        #result.amoeba_chi = resultNM.chis / result.nfree
-        return result
-
 
 if __name__ == '__main__':
-    from Instrument import coordinates
     import cv2
     from lmfit import report_fit
     import matplotlib.pyplot as plt
@@ -374,8 +361,7 @@ if __name__ == '__main__':
     # ... and now fit
     result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
-    #print("Reduced chi values from Amoeba fits {}".format(result.amoeba_chi))
-    report_fit(result)
+    # report_fit(result)
     # plot residuals
     resid = a.residuals().reshape(shape)
     hol = a.model.hologram().reshape(shape)
