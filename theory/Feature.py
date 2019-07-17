@@ -129,13 +129,13 @@ class Feature(object):
         '''
         return self.model.hologram() - self.data
 
-    def optimize(self, method='lm', **kwargs):
+    def optimize(self, method='lm'):
         '''Fit Model to data
         Arguments
         ________
         method  : str
             Optimization method. Use 'lm' for scipy least_squares or
-            'amoeba->lm' for Nelder-Mead/Levenberg-Marquardt hybrid
+            'amoeba-lm' for Nelder-Mead/Levenberg-Marquardt hybrid
 
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.least_squares()
@@ -155,7 +155,7 @@ class Feature(object):
             lmresult = least_squares(self._loss, x0, **self.lm_kwargs)
             self.lmResult = self._generateResult('lm', x0, lmresult)
             result = self.lmResult
-        elif method == 'amoeba->lm':
+        elif method == 'amoeba-lm':
             nmresult = amoeba(self._chisq, x0, **self.amoeba_kwargs)
             if self.model.using_gpu:
                 self.data = cp.asnumpy(self._data)
@@ -167,7 +167,7 @@ class Feature(object):
             result = self.lmResult
         else:
             raise ValueError(
-                "method keyword must either be \'lm\', \'amoeba->lm\'")
+                "method keyword must either be lm or amoeba-lm")
         return result
 
     def printReport(self):
@@ -301,7 +301,7 @@ class Feature(object):
 
     def _prepareFit(self, method):
         # Warnings
-        if self.saturated.size > 1:
+        if self.saturated.size > 10:
             msg = "Discluding {} saturated pixels from optimization."
             logger.warning(msg.format(self.saturated.size))
         # Unwrap vector keywords and initial guess
@@ -325,7 +325,7 @@ class Feature(object):
         self.amoeba_kwargs['simplex_scale'] = simplex_scale
         self.amoeba_kwargs['xtol'] = simplex_tol
         # Method specific actions
-        if method == 'amoeba->lm':
+        if method == 'amoeba-lm':
             if self.model.using_gpu:
                 self._data = cp.asarray(self._data)
         return x0
@@ -396,7 +396,7 @@ if __name__ == '__main__':
     # set settings
     start = time()
     # ... and now fit
-    result = a.optimize(method='amoeba->lm')
+    result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
     a.printReport()
     # plot residuals
