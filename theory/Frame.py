@@ -2,12 +2,14 @@
 
 import numpy as np
 from pylorenzmie.theory.Instrument import Instrument
+from pylorenzmie.theory.Feature import Feature
 
 
 class Frame(object):
 
     def __init__(self, instrument=None, **kwargs):
         self._detector = None  # should be YOLO
+        self._estimator = None
         self._features = []
         if instrument is None:
             self.instrument = Instrument(**kwargs)
