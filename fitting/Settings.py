@@ -1,7 +1,6 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import numpy as np
+f  # !/usr/bin/env python
+# -*- coding: utf-8 -*-
 
 
 class FitSettings(object):
@@ -94,12 +93,6 @@ class ParameterSettings(object):
     @options.setter
     def options(self, options):
         self._options = options
-
-
-class FitResult(object):
-
-    def __init__(self, scipyresult):
-        self.scipyresult = scipyresult
 
 
 if __name__ == '__main__':
