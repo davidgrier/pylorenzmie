@@ -243,7 +243,7 @@ class LMTool(QtWidgets.QMainWindow):
         method = 'lm' if self.ui.LMButton.isChecked() else 'amoeba-lm'
         for prop in self.feature.properties:
             propUi = getattr(self.ui, prop)
-            self.feature.parameterVary[prop] = not propUi.fixed
+            self.feature.vary[prop] = not propUi.fixed
         (x_old, y_old) = (self.theory.particle.x_p, self.theory.particle.y_p)
         result = self.feature.optimize(method=method)
         self.updateParameterUi(x_old, y_old)

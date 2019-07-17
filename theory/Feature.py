@@ -40,10 +40,16 @@ class Feature(object):
         and uses this information to compute a hologram at the
         specified coordinates.  Keywords for the Model can be
         provided at initialization.
-    parameterVary : dict of booleans
+    vary : dict of booleans
         Allows user to select whether or not to vary parameter
         during fitting. True means the parameter will vary.
     amoebaSettings : FitSettings
+        Settings for nelder-mead optimization. Refer to minimizers.py
+        -> amoeba and Settings.py -> FitSettings for documentation
+    lmSettings : FitSettings
+        Settings for levenberg-marquardt optimization. Refer to
+        scipy.optimize.least_squares and Settings.py -> FitSettings
+        for documentation
 
 
     Methods
@@ -147,7 +153,7 @@ class Feature(object):
             in the documentation for lmfit.
         '''
         x0 = self._prepare(method)
-        vary = self.parameterVary
+        vary = self.vary
         if method == 'lm':
             result = least_squares(self._loss, x0,
                                    **self.lmSettings.getkwargs(vary))
@@ -218,7 +224,7 @@ class Feature(object):
         particle, instrument = self.model.particle, self.model.instrument
         idx = 0
         for key in self.properties:
-            if self.parameterVary[key]:
+            if self.vary[key]:
                 if hasattr(particle, key):
                     setattr(particle, key, x[idx])
                 else:
@@ -274,7 +280,7 @@ class Feature(object):
                                           options=amoeba_options)
         self.lmSettings = FitSettings(self.properties,
                                       options=lm_options)
-        self.parameterVary = dict(zip(self.properties, vary))
+        self.vary = dict(zip(self.properties, vary))
         for idx, prop in enumerate(self.properties):
             amparam = self.amoebaSettings.parameters[prop]
             lmparam = self.lmSettings.parameters[prop]
@@ -294,7 +300,7 @@ class Feature(object):
                 val = getattr(self.model.particle, prop)
             else:
                 val = getattr(self.model.instrument, prop)
-            if self.parameterVary[prop]:
+            if self.vary[prop]:
                 x0.append(val)
         x0 = np.array(x0)
         # Method specific actions
@@ -342,7 +348,7 @@ if __name__ == '__main__':
     # set settings
     start = time()
     # ... and now fit
-    result = a.optimize(method='amoeba')
+    result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
     # plot residuals
