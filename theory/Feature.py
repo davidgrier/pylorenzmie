@@ -4,7 +4,7 @@ import sys
 import pickle
 import logging
 import numpy as np
-from lmfit import Parameters
+from lmfit import Parameters, report_fit
 from lmfit.minimizer import MinimizerResult
 from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
@@ -134,10 +134,8 @@ class Feature(object):
         Arguments
         ________
         method  : str
-            Optimization method. Use 'lm' for Levenberg-Marquardt,
-            'amoeba-lm' for Nelder-Mead/Levenberg-Marquardt hybrid,
-            and 'custom' to pass custom kwargs into lmfit's
-            Minimizer.minimize.
+            Optimization method. Use 'lm' for scipy least_squares or
+            'amoeba->lm' for Nelder-Mead/Levenberg-Marquardt hybrid
 
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.least_squares()
@@ -146,7 +144,7 @@ class Feature(object):
 
         Returns
         -------
-        results : lmfit.MinimzerResult
+        result : lmfit.MinimzerResult
             Comprehensive report on the outcome of fitting the
             Model to the provided data.  The format is described
             in the documentation for lmfit.
@@ -155,17 +153,32 @@ class Feature(object):
         nmresult, lmresult = [None] * 2
         if method == 'lm':
             lmresult = least_squares(self._loss, x0, **self.lm_kwargs)
-        elif method == 'amoeba-lm':
+            self.lmResult = self._generateResult('lm', x0, lmresult)
+            result = self.lmResult
+        elif method == 'amoeba->lm':
             nmresult = amoeba(self._chisq, x0, **self.amoeba_kwargs)
             if self.model.using_gpu:
                 self.data = cp.asnumpy(self._data)
             lmresult = least_squares(self._loss, nmresult.x,
                                      **self.lm_kwargs)
+            self.lmResult = self._generateResult('lm', x0, lmresult,
+                                                 init_values=nmresult.x)
+            self.amoebaResult = self._generateResult('amoeba', x0, nmresult)
+            result = self.lmResult
         else:
             raise ValueError(
-                "method keyword must either be \'lm\', \'amoeba-lm\'")
-        result = self._generateResult(method, x0, lmresult, nmresult)
+                "method keyword must either be \'lm\', \'amoeba->lm\'")
         return result
+
+    def printReport(self):
+        '''
+        Use lmfit's report_fit to print a nice report 
+        of the currently stored fits.
+        '''
+        if type(self.amoebaResult) is MinimizerResult:
+            report_fit(self.amoebaResult)
+        if type(self.lmResult) is MinimizerResult:
+            report_fit(self.lmResult)
 
     #
     # Methods for saving data
@@ -208,6 +221,8 @@ class Feature(object):
             if hasattr(self, key):
                 setattr(self, key, info[key])
 
+    # TODO: method to save fit results
+
     #
     # Fitting preparation and cleanup
     #
@@ -221,25 +236,25 @@ class Feature(object):
         # k_p, n_m, wavelength [um], magnification [um/pixel]
         vary = [True] * 5
         vary.extend([False] * 4)
-        # ... bounds around intial guess for bounded nelder-mead
-        amBounds = [(-100, 100), (-100, 100), (-200, 200), (-1., 1.),
-                    (-1., 1.), (-1., 1.), (-1., 1.), (-1., 1.),
-                    (-.5, .5)]
         # ... levenberg-marquardt variable scale factor
         x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
+        # ... bounds around intial guess for bounded nelder-mead
+        simplex_bounds = [(-100, 100), (-100, 100), (-200, 200),
+                          (-1., 1.), (-1., 1.), (-1., 1.),
+                          (-1., 1.), (-1., 1.), (-.5, .5)]
         # ... scale of initial simplex
         simplex_scale = np.array([4., 4., 95., 0.48, 0.19, .2, .1, .1, .05])
         # ... tolerance for nelder-mead termination
-        amTol = [2., 2., 5., .005, .005, .001, .01, .01, .01]
+        simplex_tol = [2., 2., 5., .005, .005, .001, .01, .01, .01]
         params = Parameters()
         for idx, prop in enumerate(self.properties):
             params.add(prop)
             params[prop].vary = vary[idx]
-            params[prop].max = amBounds[idx][1]
-            params[prop].min = amBounds[idx][0]
-            # Custom properties for each lmfit Parameter
-            params[prop].tol = amTol[idx]
+            params[prop].bounds = (simplex_bounds[idx][0],
+                                   simplex_bounds[idx][1])
+            # Custom vector properties for each lmfit Parameter
             params[prop].x_scale = x_scale[idx]
+            params[prop].simplex_tol = simplex_tol[idx]
             params[prop].simplex_scale = simplex_scale[idx]
         # Keyword dictionaries for levenberg-marquardt and nelder-mead
         self.lm_kwargs = {'method': 'lm', 'xtol': 1.e-6, 'ftol': 1.e-3,
@@ -247,78 +262,72 @@ class Feature(object):
                           'diff_step': 1e-5, 'verbose': 0}
         self.amoeba_kwargs = {'initial_simplex': None,
                               'ftol': 1000., 'maxevals': int(1e3)}
+        # MinimizerResults to be filled after fitting
+        self.lmResult = None
+        self.amoebaResult = None
         return params
 
     def _prepareFit(self, method):
+        # Warnings
         if self.saturated.size > 1:
             msg = "Discluding {} saturated pixels from optimization."
             logger.warning(msg.format(self.saturated.size))
-        x_scale, simplex_scale, xtol, x0 = [np.empty(0)] * 4
+        # Unwrap vector keywords and initial guess
+        x_scale, simplex_scale, simplex_tol, x0 = [np.empty(0)] * 4
         for key in self.properties:
             param = self.params[key]
             if hasattr(self.model.particle, key):
                 val = getattr(self.model.particle, key)
             else:
                 val = getattr(self.model.instrument, key)
-            param.max += val
-            param.min += val
             param.value = val
             param.init_value = val
             if param.vary:
                 x_scale = np.append(x_scale, param.x_scale)
                 simplex_scale = np.append(simplex_scale,
                                           param.simplex_scale)
-                xtol = np.append(xtol, param.tol)
+                simplex_tol = np.append(simplex_tol,
+                                        param.simplex_tol)
                 x0 = np.append(x0, val)  # initial guess
         self.lm_kwargs['x_scale'] = x_scale
         self.amoeba_kwargs['simplex_scale'] = simplex_scale
-        self.amoeba_kwargs['xtol'] = xtol
-        if method == 'amoeba-lm' and self.model.using_gpu:
-            self._data = cp.asarray(self._data)
+        self.amoeba_kwargs['xtol'] = simplex_tol
+        # Method specific actions
+        if method == 'amoeba->lm':
+            if self.model.using_gpu:
+                self._data = cp.asarray(self._data)
         return x0
 
-    def _generateResult(self, method, x0,
-                        lmresult, nmresult=None):
-        init_vals = []
-        for prop in self.properties:
-            init_vals.append(self.params[prop].init_value)
-        # Create result from levenberg-marquardt fit.
-        # If using amoeba fit, add extra fields to store results.
-        # TODO: better integrate amoeba and lm results together
+    def _generateResult(self, method, x0, sciresult, init_values=None):
         result = MinimizerResult(params=self.params,
                                  method=method,
-                                 residual=lmresult.fun,
                                  errorbars=True,
-                                 init_vals=init_vals,
-                                 nvarys=len(x0),
+                                 nvarys=x0.size,
                                  ndata=self.data.size,
-                                 success=lmresult.success,
-                                 lmdif_message=lmresult.message)
+                                 nfev=sciresult.nfev,
+                                 success=sciresult.success,
+                                 message=sciresult.message)
+        # Handle case where initial guess is amoeba result
+        if type(init_values) in (np.ndarray, list):
+            idx = 0
+            for prop in self.properties:
+                if result.params[prop].vary:
+                    result.params[prop].init_value = init_values[idx]
+                    idx += 1
         # Calculate statistics
-        result.nvarys = x0.size
-        result.ndata = result.residual.size
         result.nfree = result.ndata - result.nvarys
-        result.chisqr = (result.residual).dot(result.residual)
+        if type(sciresult.fun) == np.ndarray:
+            result.residual = sciresult.fun
+            result.chisqr = (result.residual).dot(result.residual)
+            result.njev = sciresult.njev
+        else:
+            result.chisqr = sciresult.fun
         result.redchi = result.chisqr / max(1, result.nfree)
         neg2_log_likel = result.ndata + np.log(result.chisqr) \
             * result.nvarys
         result.aic = neg2_log_likel + 2 * result.nvarys
         result.bic = neg2_log_likel + np.log(result.ndata) \
             * result.nvarys
-        result.nfev = lmresult.nfev
-        result.njev = lmresult.njev
-        if method == 'amoeba-lm':
-            idx = 0
-            for prop in self.properties:
-                if self.params[prop].vary:
-                    result.params[prop].init_value = nmresult.x[idx]
-                    idx += 1
-            result.nfev = str(nmresult.nfev)+"+"+str(lmresult.nfev)
-            # Custom fields for amoeba fit
-            result.amoeba_message = nmresult.message
-            result.amoeba_iter = nmresult.nit
-            result.amoeba_success = nmresult.success
-            result.amoeba_redchi = nmresult.fun / result.nfree
         return result
 
     #
@@ -356,7 +365,6 @@ class Feature(object):
 
 if __name__ == '__main__':
     import cv2
-    from lmfit import report_fit
     import matplotlib.pyplot as plt
     from time import time
 
@@ -388,9 +396,9 @@ if __name__ == '__main__':
     # set settings
     start = time()
     # ... and now fit
-    result = a.optimize(method='amoeba-lm')
+    result = a.optimize(method='amoeba->lm')
     print("Time to fit: {:03f}".format(time() - start))
-    report_fit(result)
+    a.printReport()
     # plot residuals
     resid = a.residuals().reshape(shape)
     hol = a.model.hologram().reshape(shape)
