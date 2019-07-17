@@ -1,20 +1,20 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtCore import pyqtSlot
-import os
-from pylorenzmie.lmtool.LMTool_Ui import Ui_MainWindow
-from pylorenzmie.theory.Instrument import coordinates
-from pylorenzmie.theory.Feature import Feature
-import pylorenzmie
-from lmfit import report_fit
-import pyqtgraph as pg
-import numpy as np
-import cv2
-import json
-from scipy.interpolate import BSpline, splrep
 import logging
+from scipy.interpolate import BSpline, splrep
+import json
+import cv2
+import numpy as np
+import pyqtgraph as pg
+import pylorenzmie
+from pylorenzmie.theory.Feature import Feature
+from pylorenzmie.theory.Instrument import coordinates
+from pylorenzmie.lmtool.LMTool_Ui import Ui_MainWindow
+import os
+from PyQt5.QtCore import pyqtSlot
+from PyQt5 import QtWidgets, QtCore
+
 logger = logging.getLogger('LMTool')
 logger.setLevel(logging.INFO)
 
@@ -243,7 +243,7 @@ class LMTool(QtWidgets.QMainWindow):
         method = 'lm' if self.ui.LMButton.isChecked() else 'amoeba-lm'
         for prop in self.feature.properties:
             propUi = getattr(self.ui, prop)
-            self.feature.params[prop].vary = not propUi.fixed
+            self.feature.parameterVary[prop] = not propUi.fixed
         (x_old, y_old) = (self.theory.particle.x_p, self.theory.particle.y_p)
         result = self.feature.optimize(method=method)
         self.updateParameterUi(x_old, y_old)
@@ -251,7 +251,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.updateDataProfile()
         self.updateTheoryProfile()
         logger.info("Finished!")
-        report_fit(result)
+        print(result)
 
     def updateParameterUi(self, x_p, y_p):
         # Disconnect
