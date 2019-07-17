@@ -224,6 +224,38 @@ class Feature(object):
     # TODO: method to save fit results
 
     #
+    # Loss function, residuals, and chisqr for under the hood
+    #
+    def _loss(self, x, return_gpu=False):
+        '''Updates properties and returns residuals'''
+        particle, instrument = self.model.particle, self.model.instrument
+        idx = 0
+        for key in self.properties:
+            param = self.params[key]
+            if param.vary:
+                if hasattr(particle, key):
+                    setattr(particle, key, x[idx])
+                else:
+                    setattr(instrument, key, x[idx])
+                setattr(param, 'value', x[idx])
+                idx += 1
+        residuals = self._residuals(return_gpu)
+        # don't fit on saturated or nan/infinite pixels
+        residuals[self.saturated] = 0.
+        residuals[self.nan] = 0.
+        return residuals
+
+    def _residuals(self, return_gpu):
+        return (self.model.hologram(return_gpu) - self._data) / self.noise
+
+    def _chisq(self, x):
+        r = self._loss(x, self.model.using_gpu)
+        chisq = r.dot(r)
+        if self.model.using_gpu:
+            chisq = chisq.get()
+        return chisq
+
+    #
     # Fitting preparation and cleanup
     #
     def _initParams(self):
@@ -329,38 +361,6 @@ class Feature(object):
         result.bic = neg2_log_likel + np.log(result.ndata) \
             * result.nvarys
         return result
-
-    #
-    # Loss function, residuals, and chisqr for under the hood
-    #
-    def _loss(self, x, return_gpu=False):
-        '''Updates properties and returns residuals'''
-        particle, instrument = self.model.particle, self.model.instrument
-        idx = 0
-        for key in self.properties:
-            param = self.params[key]
-            if param.vary:
-                if hasattr(particle, key):
-                    setattr(particle, key, x[idx])
-                else:
-                    setattr(instrument, key, x[idx])
-                setattr(param, 'value', x[idx])
-                idx += 1
-        residuals = self._residuals(return_gpu)
-        # don't fit on saturated or nan/infinite pixels
-        residuals[self.saturated] = 0.
-        residuals[self.nan] = 0.
-        return residuals
-
-    def _residuals(self, return_gpu):
-        return (self.model.hologram(return_gpu) - self._data) / self.noise
-
-    def _chisq(self, x):
-        r = self._loss(x, self.model.using_gpu)
-        chisq = r.dot(r)
-        if self.model.using_gpu:
-            chisq = chisq.get()
-        return chisq
 
 
 if __name__ == '__main__':
