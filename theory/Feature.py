@@ -266,7 +266,7 @@ class Feature(object):
                           (-1., 1.), (-1., 1.), (-1., 1.),
                           (-1., 1.), (-1., 1.), (-.5, .5)]
         # ... scale of initial simplex
-        simplex_scale = np.array([4., 4., 95., 0.48, 0.19, .2, .1, .1, .05])
+        simplex_scale = np.array([4., 4., 30., 0.15, 0.05, .2, .1, .1, .05])
         # ... tolerance for nelder-mead termination
         simplex_tol = [2., 2., 5., .005, .005, .001, .01, .01, .01]
         # Default options for amoeba and lm not parameter dependent
