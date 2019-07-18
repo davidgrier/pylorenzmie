@@ -390,6 +390,7 @@ class GeneralizedLorenzMie(object):
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
         self.krv = cp.empty(shape, dtype=np.float64)
+        self.this = cp.empty(shape=self.krv.shape, dtype=np.complex128)
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
@@ -404,14 +405,14 @@ class GeneralizedLorenzMie(object):
                                             p.r_p[:, None]))
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            this = cp.empty(shape=self.krv.shape, dtype=np.complex128)
-            compute[blockspergrid, threadsperblock](self.krv, ab, this,
+            compute[blockspergrid, threadsperblock](self.krv, ab,
+                                                    self.this,
                                                     cartesian, bohren)
-            this *= np.exp(-1.j * k * p.z_p)
+            self.this *= np.exp(-1.j * k * p.z_p)
             try:
-                result += this
+                result += self.this
             except NameError:
-                result = this
+                result = self.this
         return result
 
 
