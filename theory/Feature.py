@@ -274,7 +274,7 @@ class Feature(object):
                       'gtol': 1e-6, 'max_nfev': int(2e3),
                       'diff_step': 1e-5, 'verbose': 0}
         amoeba_options = {'initial_simplex': None,
-                          'ftol': 1000., 'maxevals': int(1e3)}
+                          'ftol': 1.e-2, 'maxevals': int(1e3)}
         # Initialize settings for fitting
         self.amoebaSettings = FitSettings(self.properties,
                                           options=amoeba_options)
