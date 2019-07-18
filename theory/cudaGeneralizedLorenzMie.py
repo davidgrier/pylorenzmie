@@ -390,19 +390,20 @@ class GeneralizedLorenzMie(object):
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
         self.krv = cp.empty(shape, dtype=np.float64)
-        self.this = cp.empty(shape=self.krv.shape, dtype=np.complex128)
+        self.this = cp.empty(shape, dtype=np.complex128)
+        self.device_coordinates = cp.asarray(self.coordinates)
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
         threadsperblock = 32
-        blockspergrid = (self.krv.shape[1] +
+        blockspergrid = (self.this.shape[1] +
                          (threadsperblock - 1)) // threadsperblock
         k = self.instrument.wavenumber()
         for p in np.atleast_1d(self.particle):
-            self.krv[...] = cp.asarray(k * (self.coordinates -
-                                            p.r_p[:, None]))
+            r_p = cp.asarray(p.r_p[:, None])
+            self.krv[...] = k * (self.device_coordinates - r_p)
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
             compute[blockspergrid, threadsperblock](self.krv, ab,
@@ -446,10 +447,10 @@ if __name__ == '__main__':
     start = time()
     field = kernel.field()
     # Compute hologram from field and show it
-    field = field.get()
-    #field *= np.exp(-1.j * k * particle.z_p)
+    field *= np.exp(-1.j * k * particle.z_p)
     field[0, :] += 1.
-    hologram = np.sum(np.real(field * np.conj(field)), axis=0)
+    hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
     print("Time to calculate: {}".format(time() - start))
+    hologram = hologram.get()
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
