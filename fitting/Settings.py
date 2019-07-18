@@ -1,6 +1,7 @@
-import numpy as np
-f  # !/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+import numpy as np
 
 
 class FitSettings(object):
