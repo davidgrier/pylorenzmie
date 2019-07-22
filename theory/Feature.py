@@ -266,15 +266,15 @@ class Feature(object):
                           (-1., 1.), (-1., 1.), (-1., 1.),
                           (-1., 1.), (-1., 1.), (-.5, .5)]
         # ... scale of initial simplex
-        simplex_scale = np.array([4., 4., 30., 0.15, 0.05, .2, .1, .1, .05])
+        simplex_scale = np.array([4., 4., 5., 0.01, 0.01, .2, .1, .1, .05])
         # ... tolerance for nelder-mead termination
-        simplex_tol = [2., 2., 5., .005, .005, .001, .01, .01, .01]
+        simplex_tol = [1., 1., 1., .001, .001, .001, .01, .01, .01]
         # Default options for amoeba and lm not parameter dependent
         lm_options = {'method': 'lm', 'xtol': 1.e-6, 'ftol': 1.e-3,
                       'gtol': 1e-6, 'max_nfev': int(2e3),
-                      'diff_step': 1e-5, 'verbose': 0}
+                      'diff_step': 1e-6, 'verbose': 0}
         amoeba_options = {'initial_simplex': None,
-                          'ftol': 1.e-2, 'maxevals': int(1e3)}
+                          'ftol': 10., 'maxevals': int(1e3)}
         # Initialize settings for fitting
         self.amoebaSettings = FitSettings(self.properties,
                                           options=amoeba_options)
@@ -319,7 +319,6 @@ if __name__ == '__main__':
     import cv2
     import matplotlib.pyplot as plt
     from time import time
-
     a = Feature()
     # Read example image
     img = cv2.imread('../tutorials/image0400.png')
@@ -336,14 +335,14 @@ if __name__ == '__main__':
     ins.magnification = 0.048
     ins.n_m = 1.34
     p = a.model.particle
-    p.r_p = [shape[0]//2, shape[1]//2, 375.]
-    p.a_p = 1.11
+    p.r_p = [shape[0]//2, shape[1]//2, 330.]
+    p.a_p = 1.1
     p.n_p = 1.4
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
     p.z_p += np.random.normal(0., 20, 1)
-    p.a_p += np.random.normal(0., 0.05, 1)
-    p.n_p += np.random.normal(0., 0.05, 1)
+    p.a_p += np.random.normal(0., 0.1, 1)
+    p.n_p += np.random.normal(0., 0.02, 1)
     print("Initial guess:\n{}".format(p))
     # set settings
     start = time()
