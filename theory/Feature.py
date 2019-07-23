@@ -241,7 +241,6 @@ class Feature(object):
         return (self.model.hologram(return_gpu) - self._data) / self.noise
 
     def _chisq(self, x):
-        print(x)
         r = self._loss(x, self.model.using_gpu)
         chisq = r.dot(r)
         if self.model.using_gpu:
