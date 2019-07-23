@@ -165,8 +165,12 @@ class Feature(object):
                             **self.amoebaSettings.getkwargs(vary))
             self._cleanup('amoeba')
             if not result.success:
-                logger.warning('Fit did not converge: '+result.message)
-            result = least_squares(self._loss, result.x,
+                logger.warning('Nelder-Mead '+result.message
+                               + '. Falling back to least_squares.')
+                x1 = x0
+            else:
+                x1 = result.x
+            result = least_squares(self._loss, x1,
                                    **self.lmSettings.getkwargs(vary))
         else:
             raise ValueError(
