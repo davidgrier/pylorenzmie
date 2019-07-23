@@ -2,7 +2,7 @@ import numpy as np
 from scipy.optimize import OptimizeResult
 
 
-def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
+def amoeba(objective, x0, xmin, xmax, maxevals=int(1e3), initial_simplex=None,
            simplex_scale=.1, xtol=1e-7, ftol=1e-7, adaptive=False):
     '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
     simplex_scale = np.asarray(simplex_scale)
@@ -24,6 +24,7 @@ def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
     one2np1 = list(range(1, N + 1))
     evals = np.zeros(N+1, float)
     for idx in range(N+1):
+        simplex[idx] = np.maximum(xmin, np.minimum(simplex[idx], xmax))
         evals[idx] = objective(simplex[idx])
         neval += 1
     idxs = np.argsort(evals)
@@ -43,13 +44,28 @@ def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
         sigma = 0.5
 
     # START FITTING
+    message = 'failure (hit max evals)'
     while(neval < maxevals):
-        if (all(np.amax(np.abs(simplex[1:] - simplex[0]), axis=0) <= xtol) and
-                np.max(np.abs(simplex[0] - simplex[1:])) <= ftol):
+        # Test if simplex is small
+        if all(np.amax(np.abs(simplex[1:] - simplex[0]), axis=0) <= xtol):
+            message = 'convergence (simplex small)'
+            break
+        # Test if function values are similar
+        if np.max(np.abs(simplex[0] - simplex[1:])) <= ftol:
+            message = 'convergence (fvals similar)'
+        # Test if simplex hits edge of parameter space
+        end = False
+        for k in range(N):
+            temp = simplex[:, k]
+            if xmax[k] in temp or xmin[k] in temp:
+                end = True
+        if end:
+            message = 'failure (stuck to boundary)'
             break
         # Reflect
         xbar = np.add.reduce(simplex[:-1], 0) / N
         xr = (1 + rho) * xbar - rho * simplex[-1]
+        xr = np.maximum(xmin, np.minimum(xr, xmax))
         fxr = objective(xr)
         neval += 1
         doshrink = 0
@@ -57,6 +73,7 @@ def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
         if fxr < evals[0]:
             # If so, reflect double and see if that's even better
             xe = (1 + rho * chi) * xbar - rho * chi * simplex[-1]
+            xe = np.maximum(xmin, np.minimum(xe, xmax))
             fxe = objective(xe)
             neval += 1
             if fxe < fxr:
@@ -73,6 +90,7 @@ def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
                 # If reflection is not better, contract.
                 if fxr < evals[-1]:
                     xc = (1 + psi * rho) * xbar - psi * rho * simplex[-1]
+                    xc = np.maximum(xmin, np.minimum(xc, xmax))
                     fxc = objective(xc)
                     neval += 1
                     if fxc <= fxr:
@@ -83,6 +101,7 @@ def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
                 else:
                     # Do 'inside' contraction
                     xcc = (1 - psi) * xbar + psi * simplex[-1]
+                    xcc = np.maximum(xmin, np.minimum(xcc, xmax))
                     fxcc = objective(xcc)
                     neval += 1
                     if fxcc < evals[-1]:
@@ -94,6 +113,8 @@ def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
                     for j in one2np1:
                         simplex[j] = simplex[0] + sigma * \
                             (simplex[j] - simplex[0])
+                        simplex[j] = np.maximum(
+                            xmin, np.minimum(simplex[j], xmax))
                         evals[j] = objective(simplex[j])
                         neval += 1
         idxs = np.argsort(evals)
@@ -102,8 +123,8 @@ def amoeba(objective, x0, maxevals=int(1e3), initial_simplex=None,
         niter += 1
     best = simplex[0]
     chi = evals[0]
-    success = False if neval == maxevals else True
-    return OptimizeResult(x=best, success=success, message='',
+    success = False if 'failure' in message else True
+    return OptimizeResult(x=best, success=success, message=message,
                           nit=niter, nfev=neval, fun=chi)
 
 
