@@ -368,9 +368,7 @@ class LMTool(QtWidgets.QMainWindow):
     @data.setter
     def data(self, data):
         self._data = data / self.background
-        mean = np.mean(self._data)
-        if round(mean) != 1:
-            self._data = self._data / mean
+        self._data /= np.mean(self._data)
         self.image.setImage(self._data)
         self.ui.x_p.setRange(0, data.shape[1]-1)
         self.ui.y_p.setRange(0, data.shape[0]-1)
