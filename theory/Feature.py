@@ -161,12 +161,12 @@ class Feature(object):
             result = amoeba(self._chisq, x0,
                             **self.amoebaSettings.getkwargs(vary))
         elif method == 'amoeba-lm':
-            nmresult = amoeba(self._chisq, x0,
-                              **self.amoebaSettings.getkwargs(vary))
+            result = amoeba(self._chisq, x0,
+                            **self.amoebaSettings.getkwargs(vary))
             self._cleanup('amoeba')
-            lmresult = least_squares(self._loss, nmresult.x,
-                                     **self.lmSettings.getkwargs(vary))
-            result = lmresult
+            if 'failure' not in result.message:
+                result = least_squares(self._loss, result.x,
+                                       **self.lmSettings.getkwargs(vary))
         else:
             raise ValueError(
                 "method keyword must either be lm, amoeba, or amoeba-lm")
@@ -262,19 +262,19 @@ class Feature(object):
         # ... levenberg-marquardt variable scale factor
         x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
         # ... bounds around intial guess for bounded nelder-mead
-        simplex_bounds = [(-100, 100), (-100, 100), (-200, 200),
-                          (-1., 1.), (-1., 1.), (-1., 1.),
-                          (-1., 1.), (-1., 1.), (-.5, .5)]
+        simplex_bounds = [(-np.inf, np.inf), (-np.inf, np.inf),
+                          (0., 2000.), (.001, 10.), (1., 3.),
+                          (0., 3.), (1., 3.), (.100, 2.00), (0., 1.)]
         # ... scale of initial simplex
         simplex_scale = np.array([4., 4., 5., 0.01, 0.01, .2, .1, .1, .05])
         # ... tolerance for nelder-mead termination
-        simplex_tol = [1., 1., 1., .001, .001, .001, .01, .01, .01]
+        simplex_tol = [1., 1., .05, .005, .005, .001, .01, .01, .01]
         # Default options for amoeba and lm not parameter dependent
         lm_options = {'method': 'lm', 'xtol': 1.e-6, 'ftol': 1.e-3,
                       'gtol': 1e-6, 'max_nfev': int(2e3),
-                      'diff_step': 1e-6, 'verbose': 0}
+                      'diff_step': 1e-5, 'verbose': 0}
         amoeba_options = {'initial_simplex': None,
-                          'ftol': 10., 'maxevals': int(1e3)}
+                          'ftol': 1000., 'maxevals': int(1e3)}
         # Initialize settings for fitting
         self.amoebaSettings = FitSettings(self.properties,
                                           options=amoeba_options)
@@ -286,6 +286,8 @@ class Feature(object):
             lmparam = self.lmSettings.parameters[prop]
             amparam.options['simplex_scale'] = simplex_scale[idx]
             amparam.options['xtol'] = simplex_tol[idx]
+            amparam.options['xmax'] = simplex_bounds[idx][1]
+            amparam.options['xmin'] = simplex_bounds[idx][0]
             lmparam.options['x_scale'] = x_scale[idx]
 
     def _prepare(self, method):
@@ -335,14 +337,14 @@ if __name__ == '__main__':
     ins.magnification = 0.048
     ins.n_m = 1.34
     p = a.model.particle
-    p.r_p = [shape[0]//2, shape[1]//2, 330.]
+    p.r_p = [shape[0]//2, shape[1]//2, 370.]
     p.a_p = 1.1
     p.n_p = 1.4
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
-    p.z_p += np.random.normal(0., 20, 1)
-    p.a_p += np.random.normal(0., 0.1, 1)
-    p.n_p += np.random.normal(0., 0.02, 1)
+    p.z_p += np.random.normal(0., 10, 1)
+    p.a_p += np.random.normal(0., 0.05, 1)
+    p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
     # set settings
     start = time()
