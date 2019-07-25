@@ -46,6 +46,14 @@ class LMHologram(LorenzMie):
     def alpha(self, alpha):
         self._alpha = float(alpha)
 
+    @property
+    def using_gpu(self):
+        return(self._using_gpu)
+        
+    @using_gpu.setter
+    def using_gpu(self, using_gpu):
+        self._using_gpu = using_gpu
+
     def hologram(self, return_gpu=False):
         '''Return hologram of sphere
 
@@ -55,8 +63,15 @@ class LMHologram(LorenzMie):
             Computed hologram.
         '''
         xp = cp if self.using_gpu else np
+        
         field = self.alpha * self.field()
         field[0, :] += 1.
+        if self.using_gpu is True:
+            field = cp.array(field)
+        elif self.using_gpu is False and cp is not None:
+            field = cp.asnumpy(field)
+        else:
+            field = np.array(field)
         hologram = xp.sum(xp.real(field * xp.conj(field)), axis=0)
         if return_gpu is False and xp == cp:
             hologram = hologram.get()
@@ -70,6 +85,7 @@ if __name__ == '__main__':
 
     shape = [201, 251]
     h = LMHologram(coordinates=coordinates(shape))
+    h.using_gpu=False
     h.particle.r_p = [125, 75, 100]
     h.particle.a_p = 0.9
     h.particle.n_p = 1.45
