@@ -8,7 +8,7 @@ from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
 from pylorenzmie.fitting.minimizers import amoeba
-from pylorenzmie.fitting.Settings import FitSettings
+from pylorenzmie.fitting.Settings import FitSettings, FitResult
 try:
     import cupy as cp
 except ImportError:
@@ -161,22 +161,22 @@ class Feature(object):
             result = amoeba(self._chisq, x0,
                             **self.amoebaSettings.getkwargs(vary))
         elif method == 'amoeba-lm':
-            result = amoeba(self._chisq, x0,
-                            **self.amoebaSettings.getkwargs(vary))
+            nmresult = amoeba(self._chisq, x0,
+                              **self.amoebaSettings.getkwargs(vary))
             self._cleanup('amoeba')
-            if not result.success:
-                logger.warning('Nelder-Mead '+result.message
-                               + '. Falling back to least_squares.')
-                x1 = x0
+            if not nmresult.success:
+                logger.warning('Nelder-Mead '+nmresult.message)
+                result = nmresult
             else:
-                x1 = result.x
-            result = least_squares(self._loss, x1,
-                                   **self.lmSettings.getkwargs(vary))
+                result = least_squares(self._loss, nmresult.x,
+                                       **self.lmSettings.getkwargs(vary))
+                result.nfev += nmresult.nfev
         else:
             raise ValueError(
                 "method keyword must either be lm, amoeba, or amoeba-lm")
         self._cleanup(method)
-        return result
+        return FitResult(method, result,
+                         self.lmSettings, self.model, self.data.size)
 
     #
     # Methods for saving data
@@ -307,6 +307,8 @@ class Feature(object):
                 val = getattr(self.model.particle, prop)
             else:
                 val = getattr(self.model.instrument, prop)
+            self.lmSettings.parameters[prop].initial = val
+            self.amoebaSettings.parameters[prop].initial = val
             if self.vary[prop]:
                 x0.append(val)
         x0 = np.array(x0)
