@@ -166,11 +166,12 @@ class Feature(object):
             self._cleanup('amoeba')
             if not nmresult.success:
                 logger.warning('Nelder-Mead '+nmresult.message)
-                result = nmresult
+                x1 = x0
             else:
-                result = least_squares(self._loss, nmresult.x,
-                                       **self.lmSettings.getkwargs(vary))
-                result.nfev += nmresult.nfev
+                x1 = nmresult.x
+            result = least_squares(self._loss, x1,
+                                   **self.lmSettings.getkwargs(vary))
+            result.nfev += nmresult.nfev
         else:
             raise ValueError(
                 "method keyword must either be lm, amoeba, or amoeba-lm")
@@ -356,7 +357,7 @@ if __name__ == '__main__':
     # set settings
     start = time()
     # ... and now fit
-    result = a.optimize(method='amoeba-lm')
+    result = a.optimize(method='amoeba')
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
     # plot residuals
