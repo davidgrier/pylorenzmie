@@ -84,10 +84,6 @@ class Feature(object):
         self.params = self._init_params()
         # Deserialize if needed
         self.deserialize(info)
-        # Initialize a dummy hologram to start cupy and jit compile
-        self.model.coordinates = coordinates((5, 5))
-        self.model.hologram()
-        self.model.coordinates = self.coordinates
 
     #
     # Fields for user to set data and model's initial guesses
@@ -153,29 +149,30 @@ class Feature(object):
             in the documentation for lmfit.
         '''
         x0 = self._prepare(method)
-        vary = self.vary
+        options = {}
         if method == 'lm':
             result = least_squares(self._loss, x0,
-                                   **self.lmSettings.getkwargs(vary))
+                                   **self.lmSettings.getkwargs(self.vary))
         elif method == 'amoeba':
             result = amoeba(self._chisq, x0,
-                            **self.amoebaSettings.getkwargs(vary))
+                            **self.amoebaSettings.getkwargs(self.vary))
         elif method == 'amoeba-lm':
             nmresult = amoeba(self._chisq, x0,
-                              **self.amoebaSettings.getkwargs(vary))
-            self._cleanup('amoeba')
+                              **self.amoebaSettings.getkwargs(self.vary))
+            nmresult = self._cleanup('amoeba', nmresult, options=options)
             if not nmresult.success:
-                logger.warning('Nelder-Mead '+nmresult.message)
+                logger.warning('Nelder-Mead '+nmresult.message +
+                               '. Falling back to least_squares.')
                 x1 = x0
             else:
                 x1 = nmresult.x
             result = least_squares(self._loss, x1,
-                                   **self.lmSettings.getkwargs(vary))
-            result.nfev += nmresult.nfev
+                                   **self.lmSettings.getkwargs(self.vary))
+            options['nmresult'] = nmresult
         else:
             raise ValueError(
                 "method keyword must either be lm, amoeba, or amoeba-lm")
-        self._cleanup(method)
+        result = self._cleanup(method, result, options=options)
         return FitResult(method, result,
                          self.lmSettings, self.model, self.data.size)
 
@@ -319,10 +316,13 @@ class Feature(object):
                 self._data = cp.asarray(self._data)
         return x0
 
-    def _cleanup(self, method):
+    def _cleanup(self, method, result, options=None):
         if method == 'amoeba':
             if self.model.using_gpu:
                 self._data = cp.asnumpy(self._data)
+        elif method == 'amoeba-lm':
+            result.nfev += options['nmresult'].nfev
+        return result
 
 
 if __name__ == '__main__':
@@ -357,7 +357,7 @@ if __name__ == '__main__':
     # set settings
     start = time()
     # ... and now fit
-    result = a.optimize(method='amoeba')
+    result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
     # plot residuals
