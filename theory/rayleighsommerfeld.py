@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import numpy as np
 
 
@@ -5,28 +7,24 @@ def hanning(nx, ny):
     """
     Calculates the Hanning Window of size (nx,ny)
     """
-    if ny <= 0:
-        print("Array dimensions must be >= 0")
-        raise TypeError
-    if nx <= 0:
-        print("Array dimensions must be >= 0")
-        raise TypeError
+    if (nx <= 0):
+        raise ValueError('nx must be greater than zero')
+    if (ny < 0):
+        raise ValueError('ny cannot be negative')
 
-    row_window = 0.5 * (1 - np.cos(2 * np.pi * np.arange(0, int(nx)) / nx))
-    col_window = 0.5 * (1 - np.cos(2 * np.pi * np.arange(0, int(ny)) / ny))
+    xwindow = np.hanning(nx)
     if ny > 0:
-        return np.outer(row_window, col_window)
+        ywindow = np.hanning(ny)
+        return np.sqrt(np.outer(xwindow, ywindow))
     else:
-        return row_window
+        return xwindow
 
 
 def rayleighsommerfeld(a, z,
-                       lamb=0.447,
                        wavelength=0.447,
-                       mpp=0.135,
                        magnification=0.135,
                        nozphase=False,
-                       hanning_win=False):
+                       hanning=False):
     """
     Compute electric fields propagated by a distance or
     set of distances above the imaging plane via
@@ -46,31 +44,16 @@ def rayleighsommerfeld(a, z,
         Complex electric fields at a plane or set of planes z.
     """
 
-    # Check if a and z are appropriates types
-    if type(a) != np.ndarray:
-        print('a must be a numpy array')
-        raise TypeError
-
-    if type(z) == int or type(z) == float:
-        z = [z]
-
-    if type(z) != list and type(z) != np.ndarray:
-        print('z must be an int, float, list or numpy array')
-        raise TypeError
-
-    # Check image is 2D
     if a.ndim != 2:
-        print("a must be two-dimensional hologram")
-        raise TypeError
-
-    # ny, nx = map(float, a.shape)
+        raise ValueError('a must be a two-dimensional hologram')
+    a = np.array(a, dtype=complex)
     ny, nx = a.shape
 
-    # A single slice or volumetric slices?
-    nz = 1 if type(z) == int else len(z)
+    z = np.atleast_1d(z)
+    nz = len(z)
 
     # important factors
-    k = 2. * np.pi * mpp / lamb      # wavenumber in radians/pixels
+    k = 2.*np.pi * magnification/wavelength  # wavenumber [radians/pixel]
 
     # phase factor for Rayleigh-Sommerfeld propagator in Fourier space
     # Compute factor k*sqrt(1-qx**2+qy**2)
@@ -79,22 +62,21 @@ def rayleighsommerfeld(a, z,
     qy = np.linspace(-0.5, 0.5, ny, endpoint=False, dtype=complex)
     qx, qy = np.meshgrid(qx, qy)
     qsq = qx**2 + qy**2
-    qsq *= (lamb / mpp)**2
+    qsq *= (wavelength/magnification)**2
 
     qfactor = k * np.sqrt(1. - qsq)
 
     if nozphase:
         qfactor -= k
 
-    if hanning_win:
+    if hanning:
         qfactor *= hanning(ny, nx)
 
     # Account for propagation and absorption
     ikappa = 1j * np.real(qfactor)
     gamma = np.imag(qfactor)
 
-    # Go to fourier space and apply RS propagation operator
-    a = np.array(a, dtype=complex)
+    # Go to Fourier space and apply RS propagation operator
     E = np.fft.ifft2(a - 1.)                   # avg(a-1) should = 0.
     E = np.fft.fftshift(E)
     res = np.zeros([ny, nx, nz], dtype=complex)
