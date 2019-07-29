@@ -9,6 +9,7 @@ from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
 from pylorenzmie.fitting.minimizers import amoeba
 from pylorenzmie.fitting.Settings import FitSettings, FitResult
+from pylorenzmie.fitting.Mask import Mask
 try:
     import cupy as cp
 except ImportError:
@@ -16,8 +17,6 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
-
-sys.path.append('/home/group/endtoend/OOe2e/')
 
 
 class Feature(object):
@@ -84,6 +83,7 @@ class Feature(object):
         self.params = self._init_params()
         # Deserialize if needed
         self.deserialize(info)
+        self.mask = Mask(self.model.coordinates)
 
     #
     # Fields for user to set data and model's initial guesses
@@ -104,6 +104,8 @@ class Feature(object):
             self.saturated = np.where(data == np.max(data))[0]
             self.nan = np.append(np.where(np.isnan(data))[0],
                                  np.where(np.isinf(data))[0])
+            exclude = np.append(self.saturated, self.nan)
+            self.mask.exclude = exclude
         self._data = data
 
     @property
@@ -127,7 +129,7 @@ class Feature(object):
             Difference between model and data at each pixel
         '''
         return self.model.hologram() - self.data
-
+    
     def optimize(self, method='amoeba'):
         '''Fit Model to data
         Arguments
@@ -148,6 +150,12 @@ class Feature(object):
             Model to the provided data.  The format is described
             in the documentation for lmfit.
         '''
+        # Get array of pixels to sample
+        self.mask.coordinates = np.copy(self.model.coordinates)
+        self.mask.initialize_sample()
+        self.model.coordinates = self.mask.masked_coords()
+        npix =  self.model.coordinates.shape[1]
+
         x0 = self._prepare(method)
         options = {}
         if method == 'lm':
@@ -172,11 +180,18 @@ class Feature(object):
         else:
             raise ValueError(
                 "method keyword must either be lm, amoeba, or amoeba-lm")
-        result = self._cleanup(method, result, options=options)
-        return FitResult(method, result,
-                         self.lmSettings, self.model, self.data.size)
 
-    #
+        fitresult = FitResult(method, result,
+                              self.lmSettings, self.model, npix)
+        
+        # reassign original coordinates before returning the fit
+        self.model.coordinates = self.mask.coordinates
+
+        result = self._cleanup(method, result, options=options)
+        
+        return fitresult
+
+#
     # Methods for saving data
     #
     def serialize(self, filename=None):
@@ -234,13 +249,11 @@ class Feature(object):
                     setattr(instrument, key, x[idx])
                 idx += 1
         residuals = self._residuals(return_gpu)
-        # don't fit on saturated or nan/infinite pixels
-        residuals[self.saturated] = 0.
-        residuals[self.nan] = 0.
         return residuals
-
+        
     def _residuals(self, return_gpu):
-        return (self.model.hologram(return_gpu) - self._data) / self.noise
+        data = [self._data[i] for i in self.mask.sampled_index]
+        return (self.model.hologram(return_gpu) - data) / self.noise
 
     def _chisq(self, x):
         r = self._loss(x, self.model.using_gpu)
@@ -354,15 +367,21 @@ if __name__ == '__main__':
     p.a_p += np.random.normal(0., 0.05, 1)
     p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
+
     # set settings
     start = time()
     # ... and now fit
     result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
+
     # plot residuals
     resid = a.residuals().reshape(shape)
     hol = a.model.hologram().reshape(shape)
-    data = a.data.reshape(shape)
+    data = a.data.reshape(shape)    
     plt.imshow(np.hstack([hol, data, resid+1]), cmap='gray')
     plt.show()
+
+    #plot mask
+    plt.imshow(data, cmap='gray')
+    a.mask.draw_mask()
