@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-import sys
+
 import pickle
 import logging
 import numpy as np
@@ -46,7 +46,7 @@ class Feature(object):
         Settings for nelder-mead optimization. Refer to minimizers.py
         -> amoeba and Settings.py -> FitSettings for documentation
     lm_settings : FitSettings
-        Settings for levenberg-marquardt optimization. Refer to
+        Settings for Levenberg-Marquardt optimization. Refer to
         scipy.optimize.least_squares and Settings.py -> FitSettings
         for documentation
 
@@ -98,7 +98,8 @@ class Feature(object):
         if type(data) is np.ndarray:
             avg = np.mean(data)
             if not np.isclose(avg, 1., rtol=0, atol=.05):
-                msg = "Mean of data ({:.02f}) is not near 1. Fit may not converge."
+                msg = ('Mean of data ({:.02f}) is not near 1. '
+                       'Fit may not converge.')
                 logger.warning(msg.format(avg))
             # Find indices where data is saturated or nan/inf
             self.saturated = np.where(data == np.max(data))[0]
@@ -132,11 +133,13 @@ class Feature(object):
 
     def optimize(self, method='amoeba'):
         '''Fit Model to data
+
         Arguments
-        ________
-        method  : str
-            Optimization method. Use 'lm' for scipy least_squares or
-            'amoeba-lm' for Nelder-Mead/Levenberg-Marquardt hybrid
+        ---------
+        method : str
+            Optimization method.
+            'lm': scipy.least_squares
+            'amoeba-lm': Nelder-Mead/Levenberg-Marquardt hybrid
 
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.least_squares()
@@ -169,8 +172,8 @@ class Feature(object):
                               **self.amoeba_settings.getkwargs(self.vary))
             nmresult = self._cleanup('amoeba', nmresult, options=options)
             if not nmresult.success:
-                logger.warning('Nelder-Mead '+nmresult.message +
-                               '. Falling back to least_squares.')
+                msg = 'Nelder-Mead: {}. Falling back to least squares.'
+                logger.warning(msg.format(nmresult.message))
                 x1 = x0
             else:
                 x1 = nmresult.x
@@ -179,7 +182,7 @@ class Feature(object):
             options['nmresult'] = nmresult
         else:
             raise ValueError(
-                "method keyword must either be lm, amoeba, or amoeba-lm")
+                "Method keyword must either be lm, amoeba, or amoeba-lm")
 
         fitresult = FitResult(method, result,
                               self.lm_settings, self.model, npix)
@@ -286,11 +289,16 @@ class Feature(object):
         # ... tolerance for nelder-mead termination
         simplex_tol = [1., 1., .05, .005, .005, .001, .01, .01, .01]
         # Default options for amoeba and lm not parameter dependent
-        lm_options = {'method': 'lm', 'xtol': 1.e-6, 'ftol': 1.e-3,
-                      'gtol': 1e-6, 'max_nfev': int(2e3),
-                      'diff_step': 1e-5, 'verbose': 0}
+        lm_options = {'method': 'lm',
+                      'xtol': 1.e-6,
+                      'ftol': 1.e-3,
+                      'gtol': 1e-6,
+                      'max_nfev': 2000,
+                      'diff_step': 1e-5,
+                      'verbose': 0}
         amoeba_options = {'initial_simplex': None,
-                          'ftol': 1000., 'maxevals': int(1e3)}
+                          'ftol': 1000.,
+                          'maxevals': 1000}
         # Initialize settings for fitting
         self.amoeba_settings = FitSettings(self.properties,
                                            options=amoeba_options)
@@ -342,21 +350,25 @@ if __name__ == '__main__':
     import cv2
     import matplotlib.pyplot as plt
     from time import time
+
     a = Feature()
+
     # Read example image
     img = cv2.imread('../tutorials/image0400.png')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = img / np.mean(img)
     shape = img.shape
     img = np.array([item for sublist in img for item in sublist])
-    plt.show()
     a.data = img
-    # Set instrument and particle initial guesses
+
+    # Instrument configuration
     a.model.coordinates = coordinates(shape)
     ins = a.model.instrument
     ins.wavelength = 0.447
     ins.magnification = 0.048
     ins.n_m = 1.34
+
+    # Initial estimates for particle properties
     p = a.model.particle
     p.r_p = [shape[0]//2, shape[1]//2, 370.]
     p.a_p = 1.1
@@ -367,9 +379,11 @@ if __name__ == '__main__':
     p.a_p += np.random.normal(0., 0.05, 1)
     p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
+
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     start = time()
+
     # ... and now fit
     result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
