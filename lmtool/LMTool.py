@@ -52,10 +52,10 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
         self.setupParameters()
         self.maxrange = int(self.ui.bbox.value() // 2)
-        self._profileCoordinates = np.arange(self.maxrange)
-        self._fitCoordinates = coordinates((self.maxrange*2,
-                                            self.maxrange*2))
-        self._coordinates = self._profileCoordinates
+        self._profile_coordinates = np.arange(self.maxrange)
+        self._fit_coordinates = coordinates((self.maxrange*2,
+                                             self.maxrange*2))
+        self._coordinates = self._profile_coordinates
         self.setupImageTab()
         self.setupProfileTab()
         self.setupFitTab()
@@ -224,9 +224,9 @@ class LMTool(QtWidgets.QMainWindow):
     @pyqtSlot(float)
     def updateBBox(self, count):
         self.maxrange = int(self.ui.bbox.value() / 2)
-        self._profileCoordinates = np.arange(self.maxrange)
-        self._fitCoordinates = coordinates((self.maxrange*2,
-                                            self.maxrange*2))
+        self._profile_coordinates = np.arange(self.maxrange)
+        self._fit_coordinates = coordinates((self.maxrange*2,
+                                             self.maxrange*2))
         self.ui.profilePlot.setXRange(0., self.maxrange)
         self.updateDataProfile()
         self.updateTheoryProfile()
@@ -320,7 +320,7 @@ class LMTool(QtWidgets.QMainWindow):
     # Routines to update plots
     #
     def updateDataProfile(self):
-        self.coordinates = self._profileCoordinates
+        self.coordinates = self._profile_coordinates
         center = (self.ui.x_p.value(), self.ui.y_p.value())
         avg, std = aziavg(self.data, center)
         self.dataProfile.setData(avg)
@@ -328,7 +328,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.regionLower.setData(avg - std)
 
     def updateTheoryProfile(self):
-        self.coordinates = self._profileCoordinates
+        self.coordinates = self._profile_coordinates
         self.theory.particle.x_p, self.theory.particle.y_p = (0, 0)
         xsmooth = np.linspace(0, self.maxrange - 1, 300)
         y = self.theory.hologram()
@@ -342,7 +342,7 @@ class LMTool(QtWidgets.QMainWindow):
         x_p = self.ui.x_p.value()
         y_p = self.ui.y_p.value()
         h, w = self.data.shape
-        self.coordinates = self._fitCoordinates
+        self.coordinates = self._fit_coordinates
         x0 = int(np.clip(x_p - dim, 0, w - 2))
         y0 = int(np.clip(y_p - dim, 0, h - 2))
         x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))

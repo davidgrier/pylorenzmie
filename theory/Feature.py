@@ -42,10 +42,10 @@ class Feature(object):
     vary : dict of booleans
         Allows user to select whether or not to vary parameter
         during fitting. True means the parameter will vary.
-    amoebaSettings : FitSettings
+    amoeba_settings : FitSettings
         Settings for nelder-mead optimization. Refer to minimizers.py
         -> amoeba and Settings.py -> FitSettings for documentation
-    lmSettings : FitSettings
+    lm_settings : FitSettings
         Settings for levenberg-marquardt optimization. Refer to
         scipy.optimize.least_squares and Settings.py -> FitSettings
         for documentation
@@ -160,13 +160,13 @@ class Feature(object):
         options = {}
         if method == 'lm':
             result = least_squares(self._loss, x0,
-                                   **self.lmSettings.getkwargs(self.vary))
+                                   **self.lm_settings.getkwargs(self.vary))
         elif method == 'amoeba':
             result = amoeba(self._chisq, x0,
-                            **self.amoebaSettings.getkwargs(self.vary))
+                            **self.amoeba_settings.getkwargs(self.vary))
         elif method == 'amoeba-lm':
             nmresult = amoeba(self._chisq, x0,
-                              **self.amoebaSettings.getkwargs(self.vary))
+                              **self.amoeba_settings.getkwargs(self.vary))
             nmresult = self._cleanup('amoeba', nmresult, options=options)
             if not nmresult.success:
                 logger.warning('Nelder-Mead '+nmresult.message +
@@ -175,14 +175,14 @@ class Feature(object):
             else:
                 x1 = nmresult.x
             result = least_squares(self._loss, x1,
-                                   **self.lmSettings.getkwargs(self.vary))
+                                   **self.lm_settings.getkwargs(self.vary))
             options['nmresult'] = nmresult
         else:
             raise ValueError(
                 "method keyword must either be lm, amoeba, or amoeba-lm")
 
         fitresult = FitResult(method, result,
-                              self.lmSettings, self.model, npix)
+                              self.lm_settings, self.model, npix)
 
         # reassign original coordinates before returning the fit
         self.model.coordinates = self.mask.coordinates
@@ -292,14 +292,14 @@ class Feature(object):
         amoeba_options = {'initial_simplex': None,
                           'ftol': 1000., 'maxevals': int(1e3)}
         # Initialize settings for fitting
-        self.amoebaSettings = FitSettings(self.properties,
-                                          options=amoeba_options)
-        self.lmSettings = FitSettings(self.properties,
-                                      options=lm_options)
+        self.amoeba_settings = FitSettings(self.properties,
+                                           options=amoeba_options)
+        self.lm_settings = FitSettings(self.properties,
+                                       options=lm_options)
         self.vary = dict(zip(self.properties, vary))
         for idx, prop in enumerate(self.properties):
-            amparam = self.amoebaSettings.parameters[prop]
-            lmparam = self.lmSettings.parameters[prop]
+            amparam = self.amoeba_settings.parameters[prop]
+            lmparam = self.lm_settings.parameters[prop]
             amparam.options['simplex_scale'] = simplex_scale[idx]
             amparam.options['xtol'] = simplex_tol[idx]
             amparam.options['xmax'] = simplex_bounds[idx][1]
@@ -318,8 +318,8 @@ class Feature(object):
                 val = getattr(self.model.particle, prop)
             else:
                 val = getattr(self.model.instrument, prop)
-            self.lmSettings.parameters[prop].initial = val
-            self.amoebaSettings.parameters[prop].initial = val
+            self.lm_settings.parameters[prop].initial = val
+            self.amoeba_settings.parameters[prop].initial = val
             if self.vary[prop]:
                 x0.append(val)
         x0 = np.array(x0)
