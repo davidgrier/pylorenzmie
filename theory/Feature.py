@@ -129,7 +129,7 @@ class Feature(object):
             Difference between model and data at each pixel
         '''
         return self.model.hologram() - self.data
-    
+
     def optimize(self, method='amoeba'):
         '''Fit Model to data
         Arguments
@@ -154,7 +154,7 @@ class Feature(object):
         self.mask.coordinates = np.copy(self.model.coordinates)
         self.mask.initialize_sample()
         self.model.coordinates = self.mask.masked_coords()
-        npix =  self.model.coordinates.shape[1]
+        npix = self.model.coordinates.shape[1]
 
         x0 = self._prepare(method)
         options = {}
@@ -183,12 +183,12 @@ class Feature(object):
 
         fitresult = FitResult(method, result,
                               self.lmSettings, self.model, npix)
-        
+
         # reassign original coordinates before returning the fit
         self.model.coordinates = self.mask.coordinates
 
         result = self._cleanup(method, result, options=options)
-        
+
         return fitresult
 
 #
@@ -250,9 +250,9 @@ class Feature(object):
                 idx += 1
         residuals = self._residuals(return_gpu)
         return residuals
-        
+
     def _residuals(self, return_gpu):
-        data = [self._data[i] for i in self.mask.sampled_index]
+        data = self._data[self.mask.sampled_index]
         return (self.model.hologram(return_gpu) - data) / self.noise
 
     def _chisq(self, x):
@@ -367,8 +367,8 @@ if __name__ == '__main__':
     p.a_p += np.random.normal(0., 0.05, 1)
     p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
-
-    # set settings
+    # init dummy hologram for proper speed gauge
+    a.model.hologram()
     start = time()
     # ... and now fit
     result = a.optimize(method='amoeba-lm')
@@ -378,10 +378,10 @@ if __name__ == '__main__':
     # plot residuals
     resid = a.residuals().reshape(shape)
     hol = a.model.hologram().reshape(shape)
-    data = a.data.reshape(shape)    
+    data = a.data.reshape(shape)
     plt.imshow(np.hstack([hol, data, resid+1]), cmap='gray')
     plt.show()
 
-    #plot mask
+    # plot mask
     plt.imshow(data, cmap='gray')
     a.mask.draw_mask()
