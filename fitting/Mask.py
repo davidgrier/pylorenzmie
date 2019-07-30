@@ -12,6 +12,9 @@ def normalize(distribution):
     normed = np.array([float(i)/total for i in distribution])
     return normed
 
+# Gaussian function for radial gaussian distribution
+def gaussian(x, mu, sig):
+    return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 class Mask(object):
     '''
@@ -36,7 +39,7 @@ class Mask(object):
     def __init__(self, coordinates, exclude=[]):
         self.coordinates = coordinates
         self.settings = {'percentpix':0.1,        # default settings
-                         'distribution': 'donut'}
+                         'distribution': 'radial_gaussian'}
         self._exclude = exclude
         if coordinates is not None:
             img_size = coordinates[0].size
@@ -70,7 +73,33 @@ class Mask(object):
         distribution = normalize(distribution)
         return distribution
 
+    def radial_gaussian(self):
+        img_size = self.coordinates[0].size
+        ext_size = int(np.sqrt(img_size))
+        distribution = np.ones(img_size)
+        numrows = np.amax(self.coordinates[1])
+        numcols = np.amax(self.coordinates[0])
+        leftcorner = int(np.amin(self.coordinates[0]))
+        topcorner = int(np.amin(self.coordinates[1]))
+        center = (int(numcols/2.)+leftcorner, int(numrows/2.)+topcorner)
 
+        # mean and stdev of gaussian as percentages of max radius
+        mu_ = 0.6
+        sigma_ = 0.2
+        
+        mu = ext_size*1/2 *mu_
+        sigma = ext_size*1/2*sigma_ 
+
+        for i in range(img_size):
+            pixel = self.coordinates[:2,i]
+            dist = np.linalg.norm(pixel-center)
+            distribution[i] *= gaussian(dist, mu, sigma)
+        
+        distribution[self.exclude] = 0.
+        distribution = normalize(distribution)
+        return distribution
+
+    
     def donut_distribution(self):
         img_size = self.coordinates[0].size
         ext_size = int(np.sqrt(img_size))
@@ -80,11 +109,13 @@ class Mask(object):
         leftcorner = int(np.amin(self.coordinates[0]))
         topcorner = int(np.amin(self.coordinates[1]))
         center = (int(numcols/2.)+leftcorner, int(numrows/2.)+topcorner)
+
         #outer concetric circle lies at 10% of edge
         outer = 0.1
         #inner concentric circle lies at 30% of edge
         inner = 0.3
-    
+        
+        
         radius1 = ext_size* (1/2 - outer)
         radius2 = ext_size* (1/2 - inner)
         for i in range(img_size):
@@ -92,6 +123,7 @@ class Mask(object):
             dist = np.linalg.norm(pixel-center)
             if dist > radius2 and dist < radius1:
                 distribution[i] *= 10
+        
         distribution[self.exclude] = 0.
         distribution = normalize(distribution)
         return distribution
@@ -102,6 +134,8 @@ class Mask(object):
             return self.uniform_distribution()
         elif d_name=='donut':
             return self.donut_distribution()
+        elif d_name=='radial_gaussian':
+            return self.radial_gaussian()
         else:
             raise ValueError(
                 "Invalid distribution name")
@@ -120,10 +154,6 @@ class Mask(object):
             numpixels = int(totalpix*percentpix)
             sampled_index = np.sort(np.random.choice(totalpix, numpixels, p=p_dist, replace=False))
             self._sampled_index = sampled_index
-        #check that none of the excluded pixels are in sampled_index
-        wrong = [x for x in self._sampled_index if x in self.exclude]
-        if len(wrong) != 0:
-            print('Wrong!')
 
     # Draw sampled and excluded pixels
     def draw_mask(self):
