@@ -4,9 +4,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Various sampling probability distributions
 
 
+# Rescale distribution so sum = 1.
 def normalize(distribution):
     total = np.sum(distribution)
     normed = np.array([float(i)/total for i in distribution])
@@ -35,7 +35,7 @@ class Mask(object):
 
     def __init__(self, coordinates, exclude=[]):
         self.coordinates = coordinates
-        self.settings = {'percentpix':0.1,
+        self.settings = {'percentpix':0.1,        # default settings
                          'distribution': 'donut'}
         self._exclude = exclude
         if coordinates is not None:
@@ -60,6 +60,8 @@ class Mask(object):
     def exclude(self, exclude):
         self._exclude = exclude
 
+    
+    # Various sampling probability distributions
 
     def uniform_distribution(self):
         img_size = self.coordinates[0].size
@@ -90,8 +92,6 @@ class Mask(object):
             dist = np.linalg.norm(pixel-center)
             if dist > radius2 and dist < radius1:
                 distribution[i] *= 10
-            #elif dist < radius2:
-            #    distribution[i] *= 3
         distribution[self.exclude] = 0.
         distribution = normalize(distribution)
         return distribution
@@ -102,7 +102,11 @@ class Mask(object):
             return self.uniform_distribution()
         elif d_name=='donut':
             return self.donut_distribution()
-    
+        else:
+            raise ValueError(
+                "Invalid distribution name")
+
+    # Get new pixels to sample
     def initialize_sample(self):
         totalpix = int(self.coordinates[0].size)
         percentpix = float(self.settings['percentpix'])
@@ -121,6 +125,7 @@ class Mask(object):
         if len(wrong) != 0:
             print('Wrong!')
 
+    # Draw sampled and excluded pixels
     def draw_mask(self):
         maskcoords = self.masked_coords()
         maskx, masky = maskcoords[:2]
@@ -132,7 +137,7 @@ class Mask(object):
         plt.title('sampled pixels')
         plt.show()
 
-        
+    # Return coordinates array from sampled indices
     def masked_coords(self):
         original_coords = self.coordinates
         directions = len(original_coords)
@@ -149,10 +154,10 @@ class Mask(object):
 if __name__ == '__main__':
     from pylorenzmie.theory.Instrument import coordinates
 
-    shape = (11, 11)
+    shape = (201, 201)
     m = Mask(coordinates(shape))
-    m.settings['percentpix'] = 0.5
-    m.exclude = [15]
+    m.settings['percentpix'] = 0.4
+    m.exclude = np.arange(10000, 12000)
     m.initialize_sample()
     m.draw_mask()
     
