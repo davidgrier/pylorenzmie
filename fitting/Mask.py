@@ -69,11 +69,9 @@ class Mask(object):
     def uniform_distribution(self):
         img_size = self.coordinates[0].size
         distribution = np.ones(img_size)
-        distribution[self.exclude] = 0.
-        distribution = normalize(distribution)
         return distribution
 
-    def radial_gaussian(self):
+    def radial_gaussian(self): #it's like a donut, but ~ hazier ~
         img_size = self.coordinates[0].size
         ext_size = int(np.sqrt(img_size))
         distribution = np.ones(img_size)
@@ -95,8 +93,6 @@ class Mask(object):
             dist = np.linalg.norm(pixel-center)
             distribution[i] *= gaussian(dist, mu, sigma)
         
-        distribution[self.exclude] = 0.
-        distribution = normalize(distribution)
         return distribution
 
     
@@ -123,22 +119,24 @@ class Mask(object):
             dist = np.linalg.norm(pixel-center)
             if dist > radius2 and dist < radius1:
                 distribution[i] *= 10
-        
-        distribution[self.exclude] = 0.
-        distribution = normalize(distribution)
+
         return distribution
 
     def get_distribution(self):
         d_name = self.settings['distribution']
         if d_name=='uniform':
-            return self.uniform_distribution()
+            distribution= self.uniform_distribution()
         elif d_name=='donut':
-            return self.donut_distribution()
+            distribution= self.donut_distribution()
         elif d_name=='radial_gaussian':
-            return self.radial_gaussian()
+            distribution= self.radial_gaussian()
         else:
             raise ValueError(
                 "Invalid distribution name")
+
+        distribution[self.exclude] = 0.
+        distribution = normalize(distribution)
+        return distribution
 
     # Get new pixels to sample
     def initialize_sample(self):
