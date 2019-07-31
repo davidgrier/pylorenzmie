@@ -3,54 +3,58 @@
 import numpy as np
 
 
-def hanning(nx, ny):
-    """
-    Calculates the Hanning Window of size (nx,ny)
-    """
-    if (nx <= 0):
-        raise ValueError('nx must be greater than zero')
-    if (ny < 0):
-        raise ValueError('ny cannot be negative')
-
-    xwindow = np.hanning(nx)
-    if ny > 0:
-        ywindow = np.hanning(ny)
-        return np.sqrt(np.outer(xwindow, ywindow))
-    else:
-        return xwindow
-
-
-def rayleighsommerfeld(a, z,
+def rayleighsommerfeld(wavefront,
+                       displacement,
                        wavelength=0.447,
                        magnification=0.135,
                        nozphase=False,
                        hanning=False):
-    """
-    Compute electric fields propagated by a distance or
-    set of distances above the imaging plane via
-    Rayleigh-Sommerfeld approximation.
+    '''
+    Numerically propagate wave with Rayleigh-Sommerfeld integral
 
-    Args:
-        a: A two dimensional intensity array.
-        z: displacement(s) from the focal plane [pixels].
+    Convolves two-dimensional wavefront with Rayleigh-Sommerfeld
+    propagator to estimate wavefront at one or more axial displacements.
+    This is useful for numerically refocusing holograms.
 
-    Keywords:
-        wavelength: Wavelength of light in medium [micrometers].
-            Default: 0.447
-        magnification: Micrometers per pixel.
-            Default: 0.135
+    ...
 
-    Returns:
-        Complex electric fields at a plane or set of planes z.
-    """
+    Arguments
+    ---------
+    wavefront: numpy.ndarray
+        A two dimensional array of complex wavefront values.
+        The mean (background) value is assumed to be 1 and
+        the wave should be normalized accordingly.
+    displacement: float | numpy.ndarray
+        Displacement(s) from the focal plane [pixels].
 
-    if a.ndim != 2:
-        raise ValueError('a must be a two-dimensional hologram')
-    a = np.array(a, dtype=complex)
-    ny, nx = a.shape
+    Keywords
+    --------
+    wavelength: float
+        Wavelength of wave in medium [lengthscale units].
+        Default: 0.447 um
+    magnification: float
+        Lengthscale units per pixel.
+        Default: 0.135 um/pixel
+    nozphase: bool
+        Do not unwrap axial phase.
+        Default: False
+    hanning: bool
+        Apply two-dimensional Hanning window.
+        Default: False
 
-    z = np.atleast_1d(z)
-    nz = len(z)
+    Returns
+    -------
+    field: numpy.ndarray
+        Complex wavefront at one or more planes specified by z
+    '''
+
+    if wavefront.ndim != 2:
+        raise ValueError('wavefront must be two-dimensional')
+    wavefront = np.array(wavefront, dtype=complex)
+    ny, nx = wavefront.shape
+
+    displacement = np.atleast_1d(displacement)
+    result = np.zeros([ny, nx, len(displacement)], dtype=complex)
 
     # important factors
     k = 2.*np.pi * magnification/wavelength  # wavenumber [radians/pixel]
@@ -70,21 +74,21 @@ def rayleighsommerfeld(a, z,
         qfactor -= k
 
     if hanning:
-        qfactor *= hanning(ny, nx)
+        qfactor *= np.sqrt(np.outer(np.hanning(ny), np.hanning(nx)))
 
     # Account for propagation and absorption
     ikappa = 1j * np.real(qfactor)
     gamma = np.imag(qfactor)
 
     # Go to Fourier space and apply RS propagation operator
-    E = np.fft.ifft2(a - 1.)                   # avg(a-1) should = 0.
-    E = np.fft.fftshift(E)
-    res = np.zeros([ny, nx, nz], dtype=complex)
-    for n in range(0, nz):
-        Hqz = np.exp((ikappa * z[n] - gamma * abs(z[n])))
-        thisE = E * Hqz                        # convolve with propagator
-        thisE = np.fft.ifftshift(thisE)        # shift center
-        thisE = np.fft.fft2(thisE)             # transform back to real space
-        res[:, :, n] = thisE                   # save result
+    a = np.fft.ifft2(wavefront - 1.)           # offset for zero mean
+    a = np.fft.fftshift(a)
 
-    return res + 1.  # undo the previous reduction by 1.
+    for n, z in enumerate(displacement):
+        Hqz = np.exp((ikappa * z - gamma * abs(z)))
+        thisA = a * Hqz                        # convolve with propagator
+        thisA = np.fft.ifftshift(thisA)        # shift center
+        thisA = np.fft.fft2(thisA)             # transform back to real space
+        result[:, :, n] = thisA                # save result
+
+    return result + 1.                         # undo the previous offset.
