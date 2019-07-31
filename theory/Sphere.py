@@ -247,7 +247,7 @@ class Sphere(Particle):
     def a_p(self):
         '''Radius of sphere [um]'''
         if self._a_p.size == 1:
-            return np.asscalar(self._a_p)
+            return self._a_p.item()
         else:
             return self._a_p
 
@@ -259,7 +259,7 @@ class Sphere(Particle):
     def n_p(self):
         '''Refractive index of sphere'''
         if self._n_p.size == 1:
-            return np.asscalar(self._n_p)
+            return self._n_p.item()
         else:
             return self._n_p
 
@@ -271,7 +271,7 @@ class Sphere(Particle):
     def k_p(self):
         '''Absorption coefficient of sphere'''
         if self._k_p.size == 1:
-            return np.asscalar(self._k_p)
+            return self._k_p.item()
         else:
             return self._k_p
 
