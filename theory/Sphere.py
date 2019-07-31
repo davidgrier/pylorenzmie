@@ -36,13 +36,18 @@ Copyright (c) 2018 Mark D. Hannel and David G. Grier
 
 def wiscombe_yang(x, m):
     '''Return the number of terms to keep in partial wave expansion
+
     Equation numbers refer to Wiscombe (1980) and Yang (2003).
-    Parameters
-    ----------
+
+    ...
+
+    Arguments
+    ---------
     x : complex or numpy.ndarray
         size parameters for each layer
     m : complex or numpy.ndarray
         relative refractive indexes of the layers
+
     Returns
     -------
     ns : int
@@ -66,12 +71,16 @@ def wiscombe_yang(x, m):
 
 
 def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
-    '''Calculate the Mie scattering coefficients for a sphere
+    '''Returns the Mie scattering coefficients for a sphere
+
     This works for a (multilayered) sphere illuminated by
     a coherent plane wave that is linearly polarized in the
     x direction.
-    Parameters
-    ----------
+
+    ...
+
+    Arguments
+    ---------
     a_p : float or numpy.ndarray
         radii of the layers in the sphere [um]
     n_p : float or numpy.ndarray
@@ -82,6 +91,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
         (complex) refractive index of medium
     wavelength : float
         wavelength of light [um]
+
     Returns
     -------
     ab : numpy.ndarray
@@ -196,9 +206,11 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
 class Sphere(Particle):
 
     '''
-    Abstraction of a spherical particle for Lorenz-Mie micrsocopy
+    Abstraction of a spherical scatterer for Lorenz-Mie micrsocopy
+
     ...
-    Attributes
+
+    Properties
     ----------
     a_p : float or numpy.ndarray
         radius of particle [um]
@@ -209,6 +221,7 @@ class Sphere(Particle):
     k_p : float or numpy.ndarray
         absorption coefficient of particle
         or array containing absorption coefficients of shells
+
     Methods
     -------
     ab(n_m, wavelength) : numpy.ndarray
@@ -280,12 +293,14 @@ class Sphere(Particle):
 
     def ab(self, n_m, wavelength):
         '''Returns the Mie scattering coefficients
-        Parameters
-        ----------
+
+        Arguments
+        ---------
         n_m : complex
             Refractive index of medium
         wavelength : float
             Vacuum wavelength of light [um]
+
         Returns
         -------
         ab : numpy.ndarray
