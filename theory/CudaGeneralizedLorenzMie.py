@@ -2,9 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from pylorenzmie.theory.Particle import Particle
-from pylorenzmie.theory.Instrument import Instrument
-import json
+from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
 from numba import cuda
 import cupy as cp
 import math
@@ -252,10 +250,11 @@ def compute(krv, ab, result,
             result[2, idx] = esp
 
 
-class GeneralizedLorenzMie(object):
+class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     '''
-    A class that computes scattered light fields
+    A class that computes scattered light fields with CUDA 
+    acceleration
 
     ...
 
@@ -275,13 +274,7 @@ class GeneralizedLorenzMie(object):
         Returns the complex-valued field at each of the coordinates.
     '''
 
-    def __init__(self,
-                 coordinates=None,
-                 particle=None,
-                 instrument=None,
-                 n_m=None,
-                 magnification=None,
-                 wavelength=None):
+    def __init__(self, **kwargs):
         '''
         Parameters
         ----------
@@ -299,93 +292,7 @@ class GeneralizedLorenzMie(object):
         wavelength : float, optional
            Vacuum wavelength of light [um]
         '''
-        self.coordinates = coordinates
-        self.particle = particle
-        if instrument is None:
-            self.instrument = Instrument()
-        else:
-            self.instrument = instrument
-        if n_m is not None:
-            self.instrument.n_m = n_m
-        if magnification is not None:
-            self.instrument.magnification = magnification
-        if wavelength is not None:
-            self.instrument.wavelength = wavelength
-
-    @property
-    def coordinates(self):
-        '''Three-dimensional coordinates at which field is calculated'''
-        return self._coordinates
-
-    @coordinates.setter
-    def coordinates(self, coordinates):
-        try:
-            shape = coordinates.shape
-        except AttributeError:
-            self._coordinates = None
-            return
-        if coordinates.ndim == 1:
-            self._coordinates = np.zeros((3, shape[0]))
-            self._coordinates[0, :] = coordinates
-        elif shape[0] == 2:
-            self._coordinates = np.zeros((3, shape[1]))
-            self._coordinates[[0, 1], :] = coordinates
-        else:
-            self._coordinates = coordinates
-        self._allocate(self._coordinates.shape)
-
-    @property
-    def particle(self):
-        '''Particle responsible for light scattering'''
-        return self._particle
-
-    @particle.setter
-    def particle(self, particle):
-        try:
-            if isinstance(particle[0], Particle):
-                self._particle = particle
-        except TypeError:
-            if isinstance(particle, Particle):
-                self._particle = particle
-
-    @property
-    def instrument(self):
-        '''Imaging instrument'''
-        return self._instrument
-
-    @instrument.setter
-    def instrument(self, instrument):
-        if isinstance(instrument, Instrument):
-            self._instrument = instrument
-
-    def dumps(self, **kwargs):
-        '''Returns JSON string of adjustable properties
-
-        Parameters
-        ----------
-        Accepts all keywords of json.dumps()
-
-        Returns
-        -------
-        str : string
-            JSON-encoded string of properties
-        '''
-        return json.dumps(self.properties, **kwargs)
-        s = {'particle': self.particle.dumps(**kwargs),
-             'instrument': self.instrument.dumps(**kwargs)}
-        return json.dumps(s, **kwargs)
-
-    def loads(self, str):
-        '''Loads JSON string of adjustable properties
-
-        Parameters
-        ----------
-        str : string
-            JSON-encoded string of properties
-        '''
-        s = json.loads(str)
-        self.particle.loads(s['particle'])
-        self.instrument.loads(s['instrument'])
+        super(CudaGeneralizedLorenzMie, self).__init__(**kwargs)
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
@@ -406,9 +313,11 @@ class GeneralizedLorenzMie(object):
             self.krv[...] = k * (self.device_coordinates - r_p)
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            compute[blockspergrid, threadsperblock](self.krv, ab,
+            compute[blockspergrid, threadsperblock](self.krv,
+                                                    ab,
                                                     self.this,
-                                                    cartesian, bohren)
+                                                    cartesian,
+                                                    bohren)
             self.this *= np.exp(-1.j * k * p.z_p)
             try:
                 result += self.this
@@ -419,6 +328,7 @@ class GeneralizedLorenzMie(object):
 
 if __name__ == '__main__':
     from Sphere import Sphere
+    from pylorenzmie.theory.Instrument import Instrument
     import matplotlib.pyplot as plt
     # from time import time
     from time import time
@@ -442,12 +352,13 @@ if __name__ == '__main__':
     instrument.n_m = 1.335
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
-    kernel = GeneralizedLorenzMie(coordinates, particle, instrument)
+    kernel = CudaGeneralizedLorenzMie(coordinates=coordinates,
+                                      particle=particle,
+                                      instrument=instrument)
     kernel.field()
     start = time()
     field = kernel.field()
     # Compute hologram from field and show it
-    field *= np.exp(-1.j * k * particle.z_p)
     field[0, :] += 1.
     hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
     print("Time to calculate: {}".format(time() - start))

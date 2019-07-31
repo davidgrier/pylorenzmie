@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pylorenzmie.theory.Particle import Particle
+from pylorenzmie.theory.Sphere import Sphere
 import numpy as np
 from numba import jit
 
@@ -213,7 +213,7 @@ def _mie_coefficients(a_p, n_p, k_p, n_m, wavelength, x, m, nmax,
     return ab
 
 
-class Sphere(Particle):
+class FastSphere(Sphere):
 
     '''
     Abstraction of a spherical particle for Lorenz-Mie micrsocopy
@@ -238,68 +238,8 @@ class Sphere(Particle):
         returns the Mie scattering coefficients for the sphere
     '''
 
-    def __init__(self,
-                 a_p=1.,   # radius of sphere [um]
-                 n_p=1.5,  # refractive index of sphere
-                 k_p=0.,   # absorption coefficient
-                 **kwargs):
-        super(Sphere, self).__init__(**kwargs)
-        self.a_p = a_p
-        self.n_p = n_p
-        self.k_p = k_p
-
-    def __str__(self):
-        name = self.__class__.__name__
-        str = '{}(a_p={}, n_p={}, k_p={}, r_p={})'
-        return str.format(name, self.a_p, self.n_p, self.k_p, self.r_p)
-
-    @property
-    def a_p(self):
-        '''Radius of sphere [um]'''
-        if self._a_p.size == 1:
-            return np.asscalar(self._a_p)
-        else:
-            return self._a_p
-
-    @a_p.setter
-    def a_p(self, a_p):
-        self._a_p = np.asarray(a_p, dtype=float)
-
-    @property
-    def n_p(self):
-        '''Refractive index of sphere'''
-        if self._n_p.size == 1:
-            return np.asscalar(self._n_p)
-        else:
-            return self._n_p
-
-    @n_p.setter
-    def n_p(self, n_p):
-        self._n_p = np.asarray(n_p, dtype=float)
-
-    @property
-    def k_p(self):
-        '''Absorption coefficient of sphere'''
-        if self._k_p.size == 1:
-            return np.asscalar(self._k_p)
-        else:
-            return self._k_p
-
-    @k_p.setter
-    def k_p(self, k_p):
-        self._k_p = np.asarray(k_p, dtype=float)
-
-    @property
-    def properties(self):
-        props = Particle.properties.fget(self)
-        props['a_p'] = self.a_p
-        props['n_p'] = self.n_p
-        props['k_p'] = self.k_p
-        return props
-
-    @properties.setter
-    def properties(self, properties):
-        Particle.properties.fset(self, properties)
+    def __init__(self, **kwargs):
+        super(FastSphere, self).__init__(**kwargs)
 
     def ab(self, n_m, wavelength):
         '''Returns the Mie scattering coefficients
@@ -322,7 +262,7 @@ class Sphere(Particle):
 
 if __name__ == '__main__':
     from time import time
-    s = Sphere(a_p=0.75, n_p=1.5)
+    s = FastSphere(a_p=0.75, n_p=1.5)
     print(s.a_p, s.n_p)
     s.ab(1.339, .447)
     start = time()

@@ -46,6 +46,160 @@ This version is
 Copyright (c) 2018 David G. Grier
 '''
 
+np.seterr(all='raise')
+
+
+def compute(ab, krv, mo1n, ne1n, es, ec, cartesian=True, bohren=True):
+    '''Returns the field scattered by the particle at each coordinate
+
+    Parameters
+    ----------
+    ab : numpy.ndarray
+        [2, norders] Mie scattering coefficients
+    krv : numpy.ndarray
+        Reduced vector displacements of particle from image coordinates
+    cartesian : bool
+        If set, return field projected onto Cartesian coordinates.
+        Otherwise, return polar projection.
+    bohren : bool
+        If set, use sign convention from Bohren and Huffman.
+        Otherwise, use opposite sign convention.
+    Returns
+    -------
+    field : numpy.ndarray
+        [3, npts] array of complex vector values of the
+        scattered field at each coordinate.
+    '''
+
+    norders = ab.shape[0]  # number of partial waves in sum
+
+    # GEOMETRY
+    # 1. particle displacement [pixel]
+    # Note: The sign convention used here is appropriate
+    # for illumination propagating in the -z direction.
+    # This means that a particle forming an image in the
+    # focal plane (z = 0) is located at positive z.
+    # Accounting for this by flipping the axial coordinate
+    # is equivalent to using a mirrored (left-handed)
+    # coordinate system.
+    shape = krv.shape
+    kx = krv[0, :]
+    ky = krv[1, :]
+    kz = -krv[2, :]
+
+    # 2. geometric factors
+    krho = np.sqrt(kx**2 + ky**2)
+    kr = np.sqrt(krho**2 + kz**2)
+
+    phi = np.arctan2(ky, kx)
+    cosphi = np.cos(phi)
+    sinphi = np.sin(phi)
+    theta = np.arctan2(krho, kz)
+    costheta = np.cos(theta)
+    sintheta = np.sin(theta)
+    sinkr = np.sin(kr)
+    coskr = np.cos(kr)
+
+    # SPECIAL FUNCTIONS
+    # starting points for recursive function evaluation ...
+    # 1. Riccati-Bessel radial functions, page 478.
+    # Particles above the focal plane create diverging waves
+    # described by Eq. (4.13) for $h_n^{(1)}(kr)$. These have z > 0.
+    # Those below the focal plane appear to be converging from the
+    # perspective of the camera. They are descrinbed by Eq. (4.14)
+    # for $h_n^{(2)}(kr)$, and have z < 0. We can select the
+    # appropriate case by applying the correct sign of the imaginary
+    # part of the starting functions...
+    if bohren:
+        factor = 1.j * np.sign(kz)
+    else:
+        factor = -1.j * np.sign(kz)
+
+    xi_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
+    xi_nm1 = sinkr - factor * coskr  # \xi_0(kr)
+
+    # 2. Angular functions (4.47), page 95
+    # \pi_0(\cos\theta)
+    pi_nm1 = np.zeros(shape=costheta.shape)
+    # \pi_1(\cos\theta)
+    pi_n = np.ones(shape=costheta.shape)
+
+    # 3. Vector spherical harmonics: [r,theta,phi]
+    mo1n[0, :] = 0.j                 # no radial component
+
+    # storage for scattered field
+    es.fill(0.j)
+
+    # COMPUTE field by summing partial waves
+    for n in range(1, norders):
+        # upward recurrences ...
+        # 4. Legendre factor (4.47)
+        # Method described by Wiscombe (1980)
+
+        swisc = pi_n * costheta
+        twisc = swisc - pi_nm1
+        tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
+
+        # ... Riccati-Bessel function, page 478
+        xi_n = (2. * n - 1.) * (xi_nm1 / kr) - xi_nm2  # \xi_n(kr)
+
+        # ... Deirmendjian's derivative
+        dn = (n * xi_n) / kr - xi_nm1
+
+        # vector spherical harmonics (4.50)
+        mo1n[1, :] = pi_n * xi_n     # ... divided by cosphi/kr
+        mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
+
+        # ... divided by cosphi sintheta/kr^2
+        ne1n[0, :] = n * (n + 1.) * pi_n * xi_n
+        ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
+        ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
+
+        # prefactor, page 93
+        en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
+
+        # the scattered field in spherical coordinates (4.45)
+        es += (1.j * en * ab[n, 0]) * ne1n
+        es -= (en * ab[n, 1]) * mo1n
+
+        # upward recurrences ...
+        # ... angular functions (4.47)
+        # Method described by Wiscombe (1980)
+        pi_nm1 = pi_n
+        pi_n = swisc + ((n + 1.) / n) * twisc
+
+        # ... Riccati-Bessel function
+        xi_nm2 = xi_nm1
+        xi_nm1 = xi_n
+        # n: multipole sum
+
+    # geometric factors were divided out of the vector
+    # spherical harmonics for accuracy and efficiency ...
+    # ... put them back at the end.
+    radialfactor = 1. / kr
+    es[0, :] *= cosphi * sintheta * radialfactor**2
+    es[1, :] *= cosphi * radialfactor
+    es[2, :] *= sinphi * radialfactor
+
+    # By default, the scattered wave is returned in spherical
+    # coordinates.  Project components onto Cartesian coordinates.
+    # Assumes that the incident wave propagates along z and
+    # is linearly polarized along x
+
+    if cartesian:
+        ec[0, :] = es[0, :] * sintheta * cosphi
+        ec[0, :] += es[1, :] * costheta * cosphi
+        ec[0, :] -= es[2, :] * sinphi
+
+        ec[1, :] = es[0, :] * sintheta * sinphi
+        ec[1, :] += es[1, :] * costheta * sinphi
+        ec[1, :] += es[2, :] * cosphi
+        ec[2, :] = (es[0, :] * costheta -
+                    es[1, :] * sintheta)
+        return ec
+    else:
+        return es
+
 
 class GeneralizedLorenzMie(object):
 
@@ -184,10 +338,6 @@ class GeneralizedLorenzMie(object):
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
-        self.sinphi = np.empty(shape[1], dtype=float)
-        self.cosphi = np.empty(shape[1], dtype=float)
-        self.sintheta = np.empty(shape[1], dtype=float)
-        self.costheta = np.empty(shape[1], dtype=float)
         self.krv = np.empty(shape, dtype=float)
         self.mo1n = np.empty(shape, dtype=complex)
         self.ne1n = np.empty(shape, dtype=complex)
@@ -195,180 +345,21 @@ class GeneralizedLorenzMie(object):
         self.ec = np.empty(shape, dtype=complex)
         self.result = np.empty(shape, dtype=complex)
 
-    def compute(self, ab, krv, cartesian=True, bohren=True):
-        '''Returns the field scattered by the particle at each coordinate
-
-        Parameters
-        ----------
-        ab : numpy.ndarray
-            [2, norders] Mie scattering coefficients
-        krv : numpy.ndarray
-            Reduced vector displacements of particle from image coordinates
-        cartesian : bool
-            If set, return field projected onto Cartesian coordinates.
-            Otherwise, return polar projection.
-        bohren : bool
-            If set, use sign convention from Bohren and Huffman.
-            Otherwise, use opposite sign convention.
-        Returns
-        -------
-        field : numpy.ndarray
-            [3, npts] array of complex vector values of the
-            scattered field at each coordinate.
-        '''
-
-        norders = ab.shape[0]  # number of partial waves in sum
-
-        # GEOMETRY
-        # 1. particle displacement [pixel]
-        # Note: The sign convention used here is appropriate
-        # for illumination propagating in the -z direction.
-        # This means that a particle forming an image in the
-        # focal plane (z = 0) is located at positive z.
-        # Accounting for this by flipping the axial coordinate
-        # is equivalent to using a mirrored (left-handed)
-        # coordinate system.
-        shape = krv.shape
-        kx = krv[0, :]
-        ky = krv[1, :]
-        kz = -krv[2, :]
-
-        # 2. geometric factors
-        krho = np.sqrt(kx**2 + ky**2)
-        kr = np.sqrt(krho**2 + kz**2)
-
-        phi = np.arctan2(ky, kx)
-        self.cosphi[...] = np.cos(phi)
-        self.sinphi[...] = np.sin(phi)
-        theta = np.arctan2(krho, kz)
-        self.costheta[...] = np.cos(theta)
-        self.sintheta[...] = np.sin(theta)
-        np.seterr(all='raise')
-        sinkr = np.sin(kr)
-        coskr = np.cos(kr)
-
-        # SPECIAL FUNCTIONS
-        # starting points for recursive function evaluation ...
-        # 1. Riccati-Bessel radial functions, page 478.
-        # Particles above the focal plane create diverging waves
-        # described by Eq. (4.13) for $h_n^{(1)}(kr)$. These have z > 0.
-        # Those below the focal plane appear to be converging from the
-        # perspective of the camera. They are descrinbed by Eq. (4.14)
-        # for $h_n^{(2)}(kr)$, and have z < 0. We can select the
-        # appropriate case by applying the correct sign of the imaginary
-        # part of the starting functions...
-        if bohren:
-            factor = 1.j * np.sign(kz)
-        else:
-            factor = -1.j * np.sign(kz)
-
-        xi_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
-        xi_nm1 = sinkr - factor * coskr  # \xi_0(kr)
-
-        # 2. Angular functions (4.47), page 95
-        pi_nm1 = 0.                      # \pi_0(\cos\theta)
-        pi_n = 1.                        # \pi_1(\cos\theta)
-
-        # 3. Vector spherical harmonics: [r,theta,phi]
-        self.mo1n[0, :] = 0.j                 # no radial component
-
-        # storage for scattered field
-        self.es.fill(0.j)
-
-        # COMPUTE field by summing partial waves
-        for n in range(1, norders):
-            # upward recurrences ...
-            # 4. Legendre factor (4.47)
-            # Method described by Wiscombe (1980)
-
-            swisc = pi_n * self.costheta
-            twisc = swisc - pi_nm1
-            tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
-
-            # ... Riccati-Bessel function, page 478
-            xi_n = (2. * n - 1.) * (xi_nm1 / kr) - xi_nm2  # \xi_n(kr)
-
-            # ... Deirmendjian's derivative
-            dn = (n * xi_n) / kr - xi_nm1
-
-            # vector spherical harmonics (4.50)
-            self.mo1n[1, :] = pi_n * xi_n     # ... divided by cosphi/kr
-            self.mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
-
-            # ... divided by cosphi sintheta/kr^2
-            self.ne1n[0, :] = n * (n + 1.) * pi_n * xi_n
-            self.ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
-            self.ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
-
-            # prefactor, page 93
-            en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
-
-            # the scattered field in spherical coordinates (4.45)
-            self.es += (1.j * en * ab[n, 0]) * self.ne1n
-            self.es -= (en * ab[n, 1]) * self.mo1n
-
-            # upward recurrences ...
-            # ... angular functions (4.47)
-            # Method described by Wiscombe (1980)
-            pi_nm1 = pi_n
-            pi_n = swisc + ((n + 1.) / n) * twisc
-
-            # ... Riccati-Bessel function
-            xi_nm2 = xi_nm1
-            xi_nm1 = xi_n
-        # n: multipole sum
-
-        # geometric factors were divided out of the vector
-        # spherical harmonics for accuracy and efficiency ...
-        # ... put them back at the end.
-        radialfactor = 1. / kr
-        self.es[0, :] *= self.cosphi * self.sintheta * radialfactor**2
-        self.es[1, :] *= self.cosphi * radialfactor
-        self.es[2, :] *= self.sinphi * radialfactor
-
-        # By default, the scattered wave is returned in spherical
-        # coordinates.  Project components onto Cartesian coordinates.
-        # Assumes that the incident wave propagates along z and
-        # is linearly polarized along x
-
-        if cartesian:
-            self.ec[0, :] = self.es[0, :] * self.sintheta * self.cosphi
-            self.ec[0, :] += self.es[1, :] * self.costheta * self.cosphi
-            self.ec[0, :] -= self.es[2, :] * self.sinphi
-
-            self.ec[1, :] = self.es[0, :] * self.sintheta * self.sinphi
-            self.ec[1, :] += self.es[1, :] * self.costheta * self.sinphi
-            self.ec[1, :] += self.es[2, :] * self.cosphi
-            self.ec[2, :] = (self.es[0, :] * self.costheta -
-                             self.es[1, :] * self.sintheta)
-            return self.ec
-        else:
-            return self.es
-
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
-
         k = self.instrument.wavenumber()
-        '''
-        try:               # one particle in field of view
-            krv = k * (self.coordinates - self.particle.r_p[:, None])
-            ab = self.particle.ab(self.instrument.n_m,
-                                  self.instrument.wavelength)
-            field = self.compute(ab, krv,
-                                 cartesian=cartesian, bohren=bohren)
-            field *= np.exp(-1j * k * self.particle.z_p)
-        except AttributeError:  # list of particles
-        '''
         self.result.fill(0.j)
         for p in np.atleast_1d(self.particle):
             self.krv[...] = np.asarray(k * (self.coordinates -
                                             p.r_p[:, None]))
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            this = self.compute(ab, self.krv,
-                                cartesian=cartesian, bohren=bohren)
+            this = compute(ab, self.krv,
+                           self.mo1n, self.ne1n,
+                           self.es, self.ec,
+                           cartesian=cartesian, bohren=bohren)
             this *= np.exp(-1j * k * p.z_p)
             try:
                 self.result += this
@@ -408,7 +399,6 @@ if __name__ == '__main__':
     field = kernel.field()
     print("Time to calculate: {}".format(time() - start))
     # Compute hologram from field and show it
-    field *= np.exp(-1.j * k * particle.z_p)
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
