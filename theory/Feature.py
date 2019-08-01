@@ -382,9 +382,9 @@ if __name__ == '__main__':
 
     # init dummy hologram for proper speed gauge
     a.model.hologram()
-    start = time()
 
     # ... and now fit
+    start = time()
     result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
     print(result)

@@ -12,7 +12,7 @@ in-line hologram of a particle with specified Lorenz-Mie scattering
 coefficients.  The hologram is calculated at specified
 three-dimensional coordinates under the assumption that the
 incident illumination is a plane wave linearly polarized along x.
-q
+
 REFERENCES:
 1. Adapted from Chapter 4 in
    C. F. Bohren and D. R. Huffman,
@@ -47,7 +47,7 @@ Copyright (c) 2018 David G. Grier
 '''
 
 
-@jit(nopython=True, parallel=True)
+@jit(nopython=True, parallel=True, fastmath=True)
 def compute(krv, ab, result, bohren, cartesian):
     '''Returns the field scattered by the particle at each coordinate
 
