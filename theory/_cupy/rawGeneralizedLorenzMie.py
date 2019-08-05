@@ -52,42 +52,16 @@ compute = cp.RawKernel(r'''
 
 extern "C" __global__
 void compute(float *kx, float *ky, float *kz,
-             float areal [], float aimag [],
-             float breal [], float bimag [],
-             int norders, int length, int TPB,
+             float ar [], float ai [],
+             float br [], float bi [],
+             int norders, int length,
              bool bohren, bool cartesian,
              cuFloatComplex *e1, cuFloatComplex *e2, cuFloatComplex *e3) {
         
     for (int idx = threadIdx.x + blockDim.x * blockIdx.x; idx < length;          idx += blockDim.x * gridDim.x) {
 
-    //__shared__ float ar[norders];
-    //__shared__ float ai[norders];
-    //__shared__ float br[norders];
-    //__shared__ float bi[norders];
-
-    float ar[norders];
-    float ai[norders];
-    float br[norders];
-    float bi[norders];
-
-    //for (int jdx = 0; jdx < gridDim.x; jdx += 1) {
-    //    ar[threadIdx.x] = areal[threadIdx.x + jdx * TPB];
-    //    ai[threadIdx.x] = areal[threadIdx.x + jdx * TPB];
-    //    br[threadIdx.x] = areal[threadIdx.x + jdx * TPB];
-    //    bi[threadIdx.x] = areal[threadIdx.x + jdx * TPB];
-
-    if (idx < norders) {
-        ar[idx] = areal[idx];
-        br[idx] = areal[idx];
-        ai[idx] = areal[idx];
-        bi[idx] = areal[idx];
-        __syncthreads();
-    }
-
     double krho, kr;
     double cosphi, costheta, coskr, sinphi, sintheta, sinkr;
-
-    if (idx == 20) {printf("%f ", ar[idx]);}
 
     kz[idx] *= -1.;
 
@@ -166,8 +140,6 @@ void compute(float *kx, float *ky, float *kz,
 
     for (int j = 1; j < norders; j++) {
         n = make_cuFloatComplex(float(j), 0.);
-
-        if (idx == 0) {printf("%.10e ", ar[j]);}
 
         swisc = cuCmulf(pi_n, cost);
         twisc = cuCsubf(swisc, pi_nm1);
@@ -311,12 +283,15 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
             ab = cp.asarray(ab.astype(np.complex64))
-            print(ab[:, 0])
+            a_r = ab[:, 0].real.astype(np.float32)
+            a_i = ab[:, 0].imag.astype(np.float32)
+            b_r = ab[:, 1].real.astype(np.float32)
+            b_i = ab[:, 1].imag.astype(np.float32)
             compute((blockspergrid,), (threadsperblock,),
                     (self.krv[0, :], self.krv[1, :], self.krv[2, :],
-                     ab[:, 0].real, ab[:, 0].imag, ab[:, 1].real,
-                     ab[:, 1].imag, ab.shape[0], self.krv.shape[1],
-                     threadsperblock, cartesian, bohren,
+                     a_r, a_i, b_r, b_i,
+                     ab.shape[0], self.krv.shape[1],
+                     cartesian, bohren,
                      *self.this))
             self.this *= np.exp(-1.j * k * p.z_p)
             try:
@@ -327,14 +302,14 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
 
 if __name__ == '__main__':
-    from Sphere import Sphere
+    from pylorenzmie.theory.Sphere import Sphere
     from pylorenzmie.theory.Instrument import Instrument
     import matplotlib.pyplot as plt
     # from time import time
     from time import time
     # Create coordinate grid for image
-    x = np.arange(0, 51)
-    y = np.arange(0, 51)
+    x = np.arange(0, 201)
+    y = np.arange(0, 201)
     xv, yv = np.meshgrid(x, y)
     xv = xv.flatten()
     yv = yv.flatten()
@@ -363,5 +338,5 @@ if __name__ == '__main__':
     hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
     print("Time to calculate: {}".format(time() - start))
     hologram = hologram.get()
-    plt.imshow(hologram.reshape(51, 51), cmap='gray')
+    plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
