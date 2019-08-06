@@ -382,6 +382,7 @@ if __name__ == '__main__':
 
     # init dummy hologram for proper speed gauge
     a.model.hologram()
+    a.mask.settings['distribution'] = 'uniform'
 
     # ... and now fit
     start = time()
