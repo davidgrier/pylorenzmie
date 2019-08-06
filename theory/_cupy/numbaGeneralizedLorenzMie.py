@@ -3,8 +3,11 @@
 
 import numpy as np
 from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
-from numba import jit, prange
+from numba import cuda
+import cupy as cp
 import math
+
+cp.cuda.Device()
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the
@@ -12,7 +15,7 @@ in-line hologram of a particle with specified Lorenz-Mie scattering
 coefficients.  The hologram is calculated at specified
 three-dimensional coordinates under the assumption that the
 incident illumination is a plane wave linearly polarized along x.
-
+q
 REFERENCES:
 1. Adapted from Chapter 4 in
    C. F. Bohren and D. R. Huffman,
@@ -47,9 +50,9 @@ Copyright (c) 2018 David G. Grier
 '''
 
 
-@jit(nopython=True, parallel=True, fastmath=True)
-def compute(coordinates, r_p, k, phase,
-            ab, result, bohren, cartesian):
+@cuda.jit
+def compute(krv, ab, result,
+            bohren, cartesian):
     '''Returns the field scattered by the particle at each coordinate
 
     Parameters
@@ -70,7 +73,11 @@ def compute(coordinates, r_p, k, phase,
             [3, npts] array of complex vector values of the
             scattered field at each coordinate.
     '''
-    length = coordinates.shape[1]
+
+    startX = cuda.blockDim.x * cuda.blockIdx.x + cuda.threadIdx.x
+    gridX = cuda.gridDim.x * cuda.blockDim.x
+
+    length = krv.shape[1]
 
     norders = ab.shape[0]  # number of partial waves in sum
 
@@ -83,23 +90,26 @@ def compute(coordinates, r_p, k, phase,
     # Accounting for this by flipping the axial coordinate
     # is equivalent to using a mirrored (left-handed)
     # coordinate system.
+    shape = krv.shape
 
-    for idx in prange(length):
-        kx = k * (coordinates[0, idx] - r_p[0])
-        ky = k * (coordinates[1, idx] - r_p[1])
-        kz = k * (coordinates[2, idx] - r_p[2])
+    kx = krv[0, :]
+    ky = krv[1, :]
+    kz = krv[2, :]
+
+    # for idx in range(kx.size):
+    for idx in range(startX, length, gridX):
         # 2. geometric factors
-        kz *= -1.  # z convention
-        krho = math.sqrt(kx**2 + ky**2)
-        kr = math.sqrt(krho**2 + kz**2)
+        kz[idx] *= -1.  # z convention
+        krho = math.sqrt(kx[idx]**2 + ky[idx]**2)
+        kr = math.sqrt(krho**2 + kz[idx]**2)
         if abs(krho) > 1e-6:  # safe division
-            cosphi = kx / krho
-            sinphi = ky / krho
+            cosphi = kx[idx] / krho
+            sinphi = ky[idx] / krho
         else:
             cosphi = 1.
             sinphi = 0.
         if abs(kr) > 1e-6:
-            costheta = kz / kr
+            costheta = kz[idx] / kr
             sintheta = krho / kr
         else:
             costheta = 1.
@@ -118,9 +128,9 @@ def compute(coordinates, r_p, k, phase,
         # for $h_n^{(2)}(kr)$, and have z < 0. We can select the
         # appropriate case by applying the correct sign of the imaginary
         # part of the starting functions...
-        if kz > 0:
+        if kz[idx] > 0:
             factor = 1.*1.j
-        elif kz < 0:
+        elif kz[idx] < 0:
             factor = -1.*1.j
         else:
             factor = 0.*1.j
@@ -238,13 +248,12 @@ def compute(coordinates, r_p, k, phase,
             result[0, idx] = esr
             result[1, idx] = est
             result[2, idx] = esp
-        result[:, idx] *= phase
 
 
-class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
+class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     '''
-    A class that computes scattered light fields with numba
+    A class that computes scattered light fields with CUDA 
     acceleration
 
     ...
@@ -283,23 +292,33 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
         wavelength : float, optional
            Vacuum wavelength of light [um]
         '''
-        super(FastGeneralizedLorenzMie, self).__init__(**kwargs)
+        super(CudaGeneralizedLorenzMie, self).__init__(**kwargs)
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
-        self.this = np.empty(shape, dtype=np.complex128)
+        self.krv = cp.empty(shape, dtype=np.float64)
+        self.this = cp.empty(shape, dtype=np.complex128)
+        self.device_coordinates = cp.asarray(self.coordinates)
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
+        threadsperblock = 32
+        blockspergrid = (self.this.shape[1] +
+                         (threadsperblock - 1)) // threadsperblock
         k = self.instrument.wavenumber()
         for p in np.atleast_1d(self.particle):
+            r_p = cp.asarray(p.r_p[:, None])
+            self.krv[...] = k * (self.device_coordinates - r_p)
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            phase = np.exp(-1.j * k * p.z_p)
-            compute(self.coordinates, p.r_p, k, phase,
-                    ab, self.this, cartesian, bohren)
+            compute[blockspergrid, threadsperblock](self.krv,
+                                                    ab,
+                                                    self.this,
+                                                    cartesian,
+                                                    bohren)
+            self.this *= np.exp(-1.j * k * p.z_p)
             try:
                 result += self.this
             except NameError:
@@ -333,7 +352,7 @@ if __name__ == '__main__':
     instrument.n_m = 1.335
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
-    kernel = FastGeneralizedLorenzMie(coordinates=coordinates,
+    kernel = CudaGeneralizedLorenzMie(coordinates=coordinates,
                                       particle=particle,
                                       instrument=instrument)
     kernel.field()
@@ -341,7 +360,8 @@ if __name__ == '__main__':
     field = kernel.field()
     # Compute hologram from field and show it
     field[0, :] += 1.
-    hologram = np.sum(np.real(field * np.conj(field)), axis=0)
+    hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
     print("Time to calculate: {}".format(time() - start))
+    hologram = hologram.get()
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()

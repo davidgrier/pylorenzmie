@@ -3,9 +3,7 @@
 
 import numpy as np
 from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
-from numba import cuda
 import cupy as cp
-import math
 
 cp.cuda.Device()
 
@@ -49,205 +47,184 @@ This version is
 Copyright (c) 2018 David G. Grier
 '''
 
+compute = cp.RawKernel(r'''
+#include <cuComplex.h>
 
-@cuda.jit
-def compute(krv, ab, result,
-            bohren, cartesian):
-    '''Returns the field scattered by the particle at each coordinate
+extern "C" __global__
+void compute(float *coordsx, float *coordsy, float *coordsz,
+             float x_p, float y_p, float z_p, float k,
+             cuFloatComplex phase,
+             float ar [], float ai [],
+             float br [], float bi [],
+             int norders, int length,
+             bool bohren, bool cartesian,
+             cuFloatComplex *e1, cuFloatComplex *e2, cuFloatComplex *e3) {
+        
+    for (int idx = threadIdx.x + blockDim.x * blockIdx.x; idx < length;          idx += blockDim.x * gridDim.x) {
 
-    Parameters
-    ----------
-    ab : numpy.ndarray
-        [2, norders] Mie scattering coefficients
-    krv : numpy.ndarray
-        Reduced vector displacements of particle from image coordinates
-    cartesian : bool
-        If set, return field projected onto Cartesian coordinates.
-        Otherwise, return polar projection.
-    bohren : bool
-        If set, use sign convention from Bohren and Huffman.
-        Otherwise, use opposite sign convention.
-    Returns
-    -------
-    field : numpy.ndarray
-            [3, npts] array of complex vector values of the
-            scattered field at each coordinate.
-    '''
+    double kx, ky, kz, krho, kr;
+    double cosphi, costheta, coskr, sinphi, sintheta, sinkr;
 
-    startX = cuda.blockDim.x * cuda.blockIdx.x + cuda.threadIdx.x
-    gridX = cuda.gridDim.x * cuda.blockDim.x
+    kx = k * (coordsx[idx] - x_p);
+    ky = k * (coordsy[idx] - y_p);
+    kz = k * (coordsz[idx] - z_p);
 
-    length = krv.shape[1]
+    kz *= -1;
 
-    norders = ab.shape[0]  # number of partial waves in sum
+    krho = sqrt(kx*kx + ky*ky);
+    kr = sqrt(krho*krho + kz*kz);
 
-    # GEOMETRY
-    # 1. particle displacement [pixel]
-    # Note: The sign convention used here is appropriate
-    # for illumination propagating in the -z direction.
-    # This means that a particle forming an image in the
-    # focal plane (z = 0) is located at positive z.
-    # Accounting for this by flipping the axial coordinate
-    # is equivalent to using a mirrored (left-handed)
-    # coordinate system.
-    shape = krv.shape
+    if (abs(krho) > 1e-6) {
+        cosphi = kx / krho;
+        sinphi = ky / krho;
+    }
+    else {
+        cosphi = 1.0;
+        sinphi = 0.0;
+    }
+    if (abs(kr) > 1e-6) {
+        costheta = kz / kr;
+        sintheta = krho / kr;
+    }
+    else {
+        costheta = 1.0;
+        sintheta = 0.0;
+    }
+    sincos(kr, &sinkr, &coskr);
 
-    kx = krv[0, :]
-    ky = krv[1, :]
-    kz = krv[2, :]
+    cuFloatComplex i = make_cuFloatComplex(0.0, 1.0);
+    cuFloatComplex factor, xi_nm2, xi_nm1;
+    cuFloatComplex mo1nr, mo1nt, mo1np, ne1nr, ne1nt, ne1np;
+    cuFloatComplex esr, est, esp;
 
-    # for idx in range(kx.size):
-    for idx in range(startX, length, gridX):
-        # 2. geometric factors
-        kz[idx] *= -1.  # z convention
-        krho = math.sqrt(kx[idx]**2 + ky[idx]**2)
-        kr = math.sqrt(krho**2 + kz[idx]**2)
-        if abs(krho) > 1e-6:  # safe division
-            cosphi = kx[idx] / krho
-            sinphi = ky[idx] / krho
-        else:
-            cosphi = 1.
-            sinphi = 0.
-        if abs(kr) > 1e-6:
-            costheta = kz[idx] / kr
-            sintheta = krho / kr
-        else:
-            costheta = 1.
-            sintheta = 0.
+    if (kz > 0.) {
+        factor = i;
+    }
+    else if (kz < 0.) {
+        factor = make_cuFloatComplex(0., -1.);
+    }
+    else {
+        factor = make_cuFloatComplex(0., 0.);
+    }
 
-        sinkr = math.sin(kr)
-        coskr = math.cos(kr)
+    if (bohren == false) {
+        factor = cuCmulf(factor, make_cuFloatComplex(-1., 0.));
+    }
 
-        # SPECIAL FUNCTIONS
-        # starting points for recursive function evaluation ...
-        # 1. Riccati-Bessel radial functions, page 478.
-        # Particles above the focal plane create diverging waves
-        # described by Eq. (4.13) for $h_n^{(1)}(kr)$. These have z > 0.
-        # Those below the focal plane appear to be converging from the
-        # perspective of the camera. They are descrinbed by Eq. (4.14)
-        # for $h_n^{(2)}(kr)$, and have z < 0. We can select the
-        # appropriate case by applying the correct sign of the imaginary
-        # part of the starting functions...
-        if kz[idx] > 0:
-            factor = 1.*1.j
-        elif kz[idx] < 0:
-            factor = -1.*1.j
-        else:
-            factor = 0.*1.j
-        if not bohren:
-            factor = -1.*factor
+    xi_nm2 = cuCaddf(make_cuFloatComplex(coskr, 0.),
+             cuCmulf(factor, make_cuFloatComplex(sinkr, 0.)));
+    xi_nm1 = cuCsubf(make_cuFloatComplex(sinkr, 0.),
+             cuCmulf(factor, make_cuFloatComplex(coskr, 0.)));
 
-        xi_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
-        xi_nm1 = sinkr - factor * coskr  # \xi_0(kr)
+    cuFloatComplex pi_nm1 = make_cuFloatComplex(0.0, 0.0);
+    cuFloatComplex pi_n = make_cuFloatComplex(1.0, 0.0);
 
-        # 2. Angular functions (4.47), page 95
-        pi_nm1 = 0.     # \pi_0(\cos\theta)
-        pi_n = 1.                   # \pi_1(\cos\theta)
+    mo1nr = make_cuFloatComplex(0.0, 0.0);
+    mo1nt = make_cuFloatComplex(0.0, 0.0);
+    mo1np = make_cuFloatComplex(0.0, 0.0);
+    ne1nr = make_cuFloatComplex(0.0, 0.0);
+    ne1nt = make_cuFloatComplex(0.0, 0.0);
+    ne1np = make_cuFloatComplex(0.0, 0.0);
 
-        # 3. Vector spherical harmonics: [r,theta,phi]
-        mo1nr = 0.j
-        mo1nt = 0.j
-        mo1np = 0.j
-        ne1nr = 0.j
-        ne1nt = 0.j
-        ne1np = 0.j
+    esr = make_cuFloatComplex(0.0, 0.0);
+    est = make_cuFloatComplex(0.0, 0.0);
+    esp = make_cuFloatComplex(0.0, 0.0);
 
-        # storage for scattered field
-        esr = 0.j
-        est = 0.j
-        esp = 0.j
+    cuFloatComplex swisc, twisc, tau_n, xi_n, dn;
 
-        # COMPUTE field by summing partial waves
-        for n in range(1, norders):
-            n = np.float64(n)
-            # upward recurrences ...
-            # 4. Legendre factor (4.47)
-            # Method described by Wiscombe (1980)
+    cuFloatComplex cost, sint, cosp, sinp, krc;
+    cost = make_cuFloatComplex(costheta, 0.);
+    cosp = make_cuFloatComplex(cosphi, 0.);
+    sint = make_cuFloatComplex(sintheta, 0.);
+    sinp = make_cuFloatComplex(sinphi, 0.);
+    krc  = make_cuFloatComplex(kr, 0.);
 
-            swisc = pi_n * costheta
-            twisc = swisc - pi_nm1
-            tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
+    cuFloatComplex one, two, n, fac, en, a, b;
+    one = make_cuFloatComplex(1., 0.);
+    two = make_cuFloatComplex(2., 0.);
+    int mod;
 
-            # ... Riccati-Bessel function, page 478
-            xi_n = (2. * n - 1.) * \
-                (xi_nm1 / kr) - xi_nm2  # \xi_n(kr)
+    for (int j = 1; j < norders; j++) {
+        n = make_cuFloatComplex(float(j), 0.);
 
-            # ... Deirmendjian's derivative
-            dn = (n * xi_n) / kr - xi_nm1
+        swisc = cuCmulf(pi_n, cost);
+        twisc = cuCsubf(swisc, pi_nm1);
+        tau_n = cuCsubf(pi_nm1, cuCmulf(n, twisc));
 
-            # vector spherical harmonics (4.50)
-            mo1nt = pi_n * xi_n     # ... divided by cosphi/kr
-            mo1np = tau_n * xi_n    # ... divided by sinphi/kr
+        xi_n = cuCsubf(cuCmulf(cuCsubf(cuCmulf(two, n), one), cuCdivf(xi_nm1, krc)), xi_nm2);
 
-            # ... divided by cosphi sintheta/kr^2
-            ne1nr = n * (n + 1.) * pi_n * xi_n
-            ne1nt = tau_n * dn      # ... divided by cosphi/kr
-            ne1np = pi_n * dn       # ... divided by sinphi/kr
+        dn = cuCsubf(cuCdivf(cuCmulf(n, xi_n), krc), xi_nm1);
 
-            mod = n % 4
-            if mod == 1:
-                fac = 1.j
-            elif mod == 2:
-                fac = -1.+0.j
-            elif mod == 3:
-                fac = -0.-1.j
-            else:
-                fac = 1.+0.j
+        mo1nt = cuCmulf(pi_n, xi_n);
+        mo1np = cuCmulf(tau_n, xi_n);
 
-            # prefactor, page 93
-            en = fac * (2. * n + 1.) / \
-                n / (n + 1.)
+        ne1nr = cuCmulf(cuCmulf(cuCmulf(n, cuCaddf(n, one)), pi_n), xi_n);
+        ne1nt = cuCmulf(tau_n, dn);
+        ne1np = cuCmulf(pi_n, dn);
 
-            # the scattered field in spherical coordinates (4.45)
-            esr += (1.j * en * ab[int(n), 0]) * ne1nr
-            est += (1.j * en * ab[int(n), 0]) * ne1nt
-            esp += (1.j * en * ab[int(n), 0]) * ne1np
-            esr -= (en * ab[int(n), 1]) * mo1nr
-            est -= (en * ab[int(n), 1]) * mo1nt
-            esp -= (en * ab[int(n), 1]) * mo1np
+        mod = j % 4;
+        if (mod == 1) {fac = i;}
+        else if (mod == 2) {fac = make_cuFloatComplex(-1., 0.);}
+        else if (mod == 3) {fac = make_cuFloatComplex(0., -1.);}
+        else {fac = one;}
 
-            # upward recurrences ...
-            # ... angular functions (4.47)
-            # Method described by Wiscombe (1980)
-            pi_nm1 = pi_n
-            pi_n = swisc + ((n + 1.) / n) * twisc
+        en = cuCdivf(cuCdivf(cuCmulf(fac,
+             cuCaddf(cuCmulf(two, n), one)), n), cuCaddf(n, one));
 
-            # ... Riccati-Bessel function
-            xi_nm2 = xi_nm1
-            xi_nm1 = xi_n
+        a = make_cuFloatComplex(ar[j], ai[j]);
+        b = make_cuFloatComplex(br[j], bi[j]);
 
-        # n: multipole sum
+        esr = cuCaddf(esr, cuCmulf(cuCmulf(cuCmulf(i, en), a), ne1nr));
+        est = cuCaddf(est, cuCmulf(cuCmulf(cuCmulf(i, en), a), ne1nt));
+        esp = cuCaddf(esp, cuCmulf(cuCmulf(cuCmulf(i, en), a), ne1np));
+        esr = cuCsubf(esr, cuCmulf(cuCmulf(en, b), mo1nr));
+        est = cuCsubf(est, cuCmulf(cuCmulf(en, b), mo1nt));
+        esp = cuCsubf(esp, cuCmulf(cuCmulf(en, b), mo1np));
 
-        # geometric factors were divided out of the vector
-        # spherical harmonics for accuracy and efficiency ...
-        # ... put them back at the end.
-        radialfactor = 1. / kr
-        esr *= cosphi * sintheta * radialfactor**2
-        est *= cosphi * radialfactor
-        esp *= sinphi * radialfactor
+        pi_nm1 = pi_n;
+        pi_n = cuCaddf(swisc, cuCmulf(cuCdivf(cuCaddf(n, one), n), twisc));
 
-        # By default, the scattered wave is returned in spherical
-        # coordinates.  Project components onto Cartesian coordinates.
-        # Assumes that the incident wave propagates along z and
-        # is linearly polarized along x
+        xi_nm2 = xi_nm1;
+        xi_nm1 = xi_n;
+    }
 
-        if cartesian:
-            ecx = esr * sintheta * cosphi
-            ecx += est * costheta * cosphi
-            ecx -= esp * sinphi
+    
 
-            ecy = esr * sintheta * sinphi
-            ecy += est * costheta * sinphi
-            ecy += esp * cosphi
-            ecz = (esr * costheta -
-                   est * sintheta)
-            result[0, idx] = ecx
-            result[1, idx] = ecy
-            result[2, idx] = ecz
-        else:
-            result[0, idx] = esr
-            result[1, idx] = est
-            result[2, idx] = esp
+    cuFloatComplex radialfactor = make_cuFloatComplex(1. / kr,
+                                                        0.);
+    cuFloatComplex radialfactorsq = make_cuFloatComplex(1. / (kr*kr),
+                                                          0.);
+    esr = cuCmulf(esr, cuCmulf(cuCmulf(cosp, sint), radialfactorsq));
+    est = cuCmulf(est, cuCmulf(cosp, radialfactor));
+    esp = cuCmulf(esp, cuCmulf(sinp, radialfactor));
+
+    if (cartesian == true) {
+        cuFloatComplex ecx, ecy, ecz;
+        ecx = cuCmulf(esr, cuCmulf(sint, cosp));
+        ecx = cuCaddf(ecx, cuCmulf(est, cuCmulf(cost, cosp)));
+        ecx = cuCsubf(ecx, cuCmulf(esp, sinp));
+
+        ecy = cuCmulf(esr, cuCmulf(sint, sinp));
+        ecy = cuCaddf(ecy, cuCmulf(est, cuCmulf(cost, sinp)));
+        ecy = cuCaddf(ecy, cuCmulf(esp, cosp));
+
+        ecz = cuCsubf(cuCmulf(esr, cost), cuCmulf(est, sint));
+
+        e1[idx] = ecx;
+        e2[idx] = ecy;
+        e3[idx] = ecz;
+    }
+    else {
+        e1[idx] = esr;
+        e2[idx] = est;
+        e3[idx] = esp;
+    }
+    e1[idx] = cuCmulf(e1[idx], phase);
+    e2[idx] = cuCmulf(e2[idx], phase);
+    e3[idx] = cuCmulf(e3[idx], phase);
+}
+}
+''', 'compute')
 
 
 class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
@@ -296,9 +273,9 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
-        self.krv = cp.empty(shape, dtype=np.float64)
-        self.this = cp.empty(shape, dtype=np.complex128)
-        self.device_coordinates = cp.asarray(self.coordinates)
+        self.this = cp.empty(shape, dtype=np.complex64)
+        self.device_coordinates = cp.asarray(self.coordinates
+                                             .astype(np.float32))
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
@@ -307,18 +284,25 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         threadsperblock = 32
         blockspergrid = (self.this.shape[1] +
                          (threadsperblock - 1)) // threadsperblock
-        k = self.instrument.wavenumber()
+        k = np.float32(self.instrument.wavenumber())
         for p in np.atleast_1d(self.particle):
-            r_p = cp.asarray(p.r_p[:, None])
-            self.krv[...] = k * (self.device_coordinates - r_p)
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            compute[blockspergrid, threadsperblock](self.krv,
-                                                    ab,
-                                                    self.this,
-                                                    cartesian,
-                                                    bohren)
-            self.this *= np.exp(-1.j * k * p.z_p)
+            ab = cp.asarray(ab.astype(np.complex64))
+            a_r = ab[:, 0].real.astype(np.float32)
+            a_i = ab[:, 0].imag.astype(np.float32)
+            b_r = ab[:, 1].real.astype(np.float32)
+            b_i = ab[:, 1].imag.astype(np.float32)
+            coordsx, coordsy, coordsz = self.device_coordinates
+            x_p, y_p, z_p = p.r_p.astype(np.float32)
+            phase = np.complex64(np.exp(-1.j * k * z_p))
+            compute((blockspergrid,), (threadsperblock,),
+                    (coordsx, coordsy, coordsz,
+                     x_p, y_p, z_p, k, phase,
+                     a_r, a_i, b_r, b_i,
+                     ab.shape[0], coordsx.shape[0],
+                     cartesian, bohren,
+                     *self.this))
             try:
                 result += self.this
             except NameError:
@@ -327,7 +311,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
 
 if __name__ == '__main__':
-    from Sphere import Sphere
+    from pylorenzmie.theory.Sphere import Sphere
     from pylorenzmie.theory.Instrument import Instrument
     import matplotlib.pyplot as plt
     # from time import time
