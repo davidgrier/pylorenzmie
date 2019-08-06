@@ -289,11 +289,14 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         for p in np.atleast_1d(self.particle):
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            ab = cp.asarray(ab.astype(np.complex64))
             a_r = ab[:, 0].real.astype(np.float32)
             a_i = ab[:, 0].imag.astype(np.float32)
             b_r = ab[:, 1].real.astype(np.float32)
             b_i = ab[:, 1].imag.astype(np.float32)
+            a_r = cp.asarray(a_r)
+            a_i = cp.asarray(a_i)
+            b_r = cp.asarray(b_r)
+            b_i = cp.asarray(b_i)
             coordsx, coordsy, coordsz = self.device_coordinates
             x_p, y_p, z_p = p.r_p.astype(np.float32)
             phase = np.complex64(np.exp(-1.j * k * z_p))
@@ -315,7 +318,6 @@ if __name__ == '__main__':
     from pylorenzmie.theory.FastSphere import FastSphere
     from pylorenzmie.theory.Instrument import Instrument
     import matplotlib.pyplot as plt
-    # from time import time
     from time import time
     # Create coordinate grid for image
     x = np.arange(0, 201)
