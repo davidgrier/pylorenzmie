@@ -276,14 +276,15 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         self.this = cp.empty(shape, dtype=np.complex64)
         self.device_coordinates = cp.asarray(self.coordinates
                                              .astype(np.float32))
+        self.holo = cp.empty(shape[1], dtype=np.float32)
+        self.threadsperblock = 32
+        self.blockspergrid = (shape[1] + (self.threadsperblock - 1))\
+            // self.threadsperblock
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
-        threadsperblock = 32
-        blockspergrid = (self.this.shape[1] +
-                         (threadsperblock - 1)) // threadsperblock
         k = np.float32(self.instrument.wavenumber())
         for p in np.atleast_1d(self.particle):
             ab = p.ab(self.instrument.n_m,
@@ -296,7 +297,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             coordsx, coordsy, coordsz = self.device_coordinates
             x_p, y_p, z_p = p.r_p.astype(np.float32)
             phase = np.complex64(np.exp(-1.j * k * z_p))
-            compute((blockspergrid,), (threadsperblock,),
+            compute((self.blockspergrid,), (self.threadsperblock,),
                     (coordsx, coordsy, coordsz,
                      x_p, y_p, z_p, k, phase,
                      a_r, a_i, b_r, b_i,
@@ -311,7 +312,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
 
 if __name__ == '__main__':
-    from pylorenzmie.theory.Sphere import Sphere
+    from pylorenzmie.theory.FastSphere import FastSphere
     from pylorenzmie.theory.Instrument import Instrument
     import matplotlib.pyplot as plt
     # from time import time
@@ -325,7 +326,7 @@ if __name__ == '__main__':
     zv = np.zeros_like(xv)
     coordinates = np.stack((xv, yv, zv))
     # Place a sphere in the field of view, above the focal plane
-    particle = Sphere()
+    particle = FastSphere()
     particle.r_p = [150, 150, 200]
     particle.a_p = 0.5
     particle.n_p = 1.45
@@ -342,10 +343,10 @@ if __name__ == '__main__':
     kernel.field()
     start = time()
     field = kernel.field()
+    print("Time to calculate field: {}".format(time() - start))
     # Compute hologram from field and show it
     field[0, :] += 1.
     hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
-    print("Time to calculate: {}".format(time() - start))
     hologram = hologram.get()
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
