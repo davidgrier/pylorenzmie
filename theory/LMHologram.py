@@ -6,8 +6,39 @@ from pylorenzmie.theory import GeneralizedLorenzMie
 import numpy as np
 try:
     import cupy as cp
-except ImportError:
+except Exception:
     cp = None
+
+if cp is not None:
+    compute = cp.RawKernel(r'''
+#include <cuComplex.h>
+
+extern "C" __global__
+void hologram(cuFloatComplex *Ex,
+              cuFloatComplex *Ey,
+              cuFloatComplex *Ez,
+              float alpha,
+              int n,
+              float *hologram) {
+    for (int idx = threadIdx.x + blockDim.x * blockIdx.x; idx < n;          idx += blockDim.x * gridDim.x) {
+        cuFloatComplex ex = Ex[idx];
+        cuFloatComplex ey = Ey[idx];
+        cuFloatComplex ez = Ez[idx];
+
+        ex = cuCaddf(ex, make_cuFloatComplex(1., 0.));
+
+        ex = cuCmulf(ex, make_cuFloatComplex(alpha, 0.));
+        ey = cuCmulf(ey, make_cuFloatComplex(alpha, 0.));
+        ez = cuCmulf(ez, make_cuFloatComplex(alpha, 0.));
+
+        cuFloatComplex ix = cuCmulf(ex, cuConjf(ex));
+        cuFloatComplex iy = cuCmulf(ey, cuConjf(ey));
+        cuFloatComplex iz = cuCmulf(ez, cuConjf(ez));
+
+        hologram[idx] = cuCrealf(cuCaddf(ix, cuCaddf(iy, iz)));
+    }
+}
+''', 'hologram')
 
 
 class LMHologram(LorenzMie):
@@ -32,11 +63,11 @@ class LMHologram(LorenzMie):
                  alpha=1.,
                  *args, **kwargs):
         super(LMHologram, self).__init__(*args, **kwargs)
-        if cp is not None and 'cuda' in str(GeneralizedLorenzMie):
-            self.using_gpu = True
-        else:
-            self.using_gpu = False
         self.alpha = alpha
+        if cp is not None and 'Cuda' in str(GeneralizedLorenzMie):
+            self._using_gpu = True
+        else:
+            self._using_gpu = False
 
     @property
     def alpha(self):
@@ -48,11 +79,7 @@ class LMHologram(LorenzMie):
 
     @property
     def using_gpu(self):
-        return(self._using_gpu)
-        
-    @using_gpu.setter
-    def using_gpu(self, using_gpu):
-        self._using_gpu = using_gpu
+        return self._using_gpu
 
     def hologram(self, return_gpu=False):
         '''Return hologram of sphere
@@ -62,19 +89,20 @@ class LMHologram(LorenzMie):
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        xp = cp if self.using_gpu else np
-        
-        field = self.alpha * self.field()
-        field[0, :] += 1.
-        if self.using_gpu is True:
-            field = cp.array(field)
-        elif self.using_gpu is False and cp is not None:
-            field = cp.asnumpy(field)
+        if self._using_gpu:
+            hologram = self.holo
+            field = self.field()
+            alpha = self.alpha
+            alpha = cp.float32(alpha)
+            Ex, Ey, Ez = field
+            compute((self.blockspergrid,), (self.threadsperblock,),
+                    (Ex, Ey, Ez, alpha, hologram.size, hologram))
+            if return_gpu is False:
+                hologram = hologram.get()
         else:
-            field = np.array(field)
-        hologram = xp.sum(xp.real(field * xp.conj(field)), axis=0)
-        if return_gpu is False and xp == cp:
-            hologram = hologram.get()
+            field = self.alpha * self.field()
+            field[0, :] += 1.
+            hologram = np.sum(np.real(field * np.conj(field)), axis=0)
         return hologram
 
 
@@ -85,7 +113,6 @@ if __name__ == '__main__':
 
     shape = [201, 251]
     h = LMHologram(coordinates=coordinates(shape))
-    h.using_gpu=False
     h.particle.r_p = [125, 75, 100]
     h.particle.a_p = 0.9
     h.particle.n_p = 1.45
