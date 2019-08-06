@@ -158,11 +158,11 @@ class Feature(object):
             in the documentation for lmfit.
         '''
         # Get array of pixels to sample
-        self.mask.coordinates = np.copy(self.model.coordinates)
+        self.mask.coordinates = self.model.coordinates
         self.mask.initialize_sample()
         self.model.coordinates = self.mask.masked_coords()
-        npix = self.model.coordinates.shape[1]
 
+        npix = self.model.coordinates.shape[1]
         x0 = self._prepare(method)
         options = {}
         if method == 'lm':
@@ -188,15 +188,15 @@ class Feature(object):
             raise ValueError(
                 "Method keyword must either be lm, amoeba, or amoeba-lm")
 
-        fitresult = FitResult(method, result,
-                              self.lm_settings, self.model, npix)
-
         # reassign original coordinates before returning the fit
         self.model.coordinates = self.mask.coordinates
 
         result = self._cleanup(method, result, options=options)
 
-        return fitresult
+        fit_result = FitResult(method, result,
+                               self.lm_settings, self.model, npix)
+
+        return fit_result
 
 #
     # Methods for saving data
