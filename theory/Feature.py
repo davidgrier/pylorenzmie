@@ -93,6 +93,10 @@ class Feature(object):
         '''Values of the (normalized) hologram at each pixel'''
         return self._data
 
+    @property
+    def subset_data(self):
+        return self._subset_data
+
     @data.setter
     def data(self, data):
         if type(data) is np.ndarray:
@@ -255,8 +259,8 @@ class Feature(object):
         return residuals
 
     def _residuals(self, return_gpu):
-        data = self._data[self.mask.sampled_index]
-        return (self.model.hologram(return_gpu) - data) / self.noise
+        return (self.model.hologram(return_gpu) -
+                self._subset_data) / self.noise
 
     def _chisq(self, x):
         r = self._loss(x, self.model.using_gpu)
@@ -331,16 +335,17 @@ class Feature(object):
             if self.vary[prop]:
                 x0.append(val)
         x0 = np.array(x0)
+        self._subset_data = self._data[self.mask.sampled_index]
         # Method specific actions
         if method == 'amoeba-lm' or method == 'amoeba':
             if self.model.using_gpu:
-                self._data = cp.asarray(self._data)
+                self._subset_data = cp.asarray(self._subset_data)
         return x0
 
     def _cleanup(self, method, result, options=None):
         if method == 'amoeba':
             if self.model.using_gpu:
-                self._data = cp.asnumpy(self._data)
+                self._subset_data = cp.asnumpy(self._subset_data)
         elif method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
         return result
@@ -383,7 +388,8 @@ if __name__ == '__main__':
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'uniform'
-
+    a.mask.settings['percentpix'] = .1
+    #a.lm_settings.options['max_nfev'] = 1
     # ... and now fit
     start = time()
     result = a.optimize(method='amoeba-lm')
