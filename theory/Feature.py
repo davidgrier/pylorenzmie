@@ -4,6 +4,7 @@
 import pickle
 import logging
 import numpy as np
+import pandas as pd
 from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
@@ -60,6 +61,13 @@ class Feature(object):
         Optimize the Model to fit the data.  Results are
         returned in a comprehensive report and are reflected
         in updates to the properties of the Model.
+       
+    to_df() / read_df(df) : Serialize/Desearialize Feature properties and data
+        to/from a DataFrame respectively.
+    to_csv(PATH) / read_csv(PATH) : Write/Read properties and data to/from a
+        .csv file at path PATH respectively.
+    split_df(df) : Separate a Feature serialization into a properties serialization
+        and a data serialization (i.e. split a dataframe into two)
     '''
 
     def __init__(self,
@@ -201,6 +209,51 @@ class Feature(object):
 #
     # Methods for saving data
     #
+
+           
+    #### Returns a dataframe with a single row and columns=[Feature.properties, Feature.data]
+    def to_df(self):
+        vals = [] 
+        for prop in self.properties:
+            if hasattr(self.model.particle, prop):
+                vals.append(getattr(self.model.particle, prop))
+            else:
+                vals.append(getattr(self.model.instrument, prop))
+        
+        df = pd.DataFrame([vals], columns=self.properties)
+        dataf = pd.DataFrame([self.data])
+        df = df.join(dataf)
+        return df
+    
+    #### read info stored in dataframe into feature
+    def read_df(self, df):
+        for prop in self.properties:   ## read feature properties from respective columns
+            if hasattr(self.model.particle, prop):
+                setattr(self.model.particle, prop, df.loc[:, prop].to_numpy()[0])
+            else:
+                setattr(self.model.particle, prop, df.loc[:, prop].to_numpy()[0])
+        
+        dataf = df.drop(columns=list(self.properties))
+        self._data = df.drop(columns=list(self.properties)).to_numpy()[0]    ## read data from columns not storing properties
+        
+    #### Find self.to_df, append self.data, and save to csv file
+    def to_csv(self, PATH):
+        print('Sending Feature to .csv at ' + PATH + ' . . . ')    
+        self.to_df().to_csv(PATH + '_feature.csv', index=False)
+        print('Sent Feature to .csv at ' + PATH)
+        
+    #### Load feature information from csv
+    def read_csv(self, PATH):
+        print('Reading Feature from .csv at ' + PATH + ' . . . ')
+        self.read_df(pd.read_csv(PATH + '_feature.csv'))
+        print('Read Feature from .csv at ' + PATH)
+        print(pd.read_csv(PATH + '_feature.csv'))
+
+    #### Split a dataframe into two dataframes: One with all feature properties, and the other with feature.data
+    def split_df(self, df):
+        return df[ list(Feature().properties) ], df.drop(columns=list(Feature().properties))        
+
+
     def serialize(self, filename=None):
         '''Save state of Feature
 
