@@ -6,6 +6,9 @@ from pylorenzmie.theory import GeneralizedLorenzMie
 import numpy as np
 try:
     import cupy as cp
+    cp.cuda.Device()
+    if 'Cuda' not in str(GeneralizedLorenzMie):
+        raise Exception()
 except Exception:
     cp = None
 
@@ -64,7 +67,7 @@ class LMHologram(LorenzMie):
                  *args, **kwargs):
         super(LMHologram, self).__init__(*args, **kwargs)
         self.alpha = alpha
-        if cp is not None and 'Cuda' in str(GeneralizedLorenzMie):
+        if cp is not None:
             self._using_gpu = True
         else:
             self._using_gpu = False
