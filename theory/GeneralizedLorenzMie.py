@@ -281,7 +281,6 @@ class GeneralizedLorenzMie(object):
             self._coordinates[[0, 1], :] = coordinates
         else:
             self._coordinates = coordinates
-        self._allocate(self._coordinates.shape)
 
     @property
     def particle(self):
@@ -349,6 +348,10 @@ class GeneralizedLorenzMie(object):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
+        if not hasattr(self, 'this'):
+            self._allocate(self.coordinates.shape)
+        if self.krv.shape != self.coordinates.shape:
+            self._allocate(self.coordinates.shape)
         k = self.instrument.wavenumber()
         self.result.fill(0.j)
         for p in np.atleast_1d(self.particle):
