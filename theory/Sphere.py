@@ -64,8 +64,8 @@ def wiscombe_yang(x, m):
         ns = np.floor(xl + 4. * xl**(1. / 3.) + 2.)
 
     # Yang (2003) Eq. (30)
-    xm = abs(x * m)
-    xm_1 = abs(np.roll(x, -1) * m)
+    xm = np.abs(x * m)
+    xm_1 = np.abs(np.roll(x, -1) * m)
     nstop = max(ns, xm.max(), xm_1.max())
     return int(nstop)
 
@@ -108,19 +108,31 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     k *= np.real(n_m)           # wave number in medium
     x = k * a_p                 # size parameter in each layer
     m = (n_p + 1.j*k_p) / n_m   # relative refractive index in each layer
+    # Return the number of terms to keep in partial wave expansion
+    # Wiscombe (1980)
+    xl = np.abs(x[-1])
+    if xl <= 8.:
+        ns = np.floor(xl + 4. * xl**(1. / 3.) + 1.)
+    elif xl <= 4200.:
+        ns = np.floor(xl + 4.05 * xl**(1. / 3.) + 2.)
+    else:
+        ns = np.floor(xl + 4. * xl**(1. / 3.) + 2.)
 
-    # number of terms in partial-wave expansion
-    nmax = wiscombe_yang(x, m)
+    # Yang (2003) Eq. (30)
+    xm = np.abs(x * m)
+    xm_1 = np.abs(np.roll(x, -1) * m)
+    nmax = max(ns, xm.max(), xm_1.max())
+    nmax = int(nmax)
 
     # storage for results
-    ab = np.empty([nmax+1, 2], complex)
-    d1_z1 = np.empty(nmax+1, complex)
-    d1_z2 = np.empty(nmax+1, complex)
-    d3_z1 = np.empty(nmax+1, complex)
-    d3_z2 = np.empty(nmax+1, complex)
-    psi = np.empty(nmax+1, complex)
-    zeta = np.empty(nmax+1, complex)
-    q = np.empty(nmax+1, complex)
+    ab = np.empty((nmax+1, 2), np.complex128)
+    d1_z1 = np.empty(nmax+1, np.complex128)
+    d1_z2 = np.empty(nmax+1, np.complex128)
+    d3_z1 = np.empty(nmax+1, np.complex128)
+    d3_z2 = np.empty(nmax+1, np.complex128)
+    psi = np.empty(nmax+1, np.complex128)
+    zeta = np.empty(nmax+1, np.complex128)
+    q = np.empty(nmax+1, np.complex128)
 
     # initialization
     d1_z1[nmax] = 0.                                          # Eq. (16a)
@@ -237,6 +249,7 @@ class Sphere(Particle):
         self.a_p = a_p
         self.n_p = n_p
         self.k_p = k_p
+        self._mie_coefficients = mie_coefficients
 
     def __str__(self):
         name = self.__class__.__name__
@@ -306,10 +319,18 @@ class Sphere(Particle):
         ab : numpy.ndarray
             Mie AB scattering coefficients
         '''
-        return mie_coefficients(self.a_p, self.n_p, self.k_p, n_m, wavelength)
+        return self._mie_coefficients(self.a_p,
+                                      self.n_p,
+                                      self.k_p,
+                                      n_m,
+                                      wavelength)
 
 
 if __name__ == '__main__':
+    from time import time
     s = Sphere(a_p=0.75, n_p=1.5)
     print(s.a_p, s.n_p)
     print(s.ab(1.339, 0.447).shape)
+    start = time()
+    s.ab(1.339, .447)
+    print(time() - start)

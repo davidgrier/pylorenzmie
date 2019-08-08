@@ -114,7 +114,7 @@ if __name__ == '__main__':
     from Instrument import coordinates
     from time import time
 
-    shape = [201, 251]
+    shape = [201, 201]
     h = LMHologram(coordinates=coordinates(shape))
     h.particle.r_p = [125, 75, 100]
     h.particle.a_p = 0.9
