@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import pickle
+import json
 import logging
 import numpy as np
-import pandas as pd
+
 from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
@@ -61,13 +61,11 @@ class Feature(object):
         Optimize the Model to fit the data.  Results are
         returned in a comprehensive report and are reflected
         in updates to the properties of the Model.
-
-    to_df() / read_df(df) : Serialize/Desearialize Feature properties and data
-        to/from a DataFrame respectively.
-    to_csv(PATH) / read_csv(PATH) : Write/Read properties and data to/from a
-        .csv file at path PATH respectively.
-    split_df(df) : Separate a Feature serialization into a properties serialization
-        and a data serialization (i.e. split a dataframe into two)
+    serialize() : dict
+        Serialize select attributes and properties of Feature to a dict.
+    deserialize(info) : None
+        Restore select attributes and properties to a Feature from a dict.
+        
     '''
 
     def __init__(self,
@@ -210,74 +208,56 @@ class Feature(object):
     # Methods for saving data
     #
 
-    # Returns a dataframe with a single row and columns=[Feature.properties, Feature.data]
-
-    def to_df(self):
-        vals = []
-        for prop in self.properties:
-            if hasattr(self.model.particle, prop):
-                vals.append(getattr(self.model.particle, prop))
-            else:
-                vals.append(getattr(self.model.instrument, prop))
-
-        df = pd.DataFrame([vals], columns=self.properties)
-        dataf = pd.DataFrame([self.data])
-        df = df.join(dataf)
-        return df
-
-    # read info stored in dataframe into feature
-    def read_df(self, df):
-        for prop in self.properties:  # read feature properties from respective columns
-            if hasattr(self.model.particle, prop):
-                setattr(self.model.particle, prop,
-                        df.loc[:, prop].to_numpy()[0])
-            else:
-                setattr(self.model.particle, prop,
-                        df.loc[:, prop].to_numpy()[0])
-
-        dataf = df.drop(columns=list(self.properties))
-        self._data = df.drop(columns=list(self.properties)).to_numpy()[
-            0]  # read data from columns not storing properties
-
-    # Find self.to_df, append self.data, and save to csv file
-    def to_csv(self, PATH):
-        print('Sending Feature to .csv at ' + PATH + ' . . . ')
-        self.to_df().to_csv(PATH + '_feature.csv', index=False)
-        print('Sent Feature to .csv at ' + PATH)
-
-    # Load feature information from csv
-    def read_csv(self, PATH):
-        print('Reading Feature from .csv at ' + PATH + ' . . . ')
-        self.read_df(pd.read_csv(PATH + '_feature.csv'))
-        print('Read Feature from .csv at ' + PATH)
-        print(pd.read_csv(PATH + '_feature.csv'))
-
-    # Split a dataframe into two dataframes: One with all feature properties, and the other with feature.data
-    def split_df(self, df):
-        return df[list(Feature().properties)], df.drop(columns=list(Feature().properties))
-
-    def serialize(self, filename=None):
-        '''Save state of Feature
+    def serialize(self, filename=None, exclude=[]):
+        ''' Serialization: Save state of Feature in dict
 
         Arguments
         ---------
         filename: str
-            If provided, write data to file
-
+            If provided, write data to file. filename should end in .json
+        exclude : list of keys 
+            A list of keys to exclude from serialization. If no variables are
+            excluded, then by default, data; coordinates; noise; and all keys in
+            self.properties (instrument + particle properties) are serialized.
+                NOTE: For a shallow serialization (i.e. for graphing/plotting),
+                      use exclude=['data', 'coordinates', 'noise'] 
         Returns
         -------
         dict: serialized data
         '''
-        info = {'data': self.data,
-                'coordinates': self.coordinates,
-                'noise': self.noise}
-        if filename is not None:
-            with open(filename, 'wb') as f:
-                pickle.dump(info, f, pickle.HIGHEST_PROTOCOL)
-        return info
+        data = self.data.tolist() if self.data is not None else self.data
+        coor = self.coordinates.tolist() if self.coordinates is not None else self.coordinates
+        info = {'data': data,
+                'coordinates': coor,
+                'noise': self.noise} ## dict for variables not in self.properties
 
+        keys = self.properties       ## keys for variables in properties
+
+        for ex in exclude:           ## Exclude things, if provided
+            if ex in keys:
+                keys.pop(ex)
+            elif ex in info.keys():
+                info.pop(ex)
+            else:
+                print(ex + " not found in Feature's keylist")
+        
+        vals = []                    ## Next, get values for variables in properties
+        for key in keys:
+            if hasattr(self.model.particle, key):
+                vals.append(getattr(self.model.particle, key))
+            else: 
+                vals.append(getattr(self.model.instrument, key))
+        
+        out = dict(zip(self.properties, vals))
+        out.update(info)                  #### Combine dictionaries + finish serialization    
+        if filename is not None:
+            with open(filename, 'w') as f:
+                json.dump(out, f)
+        return out
+
+####### Deserialization #######
     def deserialize(self, info):
-        '''Restore serialized state of Feature
+        '''Restore serialized state of Feature from dict
 
         Arguments
         ---------
@@ -287,12 +267,18 @@ class Feature(object):
         '''
         if info is None:
             return
+            
         if isinstance(info, str):
             with open(info, 'rb') as f:
-                info = pickle.load(f)
+                info = json.load(f)
         for key in info:
             if hasattr(self, key):
                 setattr(self, key, info[key])
+            elif hasattr(self.model.particle, key):
+                setattr(self.model.particle, key, info[key])
+            else:
+                setattr(self.model.instrument, key, info[key])
+
 
     # TODO: method to save fit results
 
