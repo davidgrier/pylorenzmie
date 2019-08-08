@@ -93,8 +93,8 @@ class LMHologram(LorenzMie):
             Computed hologram.
         '''
         if self._using_gpu:
-            hologram = self.holo
             field = self.field()
+            hologram = self.holo
             alpha = self.alpha
             alpha = cp.float32(alpha)
             Ex, Ey, Ez = field

@@ -293,6 +293,10 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
+        if not hasattr(self, 'this'):
+            self._allocate(self.coordinates.shape)
+        if self.this.shape != self.coordinates.shape:
+            self._allocate(self.coordinates.shape)
         k = self.instrument.wavenumber()
         for p in np.atleast_1d(self.particle):
             ab = p.ab(self.instrument.n_m,
