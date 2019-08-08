@@ -4,6 +4,7 @@
 import numpy as np
 from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
 import cupy as cp
+from time import time
 
 cp.cuda.Device()
 
@@ -289,21 +290,18 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         for p in np.atleast_1d(self.particle):
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
-            a_r = ab[:, 0].real.astype(np.float32)
-            a_i = ab[:, 0].imag.astype(np.float32)
-            b_r = ab[:, 1].real.astype(np.float32)
-            b_i = ab[:, 1].imag.astype(np.float32)
-            a_r = cp.asarray(a_r)
-            a_i = cp.asarray(a_i)
-            b_r = cp.asarray(b_r)
-            b_i = cp.asarray(b_i)
+            ar = ab[:, 0].real.astype(np.float32)
+            ai = ab[:, 0].imag.astype(np.float32)
+            br = ab[:, 1].real.astype(np.float32)
+            bi = ab[:, 1].imag.astype(np.float32)
+            ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
             coordsx, coordsy, coordsz = self.device_coordinates
             x_p, y_p, z_p = p.r_p.astype(np.float32)
             phase = np.complex64(np.exp(-1.j * k * z_p))
             compute((self.blockspergrid,), (self.threadsperblock,),
                     (coordsx, coordsy, coordsz,
                      x_p, y_p, z_p, k, phase,
-                     a_r, a_i, b_r, b_i,
+                     ar, ai, br, bi,
                      ab.shape[0], coordsx.shape[0],
                      cartesian, bohren,
                      *self.this))
