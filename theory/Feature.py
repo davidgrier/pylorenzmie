@@ -4,16 +4,24 @@
 import json
 import logging
 import numpy as np
-
 from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
-from pylorenzmie.fitting.minimizers import amoeba
 from pylorenzmie.fitting.Settings import FitSettings, FitResult
 from pylorenzmie.fitting.Mask import Mask
+from pylorenzmie.fitting.minimizers import amoeba
+
 try:
     import cupy as cp
-except ImportError:
+    @cp.fuse(kernel_name='cu_residuals')  # TODO: move to module
+    def cu_residuals(holo, data, noise):
+        return (holo - data) / noise
+
+    @cp.fuse(kernel_name='cu_chisqr')
+    def cu_chisqr(holo, data, noise):
+        r = (holo - data) / noise
+        return cp.sum(r*r)
+except Exception:
     cp = None
 
 logger = logging.getLogger(__name__)
@@ -65,7 +73,7 @@ class Feature(object):
         Serialize select attributes and properties of Feature to a dict.
     deserialize(info) : None
         Restore select attributes and properties to a Feature from a dict.
-        
+
     '''
 
     def __init__(self,
@@ -172,23 +180,26 @@ class Feature(object):
         x0 = self._prepare(method)
         options = {}
         if method == 'lm':
-            result = least_squares(self._loss, x0,
-                                   **self.lm_settings.getkwargs(self.vary))
+            result = least_squares(
+                self._residuals, x0,
+                **self.lm_settings.getkwargs(self.vary))
         elif method == 'amoeba':
-            result = amoeba(self._chisq, x0,
-                            **self.amoeba_settings.getkwargs(self.vary))
+            result = amoeba(
+                self._chisqr, x0,
+                **self.amoeba_settings.getkwargs(self.vary))
         elif method == 'amoeba-lm':
-            nmresult = amoeba(self._chisq, x0,
-                              **self.amoeba_settings.getkwargs(self.vary))
-            nmresult = self._cleanup('amoeba', nmresult, options=options)
+            nmresult = amoeba(
+                self._chisqr, x0,
+                **self.amoeba_settings.getkwargs(self.vary))
             if not nmresult.success:
                 msg = 'Nelder-Mead: {}. Falling back to least squares.'
                 logger.warning(msg.format(nmresult.message))
                 x1 = x0
             else:
                 x1 = nmresult.x
-            result = least_squares(self._loss, x1,
-                                   **self.lm_settings.getkwargs(self.vary))
+            result = least_squares(
+                self._residuals, x1,
+                **self.lm_settings.getkwargs(self.vary))
             options['nmresult'] = nmresult
         else:
             raise ValueError(
@@ -229,27 +240,27 @@ class Feature(object):
         coor = self.coordinates.tolist() if self.coordinates is not None else self.coordinates
         info = {'data': data,
                 'coordinates': coor,
-                'noise': self.noise} ## dict for variables not in self.properties
+                'noise': self.noise}  # dict for variables not in self.properties
 
-        keys = self.properties       ## keys for variables in properties
+        keys = self.properties  # keys for variables in properties
 
-        for ex in exclude:           ## Exclude things, if provided
+        for ex in exclude:  # Exclude things, if provided
             if ex in keys:
                 keys.pop(ex)
             elif ex in info.keys():
                 info.pop(ex)
             else:
                 print(ex + " not found in Feature's keylist")
-        
-        vals = []                    ## Next, get values for variables in properties
+
+        vals = []  # Next, get values for variables in properties
         for key in keys:
             if hasattr(self.model.particle, key):
                 vals.append(getattr(self.model.particle, key))
-            else: 
+            else:
                 vals.append(getattr(self.model.instrument, key))
-        
+
         out = dict(zip(self.properties, vals))
-        out.update(info)                  #### Combine dictionaries + finish serialization    
+        out.update(info)  # Combine dictionaries + finish serialization
         if filename is not None:
             with open(filename, 'w') as f:
                 json.dump(out, f)
@@ -267,7 +278,7 @@ class Feature(object):
         '''
         if info is None:
             return
-            
+
         if isinstance(info, str):
             with open(info, 'rb') as f:
                 info = json.load(f)
@@ -279,15 +290,15 @@ class Feature(object):
             else:
                 setattr(self.model.instrument, key, info[key])
 
-
     # TODO: method to save fit results
 
     #
-    # Loss function, residuals, and chisqr for under the hood
+    # Objective functions for under the hood
     #
-    def _loss(self, x, return_gpu=False):
+    def _residuals(self, x, reduce=False):
         '''Updates properties and returns residuals'''
-        particle, instrument = self.model.particle, self.model.instrument
+        particle = self.model.particle
+        instrument = self.model.instrument
         idx = 0
         for key in self.properties:
             if self.vary[key]:
@@ -296,19 +307,25 @@ class Feature(object):
                 else:
                     setattr(instrument, key, x[idx])
                 idx += 1
-        residuals = self._residuals(return_gpu)
-        return residuals
+        objective = self._objective(reduce=reduce)
+        return objective
 
-    def _residuals(self, return_gpu):
-        return (self.model.hologram(return_gpu) -
-                self._subset_data) / self.noise
+    def _chisqr(self, x):
+        return self._residuals(x, reduce=True)
 
-    def _chisq(self, x):
-        r = self._loss(x, self.model.using_gpu)
-        chisq = r.dot(r)
+    def _objective(self, reduce=False):
+        holo = self.model.hologram(self.model.using_gpu)
         if self.model.using_gpu:
-            chisq = chisq.get()
-        return chisq
+            if reduce:
+                obj = cu_chisqr(holo, self._subset_data, self.noise)
+            else:
+                obj = cu_residuals(holo, self._subset_data, self.noise)
+            obj = obj.get()
+        else:
+            obj = (holo - self._subset_data) / self.noise
+            if reduce:
+                obj = obj.dot(obj)
+        return obj
 
     #
     # Fitting preparation and cleanup
@@ -377,17 +394,14 @@ class Feature(object):
                 x0.append(val)
         x0 = np.array(x0)
         self._subset_data = self._data[self.mask.sampled_index]
-        # Method specific actions
-        if method == 'amoeba-lm' or method == 'amoeba':
-            if self.model.using_gpu:
-                self._subset_data = cp.asarray(self._subset_data)
+        if self.model.using_gpu:
+            self._subset_data = cp.asarray(self._subset_data)
         return x0
 
     def _cleanup(self, method, result, options=None):
-        if method == 'amoeba':
-            if self.model.using_gpu:
-                self._subset_data = cp.asnumpy(self._subset_data)
-        elif method == 'amoeba-lm':
+        if self.model.using_gpu:
+            self._subset_data = cp.asnumpy(self._subset_data)
+        if method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
         return result
 
@@ -430,7 +444,7 @@ if __name__ == '__main__':
     a.model.hologram()
     a.mask.settings['distribution'] = 'uniform'
     a.mask.settings['percentpix'] = .1
-    #a.lm_settings.options['max_nfev'] = 1
+    #a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
     result = a.optimize(method='amoeba-lm')
