@@ -275,6 +275,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
         self.this = cp.empty(shape, dtype=np.complex64)
+        self.result = cp.empty(shape, dtype=np.complex64)
         self.device_coordinates = cp.asarray(self.coordinates
                                              .astype(np.float32))
         self.holo = cp.empty(shape[1], dtype=np.float32)
@@ -310,10 +311,10 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
                      cartesian, bohren,
                      *self.this))
             try:
-                result += self.this
+                self.result = cp.add(self.result, self.this)
             except NameError:
-                result = self.this
-        return result
+                self.result = self.this
+        return self.result
 
 
 if __name__ == '__main__':
@@ -334,6 +335,9 @@ if __name__ == '__main__':
     particle.r_p = [150, 150, 200]
     particle.a_p = 0.5
     particle.n_p = 1.45
+    particle2 = FastSphere()
+    particles = [particle, particle2]
+    particles.reverse()
     # Form image with default instrument
     instrument = Instrument()
     instrument.magnification = 0.135
@@ -342,9 +346,8 @@ if __name__ == '__main__':
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
     kernel = CudaGeneralizedLorenzMie(coordinates=coordinates,
-                                      particle=particle,
+                                      particle=particles,
                                       instrument=instrument)
-    kernel.field()
     start = time()
     field = kernel.field()
     print("Time to calculate field: {}".format(time() - start))
