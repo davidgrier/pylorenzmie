@@ -8,10 +8,11 @@ import json
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the
-in-line hologram of a particle with specified Lorenz-Mie scattering
-coefficients.  The hologram is calculated at specified
+electric field scattered by a particle with specified Lorenz-Mie
+scattering coefficients. The field is calculated at specified
 three-dimensional coordinates under the assumption that the
-incident illumination is a plane wave linearly polarized along x.
+incident illumination is a plane wave that is linearly polarized
+along x and is propagating along -z.
 
 REFERENCES:
 1. Adapted from Chapter 4 in
@@ -57,13 +58,17 @@ def compute(ab, krv, mo1n, ne1n, es, ec, cartesian=True, bohren=True):
     ab : numpy.ndarray
         [2, norders] Mie scattering coefficients
     krv : numpy.ndarray
-        Reduced vector displacements of particle from image coordinates
+        [3, npts] Coordinates at which field is evaluated
+        relative to the center of the scatterer. Coordinates
+        are assumed to be multiplied by the wavenumber of
+        light in the medium, and so are dimensionless.
     cartesian : bool
         If set, return field projected onto Cartesian coordinates.
         Otherwise, return polar projection.
     bohren : bool
         If set, use sign convention from Bohren and Huffman.
         Otherwise, use opposite sign convention.
+
     Returns
     -------
     field : numpy.ndarray
