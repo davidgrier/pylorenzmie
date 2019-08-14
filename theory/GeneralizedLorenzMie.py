@@ -369,10 +369,7 @@ class GeneralizedLorenzMie(object):
                            self.es, self.ec,
                            cartesian=cartesian, bohren=bohren)
             this *= np.exp(-1j * k * p.z_p)
-            try:
-                self.result += this
-            except NameError:
-                self.result = this
+            self.result += this
         return self.result
 
 
