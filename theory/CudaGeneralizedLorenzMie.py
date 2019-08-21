@@ -63,8 +63,8 @@ void compute(float *coordsx, float *coordsy, float *coordsz,
         
     for (int idx = threadIdx.x + blockDim.x * blockIdx.x; idx < length;          idx += blockDim.x * gridDim.x) {
 
-    double kx, ky, kz, krho, kr;
-    double cosphi, costheta, coskr, sinphi, sintheta, sinkr;
+    float kx, ky, kz, krho, kr, phi, theta;
+    float cosphi, costheta, coskr, sinphi, sintheta, sinkr;
 
     kx = k * (coordsx[idx] - x_p);
     ky = k * (coordsy[idx] - y_p);
@@ -75,22 +75,10 @@ void compute(float *coordsx, float *coordsy, float *coordsz,
     krho = sqrt(kx*kx + ky*ky);
     kr = sqrt(krho*krho + kz*kz);
 
-    if (abs(krho) > 1e-6) {
-        cosphi = kx / krho;
-        sinphi = ky / krho;
-    }
-    else {
-        cosphi = 1.0;
-        sinphi = 0.0;
-    }
-    if (abs(kr) > 1e-6) {
-        costheta = kz / kr;
-        sintheta = krho / kr;
-    }
-    else {
-        costheta = 1.0;
-        sintheta = 0.0;
-    }
+    phi = atan2(ky, kx);
+    theta = atan2(krho, kz);
+    sincos(phi, &sinphi, &cosphi);
+    sincos(theta, &sintheta, &costheta);
     sincos(kr, &sinkr, &coskr);
 
     cuFloatComplex i = make_cuFloatComplex(0.0, 1.0);
@@ -350,6 +338,7 @@ if __name__ == '__main__':
     kernel = CudaGeneralizedLorenzMie(coordinates=coordinates,
                                       particle=particles,
                                       instrument=instrument)
+    kernel.field()
     start = time()
     field = kernel.field()
     print("Time to calculate field: {}".format(time() - start))
