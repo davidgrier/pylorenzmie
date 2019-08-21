@@ -287,11 +287,16 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
+
         if not hasattr(self, 'this'):
             self._allocate(self.coordinates.shape)
-        if self.this.shape != self.coordinates.shape:
+        elif self.this.shape != self.coordinates.shape:
             self._allocate(self.coordinates.shape)
+
+        self.result.fill(0.+0.j)
+
         k = np.float32(self.instrument.wavenumber())
+
         for p in np.atleast_1d(self.particle):
             ab = p.ab(self.instrument.n_m,
                       self.instrument.wavelength)
@@ -310,10 +315,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
                      ab.shape[0], coordsx.shape[0],
                      cartesian, bohren,
                      *self.this))
-            try:
-                self.result = cp.add(self.result, self.this)
-            except NameError:
-                self.result = self.this
+            self.result += self.this
         return self.result
 
 
