@@ -1,31 +1,38 @@
+import cython
 from scipy.optimize import OptimizeResult
 import numpy as np
-import cython
+cimport numpy as np
+
+np.import_array()
+
+DTYPE = np.float64
+ctypedef np.float64_t DTYPE_t
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-def amoeba(objective, x0, xmin, xmax, maxevals=int(1e3), initial_simplex=None,
-           simplex_scale=.1, xtol=1e-7, ftol=1e-7, adaptive=False):
+def amoeba(objective,
+           np.ndarray[DTYPE_t, ndim=1] x0,
+           np.ndarray[DTYPE_t, ndim=1] xmin,
+           np.ndarray[DTYPE_t, ndim=1] xmax,
+           np.ndarray[DTYPE_t, ndim=1] simplex_scale,
+           np.ndarray[DTYPE_t, ndim=1] xtol,
+           initial_simplex=None, maxevals=int(1e3), ftol=1e-7):
     '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
-    simplex_scale = np.asarray(simplex_scale)
-    xtol = np.asarray(xtol)
     # Initialize simplex
-    N = len(x0)
-    if initial_simplex is None:
-        if simplex_scale.size == 1:
-            simplex_scale = np.full(N, simplex_scale[0])
-        simplex = np.vstack([x0, np.diag(simplex_scale) + x0])
-    else:
-        if initial_simplex.shape != (N+1, N):
-            raise ValueError("Initial simplex must be dimension (N+1, N)")
-        simplex = initial_simplex
+    cdef int N = len(x0)
+    cdef np.ndarray[DTYPE_t, ndim = 2] simplex = np.zeros([N+1, N])
+    simplex[0] = x0
+    for i in range(N):
+        simplex[i+1] = x0
+        simplex[i+1, i] += simplex_scale[i]
     # Initialize algorithm
-    maxevals = maxevals
-    neval = 1
-    niter = 1
-    one2np1 = list(range(1, N + 1))
-    evals = np.zeros(N+1, float)
+    cdef int max_nfev = maxevals
+    cdef int neval = 1
+    cdef int niter = 1
+    cdef np.ndarray one2np1 = np.arange(1, N+1)
+    cdef np.ndarray evals = np.zeros(N+1)
+    cdef np.ndarray idxs = np.zeros(N+1)
     for idx in range(N+1):
         simplex[idx] = np.maximum(xmin, np.minimum(simplex[idx], xmax))
         evals[idx] = objective(simplex[idx])
@@ -34,21 +41,20 @@ def amoeba(objective, x0, xmin, xmax, maxevals=int(1e3), initial_simplex=None,
     evals = np.take(evals, idxs, 0)
     simplex = np.take(simplex, idxs, 0)
 
-    if adaptive:
-        dim = float(len(x0))
-        rho = 1
-        chi = 1 + 2/dim
-        psi = 0.75 - 1/(2*dim)
-        sigma = 1 - 1/dim
-    else:
-        rho = 1
-        chi = 2
-        psi = 0.5
-        sigma = 0.5
+    cdef double rho = 1.
+    cdef double chi = 2.
+    cdef double psi = 0.5
+    cdef double sigma = 0.5
+
+    cdef np.ndarray[DTYPE_t, ndim = 1] xbar = np.zeros(N)
+    cdef np.ndarray[DTYPE_t, ndim = 1] xr = np.zeros(N)
+    cdef np.ndarray[DTYPE_t, ndim = 1] xe = np.zeros(N)
+    cdef np.ndarray[DTYPE_t, ndim = 1] xc = np.zeros(N)
+    cdef np.ndarray[DTYPE_t, ndim = 1] xcc = np.zeros(N)
 
     # START FITTING
     message = 'failure (hit max evals)'
-    while(neval < maxevals):
+    while(neval < max_nfev):
         # Test if simplex is small
         if all(np.amax(np.abs(simplex[1:] - simplex[0]), axis=0) <= xtol):
             message = 'convergence (simplex small)'
