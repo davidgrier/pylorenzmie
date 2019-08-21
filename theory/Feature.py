@@ -9,7 +9,7 @@ from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
 from pylorenzmie.fitting.Settings import FitSettings, FitResult
 from pylorenzmie.fitting.Mask import Mask
-from pylorenzmie.fitting.minimizers import amoeba
+from pylorenzmie.fitting import amoeba
 
 try:
     import cupy as cp
@@ -441,7 +441,7 @@ if __name__ == '__main__':
     a.model.hologram()
     a.mask.settings['distribution'] = 'uniform'
     a.mask.settings['percentpix'] = .1
-    #a.amoeba_settings.options['maxevals'] = 1
+    # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
     result = a.optimize(method='amoeba')
