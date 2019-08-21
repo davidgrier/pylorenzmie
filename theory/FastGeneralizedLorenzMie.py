@@ -47,7 +47,7 @@ Copyright (c) 2018 David G. Grier
 '''
 
 
-@jit(nopython=True, parallel=True, fastmath=True)
+@jit(nopython=True, parallel=True, fastmath=False)
 def compute(coordinates, r_p, k, phase,
             ab, result, bohren, cartesian):
     '''Returns the field scattered by the particle at each coordinate
@@ -92,19 +92,13 @@ def compute(coordinates, r_p, k, phase,
         kz *= -1.  # z convention
         krho = math.sqrt(kx**2 + ky**2)
         kr = math.sqrt(krho**2 + kz**2)
-        if abs(krho) > 1e-6:  # safe division
-            cosphi = kx / krho
-            sinphi = ky / krho
-        else:
-            cosphi = 1.
-            sinphi = 0.
-        if abs(kr) > 1e-6:
-            costheta = kz / kr
-            sintheta = krho / kr
-        else:
-            costheta = 1.
-            sintheta = 0.
 
+        theta = math.atan2(krho, kz)
+        phi = math.atan2(ky, kx)
+        sintheta = math.sin(theta)
+        costheta = math.cos(theta)
+        sinphi = math.sin(phi)
+        cosphi = math.cos(phi)
         sinkr = math.sin(kr)
         coskr = math.cos(kr)
 
