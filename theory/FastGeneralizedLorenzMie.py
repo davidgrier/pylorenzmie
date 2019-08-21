@@ -288,15 +288,20 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
         self.this = np.empty(shape, dtype=np.complex128)
+        self.result = np.empty(shape, dtype=np.complex128)
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
+
         if not hasattr(self, 'this'):
             self._allocate(self.coordinates.shape)
-        if self.this.shape != self.coordinates.shape:
+        elif self.this.shape != self.coordinates.shape:
             self._allocate(self.coordinates.shape)
+
+        self.result.fill(0.+0.j)
+
         k = self.instrument.wavenumber()
         for p in np.atleast_1d(self.particle):
             ab = p.ab(self.instrument.n_m,
@@ -304,15 +309,12 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
             phase = np.exp(-1.j * k * p.z_p)
             compute(self.coordinates, p.r_p, k, phase,
                     ab, self.this, cartesian, bohren)
-            try:
-                result += self.this
-            except NameError:
-                result = self.this
-        return result
+            self.result += self.this
+        return self.result
 
 
 if __name__ == '__main__':
-    from Sphere import Sphere
+    from pylorenzmie.theory.FastSphere import FastSphere
     from pylorenzmie.theory.Instrument import Instrument
     import matplotlib.pyplot as plt
     # from time import time
@@ -326,7 +328,7 @@ if __name__ == '__main__':
     zv = np.zeros_like(xv)
     coordinates = np.stack((xv, yv, zv))
     # Place a sphere in the field of view, above the focal plane
-    particle = Sphere()
+    particle = FastSphere()
     particle.r_p = [150, 150, 200]
     particle.a_p = 0.5
     particle.n_p = 1.45
