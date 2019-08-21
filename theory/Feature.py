@@ -208,34 +208,39 @@ class Feature(object):
 
         return fit_result
 
-#
+    #
     # Methods for saving data
     #
-
     def serialize(self, filename=None, exclude=[]):
-        ''' Serialization: Save state of Feature in dict
+        '''
+        Serialization: Save state of Feature in dict
 
         Arguments
         ---------
         filename: str
-            If provided, write data to file. filename should end in .json
-        exclude : list of keys 
-            A list of keys to exclude from serialization. If no variables are
-            excluded, then by default, data; coordinates; noise; and all keys in
-            self.properties (instrument + particle properties) are serialized.
-                NOTE: For a shallow serialization (i.e. for graphing/plotting),
-                      use exclude=['data', 'coordinates', 'noise'] 
+            If provided, write data to file. filename should
+            end in .json
+        exclude : list of keys
+            A list of keys to exclude from serialization.
+            If no variables are excluded, then by default,
+            data, coordinates, noise, and all instrument +
+            particle properties) are serialized.
         Returns
         -------
         dict: serialized data
-        '''
-        data = self.data.tolist() if self.data is not None else self.data
-        coor = self.coordinates.tolist() if self.coordinates is not None else self.coordinates
-        info = {'data': data,
-                'coordinates': coor,
-                'noise': self.noise}  # dict for variables not in self.properties
 
-        keys = self.properties  # keys for variables in properties
+        NOTE: For a shallow serialization (i.e. for graphing/plotting),
+              use exclude = ['data', 'coordinates', 'noise']
+        '''
+        data = self.data.tolist() if self.data is not None \
+            else self.data
+        coor = self.coordinates.tolist() if self.coordinates \
+            is not None else self.coordinates
+        info = {'data': data,  # dict for variables not in properties
+                'coordinates': coor,
+                'noise': self.noise}
+
+        keys = self.properties  # Keys for variables in properties
 
         for ex in exclude:  # Exclude things, if provided
             if ex in keys:
@@ -259,9 +264,9 @@ class Feature(object):
                 json.dump(out, f)
         return out
 
-####### Deserialization #######
     def deserialize(self, info):
-        '''Restore serialized state of Feature from dict
+        '''
+        Restore serialized state of Feature from dict
 
         Arguments
         ---------
@@ -282,8 +287,6 @@ class Feature(object):
                 setattr(self.model.particle, key, info[key])
             else:
                 setattr(self.model.instrument, key, info[key])
-
-    # TODO: method to save fit results
 
     #
     # Objective functions for under the hood
