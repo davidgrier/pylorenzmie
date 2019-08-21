@@ -13,14 +13,7 @@ from pylorenzmie.fitting.minimizers import amoeba
 
 try:
     import cupy as cp
-    @cp.fuse(kernel_name='cu_residuals')  # TODO: move to module
-    def cu_residuals(holo, data, noise):
-        return (holo - data) / noise
-
-    @cp.fuse(kernel_name='cu_chisqr')
-    def cu_chisqr(holo, data, noise):
-        r = (holo - data) / noise
-        return cp.sum(r*r)
+    from pylorenzmie.theory.cukernels import curesiduals, cuchisqr
 except Exception:
     cp = None
 
@@ -317,9 +310,9 @@ class Feature(object):
         holo = self.model.hologram(self.model.using_gpu)
         if self.model.using_gpu:
             if reduce:
-                obj = cu_chisqr(holo, self._subset_data, self.noise)
+                obj = cuchisqr(holo, self._subset_data, self.noise)
             else:
-                obj = cu_residuals(holo, self._subset_data, self.noise)
+                obj = curesiduals(holo, self._subset_data, self.noise)
             obj = obj.get()
         else:
             obj = (holo - self._subset_data) / self.noise
@@ -395,7 +388,8 @@ class Feature(object):
         x0 = np.array(x0)
         self._subset_data = self._data[self.mask.sampled_index]
         if self.model.using_gpu:
-            self._subset_data = cp.asarray(self._subset_data)
+            self._subset_data = cp.asarray(self._subset_data,
+                                           dtype=np.float32)
         return x0
 
     def _cleanup(self, method, result, options=None):
@@ -447,7 +441,7 @@ if __name__ == '__main__':
     #a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm')
+    result = a.optimize(method='amoeba')
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 

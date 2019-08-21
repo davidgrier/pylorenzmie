@@ -9,39 +9,9 @@ try:
     cp.cuda.Device()
     if 'Cuda' not in str(GeneralizedLorenzMie):
         raise Exception()
+    from pylorenzmie.theory.cukernels import cuhologram
 except Exception:
     cp = None
-
-if cp is not None:
-    compute = cp.RawKernel(r'''
-#include <cuComplex.h>
-
-extern "C" __global__
-void hologram(cuFloatComplex *Ex,
-              cuFloatComplex *Ey,
-              cuFloatComplex *Ez,
-              float alpha,
-              int n,
-              float *hologram) {
-    for (int idx = threadIdx.x + blockDim.x * blockIdx.x; idx < n;          idx += blockDim.x * gridDim.x) {
-        cuFloatComplex ex = Ex[idx];
-        cuFloatComplex ey = Ey[idx];
-        cuFloatComplex ez = Ez[idx];
-
-        ex = cuCaddf(ex, make_cuFloatComplex(1., 0.));
-
-        ex = cuCmulf(ex, make_cuFloatComplex(alpha, 0.));
-        ey = cuCmulf(ey, make_cuFloatComplex(alpha, 0.));
-        ez = cuCmulf(ez, make_cuFloatComplex(alpha, 0.));
-
-        cuFloatComplex ix = cuCmulf(ex, cuConjf(ex));
-        cuFloatComplex iy = cuCmulf(ey, cuConjf(ey));
-        cuFloatComplex iz = cuCmulf(ez, cuConjf(ez));
-
-        hologram[idx] = cuCrealf(cuCaddf(ix, cuCaddf(iy, iz)));
-    }
-}
-''', 'hologram')
 
 
 class LMHologram(LorenzMie):
@@ -98,8 +68,8 @@ class LMHologram(LorenzMie):
             alpha = self.alpha
             alpha = cp.float32(alpha)
             Ex, Ey, Ez = field
-            compute((self.blockspergrid,), (self.threadsperblock,),
-                    (Ex, Ey, Ez, alpha, hologram.size, hologram))
+            cuhologram((self.blockspergrid,), (self.threadsperblock,),
+                       (Ex, Ey, Ez, alpha, hologram.size, hologram))
             if return_gpu is False:
                 hologram = hologram.get()
         else:

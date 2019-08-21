@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pylorenzmie.theory.Sphere import Sphere, mie_coefficients
-from numba import jit
+from pylorenzmie.theory.Sphere import Sphere
+from pylorenzmie.theory.fastkernels import fastcoefficients
 
 
 class FastSphere(Sphere):
@@ -14,7 +14,7 @@ class FastSphere(Sphere):
 
     def __init__(self, **kwargs):
         super(FastSphere, self).__init__(**kwargs)
-        self._mie_coefficients = jit(mie_coefficients, nopython=True)
+        self._mie_coefficients = fastcoefficients
 
 
 if __name__ == '__main__':
