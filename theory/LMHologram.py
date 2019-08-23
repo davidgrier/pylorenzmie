@@ -12,6 +12,13 @@ try:
     from pylorenzmie.theory.cukernels import cuhologram
 except Exception:
     cp = None
+try:
+    import numba as nb
+    if 'Fast' not in str(GeneralizedLorenzMie):
+        raise Exception()
+    from pylorenzmie.theory.fastkernels import fasthologram
+except Exception:
+    nb = None
 
 
 class LMHologram(LorenzMie):
@@ -41,6 +48,10 @@ class LMHologram(LorenzMie):
             self._using_gpu = True
         else:
             self._using_gpu = False
+        if nb is not None:
+            self._using_numba = True
+        else:
+            self._using_numba = False
 
     @property
     def alpha(self):
@@ -53,6 +64,10 @@ class LMHologram(LorenzMie):
     @property
     def using_gpu(self):
         return self._using_gpu
+
+    @property
+    def using_numba(self):
+        return self._using_numba
 
     def hologram(self, return_gpu=False):
         '''Return hologram of sphere
@@ -72,6 +87,10 @@ class LMHologram(LorenzMie):
                        (Ex, Ey, Ez, alpha, hologram.size, hologram))
             if return_gpu is False:
                 hologram = hologram.get()
+        elif self._using_numba:
+            field = self.field()
+            hologram = self.holo
+            fasthologram(field, self.alpha, hologram.size, hologram)
         else:
             field = self.alpha * self.field()
             field[0, :] += 1.

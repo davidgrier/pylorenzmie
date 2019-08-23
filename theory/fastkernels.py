@@ -1,12 +1,12 @@
 import numpy as np
 import math
-from numba import jit, prange
+from numba import njit, prange
 from pylorenzmie.theory.Sphere import mie_coefficients
 
-fastcoefficients = jit(mie_coefficients, nopython=True, cache=True)
+fastcoefficients = njit(mie_coefficients, cache=True)
 
 
-@jit(nopython=True, parallel=True, fastmath=True, cache=True)
+@njit(parallel=True, fastmath=False, cache=True)
 def fastfield(coordinates, r_p, k, phase,
               ab, result, bohren, cartesian):
     '''Returns the field scattered by the particle at each coordinate
@@ -192,3 +192,26 @@ def fastfield(coordinates, r_p, k, phase,
             result[1, idx] = est
             result[2, idx] = esp
         result[:, idx] *= phase
+
+
+@njit(parallel=True, fastmath=False, cache=True)
+def fasthologram(field, alpha, n, hologram):
+    for idx in prange(n):
+        e = field[:, idx]
+        e[0] += 1
+        e *= alpha
+        i = e * np.conj(e)
+        hologram[idx] = np.real(np.sum(i))
+
+
+@njit(parallel=True, fastmath=False, cache=True)
+def fastresiduals(holo, data, noise):
+    return (holo - data) / noise
+
+
+@njit(parallel=True, fastmath=False, cache=True)
+def fastchisqr(holo, data, noise):
+    chisqr = 0.
+    for idx in prange(holo.size):
+        chisqr += ((holo[idx] - data[idx]) / noise) ** 2
+    return chisqr
