@@ -103,8 +103,12 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     @using_cuda.setter
     def using_cuda(self, use):
-        self._using_cuda = use
-        self._using_numba = not use
+        if use == self._using_cuda:
+            pass
+        else:
+            self._using_cuda = use
+            self._using_numba = not use
+            self._reallocate = True
 
     @property
     def using_numba(self):
@@ -112,8 +116,12 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     @using_numba.setter
     def using_numba(self, use):
-        self._using_numba = use
-        self._using_cuda = not use
+        if use == self._using_numba:
+            pass
+        else:
+            self._using_numba = use
+            self._using_cuda = not use
+            self._reallocate = True
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
@@ -131,21 +139,16 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             self.this = np.empty(shape, dtype=np.complex128)
             self.result = np.empty(shape, dtype=np.complex128)
             self.holo = np.empty(shape[1], dtype=np.float64)
+        self._reallocate = False
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
-
-        if not hasattr(self, 'this'):
+        if self._reallocate:
             self._allocate(self.coordinates.shape)
-        elif self.this.shape != self.coordinates.shape:
-            self._allocate(self.coordinates.shape)
-
         self.result.fill(0.+0.j)
-
         k = np.float32(self.instrument.wavenumber())
-
         if self.using_cuda:
             for p in np.atleast_1d(self.particle):
                 ab = p.ab(self.instrument.n_m,

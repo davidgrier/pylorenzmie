@@ -96,19 +96,15 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
         self.this = np.empty(shape, dtype=np.complex128)
         self.result = np.empty(shape, dtype=np.complex128)
         self.holo = np.empty(shape[1], dtype=np.float64)
+        self._reallocate = False
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
-
-        if not hasattr(self, 'this'):
+        if self._reallocate:
             self._allocate(self.coordinates.shape)
-        elif self.this.shape != self.coordinates.shape:
-            self._allocate(self.coordinates.shape)
-
         self.result.fill(0.+0.j)
-
         k = self.instrument.wavenumber()
         for p in np.atleast_1d(self.particle):
             ab = p.ab(self.instrument.n_m,
