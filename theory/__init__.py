@@ -3,6 +3,7 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 try:
+    bloop()
     from pylorenzmie.theory.CudaGeneralizedLorenzMie \
         import CudaGeneralizedLorenzMie as GeneralizedLorenzMie
     from pylorenzmie.theory.FastSphere import FastSphere as Sphere
