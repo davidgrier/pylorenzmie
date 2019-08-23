@@ -314,8 +314,8 @@ class Feature(object):
         return self._residuals(x, reduce=True)
 
     def _objective(self, reduce=False):
-        holo = self.model.hologram(self.model.using_gpu)
-        if self.model.using_gpu:
+        holo = self.model.hologram(self.model.using_cuda)
+        if self.model.using_cuda:
             if reduce:
                 obj = cuchisqr(holo, self._subset_data, self.noise)
             else:
@@ -399,13 +399,13 @@ class Feature(object):
                 x0.append(val)
         x0 = np.array(x0)
         self._subset_data = self._data[self.mask.sampled_index]
-        if self.model.using_gpu:
+        if self.model.using_cuda:
             self._subset_data = cp.asarray(self._subset_data,
                                            dtype=np.float32)
         return x0
 
     def _cleanup(self, method, result, options=None):
-        if self.model.using_gpu:
+        if self.model.using_cuda:
             self._subset_data = cp.asnumpy(self._subset_data)
         if method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
@@ -445,6 +445,8 @@ if __name__ == '__main__':
     p.a_p += np.random.normal(0., 0.05, 1)
     p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
+
+    # self.model.using_cuda = False
 
     # init dummy hologram for proper speed gauge
     a.model.hologram()

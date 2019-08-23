@@ -89,6 +89,7 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
            Vacuum wavelength of light [um]
         '''
         super(FastGeneralizedLorenzMie, self).__init__(**kwargs)
+        self._using_numba = True
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
