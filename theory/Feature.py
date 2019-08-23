@@ -354,7 +354,7 @@ class Feature(object):
         # ... scale of initial simplex
         simplex_scale = np.array([4., 4., 5., 0.01, 0.01, .2, .1, .1, .05])
         # ... tolerance for nelder-mead termination
-        simplex_tol = [1., 1., .05, .005, .005, .001, .01, .01, .01]
+        simplex_tol = [.1, .1, .01, .0005, .0005, .001, .01, .01, .01]
         # Default options for amoeba and lm not parameter dependent
         lm_options = {'method': 'lm',
                       'xtol': 1.e-6,
