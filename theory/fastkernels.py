@@ -3,10 +3,15 @@ import math
 from numba import njit, prange
 from pylorenzmie.theory.Sphere import mie_coefficients
 
+# See https://llvm.org/docs/LangRef.html#fast-math-flags for a list
+# of safe fastmath flags for LLVM compiler
+safe_flags = {'reassoc', 'nsz', 'nnan', 'ninf', 'arcp', 'contract'}
+
+
 fastcoefficients = njit(mie_coefficients, cache=True)
 
 
-@njit(parallel=True, fastmath=False, cache=True)
+@njit(parallel=True, fastmath=safe_flags, cache=True)
 def fastfield(coordinates, r_p, k, phase,
               ab, result, bohren, cartesian):
     '''Returns the field scattered by the particle at each coordinate
@@ -194,7 +199,7 @@ def fastfield(coordinates, r_p, k, phase,
         result[:, idx] *= phase
 
 
-@njit(parallel=True, fastmath=False, cache=True)
+@njit(parallel=True, fastmath=True, cache=True)
 def fasthologram(field, alpha, n, hologram):
     for idx in prange(n):
         e = field[:, idx]
@@ -204,12 +209,12 @@ def fasthologram(field, alpha, n, hologram):
         hologram[idx] = np.real(np.sum(i))
 
 
-@njit(parallel=True, fastmath=False, cache=True)
+@njit(parallel=True, fastmath=True, cache=True)
 def fastresiduals(holo, data, noise):
     return (holo - data) / noise
 
 
-@njit(parallel=True, fastmath=False, cache=True)
+@njit(parallel=True, fastmath=True, cache=True)
 def fastchisqr(holo, data, noise):
     chisqr = 0.
     for idx in prange(holo.size):
