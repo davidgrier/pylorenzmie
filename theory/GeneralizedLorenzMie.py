@@ -267,6 +267,7 @@ class GeneralizedLorenzMie(object):
             self.instrument.wavelength = wavelength
         self._using_cuda = False
         self._using_numba = False
+        self._reallocate = True
 
     @property
     def coordinates(self):
@@ -288,6 +289,7 @@ class GeneralizedLorenzMie(object):
             self._coordinates[[0, 1], :] = coordinates
         else:
             self._coordinates = coordinates
+        self._reallocate = True
 
     @property
     def particle(self):
@@ -368,17 +370,16 @@ class GeneralizedLorenzMie(object):
         self.es = np.empty(shape, dtype=complex)
         self.ec = np.empty(shape, dtype=complex)
         self.result = np.empty(shape, dtype=complex)
+        self._reallocate = False
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
-        if not hasattr(self, 'this'):
+        if self._reallocate:
             self._allocate(self.coordinates.shape)
-        if self.krv.shape != self.coordinates.shape:
-            self._allocate(self.coordinates.shape)
+        self.result.fill(0.+0.j)
         k = self.instrument.wavenumber()
-        self.result.fill(0.j)
         for p in np.atleast_1d(self.particle):
             self.krv[...] = np.asarray(k * (self.coordinates -
                                             p.r_p[:, None]))

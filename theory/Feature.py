@@ -445,9 +445,7 @@ if __name__ == '__main__':
     p.a_p += np.random.normal(0., 0.05, 1)
     p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
-
-    # self.model.using_cuda = False
-
+    # a.model.using_cuda = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'uniform'
