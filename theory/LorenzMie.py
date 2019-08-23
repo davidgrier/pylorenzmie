@@ -60,32 +60,32 @@ class LorenzMie(GeneralizedLorenzMie):
         else:
             self.particle = particle
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
     import numpy as np
     import cupy as cp
     from matplotlib import pyplot as plt
     from pylorenzmie.theory.Instrument import Instrument, coordinates
-    
+
     particle = Sphere()
     particle.r_p = [150, 150, 200]
     particle.a_p = 0.5
     particle.n_p = 1.45
     particle2 = Sphere()
     particles = [particle, particle2]
-    # Form image with default instrument                                                                                             
+    # Form image with default instrument
     instrument = Instrument()
     instrument.magnification = 0.135
     instrument.wavelength = 0.447
     instrument.n_m = 1.335
-    # Use Generalized Lorenz-Mie theory to compute field                                                                             
-    kernel = LorenzMie(particle = particles)
+    # Use Generalized Lorenz-Mie theory to compute field
+    kernel = LorenzMie(particle=particles)
     kernel.instrument = instrument
     kernel.coordinates = coordinates((201, 201))
     field = kernel.field()
-    # Compute hologram from field and show it                                                                                        
+    # Compute hologram from field and show it
     field[0, :] += 1.
     hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
     hologram = hologram.get()
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
-

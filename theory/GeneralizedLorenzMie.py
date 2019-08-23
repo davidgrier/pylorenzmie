@@ -265,6 +265,8 @@ class GeneralizedLorenzMie(object):
             self.instrument.magnification = magnification
         if wavelength is not None:
             self.instrument.wavelength = wavelength
+        self._using_cuda = False
+        self._using_numba = False
 
     @property
     def coordinates(self):
@@ -339,6 +341,24 @@ class GeneralizedLorenzMie(object):
         s = json.loads(str)
         self.particle.loads(s['particle'])
         self.instrument.loads(s['instrument'])
+
+    @property
+    def using_cuda(self):
+        return self._using_cuda
+
+    @using_cuda.setter
+    def using_cuda(self, use):
+        raise AttributeError(
+            "Toggle between Numba CPU and CUDA only works in CUDA model")
+
+    @property
+    def using_numba(self):
+        return self._using_numba
+
+    @using_numba.setter
+    def using_numba(self, use):
+        raise AttributeError(
+            "Toggle between Numba CPU and CUDA only works in CUDA model")
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''

@@ -4,6 +4,7 @@
 import numpy as np
 import cupy as cp
 from pylorenzmie.theory.cukernels import cufield
+from pylorenzmie.theory.fastkernels import fastfield
 from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
 
 
@@ -53,7 +54,7 @@ Copyright (c) 2018 David G. Grier
 class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     '''
-    A class that computes scattered light fields with CUDA 
+    A class that computes scattered light fields with CUDA
     acceleration
 
     ...
@@ -93,17 +94,43 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
            Vacuum wavelength of light [um]
         '''
         super(CudaGeneralizedLorenzMie, self).__init__(**kwargs)
+        self._using_cuda = True
+        self._using_numba = False
+
+    @property
+    def using_cuda(self):
+        return self._using_cuda
+
+    @using_cuda.setter
+    def using_cuda(self, use):
+        self._using_cuda = use
+        self._using_numba = not use
+
+    @property
+    def using_numba(self):
+        return self._using_numba
+
+    @using_numba.setter
+    def using_numba(self, use):
+        self._using_numba = use
+        self._using_cuda = not use
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
-        self.this = cp.empty(shape, dtype=np.complex64)
-        self.result = cp.empty(shape, dtype=np.complex64)
-        self.device_coordinates = cp.asarray(self.coordinates
-                                             .astype(np.float32))
-        self.holo = cp.empty(shape[1], dtype=np.float32)
-        self.threadsperblock = 32
-        self.blockspergrid = (shape[1] + (self.threadsperblock - 1))\
-            // self.threadsperblock
+        if self.using_cuda:
+            self.this = cp.empty(shape, dtype=np.complex64)
+            self.result = cp.empty(shape, dtype=np.complex64)
+            self.device_coordinates = cp.asarray(self.coordinates
+                                                 .astype(np.float32))
+            self.holo = cp.empty(shape[1], dtype=np.float32)
+            self.threadsperblock = 32
+            self.blockspergrid = (shape[1] +
+                                  (self.threadsperblock - 1))\
+                // self.threadsperblock
+        else:
+            self.this = np.empty(shape, dtype=np.complex128)
+            self.result = np.empty(shape, dtype=np.complex128)
+            self.holo = np.empty(shape[1], dtype=np.float64)
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
@@ -119,25 +146,34 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
         k = np.float32(self.instrument.wavenumber())
 
-        for p in np.atleast_1d(self.particle):
-            ab = p.ab(self.instrument.n_m,
-                      self.instrument.wavelength)
-            ar = ab[:, 0].real.astype(np.float32)
-            ai = ab[:, 0].imag.astype(np.float32)
-            br = ab[:, 1].real.astype(np.float32)
-            bi = ab[:, 1].imag.astype(np.float32)
-            ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
-            coordsx, coordsy, coordsz = self.device_coordinates
-            x_p, y_p, z_p = p.r_p.astype(np.float32)
-            phase = np.complex64(np.exp(-1.j * k * z_p))
-            cufield((self.blockspergrid,), (self.threadsperblock,),
-                    (coordsx, coordsy, coordsz,
-                     x_p, y_p, z_p, k, phase,
-                     ar, ai, br, bi,
-                     ab.shape[0], coordsx.shape[0],
-                     cartesian, bohren,
-                     *self.this))
-            self.result += self.this
+        if self.using_cuda:
+            for p in np.atleast_1d(self.particle):
+                ab = p.ab(self.instrument.n_m,
+                          self.instrument.wavelength)
+                ar = ab[:, 0].real.astype(np.float32)
+                ai = ab[:, 0].imag.astype(np.float32)
+                br = ab[:, 1].real.astype(np.float32)
+                bi = ab[:, 1].imag.astype(np.float32)
+                ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
+                coordsx, coordsy, coordsz = self.device_coordinates
+                x_p, y_p, z_p = p.r_p.astype(np.float32)
+                phase = np.complex64(np.exp(-1.j * k * z_p))
+                cufield((self.blockspergrid,), (self.threadsperblock,),
+                        (coordsx, coordsy, coordsz,
+                         x_p, y_p, z_p, k, phase,
+                         ar, ai, br, bi,
+                         ab.shape[0], coordsx.shape[0],
+                         cartesian, bohren,
+                         *self.this))
+                self.result += self.this
+        else:
+            for p in np.atleast_1d(self.particle):
+                ab = p.ab(self.instrument.n_m,
+                          self.instrument.wavelength)
+                phase = np.exp(-1.j * k * p.z_p)
+                fastfield(self.coordinates, p.r_p, k, phase,
+                          ab, self.this, cartesian, bohren)
+                self.result += self.this
         return self.result
 
 
