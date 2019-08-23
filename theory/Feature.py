@@ -9,13 +9,17 @@ from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
 from pylorenzmie.fitting.Settings import FitSettings, FitResult
 from pylorenzmie.fitting.Mask import Mask
-from pylorenzmie.fitting import amoeba
+from pylorenzmie.fitting.minimizers import amoeba
 
 try:
     import cupy as cp
     from pylorenzmie.theory.cukernels import curesiduals, cuchisqr
 except Exception:
     cp = None
+try:
+    from pylorenzmie.theory.fastkernels import fastresiduals, fastchisqr
+except Exception:
+    pass
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -317,6 +321,11 @@ class Feature(object):
             else:
                 obj = curesiduals(holo, self._subset_data, self.noise)
             obj = obj.get()
+        elif self.model.using_numba:
+            if reduce:
+                obj = fastchisqr(holo, self._subset_data, self.noise)
+            else:
+                obj = fastresiduals(holo, self._subset_data, self.noise)
         else:
             obj = (holo - self._subset_data) / self.noise
             if reduce:
@@ -444,7 +453,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba')
+    result = a.optimize(method='amoeba-lm')
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 

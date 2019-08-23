@@ -94,6 +94,7 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
         '''Allocates ndarrays for calculation'''
         self.this = np.empty(shape, dtype=np.complex128)
         self.result = np.empty(shape, dtype=np.complex128)
+        self.holo = np.empty(shape[1], dtype=np.float64)
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
