@@ -30,9 +30,9 @@ def amoeba(objective,
     cdef int max_nfev = maxevals
     cdef int neval = 1
     cdef int niter = 1
-    cdef np.ndarray one2np1 = np.arange(1, N+1)
-    cdef np.ndarray evals = np.zeros(N+1)
-    cdef np.ndarray idxs = np.zeros(N+1)
+    cdef np.ndarray[DTYPE_t, ndim = 1] evals = np.zeros(N+1)
+    cdef np.ndarray[np.int_t, ndim = 1] idxs = np.zeros(N+1,
+                                                       dtype=np.int)
     for idx in range(N+1):
         simplex[idx] = np.maximum(xmin, np.minimum(simplex[idx], xmax))
         evals[idx] = objective(simplex[idx])
@@ -119,7 +119,7 @@ def amoeba(objective,
                     else:
                         doshrink = 1
                 if doshrink:
-                    for j in one2np1:
+                    for j in range(1, N+1):
                         simplex[j] = simplex[0] + sigma * \
                             (simplex[j] - simplex[0])
                         simplex[j] = np.maximum(
