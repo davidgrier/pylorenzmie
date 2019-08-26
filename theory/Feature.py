@@ -364,7 +364,7 @@ class Feature(object):
                       'diff_step': 1e-5,
                       'verbose': 0}
         amoeba_options = {'initial_simplex': None,
-                          'ftol': 1000.,
+                          'ftol': 5.e-2,
                           'maxevals': 1000}
         # Initialize settings for fitting
         self.amoeba_settings = FitSettings(self.properties,
@@ -440,20 +440,20 @@ if __name__ == '__main__':
     p.a_p = 1.1
     p.n_p = 1.4
     # add errors to parameters
-    p.r_p += np.random.normal(0., 1, 3)
-    p.z_p += np.random.normal(0., 10, 1)
-    p.a_p += np.random.normal(0., 0.05, 1)
-    p.n_p += np.random.normal(0., 0.03, 1)
+    #p.r_p += np.random.normal(0., 1, 3)
+    #p.z_p += np.random.normal(0., 10, 1)
+    #p.a_p += np.random.normal(0., 0.05, 1)
+    #p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
     # a.model.using_cuda = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'uniform'
-    a.mask.settings['percentpix'] = .1
+    a.mask.settings['percentpix'] = 1.
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm')
+    result = a.optimize(method='amoeba')
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
