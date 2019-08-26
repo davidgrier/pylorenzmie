@@ -77,9 +77,10 @@ def amoeba(objective,
     cdef np.ndarray[DTYPE_t, ndim = 2] simplex = np.empty([N+1, N])
     cdef np.ndarray[DTYPE_t, ndim = 2] temp2d = np.empty([N+1, N])
     cdef np.ndarray[DTYPE_t, ndim = 1] temp1d = np.empty(N)
-    simplex[0] = x0
     for i in range(N):
-        simplex[i+1] = x0
+        simplex[0, i] = x0[i]
+        for j in range(N):
+            simplex[i+1, j] = x0[j]
         simplex[i+1, i] += simplex_scale[i]
     # Create cdefs for python keyword arguments
     cdef int max_nfev = maxevals
