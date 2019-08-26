@@ -3,6 +3,7 @@
 
 import numpy as np
 import cupy as cp
+from pylorenzmie.theory.cukernelsf import cufieldf
 from pylorenzmie.theory.cukernels import cufield
 from pylorenzmie.theory.fastkernels import fastfield
 from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
@@ -96,6 +97,28 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         super(CudaGeneralizedLorenzMie, self).__init__(**kwargs)
         self._using_cuda = True
         self._using_numba = False
+        self._double = True
+        self._cmplx = np.complex128
+        self._flt = float
+
+    @property
+    def double(self):
+        '''Toggles single/double precision for CUDA'''
+        return self._double
+
+    @double.setter
+    def double(self, double):
+        if double == self._double:
+            pass
+        else:
+            self._double = bool(double)
+            if double:
+                self._cmplx = np.complex128
+                self._flt = float
+            else:
+                self._cmplx = np.complex64
+                self._flt = np.float32
+            self._reallocate = True
 
     @property
     def using_cuda(self):
@@ -126,11 +149,11 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
         if self.using_cuda:
-            self.this = cp.empty(shape, dtype=np.complex64)
-            self.result = cp.empty(shape, dtype=np.complex64)
+            self.this = cp.empty(shape, dtype=self._cmplx)
+            self.result = cp.empty(shape, dtype=self._cmplx)
             self.device_coordinates = cp.asarray(self.coordinates
-                                                 .astype(np.float32))
-            self.holo = cp.empty(shape[1], dtype=np.float32)
+                                                 .astype(self._flt))
+            self.holo = cp.empty(shape[1], dtype=self._flt)
             self.threadsperblock = 32
             self.blockspergrid = (shape[1] +
                                   (self.threadsperblock - 1))\
@@ -148,26 +171,27 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         if self._reallocate:
             self._allocate(self.coordinates.shape)
         self.result.fill(0.+0.j)
-        k = np.float32(self.instrument.wavenumber())
+        k = self._flt(self.instrument.wavenumber())
         if self.using_cuda:
+            kernel = cufield if self.double else cufieldf
             for p in np.atleast_1d(self.particle):
                 ab = p.ab(self.instrument.n_m,
                           self.instrument.wavelength)
-                ar = ab[:, 0].real.astype(np.float32)
-                ai = ab[:, 0].imag.astype(np.float32)
-                br = ab[:, 1].real.astype(np.float32)
-                bi = ab[:, 1].imag.astype(np.float32)
+                ar = ab[:, 0].real.astype(self._flt)
+                ai = ab[:, 0].imag.astype(self._flt)
+                br = ab[:, 1].real.astype(self._flt)
+                bi = ab[:, 1].imag.astype(self._flt)
                 ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
                 coordsx, coordsy, coordsz = self.device_coordinates
-                x_p, y_p, z_p = p.r_p.astype(np.float32)
-                phase = np.complex64(np.exp(-1.j * k * z_p))
-                cufield((self.blockspergrid,), (self.threadsperblock,),
-                        (coordsx, coordsy, coordsz,
-                         x_p, y_p, z_p, k, phase,
-                         ar, ai, br, bi,
-                         ab.shape[0], coordsx.shape[0],
-                         cartesian, bohren,
-                         *self.this))
+                x_p, y_p, z_p = p.r_p.astype(self._flt)
+                phase = self._cmplx(np.exp(-1.j * k * z_p))
+                kernel((self.blockspergrid,), (self.threadsperblock,),
+                       (coordsx, coordsy, coordsz,
+                        x_p, y_p, z_p, k, phase,
+                        ar, ai, br, bi,
+                        ab.shape[0], coordsx.shape[0],
+                        cartesian, bohren,
+                        *self.this))
                 self.result += self.this
         else:
             for p in np.atleast_1d(self.particle):

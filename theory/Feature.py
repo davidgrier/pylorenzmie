@@ -13,6 +13,7 @@ from pylorenzmie.fitting import amoeba
 
 try:
     import cupy as cp
+    from pylorenzmie.theory.cukernelsf import curesidualsf, cuchisqrf
     from pylorenzmie.theory.cukernels import curesiduals, cuchisqr
 except Exception:
     cp = None
@@ -316,10 +317,12 @@ class Feature(object):
     def _objective(self, reduce=False):
         holo = self.model.hologram(self.model.using_cuda)
         if self.model.using_cuda:
+            (cuchi, curesid) = (cuchisqr, curesiduals)  \
+                if self.model.double else (cuchisqrf, curesidualsf)
             if reduce:
-                obj = cuchisqr(holo, self._subset_data, self.noise)
+                obj = cuchi(holo, self._subset_data, self.noise)
             else:
-                obj = curesiduals(holo, self._subset_data, self.noise)
+                obj = curesid(holo, self._subset_data, self.noise)
             obj = obj.get()
         elif self.model.using_numba:
             if reduce:
@@ -398,8 +401,9 @@ class Feature(object):
         x0 = np.array(x0)
         self._subset_data = self._data[self.mask.sampled_index]
         if self.model.using_cuda:
+            dtype = float if self.model.double else np.float32
             self._subset_data = cp.asarray(self._subset_data,
-                                           dtype=np.float32)
+                                           dtype=dtype)
         return x0
 
     def _cleanup(self, method, result, options=None):
@@ -444,6 +448,7 @@ if __name__ == '__main__':
     #p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
     # a.model.using_cuda = False
+    a.model.double = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'uniform'
