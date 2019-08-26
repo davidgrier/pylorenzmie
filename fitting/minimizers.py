@@ -2,7 +2,8 @@ import numpy as np
 from scipy.optimize import OptimizeResult
 
 
-def amoeba(objective, x0, xmin, xmax, maxevals=int(1e3), initial_simplex=None,
+def amoeba(objective, x0, xmin, xmax,
+           maxevals=int(1e3), initial_simplex=None,
            simplex_scale=.1, xtol=1e-7, ftol=1e-7, adaptive=False):
     '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
     simplex_scale = np.asarray(simplex_scale)
@@ -31,17 +32,10 @@ def amoeba(objective, x0, xmin, xmax, maxevals=int(1e3), initial_simplex=None,
     evals = np.take(evals, idxs, 0)
     simplex = np.take(simplex, idxs, 0)
 
-    if adaptive:
-        dim = float(len(x0))
-        rho = 1
-        chi = 1 + 2/dim
-        psi = 0.75 - 1/(2*dim)
-        sigma = 1 - 1/dim
-    else:
-        rho = 1
-        chi = 2
-        psi = 0.5
-        sigma = 0.5
+    rho = 1
+    chi = 2
+    psi = 0.5
+    sigma = 0.5
 
     # START FITTING
     message = 'failure (hit max evals)'
@@ -51,8 +45,9 @@ def amoeba(objective, x0, xmin, xmax, maxevals=int(1e3), initial_simplex=None,
             message = 'convergence (simplex small)'
             break
         # Test if function values are similar
-        if np.max(np.abs(simplex[0] - simplex[1:])) <= ftol:
+        if np.max(np.abs(evals[0] - evals[1:])) <= ftol:
             message = 'convergence (fvals similar)'
+            break
         # Test if simplex hits edge of parameter space
         end = False
         for k in range(N):
