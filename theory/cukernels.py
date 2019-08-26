@@ -206,7 +206,7 @@ curesiduals = cp.ElementwiseKernel(
     'float32 holo, float32 data, float32 noise',
     'float32 residuals',
     'residuals = (holo - data) / noise',
-    'cu_residuals')
+    'curesiduals')
 
 cuchisqr = cp.ReductionKernel(
     'float32 holo, float32 data, float32 noise',
@@ -215,4 +215,4 @@ cuchisqr = cp.ReductionKernel(
     'a + b',
     'chisqr = a',
     '0',
-    'cu_chisqr')
+    'cuchisqr')
