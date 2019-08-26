@@ -363,7 +363,7 @@ class Feature(object):
                       'max_nfev': 2000,
                       'diff_step': 1e-5,
                       'verbose': 0}
-        amoeba_options = {'ftol': 5.e-2, 'maxevals': 1000}
+        amoeba_options = {'ftol': 1.e-3, 'maxevals': 1000}
         # Initialize settings for fitting
         self.amoeba_settings = FitSettings(self.properties,
                                            options=amoeba_options)
