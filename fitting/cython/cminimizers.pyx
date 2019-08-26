@@ -1,6 +1,5 @@
 from numpy.math cimport INFINITY
 import cython
-from cython.parallel import prange
 from scipy.optimize import OptimizeResult
 import numpy as np
 cimport numpy as np
@@ -14,6 +13,7 @@ ctypedef np.float64_t DTYPE_t
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
+@cython.cdivision(True)
 def amoeba(objective,
            np.ndarray[DTYPE_t, ndim=1] x0,
            np.ndarray[DTYPE_t, ndim=1] xmin,
@@ -26,7 +26,9 @@ def amoeba(objective,
     cdef np.ulong_t N = x0.shape[0]
     cdef DTYPE_t Nf = np.float64(N)
     cdef np.ulong_t i, j
-    cdef np.ndarray[DTYPE_t, ndim = 2] simplex = np.zeros([N+1, N])
+    cdef np.ndarray[DTYPE_t, ndim= 2] simplex = np.empty([N+1, N])
+    cdef np.ndarray[DTYPE_t, ndim= 2] temp2d = np.empty([N+1, N])
+    cdef np.ndarray[DTYPE_t, ndim= 1] temp = np.empty(N)
     simplex[0] = x0
     for i in range(N):
         simplex[i+1] = x0
@@ -36,32 +38,36 @@ def amoeba(objective,
     cdef DTYPE_t fcntol = ftol
     cdef int neval = 1
     cdef int niter = 1
-    cdef np.ndarray[DTYPE_t, ndim = 1] evals = np.zeros(N+1)
-    cdef np.ndarray[np.int_t, ndim = 1] idxs = np.zeros(N+1,
-                                                       dtype=np.int)
+    cdef np.ndarray[DTYPE_t, ndim= 1] evals = np.empty(N+1)
+    cdef np.ndarray[np.int_t, ndim= 1] idxs = np.empty(N+1,
+                                                        dtype=np.int)
     for i in range(N+1):
-        simplex[i] = maximum(xmin, minimum(simplex[i], xmax))
-        evals[i] = objective(simplex[i])
+        for j in range(N):
+            temp[j] = simplex[i, j]
+        minimum(temp, xmax)
+        maximum(temp, xmin)
+        for j in range(N):
+            simplex[i, j] = temp[j]
+        evals[i] = objective(temp)
         neval += 1
-    idxs = sort(evals)
-    simplex = take(simplex, idxs)
+    sort(evals, idxs)
+    take(simplex, idxs, temp2d)
 
     cdef DTYPE_t rho = 1.
     cdef DTYPE_t chi = 2.
     cdef DTYPE_t psi = 0.5
     cdef DTYPE_t sigma = 0.5
 
-    cdef np.ndarray[DTYPE_t, ndim = 1] xbar = np.zeros(N)
-    cdef np.ndarray[DTYPE_t, ndim = 1] xr = np.zeros(N)
-    cdef np.ndarray[DTYPE_t, ndim = 1] xe = np.zeros(N)
-    cdef np.ndarray[DTYPE_t, ndim = 1] xc = np.zeros(N)
-    cdef np.ndarray[DTYPE_t, ndim = 1] xcc = np.zeros(N)
+    cdef np.ndarray[DTYPE_t, ndim= 1] xbar = np.empty(N)
+    cdef np.ndarray[DTYPE_t, ndim= 1] xr = np.empty(N)
+    cdef np.ndarray[DTYPE_t, ndim= 1] xe = np.empty(N)
+    cdef np.ndarray[DTYPE_t, ndim= 1] xc = np.empty(N)
+    cdef np.ndarray[DTYPE_t, ndim= 1] xcc = np.empty(N)
     cdef DTYPE_t fxr, fxe, fxc, fxcc
 
     # START FITTING
     cdef str message = 'failure (hit max evals)'
     cdef bint end, check
-    cdef np.ndarray[DTYPE_t, ndim = 1] temp
     cdef DTYPE_t tempf, diff
     cdef int doshrink
 
@@ -95,69 +101,77 @@ def amoeba(objective,
             break
         # Test if simplex hits edge of parameter space
         end = False
-        for i in range(N):
-            temp = simplex[:, i]
-            if xmax[i] in temp or xmin[i] in temp:
-                end = True
+        for j in range(N):
+            for i in range(N+1):
+                if xmax[j] == simplex[i, j] or xmin[j] == simplex[i, j]:
+                    end = True
         if end:
             message = 'failure (stuck to boundary)'
             break
         # Reflection
-        for i in range(N):
+        for j in range(N):
             tempf = 0.
-            temp = simplex[:, i]
-            for j in range(N):
-                tempf += temp[j]
-            xbar[i] = tempf / Nf
-        for i in range(N):
-            xr[i] = (1 + rho) * xbar[i] - rho * simplex[N, i]
-        xr = maximum(xmin, minimum(xr, xmax))
+            for i in range(N):
+                tempf += simplex[i, j]
+            xbar[j] = tempf / Nf
+        for j in range(N):
+            xr[j] = (1 + rho) * xbar[j] - rho * simplex[N, j]
+        minimum(xr, xmax)
+        maximum(xr, xmin)
         fxr = objective(xr)
         neval += 1
         doshrink = 0
         # Check if reflection is better than best estimate
         if fxr < evals[0]:
             # If so, reflect double and see if that's even better
-            for i in range(N):
-                xe[i] = (1. + rho * chi) * xbar[i]\
-                    - rho * chi * simplex[N, i]
-            xe = maximum(xmin, minimum(xe, xmax))
+            for j in range(N):
+                xe[j] = (1. + rho * chi) * xbar[j]\
+                    - rho * chi * simplex[N, j]
+            minimum(xe, xmax)
+            maximum(xe, xmin)
             fxe = objective(xe)
             neval += 1
             if fxe < fxr:
-                simplex[N] = xe
+                for j in range(N):
+                    simplex[N, j] = xe[j]
                 evals[N] = fxe
             else:
-                simplex[N] = xr
+                for j in range(N):
+                    simplex[N, j] = xr[j]
                 evals[N] = fxr
         else:
             if fxr < evals[N-1]:
-                simplex[N] = xr
+                for j in range(N):
+                    simplex[N, j] = xr[j]
                 evals[N] = fxr
             else:
                 # If reflection is not better, contract.
                 if fxr < evals[N]:
-                    for i in range(N):
-                        xc[i] = (1. + psi * rho) * xbar[i] \
-                            - psi * rho * simplex[N, i]
-                    xc = maximum(xmin, minimum(xc, xmax))
+                    for j in range(N):
+                        xc[j] = (1. + psi * rho) * xbar[j] \
+                            - psi * rho * simplex[N, j]
+                    minimum(xc, xmax)
+                    maximum(xc, xmin)
                     fxc = objective(xc)
                     neval += 1
                     if fxc <= fxr:
-                        simplex[N] = xc
+                        for j in range(N):
+                            simplex[N, j] = xc[j]
                         evals[N] = fxc
                     else:
                         doshrink = 1
                 else:
                     # Do 'inside' contraction
-                    for i in range(N):
-                        xcc[i] = (1 - psi) * xbar[i] \
-                            + psi * simplex[N, i]
-                    xcc = maximum(xmin, minimum(xcc, xmax))
+                    for j in range(N):
+                        xcc[j] = (1 - psi) * xbar[j] \
+                            + psi * simplex[N, j]
+                    minimum(xcc, xmax)
+                    maximum(xcc, xmin)
                     fxcc = objective(xcc)
                     neval += 1
                     if fxcc < evals[N]:
-                        simplex[N] = xcc
+                        for j in range(N):
+                            simplex[N, j] = xcc[j]
                         evals[N] = fxcc
                     else:
                         doshrink = 1
@@ -166,14 +180,17 @@ def amoeba(objective,
                         for j in range(N):
                             simplex[i, j] = simplex[0, j] + sigma * \
                                 (simplex[i, j] - simplex[0, j])
-                        simplex[i] = maximum(
-                            xmin, minimum(simplex[i], xmax))
-                        evals[i] = objective(simplex[i])
+                            temp[j] = simplex[i, j]
+                        minimum(temp, xmax)
+                        maximum(temp, xmin)
+                        for j in range(N):
+                            simplex[i, j] = temp[j]
+                        evals[i] = objective(temp)
                         neval += 1
-        idxs = sort(evals)
-        simplex = take(simplex, idxs)
+        sort(evals, idxs)
+        take(simplex, idxs, temp2d)
         niter += 1
-    cdef bint success = False if 'failure' in message else True
+    success = False if 'failure' in message else True
     return OptimizeResult(x=simplex[0],
                           success=success,
                           message=message,
@@ -184,60 +201,53 @@ def amoeba(objective,
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef np.ndarray take(np.ndarray[DTYPE_t, ndim=2] a,
-                     np.ndarray[np.int_t, ndim=1] idxs):
+cdef void take(np.ndarray[DTYPE_t, ndim=2] a,
+               np.ndarray[np.int_t, ndim=1] idxs,
+               np.ndarray[DTYPE_t, ndim=2] b):
     cdef np.ulong_t nx, ny
     nx = a.shape[0]
     ny = a.shape[1]
-    cdef np.ndarray[DTYPE_t, ndim = 2] b = np.zeros((nx, ny))
     cdef np.ulong_t i
     for i in range(nx):
-        b[i] = a[idxs[i]]
-    return b
+        for j in range(ny):
+            b[i, j] = a[idxs[i], j]
+    for i in range(nx):
+        for j in range(ny):
+            a[i, j] = b[i, j]
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef np.ndarray minimum(np.ndarray[DTYPE_t, ndim=1] a1,
-                        np.ndarray[DTYPE_t, ndim=1] a2):
-    cdef np.ulong_t n = a1.shape[0]
-    cdef np.ndarray[DTYPE_t, ndim = 1] b = np.zeros(n)
+cdef void minimum(np.ndarray[DTYPE_t, ndim=1] buff,
+                  np.ndarray[DTYPE_t, ndim=1] bounds):
+    cdef np.ulong_t n = buff.shape[0]
     cdef DTYPE_t m
     cdef np.ulong_t i
     for i in range(n):
-        if a1[i] < a2[i]:
-            m = a1[i]
-        else:
-            m = a2[i]
-        b[i] = m
-    return b
+        if buff[i] > bounds[i]:
+            buff[i] = bounds[i]
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef np.ndarray maximum(np.ndarray[DTYPE_t, ndim=1] a1,
-                        np.ndarray[DTYPE_t, ndim=1] a2):
-    cdef np.ulong_t n = a1.shape[0]
-    cdef np.ndarray[DTYPE_t, ndim = 1] b = np.zeros(n)
+cdef void maximum(np.ndarray[DTYPE_t, ndim=1] buff,
+                  np.ndarray[DTYPE_t, ndim=1] bounds):
+    cdef np.ulong_t n = buff.shape[0]
     cdef DTYPE_t m
     cdef np.ulong_t i
     for i in range(n):
-        if a1[i] > a2[i]:
-            m = a1[i]
-        else:
-            m = a2[i]
-        b[i] = m
-    return b
+        if buff[i] < bounds[i]:
+            buff[i] = bounds[i]
 
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
-cdef np.ndarray sort(np.ndarray[DTYPE_t, ndim=1] a):
+cdef void sort(np.ndarray[DTYPE_t, ndim=1] a,
+               np.ndarray[np.int_t, ndim=1] order):
     cdef np.ulong_t m = a.shape[0]
     cdef np.ulong_t i, j
     cdef DTYPE_t key
-    cdef np.ndarray[np.int_t, ndim= 1] order = np.zeros(m,
-                                                         dtype=np.int)
+
     for i in range(m):
         order[i] = i
 
@@ -250,4 +260,3 @@ cdef np.ndarray sort(np.ndarray[DTYPE_t, ndim=1] a):
             j -= 1
         a[j+1] = key
         order[j+1] = i
-    return order
