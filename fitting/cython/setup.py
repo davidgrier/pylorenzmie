@@ -6,6 +6,7 @@ import numpy
 
 setup(
     ext_modules=cythonize("cminimizers.pyx",
-                          language_level='3'),
+                          language_level='3',
+                          annotate=True),
     include_dirs=[numpy.get_include()]
 )
