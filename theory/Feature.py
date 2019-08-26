@@ -9,7 +9,7 @@ from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
 from pylorenzmie.fitting.Settings import FitSettings, FitResult
 from pylorenzmie.fitting.Mask import Mask
-from pylorenzmie.fitting.minimizers import amoeba
+from pylorenzmie.fitting import amoeba
 
 try:
     import cupy as cp
@@ -363,9 +363,7 @@ class Feature(object):
                       'max_nfev': 2000,
                       'diff_step': 1e-5,
                       'verbose': 0}
-        amoeba_options = {'initial_simplex': None,
-                          'ftol': 5.e-2,
-                          'maxevals': 1000}
+        amoeba_options = {'ftol': 5.e-2, 'maxevals': 1000}
         # Initialize settings for fitting
         self.amoeba_settings = FitSettings(self.properties,
                                            options=amoeba_options)
