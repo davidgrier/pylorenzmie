@@ -9,6 +9,7 @@ try:
     cp.cuda.Device()
     if 'Cuda' not in str(GeneralizedLorenzMie):
         raise Exception()
+    from pylorenzmie.theory.cukernelsf import cuhologramf
     from pylorenzmie.theory.cukernels import cuhologram
 except Exception:
     cp = None
@@ -62,11 +63,11 @@ class LMHologram(LorenzMie):
         if self.using_cuda:
             field = self.field()
             hologram = self.holo
-            alpha = self.alpha
-            alpha = cp.float32(alpha)
+            alpha = self._flt(self.alpha)
             Ex, Ey, Ez = field
-            cuhologram((self.blockspergrid,), (self.threadsperblock,),
-                       (Ex, Ey, Ez, alpha, hologram.size, hologram))
+            kernel = cuhologram if self.double else cuhologramf
+            kernel((self.blockspergrid,), (self.threadsperblock,),
+                   (Ex, Ey, Ez, alpha, hologram.size, hologram))
             if return_gpu is False:
                 hologram = hologram.get()
         elif self.using_numba:
