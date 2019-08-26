@@ -3,9 +3,52 @@ from scipy.optimize import OptimizeResult
 
 
 def amoeba(objective, x0, xmin, xmax,
-           maxevals=int(1e3), initial_simplex=None,
-           simplex_scale=.1, xtol=1e-7, ftol=1e-7, adaptive=False):
-    '''Nelder-mead optimization adapted from scipy.optimize.fmin'''
+           simplex_scale=.1, xtol=1e-7, ftol=1e-7,
+           maxevals=int(1e3), initial_simplex=None):
+    '''
+    Nelder-mead optimization adapted from scipy.optimize.fmin
+
+    Arguments
+    ---------
+    objective : callable
+        Scalar objective function to be minimized
+    x0 : np.ndarray
+        [N] Initial guess for solution in space of N parameters
+    xmin : np.ndarray
+        [N] Lower bounds for parameters. These should be 
+        far lower than the values the simplex explores
+        and is only meant to catch the simplex if it runs
+        far off from the solution
+    xmax : np.ndarray
+        [N] Upper bounds for parameters. See xmin documentation
+        for usage
+
+    Keywords
+    --------
+    simplex_scale : np.ndarray or float
+        [N] Scale factor for each parameter in generating an 
+        initial simplex.
+    xtol : np.ndarray or float
+        [N] Tolerance in each parameter for convergence. The
+        algorithm stops when all values in the simplex are 
+        within xtol of each other
+    ftol : float
+        Tolerance in objective function for convergence. The
+        algorithm stops when all function values in simplex are 
+        within ftol of each other.
+    maxevals : int
+        Max number of function evaluations before function quits
+    initial_simplex : np.ndarray
+        [N+1, N] Initial simplex. If None, simplex_scale is used to
+        generate an initial simplex
+
+    Returns
+    -------
+    result : scipy.optimize.OptimizeResult
+        Contains information about solution, best function value,
+        number of function evaluations and iterations, reason for
+        termination, and success of the fit. See scipy's documentation.
+    '''
     simplex_scale = np.asarray(simplex_scale)
     xtol = np.asarray(xtol)
     # Initialize simplex
@@ -119,71 +162,6 @@ def amoeba(objective, x0, xmin, xmax,
     best = simplex[0]
     chi = evals[0]
     success = False if 'failure' in message else True
-    return OptimizeResult(x=best, success=success, message=message,
-                          nit=niter, nfev=neval, fun=chi)
-
-
-'''
-def amoebas(objective, params, initial_simplex=None, maxevals=int(1e3),
-            simplex_scale=.1, namoebas=2, xtol=1e-7, ftol=1e-7):
-    parameters = list(params.keys())
-    temp = []
-    if type(simplex_scale) == dict:
-        for param in parameters:
-            if params[param].vary:
-                temp.append(simplex_scale[param])
-        simplex_scale = np.array(temp)
-    x0 = []
-    for param in params.keys():
-        if params[param].vary:
-            x0.append(params[param].value)
-    x0 = np.array(x0)
-    N = len(x0)
-    if initial_simplex is None:
-        if namoebas == 1:
-            scales = [np.array(simplex_scale)]
-        else:
-            scales = np.linspace(-simplex_scale,
-                                 simplex_scale,
-                                 namoebas)
-        initial_simplex = []
-        for scale in scales:
-            if type(scale) is np.float64:
-                scale = np.full(N, scale)
-            simplex = np.vstack([x0, np.diag(scale) + x0])
-            # Make initial guess centroid of simplex
-            xbar = np.add.reduce(simplex[:-1], 0) / N
-            # simplex = simplex - (xbar - x0)
-            initial_simplex.append(simplex)
-    minresult = None
-    minchi = np.inf
-
-    
-    mp.set_start_method('spawn')
-    pool = mp.Pool(nsimp)
-    args = [(objective, params,
-             simplex, delta, xtol, ftol) for simplex in initial_simplex]
-    results = pool.starmap(amoeba, args)
-    pool.close()
-    pool.terminate()
-    pool.join()
-    for result in results:
-        if result.redchi < minchi:
-            minresult = result
-            minchi = result.redchi
-        # report_fit(result)
-
-    
-    chis = []
-    for idx, simplex in enumerate(initial_simplex):
-        result = amoeba(objective, params,
-                        initial_simplex=simplex,
-                        xtol=xtol, ftol=ftol,
-                        maxevals=maxevals)
-        if result.chisqr < minchi:
-            minresult = result
-            minchi = result.chisqr
-        chis.append(result.chisqr)
-    minresult.chis = np.array(chis)
-    return minresult
-'''
+    result = OptimizeResult(x=best, success=success, message=message,
+                            nit=niter, nfev=neval, fun=chi)
+    return result
