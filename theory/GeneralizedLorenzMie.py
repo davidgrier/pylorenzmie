@@ -267,6 +267,7 @@ class GeneralizedLorenzMie(object):
             self.instrument.wavelength = wavelength
         self._using_cuda = False
         self._using_numba = False
+        self._double = True
         self._reallocate = True
 
     @property
@@ -343,6 +344,15 @@ class GeneralizedLorenzMie(object):
         s = json.loads(str)
         self.particle.loads(s['particle'])
         self.instrument.loads(s['instrument'])
+
+    @property
+    def double(self):
+        return self._double
+
+    @double.setter
+    def double(self, double):
+        raise AttributeError(
+            "Toggle between single/double precision restricted to CUDA")
 
     @property
     def using_cuda(self):
