@@ -53,7 +53,7 @@ np.seterr(all='raise')
 def compute(ab, krv, mo1n, ne1n, es, ec, cartesian=True, bohren=True):
     '''Returns the field scattered by the particle at each coordinate
 
-    Parameters
+    Arguments
     ----------
     ab : numpy.ndarray
         [2, norders] Mie scattering coefficients
@@ -62,6 +62,9 @@ def compute(ab, krv, mo1n, ne1n, es, ec, cartesian=True, bohren=True):
         relative to the center of the scatterer. Coordinates
         are assumed to be multiplied by the wavenumber of
         light in the medium, and so are dimensionless.
+
+    Keywords
+    --------
     cartesian : bool
         If set, return field projected onto Cartesian coordinates.
         Otherwise, return polar projection.
@@ -222,6 +225,17 @@ class GeneralizedLorenzMie(object):
     coordinates : numpy.ndarray
         [3, npts] array of x, y and z coordinates where field
         is calculated
+    double_precision : bool
+        Specifies whether calculations are done in double or 
+        single precision. Can only be toggled in CUDA model.
+    using_cuda : bool
+        Informs whether calculations are done with CUDA kernels.
+        Can only be toggled in CudaGeneralizedLorenzMie model,
+        which only toggles between CUDA kernels and numba CPU
+        kernels.
+    using_numba : bool
+        Informs whether or not numba accelerated CPU kernels are
+        used. When this is True, using_cuda is False (and vice versa).
 
     Methods
     -------
@@ -237,7 +251,7 @@ class GeneralizedLorenzMie(object):
                  magnification=None,
                  wavelength=None):
         '''
-        Parameters
+        Keywords
         ----------
         coordinates : numpy.ndarray
            [3, npts] array of x, y and z coordinates where field
@@ -316,6 +330,33 @@ class GeneralizedLorenzMie(object):
         if isinstance(instrument, Instrument):
             self._instrument = instrument
 
+    @property
+    def double_precision(self):
+        return self._double_precision
+
+    @double_precision.setter
+    def double_precision(self, precision):
+        raise AttributeError(
+            "Toggle between single/double precision restricted to CUDA")
+
+    @property
+    def using_cuda(self):
+        return self._using_cuda
+
+    @using_cuda.setter
+    def using_cuda(self, use):
+        raise AttributeError(
+            "Toggle between Numba CPU and CUDA only works in CUDA model")
+
+    @property
+    def using_numba(self):
+        return self._using_numba
+
+    @using_numba.setter
+    def using_numba(self, use):
+        raise AttributeError(
+            "Toggle between Numba CPU and CUDA only works in CUDA model")
+
     def dumps(self, **kwargs):
         '''Returns JSON string of adjustable properties
 
@@ -345,43 +386,6 @@ class GeneralizedLorenzMie(object):
         self.particle.loads(s['particle'])
         self.instrument.loads(s['instrument'])
 
-    @property
-    def double_precision(self):
-        return self._double_precision
-
-    @double_precision.setter
-    def double_precision(self, precision):
-        raise AttributeError(
-            "Toggle between single/double precision restricted to CUDA")
-
-    @property
-    def using_cuda(self):
-        return self._using_cuda
-
-    @using_cuda.setter
-    def using_cuda(self, use):
-        raise AttributeError(
-            "Toggle between Numba CPU and CUDA only works in CUDA model")
-
-    @property
-    def using_numba(self):
-        return self._using_numba
-
-    @using_numba.setter
-    def using_numba(self, use):
-        raise AttributeError(
-            "Toggle between Numba CPU and CUDA only works in CUDA model")
-
-    def _allocate(self, shape):
-        '''Allocates ndarrays for calculation'''
-        self.krv = np.empty(shape, dtype=float)
-        self.mo1n = np.empty(shape, dtype=complex)
-        self.ne1n = np.empty(shape, dtype=complex)
-        self.es = np.empty(shape, dtype=complex)
-        self.ec = np.empty(shape, dtype=complex)
-        self.result = np.empty(shape, dtype=complex)
-        self._reallocate = False
-
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
@@ -402,6 +406,16 @@ class GeneralizedLorenzMie(object):
             this *= np.exp(-1j * k * p.z_p)
             self.result += this
         return self.result
+
+    def _allocate(self, shape):
+        '''Allocates ndarrays for calculation'''
+        self.krv = np.empty(shape, dtype=float)
+        self.mo1n = np.empty(shape, dtype=complex)
+        self.ne1n = np.empty(shape, dtype=complex)
+        self.es = np.empty(shape, dtype=complex)
+        self.ec = np.empty(shape, dtype=complex)
+        self.result = np.empty(shape, dtype=complex)
+        self._reallocate = False
 
 
 if __name__ == '__main__':

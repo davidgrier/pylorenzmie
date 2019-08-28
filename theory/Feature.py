@@ -51,11 +51,12 @@ class Feature(object):
         during fitting. True means the parameter will vary.
     amoeba_settings : FitSettings
         Settings for nelder-mead optimization. Refer to minimizers.py
-        -> amoeba and Settings.py -> FitSettings for documentation
+        or cminimizers.pyx -> amoeba and Settings.py -> FitSettings
+        for documentation.
     lm_settings : FitSettings
         Settings for Levenberg-Marquardt optimization. Refer to
         scipy.optimize.least_squares and Settings.py -> FitSettings
-        for documentation
+        for documentation.
 
 
     Methods
@@ -63,10 +64,11 @@ class Feature(object):
     residuals() : numpy.ndarray
         Difference between the current model and the data,
         normalized by the noise estimate.
-    optimize() : lmfit.MinimzerResult
-        Optimize the Model to fit the data.  Results are
-        returned in a comprehensive report and are reflected
-        in updates to the properties of the Model.
+    optimize() : FitResult
+        Optimize the Model to fit the data. A FitResult is
+        returned and can be printed for a comprehensive report,
+        which is also reflected in updates to the properties of
+        the Model.
     serialize() : dict
         Serialize select attributes and properties of Feature to a dict.
     deserialize(info) : None
@@ -80,8 +82,6 @@ class Feature(object):
                  noise=0.05,
                  info=None,
                  **kwargs):
-        # If using numba or CUDA accelerated model, good idea
-        # to pass in model as keyword if instantiating many Features.
         self.model = Model(**kwargs) if model is None else model
         # Set fields
         self.data = data

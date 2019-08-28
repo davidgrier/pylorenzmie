@@ -50,24 +50,16 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     '''
     A class that computes scattered light fields with numba
-    acceleration
+    CPU acceleration. See GeneralizedLorenzMie for attributes
+    and methods.
 
     ...
-
-    Attributes
-    ----------
-    particle : Particle
-        Object representing the particle scattering light
-    instrument : Instrument
-        Object resprenting the light-scattering instrument
-    coordinates : numpy.ndarray
-        [3, npts] array of x, y and z coordinates where field
-        is calculated
 
     Methods
     -------
     field(cartesian=True, bohren=True)
-        Returns the complex-valued field at each of the coordinates.
+        Returns the complex-valued field at each of the coordinates
+        with numba CPU accleration.
     '''
 
     def __init__(self, **kwargs):
@@ -91,13 +83,6 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
         super(FastGeneralizedLorenzMie, self).__init__(**kwargs)
         self._using_numba = True
 
-    def _allocate(self, shape):
-        '''Allocates ndarrays for calculation'''
-        self.this = np.empty(shape, dtype=np.complex128)
-        self.result = np.empty(shape, dtype=np.complex128)
-        self.holo = np.empty(shape[1], dtype=np.float64)
-        self._reallocate = False
-
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
@@ -114,6 +99,13 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
                       ab, self.this, cartesian, bohren)
             self.result += self.this
         return self.result
+
+    def _allocate(self, shape):
+        '''Allocates ndarrays for calculation'''
+        self.this = np.empty(shape, dtype=np.complex128)
+        self.result = np.empty(shape, dtype=np.complex128)
+        self.holo = np.empty(shape[1], dtype=np.float64)
+        self._reallocate = False
 
 
 if __name__ == '__main__':
