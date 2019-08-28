@@ -13,8 +13,8 @@ from pylorenzmie.fitting import amoeba
 
 try:
     import cupy as cp
-    from pylorenzmie.theory.cukernelsf import curesidualsf, cuchisqrf
-    from pylorenzmie.theory.cukernels import curesiduals, cuchisqr
+    from pylorenzmie.theory.cukernels \
+        import curesiduals, cuchisqr, curesidualsf, cuchisqrf
 except Exception:
     cp = None
 try:

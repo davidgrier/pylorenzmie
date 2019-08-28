@@ -3,8 +3,7 @@
 
 import numpy as np
 import cupy as cp
-from pylorenzmie.theory.cukernelsf import cufieldf
-from pylorenzmie.theory.cukernels import cufield
+from pylorenzmie.theory.cukernels import cufield, cufieldf
 from pylorenzmie.theory.fastkernels import fastfield
 from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
 

@@ -9,8 +9,7 @@ try:
     cp.cuda.Device()
     if 'Cuda' not in str(GeneralizedLorenzMie):
         raise Exception()
-    from pylorenzmie.theory.cukernelsf import cuhologramf
-    from pylorenzmie.theory.cukernels import cuhologram
+    from pylorenzmie.theory.cukernels import cuhologram, cuhologramf
 except Exception:
     cp = None
 try:
