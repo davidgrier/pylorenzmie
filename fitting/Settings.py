@@ -14,13 +14,33 @@ class FitSettings(object):
     Attributes
     ----------
     options : dict
-        Dictionary that can be passed to a fitting algorithm.
-        Consists of vector and scalar keywords.
+        Dictionary that can be passed to a fitting algorithm,
+        consisting of vector and scalar keywords
     parameters: dict of ParameterSettings
         See ParameterSettings documentation to see attributes.
+
+    Methods
+    -------
+    getkwargs(vary)
+        Returns a dictionary of arguments and keywords to be
+        passed to a fitting algorithm. Before calling, set
+        all non-vector keywords in FitSettings.options
+        and all vector keywords in each ParameterSettings.options
+        stored in FitSettings.parameters.
     '''
 
     def __init__(self, keys, options=None):
+        '''
+        Arguments
+        ---------
+        keys : list or tuple
+            Names of parameters in model
+
+        Keywords
+        --------
+        options : dict
+            Non-vector args or kwargs options for fitting algorithm.
+        '''
         self._keys = keys
         if type(options) is not dict:
             self.options = dict()
@@ -39,6 +59,12 @@ class FitSettings(object):
         vary : dict of bools
             Dictionary that determines whether or not parameter
             will vary during fitting
+
+        Returns
+        -------
+        options : dict
+            Both vector and non-vector args and kwargs for
+            fitting algorithm
         '''
         options = self.options
         temp = []
@@ -69,8 +95,16 @@ class ParameterSettings(object):
 
     Attributes
     ----------
-    options: dict
-    vary: boolean
+    options : dict
+        Settings for fitting algorithm relating to this specific
+        parameter. For example, an argument requiring a vector,
+        where each entry is a value specific to a parameter,
+        would store its value as a scalar here.
+    initial
+        Storage for parameter initial value during fitting.
+    vary : boolean
+        Determines whether or not parameter will vary during
+        fitting
     '''
 
     def __init__(self):
@@ -107,8 +141,57 @@ class ParameterSettings(object):
 
 
 class FitResult(object):
+    '''
+    Convenient object for storing results of a fit.
+    Provides nice print statement report. Future plans
+    include serialization and options to calculate
+    statistics beyond reduced chi-squared.
+
+    ...
+
+    Attributes
+    ----------
+    method : str
+        Name of fitting method
+    redchi : float
+        Reduced chi squared value from fit
+    nfev : int
+        Number of function evaluations before convergence
+    initial : dict
+        Initial values of parameters during fitting
+    final : dict
+        Final values of parameters during fitting
+    vary : dict of bools
+        Whether or not a parameter varied during fitting
+    success : bool
+        Whether or not fit converged
+    message : str
+        Message about reason for convergence or failure
+    Methods
+    -------
+
+    '''
 
     def __init__(self, method, scipy_result, settings, model, ndata):
+        '''
+        Arguments
+        ---------
+        method : str
+            Fitting method
+        scipy_result : scipy.optimize.OptimizeResult
+            See scipy's documentation. The idea of this object
+            is to build on scipy's object and provide a friendlier
+            report.
+        settings : FitSettings
+            See FitSettings object for documentation. Used to
+            gather information about the fit.
+        model
+            Model that was optimized during fitting. For example,
+            an LMHologram object.
+        ndata : int
+            Number of data points during fitting. Used for reduced
+            chi-squared calculation.
+        '''
         self._method = method
         self.result = scipy_result
         self.settings = settings
@@ -129,6 +212,7 @@ class FitResult(object):
 
     @property
     def nfev(self):
+        '''Number of function evaluations before convergence'''
         return self.result.nfev
 
     @property

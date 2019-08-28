@@ -55,43 +55,30 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     '''
     A class that computes scattered light fields with CUDA
-    acceleration
+    acceleration. See GeneralizedLorenzMie for attributes
+    and methods.
 
     ...
 
     Attributes
     ----------
-    particle : Particle
-        Object representing the particle scattering light
-    instrument : Instrument
-        Object resprenting the light-scattering instrument
-    coordinates : numpy.ndarray
-        [3, npts] array of x, y and z coordinates where field
-        is calculated
+    double_precision : bool
+        See GeneralizedLorenzMie for documentation
+    using_cuda : bool
+        See GeneralizedLorenzMie for documentation
+    using_numba : bool
+        See GeneralizedLorenzMie for documentation
 
     Methods
     -------
     field(cartesian=True, bohren=True)
-        Returns the complex-valued field at each of the coordinates.
+        Returns the complex-valued field at each of the coordinates
+        with either CUDA or numba CPU accleration.
     '''
 
     def __init__(self, **kwargs):
         '''
-        Parameters
-        ----------
-        coordinates : numpy.ndarray
-           [3, npts] array of x, y and z coordinates where field
-           is calculated
-        particle : Particle
-           Object representing the particle scattering light
-        instrument : Instrument
-           Object resprenting the light-scattering instrument
-        n_m : complex, optional
-           Refractive index of medium
-        magnification : float, optional
-           Magnification of microscope [um/pixel]
-        wavelength : float, optional
-           Vacuum wavelength of light [um]
+        See GeneralizedLorenzMie for initializaiton keywords.
         '''
         super(CudaGeneralizedLorenzMie, self).__init__(**kwargs)
         self._using_cuda = True
@@ -102,7 +89,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     @property
     def double_precision(self):
-        '''Toggles single/double precision for CUDA'''
+        '''Toggles between single and double precision for CUDA'''
         return self._double_precision
 
     @double_precision.setter
@@ -121,6 +108,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     @property
     def using_cuda(self):
+        '''Toggles between CUDA and numba CPU accleration'''
         return self._using_cuda
 
     @using_cuda.setter
@@ -134,6 +122,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     @property
     def using_numba(self):
+        '''Toggles between CUDA and numba CPU accleration'''
         return self._using_numba
 
     @using_numba.setter
@@ -144,24 +133,6 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
             self._using_numba = use
             self._using_cuda = not use
             self._reallocate = True
-
-    def _allocate(self, shape):
-        '''Allocates ndarrays for calculation'''
-        if self.using_cuda:
-            self.this = cp.empty(shape, dtype=self._cmplx)
-            self.result = cp.empty(shape, dtype=self._cmplx)
-            self.device_coordinates = cp.asarray(self.coordinates
-                                                 .astype(self._flt))
-            self.holo = cp.empty(shape[1], dtype=self._flt)
-            self.threadsperblock = 32
-            self.blockspergrid = (shape[1] +
-                                  (self.threadsperblock - 1))\
-                // self.threadsperblock
-        else:
-            self.this = np.empty(shape, dtype=np.complex128)
-            self.result = np.empty(shape, dtype=np.complex128)
-            self.holo = np.empty(shape[1], dtype=np.float64)
-        self._reallocate = False
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
@@ -201,6 +172,24 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
                           ab, self.this, cartesian, bohren)
                 self.result += self.this
         return self.result
+
+    def _allocate(self, shape):
+        '''Allocates ndarrays for calculation'''
+        if self.using_cuda:
+            self.this = cp.empty(shape, dtype=self._cmplx)
+            self.result = cp.empty(shape, dtype=self._cmplx)
+            self.device_coordinates = cp.asarray(self.coordinates
+                                                 .astype(self._flt))
+            self.holo = cp.empty(shape[1], dtype=self._flt)
+            self.threadsperblock = 32
+            self.blockspergrid = (shape[1] +
+                                  (self.threadsperblock - 1))\
+                // self.threadsperblock
+        else:
+            self.this = np.empty(shape, dtype=np.complex128)
+            self.result = np.empty(shape, dtype=np.complex128)
+            self.holo = np.empty(shape[1], dtype=np.float64)
+        self._reallocate = False
 
 
 if __name__ == '__main__':
