@@ -66,10 +66,11 @@ def amoeba(objective,
         termination, and success of the fit. See scipy's documentation.
     '''
     # Int and float values for number of parameters
-    cdef np.ulong_t N = x0.shape[0]
-    cdef DTYPE_t Nf = np.float64(N)
+    cdef int N = x0.shape[0]
+    cdef DTYPE_t Nf = DTYPE(N)
     # Indexing
-    cdef np.ulong_t i, j
+    cdef Py_ssize_t i, j
+    cdef Py_ssize_t n = x0.shape[0]
     # Temporary variables for algorithm
     cdef DTYPE_t tempf, diff
     cdef int doshrink
@@ -90,8 +91,8 @@ def amoeba(objective,
     cdef int neval = 1
     cdef int niter = 1
     cdef np.ndarray[DTYPE_t, ndim = 1] evals = np.empty(N+1)
-    cdef np.ndarray[np.int_t, ndim = 1] idxs = np.empty(N+1,
-                                                       dtype=np.int)
+    cdef np.ndarray[Py_ssize_t, ndim = 1] idxs = np.empty(N+1,
+                                                         dtype=np.int)
     # Fill evaluations for initial simplex and sort
     for i in range(N+1):
         for j in range(N):
@@ -168,7 +169,7 @@ def amoeba(objective,
                 tempf += simplex[i, j]
             xbar[j] = tempf / Nf
         for j in range(N):
-            xr[j] = (1 + rho) * xbar[j] - rho * simplex[N, j]
+            xr[j] = (1 + rho) * xbar[j] - rho * simplex[n, j]
         minimum(xr, xmax)
         maximum(xr, xmin)
         fxr = objective(xr)
@@ -179,53 +180,53 @@ def amoeba(objective,
             # If so, reflect double and see if that's even better
             for j in range(N):
                 xe[j] = (1. + rho * chi) * xbar[j]\
-                    - rho * chi * simplex[N, j]
+                    - rho * chi * simplex[n, j]
             minimum(xe, xmax)
             maximum(xe, xmin)
             fxe = objective(xe)
             neval += 1
             if fxe < fxr:
                 for j in range(N):
-                    simplex[N, j] = xe[j]
-                evals[N] = fxe
+                    simplex[n, j] = xe[j]
+                evals[n] = fxe
             else:
                 for j in range(N):
-                    simplex[N, j] = xr[j]
-                evals[N] = fxr
+                    simplex[n, j] = xr[j]
+                evals[n] = fxr
         else:
-            if fxr < evals[N-1]:
+            if fxr < evals[n-1]:
                 for j in range(N):
-                    simplex[N, j] = xr[j]
-                evals[N] = fxr
+                    simplex[n, j] = xr[j]
+                evals[n] = fxr
             else:
                 # If reflection is not better, contract.
-                if fxr < evals[N]:
+                if fxr < evals[n]:
                     for j in range(N):
                         xc[j] = (1. + psi * rho) * xbar[j] \
-                            - psi * rho * simplex[N, j]
+                            - psi * rho * simplex[n, j]
                     minimum(xc, xmax)
                     maximum(xc, xmin)
                     fxc = objective(xc)
                     neval += 1
                     if fxc <= fxr:
                         for j in range(N):
-                            simplex[N, j] = xc[j]
-                        evals[N] = fxc
+                            simplex[n, j] = xc[j]
+                        evals[n] = fxc
                     else:
                         doshrink = 1
                 else:
                     # Do 'inside' contraction
                     for j in range(N):
                         xcc[j] = (1 - psi) * xbar[j] \
-                            + psi * simplex[N, j]
+                            + psi * simplex[n, j]
                     minimum(xcc, xmax)
                     maximum(xcc, xmin)
                     fxcc = objective(xcc)
                     neval += 1
-                    if fxcc < evals[N]:
+                    if fxcc < evals[n]:
                         for j in range(N):
-                            simplex[N, j] = xcc[j]
-                        evals[N] = fxcc
+                            simplex[n, j] = xcc[j]
+                        evals[n] = fxcc
                     else:
                         doshrink = 1
                 if doshrink:
@@ -255,20 +256,20 @@ def amoeba(objective,
 @cython.boundscheck(False)
 @cython.wraparound(False)
 cdef void take(np.ndarray[DTYPE_t, ndim=2] a,
-               np.ndarray[np.int_t, ndim=1] idxs,
+               np.ndarray[Py_ssize_t, ndim=1] idxs,
                np.ndarray[DTYPE_t, ndim=2] buff):
     '''
     Replaces order of a's axis 0 according to idxs
     '''
-    cdef np.ulong_t nx, ny
-    nx = a.shape[0]
-    ny = a.shape[1]
-    cdef np.ulong_t i
-    for i in range(nx):
-        for j in range(ny):
+    cdef int N1, N2
+    N1 = a.shape[0]
+    N2 = a.shape[1]
+    cdef Py_ssize_t i, j
+    for i in range(N1):
+        for j in range(N2):
             buff[i, j] = a[idxs[i], j]
-    for i in range(nx):
-        for j in range(ny):
+    for i in range(N1):
+        for j in range(N2):
             a[i, j] = buff[i, j]
 
 
@@ -280,10 +281,9 @@ cdef void minimum(np.ndarray[DTYPE_t, ndim=1] buff,
     Takes elementwise minimum of buff and bounds, storing
     the result in buff
     '''
-    cdef np.ulong_t n = buff.shape[0]
-    cdef DTYPE_t m
-    cdef np.ulong_t i
-    for i in range(n):
+    cdef int N = buff.shape[0]
+    cdef Py_ssize_t i
+    for i in range(N):
         if buff[i] > bounds[i]:
             buff[i] = bounds[i]
 
@@ -296,10 +296,9 @@ cdef void maximum(np.ndarray[DTYPE_t, ndim=1] buff,
     Takes elementwise maximum of buff and bounds, storing
     the result in buff
     '''
-    cdef np.ulong_t n = buff.shape[0]
-    cdef DTYPE_t m
-    cdef np.ulong_t i
-    for i in range(n):
+    cdef int N = buff.shape[0]
+    cdef Py_ssize_t i
+    for i in range(N):
         if buff[i] < bounds[i]:
             buff[i] = bounds[i]
 
@@ -312,14 +311,14 @@ cdef void sort(np.ndarray[DTYPE_t, ndim=1] a,
     Inplace insertion sort that modifies order to reflect
     ordering of the sorted a
     '''
-    cdef np.ulong_t m = a.shape[0]
-    cdef np.ulong_t i, j
+    cdef int N = a.shape[0]
+    cdef Py_ssize_t i, j
     cdef DTYPE_t key
 
-    for i in range(m):
+    for i in range(N):
         order[i] = i
 
-    for i in range(1, m):
+    for i in range(1, N):
         key = a[i]
         j = i-1
         while j >= 0 and key < a[j]:
