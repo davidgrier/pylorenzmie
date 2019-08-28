@@ -1,5 +1,5 @@
 from numpy.math cimport INFINITY
-import cython
+cimport cython
 from scipy.optimize import OptimizeResult
 import numpy as np
 cimport numpy as np
@@ -13,7 +13,6 @@ ctypedef np.float64_t DTYPE_t
 @cython.boundscheck(False)
 @cython.wraparound(False)
 @cython.nonecheck(False)
-@cython.cdivision(True)
 def amoeba(objective,
            np.ndarray[DTYPE_t, ndim=1] x0,
            np.ndarray[DTYPE_t, ndim=1] xmin,
@@ -67,7 +66,7 @@ def amoeba(objective,
     '''
     # Int and float values for number of parameters
     cdef int N = x0.shape[0]
-    cdef DTYPE_t Nf = DTYPE(N)
+    cdef DTYPE_t invN = 1./DTYPE(N)
     # Indexing
     cdef Py_ssize_t i, j
     cdef Py_ssize_t n = x0.shape[0]
@@ -167,7 +166,7 @@ def amoeba(objective,
             tempf = 0.
             for i in range(N):
                 tempf += simplex[i, j]
-            xbar[j] = tempf / Nf
+            xbar[j] = tempf * invN
         for j in range(N):
             xr[j] = (1 + rho) * xbar[j] - rho * simplex[n, j]
         minimum(xr, xmax)
