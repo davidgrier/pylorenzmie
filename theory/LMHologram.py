@@ -64,7 +64,7 @@ class LMHologram(LorenzMie):
             hologram = self.holo
             alpha = self._flt(self.alpha)
             Ex, Ey, Ez = field
-            kernel = cuhologram if self.double else cuhologramf
+            kernel = cuhologram if self.double_precision else cuhologramf
             kernel((self.blockspergrid,), (self.threadsperblock,),
                    (Ex, Ey, Ez, alpha, hologram.size, hologram))
             if return_gpu is False:

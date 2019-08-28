@@ -96,22 +96,22 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         super(CudaGeneralizedLorenzMie, self).__init__(**kwargs)
         self._using_cuda = True
         self._using_numba = False
-        self._double = True
+        self._double_precision = True
         self._cmplx = np.complex128
         self._flt = float
 
     @property
-    def double(self):
+    def double_precision(self):
         '''Toggles single/double precision for CUDA'''
-        return self._double
+        return self._double_precision
 
-    @double.setter
-    def double(self, double):
-        if double == self._double:
+    @double_precision.setter
+    def double_precision(self, double_precision):
+        if double_precision == self._double_precision:
             pass
         else:
-            self._double = bool(double)
-            if double:
+            self._double_precision = bool(double_precision)
+            if double_precision:
                 self._cmplx = np.complex128
                 self._flt = float
             else:
@@ -172,7 +172,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         self.result.fill(0.+0.j)
         k = self._flt(self.instrument.wavenumber())
         if self.using_cuda:
-            kernel = cufield if self.double else cufieldf
+            kernel = cufield if self.double_precision else cufieldf
             for p in np.atleast_1d(self.particle):
                 ab = p.ab(self.instrument.n_m,
                           self.instrument.wavelength)

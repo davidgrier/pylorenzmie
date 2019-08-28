@@ -318,7 +318,7 @@ class Feature(object):
         holo = self.model.hologram(self.model.using_cuda)
         if self.model.using_cuda:
             (cuchi, curesid) = (cuchisqr, curesiduals)  \
-                if self.model.double else (cuchisqrf, curesidualsf)
+                if self.model.double_precision else (cuchisqrf, curesidualsf)
             if reduce:
                 obj = cuchi(holo, self._subset_data, self.noise)
             else:
@@ -401,7 +401,7 @@ class Feature(object):
         x0 = np.array(x0)
         self._subset_data = self._data[self.mask.sampled_index]
         if self.model.using_cuda:
-            dtype = float if self.model.double else np.float32
+            dtype = float if self.model.double_precision else np.float32
             self._subset_data = cp.asarray(self._subset_data,
                                            dtype=dtype)
         return x0
@@ -448,7 +448,7 @@ if __name__ == '__main__':
     #p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
     # a.model.using_cuda = False
-    a.model.double = False
+    a.model.double_precision = True
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'uniform'
