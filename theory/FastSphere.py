@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from pylorenzmie.theory.Sphere import Sphere
-from pylorenzmie.theory.fastkernels import fastcoefficients
+from pylorenzmie.theory.fastkernels import fast_mie_coefficients
 
 
 class FastSphere(Sphere):
@@ -14,7 +14,7 @@ class FastSphere(Sphere):
 
     def __init__(self, **kwargs):
         super(FastSphere, self).__init__(**kwargs)
-        self._mie_coefficients = fastcoefficients
+        self._mie_coefficients = fast_mie_coefficients
 
 
 if __name__ == '__main__':

@@ -8,7 +8,7 @@ from pylorenzmie.theory.Sphere import mie_coefficients
 safe_flags = {'nnan', 'ninf', 'arcp', 'nsz'}
 
 
-fastcoefficients = njit(mie_coefficients, cache=True)
+fast_mie_coefficients = njit(mie_coefficients, cache=True)
 
 
 @njit(parallel=True, fastmath=False, cache=True)
