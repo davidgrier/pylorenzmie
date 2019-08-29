@@ -1,12 +1,15 @@
 import unittest
 from pylorenzmie.theory.Sphere import Sphere
+from pylorenzmie.theory.FastSphere import FastSphere
 import numpy as np
 
 
 class TestSphere(unittest.TestCase):
     def setUp(self):
         self.particle = Sphere()
-        self.particle.r_p = (100., 200, 300)
+        self.fast_particle = FastSphere()
+        self.particle.r_p = (100, 200, 300)
+        self.fast_particle.r_p = (100, 200, 300)
 
     def test_set_ap(self):
         value = 1.
@@ -23,6 +26,17 @@ class TestSphere(unittest.TestCase):
         value = [1.5, 1.51]
         self.particle.n_p = value
         self.assertSequenceEqual(value, self.particle.n_p.tolist())
+
+    def test_fast(self):
+        self.particle.a_p = 1.
+        self.particle.n_p = 1.45
+        self.fast_particle.a_p = 1.
+        self.fast_particle.n_p = 1.45
+        n_m = 1.34
+        wavelength = 0.447
+        ab = self.particle.ab(n_m, wavelength)
+        fast_ab = self.fast_particle.ab(n_m, wavelength)
+        self.assertTrue(np.allclose(ab[0:20, :], fast_ab[0:20, :]))
 
     def test_coefficients(self):
         self.particle.a_p = 1.

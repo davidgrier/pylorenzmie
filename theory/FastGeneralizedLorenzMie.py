@@ -62,7 +62,7 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
         with numba CPU accleration.
     '''
 
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         '''
         Parameters
         ----------
@@ -80,7 +80,7 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
         wavelength : float, optional
            Vacuum wavelength of light [um]
         '''
-        super(FastGeneralizedLorenzMie, self).__init__(**kwargs)
+        super(FastGeneralizedLorenzMie, self).__init__(*args, **kwargs)
         self._using_numba = True
 
     def field(self, cartesian=True, bohren=True):

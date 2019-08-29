@@ -76,11 +76,11 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         with either CUDA or numba CPU accleration.
     '''
 
-    def __init__(self, **kwargs):
+    def __init__(self, *args, **kwargs):
         '''
         See GeneralizedLorenzMie for initializaiton keywords.
         '''
-        super(CudaGeneralizedLorenzMie, self).__init__(**kwargs)
+        super(CudaGeneralizedLorenzMie, self).__init__(*args, **kwargs)
         self._using_cuda = True
         self._using_numba = False
         self._double_precision = True
