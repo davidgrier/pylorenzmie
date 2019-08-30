@@ -194,14 +194,13 @@ def fastfield(coordinates, r_p, k, phase,
             ecy += esp * cosphi
             ecz = (esr * costheta -
                    est * sintheta)
-            result[0, idx] = ecx
-            result[1, idx] = ecy
-            result[2, idx] = ecz
+            result[0, idx] += ecx*phase
+            result[1, idx] += ecy*phase
+            result[2, idx] += ecz*phase
         else:
-            result[0, idx] = esr
-            result[1, idx] = est
-            result[2, idx] = esp
-        result[:, idx] *= phase
+            result[0, idx] += esr*phase
+            result[1, idx] += est*phase
+            result[2, idx] += esp*phase
 
 
 @njit(parallel=True, fastmath=False, cache=True)

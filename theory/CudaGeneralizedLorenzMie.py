@@ -7,7 +7,6 @@ from pylorenzmie.theory.cukernels import cufield, cufieldf
 from pylorenzmie.theory.fastkernels import fastfield
 from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
 
-
 cp.cuda.Device()
 
 '''
@@ -161,22 +160,19 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
                         ar, ai, br, bi,
                         ab.shape[0], coordsx.shape[0],
                         cartesian, bohren,
-                        *self.this))
-                self.result += self.this
+                        *self.result))
         else:
             for p in np.atleast_1d(self.particle):
                 ab = p.ab(self.instrument.n_m,
                           self.instrument.wavelength)
                 phase = np.exp(-1.j * k * p.z_p)
                 fastfield(self.coordinates, p.r_p, k, phase,
-                          ab, self.this, cartesian, bohren)
-                self.result += self.this
+                          ab, self.result, cartesian, bohren)
         return self.result
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
         if self.using_cuda:
-            self.this = cp.empty(shape, dtype=self._cmplx)
             self.result = cp.empty(shape, dtype=self._cmplx)
             self.device_coordinates = cp.asarray(self.coordinates
                                                  .astype(self._flt))
