@@ -154,18 +154,15 @@ void field(double *coordsx, double *coordsy, double *coordsz,
 
             ecz = cuCsub(cuCmul(esr, cost), cuCmul(est, sint));
 
-            e1[idx] = ecx;
-            e2[idx] = ecy;
-            e3[idx] = ecz;
+            e1[idx] = cuCadd(e1[idx], cuCmul(ecx, phase));
+            e2[idx] = cuCadd(e2[idx], cuCmul(ecy, phase));
+            e3[idx] = cuCadd(e3[idx], cuCmul(ecz, phase));
         }
         else {
-            e1[idx] = esr;
-            e2[idx] = est;
-            e3[idx] = esp;
+            e1[idx] = cuCadd(e1[idx], cuCmul(esr, phase));
+            e2[idx] = cuCadd(e2[idx], cuCmul(est, phase));
+            e3[idx] = cuCadd(e3[idx], cuCmul(esp, phase));
         }
-        e1[idx] = cuCmul(e1[idx], phase);
-        e2[idx] = cuCmul(e2[idx], phase);
-        e3[idx] = cuCmul(e3[idx], phase);
     }
 }
 ''', 'field')
@@ -371,18 +368,15 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 
             ecz = cuCsubf(cuCmulf(esr, cost), cuCmulf(est, sint));
 
-            e1[idx] = ecx;
-            e2[idx] = ecy;
-            e3[idx] = ecz;
+            e1[idx] = cuCaddf(e1[idx], cuCmulf(ecx, phase));
+            e2[idx] = cuCaddf(e2[idx], cuCmulf(ecy, phase));
+            e3[idx] = cuCaddf(e3[idx], cuCmulf(ecz, phase));
         }
         else {
-            e1[idx] = esr;
-            e2[idx] = est;
-            e3[idx] = esp;
+            e1[idx] = cuCaddf(e1[idx], cuCmulf(esr, phase));
+            e2[idx] = cuCaddf(e2[idx], cuCmulf(est, phase));
+            e3[idx] = cuCaddf(e3[idx], cuCmulf(esp, phase));
         }
-        e1[idx] = cuCmulf(e1[idx], phase);
-        e2[idx] = cuCmulf(e2[idx], phase);
-        e3[idx] = cuCmulf(e3[idx], phase);
     }
 }
 ''', 'field')

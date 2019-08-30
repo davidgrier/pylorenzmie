@@ -96,13 +96,11 @@ class FastGeneralizedLorenzMie(GeneralizedLorenzMie):
                       self.instrument.wavelength)
             phase = np.exp(-1.j * k * p.z_p)
             fastfield(self.coordinates, p.r_p, k, phase,
-                      ab, self.this, cartesian, bohren)
-            self.result += self.this
+                      ab, self.result, cartesian, bohren)
         return self.result
 
     def _allocate(self, shape):
         '''Allocates ndarrays for calculation'''
-        self.this = np.empty(shape, dtype=np.complex128)
         self.result = np.empty(shape, dtype=np.complex128)
         self.holo = np.empty(shape[1], dtype=np.float64)
         self._reallocate = False
