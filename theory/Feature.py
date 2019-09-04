@@ -13,8 +13,8 @@ from pylorenzmie.fitting import amoeba
 
 try:
     import cupy as cp
-    from pylorenzmie.theory.cukernelsf import curesidualsf, cuchisqrf
-    from pylorenzmie.theory.cukernels import curesiduals, cuchisqr
+    from pylorenzmie.theory.cukernels \
+        import curesiduals, cuchisqr, curesidualsf, cuchisqrf
 except Exception:
     cp = None
 try:
@@ -51,11 +51,12 @@ class Feature(object):
         during fitting. True means the parameter will vary.
     amoeba_settings : FitSettings
         Settings for nelder-mead optimization. Refer to minimizers.py
-        -> amoeba and Settings.py -> FitSettings for documentation
+        or cminimizers.pyx -> amoeba and Settings.py -> FitSettings
+        for documentation.
     lm_settings : FitSettings
         Settings for Levenberg-Marquardt optimization. Refer to
         scipy.optimize.least_squares and Settings.py -> FitSettings
-        for documentation
+        for documentation.
 
 
     Methods
@@ -63,10 +64,11 @@ class Feature(object):
     residuals() : numpy.ndarray
         Difference between the current model and the data,
         normalized by the noise estimate.
-    optimize() : lmfit.MinimzerResult
-        Optimize the Model to fit the data.  Results are
-        returned in a comprehensive report and are reflected
-        in updates to the properties of the Model.
+    optimize() : FitResult
+        Optimize the Model to fit the data. A FitResult is
+        returned and can be printed for a comprehensive report,
+        which is also reflected in updates to the properties of
+        the Model.
     serialize() : dict
         Serialize select attributes and properties of Feature to a dict.
     deserialize(info) : None
@@ -80,8 +82,6 @@ class Feature(object):
                  noise=0.05,
                  info=None,
                  **kwargs):
-        # If using numba or CUDA accelerated model, good idea
-        # to pass in model as keyword if instantiating many Features.
         self.model = Model(**kwargs) if model is None else model
         # Set fields
         self.data = data
@@ -318,7 +318,7 @@ class Feature(object):
         holo = self.model.hologram(self.model.using_cuda)
         if self.model.using_cuda:
             (cuchi, curesid) = (cuchisqr, curesiduals)  \
-                if self.model.double else (cuchisqrf, curesidualsf)
+                if self.model.double_precision else (cuchisqrf, curesidualsf)
             if reduce:
                 obj = cuchi(holo, self._subset_data, self.noise)
             else:
@@ -401,7 +401,7 @@ class Feature(object):
         x0 = np.array(x0)
         self._subset_data = self._data[self.mask.sampled_index]
         if self.model.using_cuda:
-            dtype = float if self.model.double else np.float32
+            dtype = float if self.model.double_precision else np.float32
             self._subset_data = cp.asarray(self._subset_data,
                                            dtype=dtype)
         return x0
@@ -448,7 +448,7 @@ if __name__ == '__main__':
     #p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
     # a.model.using_cuda = False
-    a.model.double = False
+    # a.model.double_precision = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'uniform'
