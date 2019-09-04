@@ -8,31 +8,36 @@ from pylorenzmie.theory.Sphere import mie_coefficients
 safe_flags = {'nnan', 'ninf', 'arcp', 'nsz'}
 
 
-fastcoefficients = njit(mie_coefficients, cache=True)
+fast_mie_coefficients = njit(mie_coefficients, cache=True)
 
 
 @njit(parallel=True, fastmath=False, cache=True)
 def fastfield(coordinates, r_p, k, phase,
               ab, result, bohren, cartesian):
-    '''Returns the field scattered by the particle at each coordinate
+    '''
+    Returns the field scattered by the particle at each coordinate
 
-    Parameters
+    Arguments
     ----------
-    ab : numpy.ndarray
+    coordinates : numpy.ndarray of dtype numpy.complex128
+        [3, npts] coordinate system for scattered field calculation
+    r_p : numpy.ndarray
+        [3] position of scatterer
+    k : float
+        Wavenumber of the light in medium of refractive index n_m
+    phase : np.complex128
+        Complex exponential phase to attach to Lorenz-Mie scattering
+        function. See equation XXX
+    ab : numpy.ndarray of dtype numpy.complex128
         [2, norders] Mie scattering coefficients
-    krv : numpy.ndarray
-        Reduced vector displacements of particle from image coordinates
+    result : numpy.ndarray of dtype numpy.complex128
+        [3, npts] buffer for final scattered field
     cartesian : bool
         If set, return field projected onto Cartesian coordinates.
         Otherwise, return polar projection.
     bohren : bool
         If set, use sign convention from Bohren and Huffman.
         Otherwise, use opposite sign convention.
-    Returns
-    -------
-    field : numpy.ndarray
-            [3, npts] array of complex vector values of the
-            scattered field at each coordinate.
     '''
     length = coordinates.shape[1]
 
@@ -189,14 +194,13 @@ def fastfield(coordinates, r_p, k, phase,
             ecy += esp * cosphi
             ecz = (esr * costheta -
                    est * sintheta)
-            result[0, idx] = ecx
-            result[1, idx] = ecy
-            result[2, idx] = ecz
+            result[0, idx] += ecx*phase
+            result[1, idx] += ecy*phase
+            result[2, idx] += ecz*phase
         else:
-            result[0, idx] = esr
-            result[1, idx] = est
-            result[2, idx] = esp
-        result[:, idx] *= phase
+            result[0, idx] += esr*phase
+            result[1, idx] += est*phase
+            result[2, idx] += esp*phase
 
 
 @njit(parallel=True, fastmath=False, cache=True)
