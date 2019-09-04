@@ -76,10 +76,7 @@ class Mask(object):
         img_size = self.coordinates[0].size
         ext_size = int(np.sqrt(img_size))
         distribution = np.ones(img_size)
-        botcorner = int(np.amax(self.coordinates[1]))
-        rightcorner = int(np.amax(self.coordinates[0]))
-        leftcorner = int(np.amin(self.coordinates[0]))
-        topcorner = int(np.amin(self.coordinates[1]))
+        leftcorner, rightcorner, topcorner, botcorner = [int(x) for sublist in [list(coord[::len(coord)-1]) for coord in self.coordinates[:2]] for x in sublist]        
         numrows = botcorner - topcorner
         numcols = rightcorner - leftcorner
         center = (int(numcols/2.)+leftcorner, int(numrows/2.)+topcorner)
@@ -102,10 +99,7 @@ class Mask(object):
         img_size = self.coordinates[0].size
         ext_size = int(np.sqrt(img_size))
         distribution = np.ones(img_size)
-        botcorner = int(np.amax(self.coordinates[1]))
-        rightcorner = int(np.amax(self.coordinates[0]))
-        leftcorner = int(np.amin(self.coordinates[0]))
-        topcorner = int(np.amin(self.coordinates[1]))
+        leftcorner, rightcorner, topcorner, botcorner = [int(x) for sublist in [list(coord[::len(coord)-1]) for coord in self.coordinates[:2]] for x in sublist]
         numrows = botcorner - topcorner
         numcols = rightcorner - leftcorner
         center = (int(numcols/2.)+leftcorner, int(numrows/2.)+topcorner)
@@ -179,7 +173,7 @@ if __name__ == '__main__':
     from pylorenzmie.theory.Instrument import coordinates
 
     shape = (201, 201)
-    corner = (300,300)
+    corner = (350,300)
     m = Mask(coordinates(shape, corner=corner))
     m.settings['percentpix'] = 0.4
     m.settings['distribution'] = 'radial_gaussian'
