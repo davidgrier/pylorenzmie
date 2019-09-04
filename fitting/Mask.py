@@ -76,10 +76,12 @@ class Mask(object):
         img_size = self.coordinates[0].size
         ext_size = int(np.sqrt(img_size))
         distribution = np.ones(img_size)
-        numrows = np.amax(self.coordinates[1])
-        numcols = np.amax(self.coordinates[0])
+        botcorner = int(np.amax(self.coordinates[1]))
+        rightcorner = int(np.amax(self.coordinates[0]))
         leftcorner = int(np.amin(self.coordinates[0]))
         topcorner = int(np.amin(self.coordinates[1]))
+        numrows = botcorner - topcorner
+        numcols = rightcorner - leftcorner
         center = (int(numcols/2.)+leftcorner, int(numrows/2.)+topcorner)
 
         # mean and stdev of gaussian as percentages of max radius
@@ -100,10 +102,12 @@ class Mask(object):
         img_size = self.coordinates[0].size
         ext_size = int(np.sqrt(img_size))
         distribution = np.ones(img_size)
-        numrows = np.amax(self.coordinates[1])
-        numcols = np.amax(self.coordinates[0])
+        botcorner = int(np.amax(self.coordinates[1]))
+        rightcorner = int(np.amax(self.coordinates[0]))
         leftcorner = int(np.amin(self.coordinates[0]))
         topcorner = int(np.amin(self.coordinates[1]))
+        numrows = botcorner - topcorner
+        numcols = rightcorner - leftcorner
         center = (int(numcols/2.)+leftcorner, int(numrows/2.)+topcorner)
 
         # outer concetric circle lies at 10% of edge
@@ -175,8 +179,10 @@ if __name__ == '__main__':
     from pylorenzmie.theory.Instrument import coordinates
 
     shape = (201, 201)
-    m = Mask(coordinates(shape))
+    corner = (300,300)
+    m = Mask(coordinates(shape, corner=corner))
     m.settings['percentpix'] = 0.4
+    m.settings['distribution'] = 'radial_gaussian'
     m.exclude = np.arange(10000, 12000)
     m.initialize_sample()
     m.draw_mask()
