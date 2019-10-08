@@ -150,7 +150,8 @@ class Feature(object):
         return self.model.hologram() - self.data
 
     def optimize(self, method='amoeba'):
-        '''Fit Model to data
+        '''
+        Fit Model to data
 
         Arguments
         ---------
@@ -161,15 +162,17 @@ class Feature(object):
 
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.least_squares()
-        For Nelder-Mead fitting, see arguments for amoeba in
-        pylorenzmie/fitting/minimizers.py
+        For Nelder-Mead fitting, see arguments for amoeba either in
+        pylorenzmie/fitting/minimizers.py or
+        pylorenzmie/fitting/cython/cminimizers.pyx.
 
         Returns
         -------
-        result : lmfit.MinimzerResult
-            Comprehensive report on the outcome of fitting the
-            Model to the provided data.  The format is described
-            in the documentation for lmfit.
+        result : FitResult
+            Stores useful information about the fit. It also has this nice
+            quirk where if it's printed, it gives a nice-looking fit report.
+            For further description, see documentation for FitResult in
+            pylorenzmie.fitting.Settings.py.
         '''
         # Get array of pixels to sample
         self.mask.coordinates = self.model.coordinates
