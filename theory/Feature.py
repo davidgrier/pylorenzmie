@@ -49,6 +49,8 @@ class Feature(object):
     vary : dict of booleans
         Allows user to select whether or not to vary parameter
         during fitting. True means the parameter will vary.
+        Setting FitSettings.parameters.vary manually will not
+        work.
     amoeba_settings : FitSettings
         Settings for nelder-mead optimization. Refer to minimizers.py
         or cminimizers.pyx -> amoeba and Settings.py -> FitSettings
@@ -208,8 +210,8 @@ class Feature(object):
 
         result = self._cleanup(method, result, options=options)
 
-        fit_result = FitResult(method, result,
-                               self.lm_settings, self.model, npix)
+        fit_result = FitResult(
+            method, result, self.lm_settings, self.model, npix)
 
         return fit_result
 

@@ -26,7 +26,9 @@ class FitSettings(object):
         passed to a fitting algorithm. Before calling, set
         all non-vector keywords in FitSettings.options
         and all vector keywords in each ParameterSettings.options
-        stored in FitSettings.parameters.
+        stored in FitSettings.parameters. However, setting
+        FitSettings.parameters.vary will not have an effect on the
+        output; only the argument to this function, vary, will.
     '''
 
     def __init__(self, keys, options=None):
@@ -58,7 +60,9 @@ class FitSettings(object):
         ---------
         vary : dict of bools
             Dictionary that determines whether or not parameter
-            will vary during fitting
+            will vary during fitting. Setting
+            FitSettings.parameters.vary individually before
+            calling this method will no have no effect.
 
         Returns
         -------
