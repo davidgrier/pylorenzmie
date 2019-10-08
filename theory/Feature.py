@@ -216,15 +216,13 @@ class Feature(object):
         else:
             raise ValueError(
                 "Method keyword must either be lm, amoeba, or amoeba-lm")
-
-        # reassign original coordinates before returning the fit
+        # Post-fit cleanup
+        result = self._cleanup(method, square, result, options=options)
+        # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
-
-        result = self._cleanup(method, result, options=options)
-
+        # Generate FitResult
         fit_result = FitResult(
             method, result, self.lm_settings, self.model, npix)
-
         return fit_result
 
     #
@@ -435,11 +433,14 @@ class Feature(object):
                                            dtype=dtype)
         return x0
 
-    def _cleanup(self, method, result, options=None):
-        if self.model.using_cuda:
-            self._subset_data = cp.asnumpy(self._subset_data)
+    def _cleanup(self, method, square, result, options=None):
         if method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
+        elif method == 'amoeba':
+            if not square:
+                result.fun = float(self._objective(reduce=True))
+        if self.model.using_cuda:
+            self._subset_data = cp.asnumpy(self._subset_data)
         return result
 
 
