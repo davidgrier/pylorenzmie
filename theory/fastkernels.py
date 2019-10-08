@@ -224,3 +224,11 @@ def fastchisqr(holo, data, noise):
     for idx in prange(holo.size):
         chisqr += ((holo[idx] - data[idx]) / noise) ** 2
     return chisqr
+
+
+@njit(parallel=True, fastmath=False, cache=True)
+def fastabsolute(holo, data, noise):
+    s = 0.
+    for idx in prange(holo.size):
+        s += abs((holo[idx] - data[idx]) / noise)
+    return s

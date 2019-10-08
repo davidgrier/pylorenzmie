@@ -13,12 +13,12 @@ from pylorenzmie.fitting import amoeba
 
 try:
     import cupy as cp
-    from pylorenzmie.theory.cukernels \
-        import curesiduals, cuchisqr, curesidualsf, cuchisqrf
+    import pylorenzmie.theory.cukernels as cuk
 except Exception:
     cp = None
 try:
-    from pylorenzmie.theory.fastkernels import fastresiduals, fastchisqr
+    from pylorenzmie.theory.fastkernels import \
+        fastresiduals, fastchisqr, fastabsolute
 except Exception:
     pass
 
@@ -149,16 +149,22 @@ class Feature(object):
         '''
         return self.model.hologram() - self.data
 
-    def optimize(self, method='amoeba'):
+    def optimize(self, method='amoeba', square=True):
         '''
         Fit Model to data
 
-        Arguments
+        Keywords
         ---------
         method : str
             Optimization method.
             'lm': scipy.least_squares
+            'amoeba' : Nelder-Mead optimization from pylorenzmie.fitting
             'amoeba-lm': Nelder-Mead/Levenberg-Marquardt hybrid
+        square : bool
+            If True, 'amoeba' fitting method will minimize chi-squared.
+            If False, 'amoeba' fitting method will minimize the sum of
+            absolute values of the residuals. This keyword has no effect
+            on 'amoeba-lm' or 'lm' methods.
 
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.least_squares()
@@ -169,10 +175,10 @@ class Feature(object):
         Returns
         -------
         result : FitResult
-            Stores useful information about the fit. It also has this nice
-            quirk where if it's printed, it gives a nice-looking fit report.
-            For further description, see documentation for FitResult in
-            pylorenzmie.fitting.Settings.py.
+            Stores useful information about the fit. It also has this
+            nice quirk where if it's printed, it gives a nice-looking
+            fit report. For further description, see documentation for
+            FitResult in pylorenzmie.fitting.Settings.py.
         '''
         # Get array of pixels to sample
         self.mask.coordinates = self.model.coordinates
@@ -187,9 +193,12 @@ class Feature(object):
                 self._residuals, x0,
                 **self.lm_settings.getkwargs(self.vary))
         elif method == 'amoeba':
+            if square:
+                objective = self._chisqr
+            else:
+                objective = self._absolute
             result = amoeba(
-                self._chisqr, x0,
-                **self.amoeba_settings.getkwargs(self.vary))
+                objective, x0, **self.amoeba_settings.getkwargs(self.vary))
         elif method == 'amoeba-lm':
             nmresult = amoeba(
                 self._chisqr, x0,
@@ -301,7 +310,7 @@ class Feature(object):
     #
     # Objective functions for under the hood
     #
-    def _residuals(self, x, reduce=False):
+    def _residuals(self, x, reduce=False, square=True):
         '''Updates properties and returns residuals'''
         particle = self.model.particle
         instrument = self.model.instrument
@@ -313,31 +322,46 @@ class Feature(object):
                 else:
                     setattr(instrument, key, x[idx])
                 idx += 1
-        objective = self._objective(reduce=reduce)
+        objective = self._objective(reduce=reduce, square=square)
         return objective
 
     def _chisqr(self, x):
         return self._residuals(x, reduce=True)
 
-    def _objective(self, reduce=False):
+    def _absolute(self, x):
+        return self._residuals(x, reduce=True, square=False)
+
+    def _objective(self, reduce=False, square=True):
         holo = self.model.hologram(self.model.using_cuda)
         if self.model.using_cuda:
-            (cuchi, curesid) = (cuchisqr, curesiduals)  \
-                if self.model.double_precision else (cuchisqrf, curesidualsf)
+            (cuchisqr, curesiduals, cuabsolute) = (
+                cuk.cuchisqr, cuk.curesiduals, cuk.cuabsolute)  \
+                if self.model.double_precision else (
+                cuk.cuchisqrf, cuk.curesidualsf, cuk.cuabsolutef)
             if reduce:
-                obj = cuchi(holo, self._subset_data, self.noise)
+                if square:
+                    obj = cuchisqr(holo, self._subset_data, self.noise)
+                else:
+                    obj = cuabsolute(holo, self._subset_data, self.noise)
             else:
-                obj = curesid(holo, self._subset_data, self.noise)
+                obj = curesiduals(holo, self._subset_data, self.noise)
             obj = obj.get()
         elif self.model.using_numba:
             if reduce:
-                obj = fastchisqr(holo, self._subset_data, self.noise)
+                if square:
+                    obj = fastchisqr(
+                        holo, self._subset_data, self.noise)
+                else:
+                    obj = fastabsolute(holo, self._subset_data, self.noise)
             else:
                 obj = fastresiduals(holo, self._subset_data, self.noise)
         else:
             obj = (holo - self._subset_data) / self.noise
             if reduce:
-                obj = obj.dot(obj)
+                if square:
+                    obj = obj.dot(obj)
+                else:
+                    obj = np.absolute(obj).sum()
         return obj
 
     #
@@ -461,7 +485,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba')
+    result = a.optimize(method='amoeba', square=False)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
