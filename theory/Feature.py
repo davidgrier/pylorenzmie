@@ -327,7 +327,6 @@ class Feature(object):
         return self._residuals(x, reduce=True)
 
     def _absolute(self, x):
-        print(x)
         return self._residuals(x, reduce=True, square=False)
 
     def _objective(self, reduce=False, square=True):
