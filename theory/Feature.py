@@ -380,7 +380,7 @@ class Feature(object):
         x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
         # ... bounds around intial guess for bounded nelder-mead
         simplex_bounds = [(-np.inf, np.inf), (-np.inf, np.inf),
-                          (0., 2000.), (.2, 4.), (1., 3.),
+                          (0., 2000.), (.05, 4.), (1., 3.),
                           (0., 3.), (1., 3.), (.100, 2.00), (0., 1.)]
         # ... scale of initial simplex
         simplex_scale = np.array([4., 4., 5., 0.01, 0.01, .2, .1, .1, .05])
