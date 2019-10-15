@@ -327,6 +327,7 @@ class Feature(object):
         return self._residuals(x, reduce=True)
 
     def _absolute(self, x):
+        print(x)
         return self._residuals(x, reduce=True, square=False)
 
     def _objective(self, reduce=False, square=True):
@@ -384,7 +385,7 @@ class Feature(object):
         # ... scale of initial simplex
         simplex_scale = np.array([4., 4., 5., 0.01, 0.01, .2, .1, .1, .05])
         # ... tolerance for nelder-mead termination
-        simplex_tol = [.1, .1, .01, .0005, .0005, .001, .01, .01, .01]
+        simplex_tol = [.1, .1, .004, .0002, .0002, .001, .01, .01, .01]
         # Default options for amoeba and lm not parameter dependent
         lm_options = {'method': 'lm',
                       'xtol': 1.e-6,
@@ -393,7 +394,7 @@ class Feature(object):
                       'max_nfev': 2000,
                       'diff_step': 1e-5,
                       'verbose': 0}
-        amoeba_options = {'ftol': 1.e-3, 'maxevals': 1000}
+        amoeba_options = {'ftol': 5.e-4, 'maxevals': 1000}
         # Initialize settings for fitting
         self.amoeba_settings = FitSettings(self.properties,
                                            options=amoeba_options)
