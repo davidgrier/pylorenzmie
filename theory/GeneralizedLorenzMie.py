@@ -50,7 +50,8 @@ Copyright (c) 2018 David G. Grier
 np.seterr(all='raise')
 
 
-def compute(ab, krv, mo1n, ne1n, es, ec, cartesian=True, bohren=True):
+def compute(ab, krv, mo1n, ne1n, es, ec,
+            cartesian=True, bohren=True, lens=False):
     '''Returns the field scattered by the particle at each coordinate
 
     Arguments
@@ -204,9 +205,14 @@ def compute(ab, krv, mo1n, ne1n, es, ec, cartesian=True, bohren=True):
         ec[1, :] += es[2, :] * cosphi
         ec[2, :] = (es[0, :] * costheta -
                     es[1, :] * sintheta)
-        return ec
+        e = ec
     else:
-        return es
+        e = es
+
+    if lens:
+        pass
+
+    return e
 
 
 class GeneralizedLorenzMie(object):
