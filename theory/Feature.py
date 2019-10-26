@@ -149,7 +149,7 @@ class Feature(object):
         '''
         return self.model.hologram() - self.data
 
-    def optimize(self, method='amoeba', square=True):
+    def optimize(self, method='amoeba', square=True, nfits=1):
         '''
         Fit Model to data
 
@@ -184,40 +184,20 @@ class Feature(object):
         self.mask.coordinates = self.model.coordinates
         self.mask.initialize_sample()
         self.model.coordinates = self.mask.masked_coords()
-
         npix = self.model.coordinates.shape[1]
-        x0 = self._prepare(method)
-        options = {}
-        if method == 'lm':
-            result = least_squares(
-                self._residuals, x0,
-                **self.lm_settings.getkwargs(self.vary))
-        elif method == 'amoeba':
-            if square:
-                objective = self._chisqr
-            else:
-                objective = self._absolute
-            result = amoeba(
-                objective, x0, **self.amoeba_settings.getkwargs(self.vary))
-        elif method == 'amoeba-lm':
-            nmresult = amoeba(
-                self._chisqr, x0,
-                **self.amoeba_settings.getkwargs(self.vary))
-            if not nmresult.success:
-                msg = 'Nelder-Mead: {}. Falling back to least squares.'
-                logger.warning(msg.format(nmresult.message))
-                x1 = x0
-            else:
-                x1 = nmresult.x
-            result = least_squares(
-                self._residuals, x1,
-                **self.lm_settings.getkwargs(self.vary))
-            options['nmresult'] = nmresult
+        # Prepare
+        x0, anz_map = self._prepare(method)
+        # Fit
+        if nfits > 1:
+            result, options = self._globalize(
+                method, x0, square, anz_map)
+        elif nfits == 1:
+            result, options = self._optimize(method, x0, square)
         else:
-            raise ValueError(
-                "Method keyword must either be lm, amoeba, or amoeba-lm")
+            raise ValueError("nfits must be greater than or equal to 1.")
         # Post-fit cleanup
-        result = self._cleanup(method, square, result, options=options)
+        result = self._cleanup(method, square, result, nfits,
+                               options=options)
         # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
         # Generate FitResult
@@ -306,28 +286,70 @@ class Feature(object):
                 setattr(self.model.instrument, key, info[key])
 
     #
-    # Objective functions for under the hood
+    # Under the hood optimization helper functions
     #
-    def _residuals(self, x, reduce=False, square=True):
-        '''Updates properties and returns residuals'''
-        particle = self.model.particle
-        instrument = self.model.instrument
-        idx = 0
-        for key in self.properties:
-            if self.vary[key]:
-                if hasattr(particle, key):
-                    setattr(particle, key, x[idx])
-                else:
-                    setattr(instrument, key, x[idx])
-                idx += 1
-        objective = self._objective(reduce=reduce, square=square)
-        return objective
+    def _optimize(self, method, x0, square):
+        options = {}
+        if method == 'lm':
+            result = least_squares(
+                self._residuals, x0,
+                **self.lm_settings.getkwargs(self.vary))
+        elif method == 'amoeba':
+            if square:
+                objective = self._chisqr
+            else:
+                objective = self._absolute
+            result = amoeba(
+                objective, x0, **self.amoeba_settings.getkwargs(self.vary))
+        elif method == 'amoeba-lm':
+            nmresult = amoeba(
+                self._chisqr, x0,
+                **self.amoeba_settings.getkwargs(self.vary))
+            if not nmresult.success:
+                msg = 'Nelder-Mead: {}. Falling back to least squares.'
+                logger.warning(msg.format(nmresult.message))
+                x1 = x0
+            else:
+                x1 = nmresult.x
+            result = least_squares(
+                self._residuals, x1,
+                **self.lm_settings.getkwargs(self.vary))
+            options['nmresult'] = nmresult
+        else:
+            raise ValueError(
+                "Method keyword must either be lm, amoeba, or amoeba-lm")
+        return result, options
 
-    def _chisqr(self, x):
-        return self._residuals(x, reduce=True)
+    def _globalize(self, method, x0, square, anz_map, niter=3):
+        x1 = x0
+        best_eval = np.inf
+        best_result = None
+        start_pts = []
+        fit_pts = []
+        for i in range(niter):
+            result, options = self._optimize(method, x1, square)
+            eval = result.fun
+            if type(result.fun) is np.ndarray:
+                eval = (result.fun).dot(result.fun)
+            if eval < best_eval:
+                best_eval = eval
+                best_result = (result, options)
+            fit_pts.append(result.x)
+            start_pts.append(x1)
+            x1 = self._perturb(start_pts, fit_pts, anz_map)
+        return best_result
 
-    def _absolute(self, x):
-        return self._residuals(x, reduce=True, square=False)
+    def _perturb(self, start_pts, fit_pts, anz_map):
+        x = start_pts[-1]
+        a_scale, n_scale, z_scale = (.1, .05, 20.)
+        x[anz_map['a_p']] += 2*(np.random.random() - .5)*a_scale
+        x[anz_map['n_p']] += 2*(np.random.random() - .5)*n_scale
+        x[anz_map['z_p']] += 2*(np.random.random() - .5)*z_scale
+        return x
+
+    #
+    # Under the hood objective function and its helpers
+    #
 
     def _objective(self, reduce=False, square=True):
         holo = self.model.hologram(self.model.using_cuda)
@@ -361,6 +383,27 @@ class Feature(object):
                 else:
                     obj = np.absolute(obj).sum()
         return obj
+
+    def _residuals(self, x, reduce=False, square=True):
+        '''Updates properties and returns residuals'''
+        particle = self.model.particle
+        instrument = self.model.instrument
+        idx = 0
+        for key in self.properties:
+            if self.vary[key]:
+                if hasattr(particle, key):
+                    setattr(particle, key, x[idx])
+                else:
+                    setattr(instrument, key, x[idx])
+                idx += 1
+        objective = self._objective(reduce=reduce, square=square)
+        return objective
+
+    def _chisqr(self, x):
+        return self._residuals(x, reduce=True)
+
+    def _absolute(self, x):
+        return self._residuals(x, reduce=True, square=False)
 
     #
     # Fitting preparation and cleanup
@@ -416,6 +459,7 @@ class Feature(object):
             logger.warning(msg.format(self.saturated.size))
         # Get initial guess for fit
         x0 = []
+        anz_map = {}
         for prop in self.properties:
             if hasattr(self.model.particle, prop):
                 val = getattr(self.model.particle, prop)
@@ -425,15 +469,28 @@ class Feature(object):
             self.amoeba_settings.parameters[prop].initial = val
             if self.vary[prop]:
                 x0.append(val)
+                if prop in ['a_p', 'n_p', 'z_p']:
+                    anz_map[prop] = len(x0) - 1
         x0 = np.array(x0)
         self._subset_data = self._data[self.mask.sampled_index]
         if self.model.using_cuda:
             dtype = float if self.model.double_precision else np.float32
             self._subset_data = cp.asarray(self._subset_data,
                                            dtype=dtype)
-        return x0
+        return x0, anz_map
 
-    def _cleanup(self, method, square, result, options=None):
+    def _cleanup(self, method, square, result, nfits, options=None):
+        if nfits > 1:
+            idx = 0
+            particle, instrument = (self.model.particle,
+                                    self.model.instrument)
+            for key in self.properties:
+                if self.vary[key]:
+                    if hasattr(particle, key):
+                        setattr(particle, key, result.x[idx])
+                    else:
+                        setattr(instrument, key, result.x[idx])
+                    idx += 1
         if method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
         elif method == 'amoeba':
@@ -453,6 +510,7 @@ if __name__ == '__main__':
 
     # Read example image
     img = cv2.imread('../tutorials/image0400.png')
+    # img = cv2.imread('/home/michael/data/FittingTests/stamp000.png')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = img / np.mean(img)
     shape = img.shape
@@ -472,21 +530,21 @@ if __name__ == '__main__':
     p.a_p = 1.1
     p.n_p = 1.4
     # add errors to parameters
-    #p.r_p += np.random.normal(0., 1, 3)
-    #p.z_p += np.random.normal(0., 10, 1)
-    #p.a_p += np.random.normal(0., 0.05, 1)
-    #p.n_p += np.random.normal(0., 0.03, 1)
+    p.r_p += np.random.normal(0., 1, 3)
+    p.z_p += np.random.normal(0., 10, 1)
+    p.a_p += np.random.normal(0., 0.05, 1)
+    p.n_p += np.random.normal(0., 0.03, 1)
     print("Initial guess:\n{}".format(p))
     # a.model.using_cuda = False
     # a.model.double_precision = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'donut'
-    a.mask.settings['percentpix'] = .1
+    a.mask.settings['percentpix'] = .2
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba', square=False)
+    result = a.optimize(method='amoeba', square=False, nfits=3)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
