@@ -481,8 +481,8 @@ if __name__ == '__main__':
     # a.model.double_precision = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
-    a.mask.settings['distribution'] = 'uniform'
-    a.mask.settings['percentpix'] = 1.
+    a.mask.settings['distribution'] = 'donut'
+    a.mask.settings['percentpix'] = .1
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
