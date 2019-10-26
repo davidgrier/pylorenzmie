@@ -76,7 +76,8 @@ class Mask(object):
         img_size = self.coordinates[0].size
         ext_size = int(np.sqrt(img_size))
         distribution = np.ones(img_size)
-        leftcorner, rightcorner, topcorner, botcorner = [int(x) for sublist in [list(coord[::len(coord)-1]) for coord in self.coordinates[:2]] for x in sublist]        
+        leftcorner, rightcorner, topcorner, botcorner = [int(x) for sublist in [list(
+            coord[::len(coord)-1]) for coord in self.coordinates[:2]] for x in sublist]
         numrows = botcorner - topcorner
         numcols = rightcorner - leftcorner
         center = (int(numcols/2.)+leftcorner, int(numrows/2.)+topcorner)
@@ -88,10 +89,9 @@ class Mask(object):
         mu = ext_size*1/2 * mu_
         sigma = ext_size*1/2*sigma_
 
-        for i in range(img_size):
-            pixel = self.coordinates[:2, i]
-            dist = np.linalg.norm(pixel-center)
-            distribution[i] *= gaussian(dist, mu, sigma)
+        pixels = self.coordinates[:2, :]
+        dist = np.linalg.norm(pixels.T - center, axis=1)
+        distribution *= gaussian(dist, mu, sigma)
 
         return distribution
 
@@ -99,23 +99,26 @@ class Mask(object):
         img_size = self.coordinates[0].size
         ext_size = int(np.sqrt(img_size))
         distribution = np.ones(img_size)
-        leftcorner, rightcorner, topcorner, botcorner = [int(x) for sublist in [list(coord[::len(coord)-1]) for coord in self.coordinates[:2]] for x in sublist]
+        leftcorner, rightcorner, topcorner, botcorner = [int(x) for sublist in [list(
+            coord[::len(coord)-1]) for coord in self.coordinates[:2]] for x in sublist]
         numrows = botcorner - topcorner
         numcols = rightcorner - leftcorner
-        center = (int(numcols/2.)+leftcorner, int(numrows/2.)+topcorner)
+        center = np.array([int(numcols/2.)+leftcorner,
+                           int(numrows/2.)+topcorner])
 
-        # outer concetric circle lies at 10% of edge
-        outer = 0.1
-        # inner concentric circle lies at 30% of edge
-        inner = 0.3
+        # outer concetric circle lies at 0% of edge
+        outer = 0.0
+        # inner concentric circle lies at 40% of edge
+        inner = 0.4
 
         radius1 = ext_size * (1/2 - outer)
         radius2 = ext_size * (1/2 - inner)
-        for i in range(img_size):
-            pixel = self.coordinates[:2, i]
-            dist = np.linalg.norm(pixel-center)
-            if dist > radius2 and dist < radius1:
-                distribution[i] *= 10
+
+        pixels = self.coordinates[:2, :]
+        dist = np.linalg.norm(pixels.T - center, axis=1)
+        distribution = np.where((dist > radius2) & (dist < radius1),
+                                distribution * 10,
+                                distribution)
 
         return distribution
 
@@ -173,7 +176,7 @@ if __name__ == '__main__':
     from pylorenzmie.theory.Instrument import coordinates
 
     shape = (201, 201)
-    corner = (350,300)
+    corner = (350, 300)
     m = Mask(coordinates(shape, corner=corner))
     m.settings['percentpix'] = 0.4
     m.settings['distribution'] = 'radial_gaussian'
