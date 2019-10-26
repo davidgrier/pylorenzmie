@@ -108,8 +108,8 @@ class Mask(object):
 
         # outer concetric circle lies at 0% of edge
         outer = 0.0
-        # inner concentric circle lies at 40% of edge
-        inner = 0.4
+        # inner concentric circle lies at 100% of edge
+        inner = 1.
 
         radius1 = ext_size * (1/2 - outer)
         radius2 = ext_size * (1/2 - inner)
