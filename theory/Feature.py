@@ -352,7 +352,7 @@ class Feature(object):
             if i < nfits - 1:
                 fit_pts.append(result.x)
                 start_pts.append(x1)
-                # Find new starting point and update sampling distributions
+                # Find new starting point and update distributions
                 x1, distributions = self._sample(start_pts,
                                                  fit_pts,
                                                  anz_map,
@@ -376,8 +376,8 @@ class Feature(object):
                 start_well = 1 - gaussian(p_space, p_start, p_std)
                 dist += fit_well + start_well
                 distributions[prop] = normalize(dist)
-                sample = np.random.choice(p_space, p=distributions[prop])
-                print(prop, sample)
+                sample = np.random.choice(p_space,
+                                          p=distributions[prop])
                 x[idx] = sample
         return x, distributions
 
@@ -452,7 +452,7 @@ class Feature(object):
         vary = [True] * 5
         vary.extend([False] * 4)
         # globalized optimization gaussian well standard deviation
-        well_std = [None, None, 5., .05, .05, None, None, None, None]
+        well_std = [None, None, 2.5, .04, .025, None, None, None, None]
         # ... sampling range for globalized optimization based on
         # Estimator error range
         sample_range = [None, None, 30, .25, .15, None, None, None, None]
