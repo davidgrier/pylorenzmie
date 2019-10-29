@@ -3,12 +3,13 @@
 
 import json
 import logging
+from copy import deepcopy
 import numpy as np
 from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
 from pylorenzmie.fitting.Settings import FitSettings, FitResult
-from pylorenzmie.fitting.Mask import Mask
+from pylorenzmie.fitting.Mask import Mask, gaussian, normalize
 from pylorenzmie.fitting import amoeba
 
 try:
@@ -190,7 +191,7 @@ class Feature(object):
         # Fit
         if nfits > 1:
             result, options = self._globalize(
-                method, x0, square, anz_map)
+                method, nfits, x0, square, anz_map)
         elif nfits == 1:
             result, options = self._optimize(method, x0, square)
         else:
@@ -320,37 +321,69 @@ class Feature(object):
                 "Method keyword must either be lm, amoeba, or amoeba-lm")
         return result, options
 
-    def _globalize(self, method, x0, square, anz_map, niter=3):
+    def _globalize(self, method, nfits, x0, square, anz_map):
+        # Initialize sample space and unpack gaussian well parameters
+        # to sample new starting points
+        npts = 100
+        well_std, sample_space = ({}, {})
+        for prop in ['z_p', 'a_p', 'n_p']:
+            if self.vary[prop]:
+                p_0 = x0[anz_map[prop]]
+                opts = self.globalized_settings.parameters[prop].options
+                p_range = opts["sample_range"]
+                p_std = opts["well_std"]
+                p_space = np.linspace(p_0-p_range, p_0+p_range, npts)
+                well_std[prop] = p_std
+                sample_space[prop] = p_space
+        # Initialize for fitting iteration
         x1 = x0
-        best_eval = np.inf
-        best_result = None
-        start_pts = []
-        fit_pts = []
-        for i in range(niter):
+        best_eval, best_result = (np.inf, None)
+        start_pts, fit_pts = ([], [])
+        distributions = deepcopy(sample_space)
+        for i in range(nfits):
             result, options = self._optimize(method, x1, square)
+            # Determine if this result is better than previous
             eval = result.fun
             if type(result.fun) is np.ndarray:
                 eval = (result.fun).dot(result.fun)
             if eval < best_eval:
                 best_eval = eval
                 best_result = (result, options)
-            fit_pts.append(result.x)
-            start_pts.append(x1)
-            x1 = self._perturb(start_pts, fit_pts, anz_map)
+            if i < nfits - 1:
+                fit_pts.append(result.x)
+                start_pts.append(x1)
+                # Find new starting point and update sampling distributions
+                x1, distributions = self._sample(start_pts,
+                                                 fit_pts,
+                                                 anz_map,
+                                                 well_std,
+                                                 sample_space,
+                                                 distributions)
         return best_result
 
-    def _perturb(self, start_pts, fit_pts, anz_map):
-        x = start_pts[-1]
-        a_scale, n_scale, z_scale = (.1, .05, 20.)
-        x[anz_map['a_p']] += 2*(np.random.random() - .5)*a_scale
-        x[anz_map['n_p']] += 2*(np.random.random() - .5)*n_scale
-        x[anz_map['z_p']] += 2*(np.random.random() - .5)*z_scale
-        return x
+    def _sample(self, start_pts, fit_pts, anz_map,
+                well_std, sample_space, distributions):
+        prev_fit = fit_pts[-1]
+        prev_start = start_pts[-1]
+        x = prev_start
+        for prop in ['z_p', 'a_p', 'n_p']:
+            if self.vary[prop]:
+                dist = distributions[prop]
+                p_space = sample_space[prop]
+                idx, p_std = (anz_map[prop], well_std[prop])
+                p_fit, p_start = (prev_fit[idx], prev_start[idx])
+                fit_well = 1 - gaussian(p_space, p_fit, p_std)
+                start_well = 1 - gaussian(p_space, p_start, p_std)
+                dist += fit_well + start_well
+                distributions[prop] = normalize(dist)
+                sample = np.random.choice(p_space, p=distributions[prop])
+                print(prop, sample)
+                x[idx] = sample
+        return x, distributions
 
     #
     # Under the hood objective function and its helpers
     #
-
     def _objective(self, reduce=False, square=True):
         holo = self.model.hologram(self.model.using_cuda)
         if self.model.using_cuda:
@@ -418,6 +451,11 @@ class Feature(object):
         # k_p, n_m, wavelength [um], magnification [um/pixel]
         vary = [True] * 5
         vary.extend([False] * 4)
+        # globalized optimization gaussian well standard deviation
+        well_std = [None, None, 5., .05, .05, None, None, None, None]
+        # ... sampling range for globalized optimization based on
+        # Estimator error range
+        sample_range = [None, None, 30, .25, .15, None, None, None, None]
         # ... levenberg-marquardt variable scale factor
         x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
         # ... bounds around intial guess for bounded nelder-mead
@@ -427,7 +465,7 @@ class Feature(object):
         # ... scale of initial simplex
         simplex_scale = np.array([4., 4., 5., 0.01, 0.01, .2, .1, .1, .05])
         # ... tolerance for nelder-mead termination
-        simplex_tol = [.1, .1, .004, .0002, .0002, .001, .01, .01, .01]
+        simplex_tol = [.1, .1, .007, .0003, .0003, .001, .01, .01, .01]
         # Default options for amoeba and lm not parameter dependent
         lm_options = {'method': 'lm',
                       'xtol': 1.e-6,
@@ -436,21 +474,26 @@ class Feature(object):
                       'max_nfev': 2000,
                       'diff_step': 1e-5,
                       'verbose': 0}
-        amoeba_options = {'ftol': 5.e-4, 'maxevals': 1000}
+        amoeba_options = {'ftol': 5.e-4, 'maxevals': 800}
         # Initialize settings for fitting
         self.amoeba_settings = FitSettings(self.properties,
                                            options=amoeba_options)
         self.lm_settings = FitSettings(self.properties,
                                        options=lm_options)
+        self.globalized_settings = FitSettings(self.properties,
+                                               options={})
         self.vary = dict(zip(self.properties, vary))
         for idx, prop in enumerate(self.properties):
             amparam = self.amoeba_settings.parameters[prop]
             lmparam = self.lm_settings.parameters[prop]
+            glparam = self.globalized_settings.parameters[prop]
             amparam.options['simplex_scale'] = simplex_scale[idx]
             amparam.options['xtol'] = simplex_tol[idx]
             amparam.options['xmax'] = simplex_bounds[idx][1]
             amparam.options['xmin'] = simplex_bounds[idx][0]
             lmparam.options['x_scale'] = x_scale[idx]
+            glparam.options['well_std'] = well_std[idx]
+            glparam.options['sample_range'] = sample_range[idx]
 
     def _prepare(self, method):
         # Warnings
@@ -510,7 +553,7 @@ if __name__ == '__main__':
 
     # Read example image
     img = cv2.imread('../tutorials/image0400.png')
-    # img = cv2.imread('/home/michael/data/FittingTests/stamp000.png')
+    # img = cv2.imread('/home/michael/data/FittingTests/stamp150.png')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = img / np.mean(img)
     shape = img.shape
@@ -540,11 +583,11 @@ if __name__ == '__main__':
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'donut'
-    a.mask.settings['percentpix'] = .2
+    a.mask.settings['percentpix'] = .15
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba', square=False, nfits=3)
+    result = a.optimize(method='amoeba', square=False, nfits=5)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
