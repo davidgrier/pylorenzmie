@@ -51,6 +51,14 @@ class LMHologram(LorenzMie):
     def alpha(self, alpha):
         self._alpha = float(alpha)
 
+    @property
+    def properties(self):
+        p = {}
+        p.update(self.particle.properties)
+        p.update(self.instrument.properties)
+        p.update({'alpha': self.alpha})
+        return p
+
     def hologram(self, return_gpu=False):
         '''Return hologram of sphere
 

@@ -90,9 +90,7 @@ class Feature(object):
         self.noise = noise
         self.coordinates = self.model.coordinates
         # Initialize Feature properties
-        self.properties = list(self.model.particle.properties.keys())
-        self.properties.extend(list(self.model.instrument.properties.keys()))
-        self.properties = tuple(self.properties)
+        self.properties = tuple(self.model.properties.keys())
         # Set default options for fitting
         self.params = self._init_params()
         # Deserialize if needed
@@ -277,13 +275,7 @@ class Feature(object):
         if isinstance(info, str):
             with open(info, 'rb') as f:
                 info = json.load(f)
-        for key in info:
-            if hasattr(self, key):
-                setattr(self, key, info[key])
-            elif hasattr(self.model.particle, key):
-                setattr(self.model.particle, key, info[key])
-            else:
-                setattr(self.model.instrument, key, info[key])
+        self._set_properties(info)
 
     #
     # Under the hood optimization helper functions
@@ -422,16 +414,7 @@ class Feature(object):
 
     def _residuals(self, x, reduce=False, square=True):
         '''Updates properties and returns residuals'''
-        particle = self.model.particle
-        instrument = self.model.instrument
-        idx = 0
-        for key in self.properties:
-            if self.vary[key]:
-                if hasattr(particle, key):
-                    setattr(particle, key, x[idx])
-                else:
-                    setattr(instrument, key, x[idx])
-                idx += 1
+        self._set_properties(x)
         objective = self._objective(reduce=reduce, square=square)
         return objective
 
@@ -453,22 +436,24 @@ class Feature(object):
         # x_p, y_p, z_p [pixels], a_p [um], n_p,
         # k_p, n_m, wavelength [um], magnification [um/pixel]
         vary = [True] * 5
-        vary.extend([False] * 4)
+        vary.extend([False] * 5)
         # globalized optimization gaussian well standard deviation
-        well_std = [None, None, 5, .03, .02, None, None, None, None]
+        well_std = [None, None, 5, .03, .02, None, None, None, None, None]
         # ... sampling range for globalized optimization based on
         # Estimator error range
-        sample_range = [None, None, 40, .25, .15, None, None, None, None]
+        sample_range = [None, None, 40, .25, .15, None, None, None, None, None]
         # ... levenberg-marquardt variable scale factor
-        x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
+        x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2, 1]
         # ... bounds around intial guess for bounded nelder-mead
         simplex_bounds = [(-np.inf, np.inf), (-np.inf, np.inf),
                           (0., 2000.), (.05, 4.), (1., 3.),
-                          (0., 3.), (1., 3.), (.100, 2.00), (0., 1.)]
+                          (0., 3.), (1., 3.), (.100, 2.00), (0., 1.),
+                          (0., 5.)]
         # ... scale of initial simplex
-        simplex_scale = np.array([4., 4., 5., 0.01, 0.01, .2, .1, .1, .05])
+        simplex_scale = np.array(
+            [4., 4., 5., 0.01, 0.01, .2, .1, .1, .05, .05])
         # ... tolerance for nelder-mead termination
-        simplex_tol = [.1, .1, .007, .0003, .0003, .001, .01, .01, .01]
+        simplex_tol = [.1, .1, .007, .0003, .0003, .001, .01, .01, .01, .01]
         # Default options for amoeba and lm not parameter dependent
         lm_options = {'method': 'lm',
                       'xtol': 1.e-6,
@@ -507,10 +492,7 @@ class Feature(object):
         x0 = []
         idx_map = {}
         for prop in self.properties:
-            if hasattr(self.model.particle, prop):
-                val = getattr(self.model.particle, prop)
-            else:
-                val = getattr(self.model.instrument, prop)
+            val = self._get_property(prop)
             self.lm_settings.parameters[prop].initial = val
             self.amoeba_settings.parameters[prop].initial = val
             if self.vary[prop]:
@@ -527,16 +509,7 @@ class Feature(object):
 
     def _cleanup(self, method, square, result, nfits, options=None):
         if nfits > 1:
-            idx = 0
-            particle, instrument = (self.model.particle,
-                                    self.model.instrument)
-            for key in self.properties:
-                if self.vary[key]:
-                    if hasattr(particle, key):
-                        setattr(particle, key, result.x[idx])
-                    else:
-                        setattr(instrument, key, result.x[idx])
-                    idx += 1
+            self._set_properties(result.x)
         if method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
         elif method == 'amoeba':
@@ -545,6 +518,31 @@ class Feature(object):
         if self.model.using_cuda:
             self._subset_data = cp.asnumpy(self._subset_data)
         return result
+
+    def _set_properties(self, x):
+        idx = 0
+        for key in self.properties:
+            if self.vary[key]:
+                if type(x) is dict:
+                    val = x[key]
+                else:
+                    val = x[idx]
+                if hasattr(self.model.particle, key):
+                    setattr(self.model.particle, key, val)
+                elif hasattr(self.model, key):
+                    setattr(self.model, key, val)
+                else:
+                    setattr(self.model.instrument, key, val)
+                idx += 1
+
+    def _get_property(self, prop):
+        if hasattr(self.model.particle, prop):
+            val = getattr(self.model.particle, prop)
+        elif hasattr(self.model, prop):
+            val = getattr(self.model, prop)
+        else:
+            val = getattr(self.model.instrument, prop)
+        return val
 
 
 if __name__ == '__main__':
@@ -590,7 +588,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm', square=True, nfits=3)
+    result = a.optimize(method='amoeba', square=True, nfits=1)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
