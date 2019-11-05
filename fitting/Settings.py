@@ -269,6 +269,8 @@ class FitResult(object):
             self._vary[param] = params[param].vary
             if hasattr(self.model.particle, param):
                 val = getattr(self.model.particle, param)
+            elif hasattr(self.model, param):
+                val = getattr(self.model, param)
             else:
                 val = getattr(self.model.instrument, param)
             self._final[param] = val
