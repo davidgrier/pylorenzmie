@@ -3,7 +3,6 @@
 
 import json
 import logging
-from copy import deepcopy
 import numpy as np
 from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
@@ -187,11 +186,11 @@ class Feature(object):
         self.model.coordinates = self.mask.masked_coords()
         npix = self.model.coordinates.shape[1]
         # Prepare
-        x0, anz_map = self._prepare(method)
+        x0, idx_map = self._prepare(method)
         # Fit
         if nfits > 1:
             result, options = self._globalize(
-                method, nfits, x0, square, anz_map)
+                method, nfits, x0, square, idx_map)
         elif nfits == 1:
             result, options = self._optimize(method, x0, square)
         else:
@@ -321,25 +320,28 @@ class Feature(object):
                 "Method keyword must either be lm, amoeba, or amoeba-lm")
         return result, options
 
-    def _globalize(self, method, nfits, x0, square, anz_map):
+    def _globalize(self, method, nfits, x0, square, idx_map):
         # Initialize sample space and unpack gaussian well parameters
         # to sample new starting points
         npts = 100
-        well_std, sample_space = ({}, {})
+        well_std = {}
+        sample_space = {}
+        distributions = {}
+        dist_range = {}
         for prop in ['z_p', 'a_p', 'n_p']:
             if self.vary[prop]:
-                p_0 = x0[anz_map[prop]]
+                p_0 = x0[idx_map[prop]]
                 opts = self.globalized_settings.parameters[prop].options
                 p_range = opts["sample_range"]
                 p_std = opts["well_std"]
                 p_space = np.linspace(p_0-p_range, p_0+p_range, npts)
+                dist_range[prop] = (p_0-p_range, p_0+p_range)
                 well_std[prop] = p_std
                 sample_space[prop] = p_space
+                distributions[prop] = np.zeros(npts)
         # Initialize for fitting iteration
         x1 = x0
         best_eval, best_result = (np.inf, None)
-        start_pts, fit_pts = ([], [])
-        distributions = deepcopy(sample_space)
         for i in range(nfits):
             result, options = self._optimize(method, x1, square)
             # Determine if this result is better than previous
@@ -350,34 +352,35 @@ class Feature(object):
                 best_eval = eval
                 best_result = (result, options)
             if i < nfits - 1:
-                fit_pts.append(result.x)
-                start_pts.append(x1)
                 # Find new starting point and update distributions
-                x1, distributions = self._sample(start_pts,
-                                                 fit_pts,
-                                                 anz_map,
+                x1, distributions = self._sample(x1,
+                                                 result.x,
+                                                 idx_map,
                                                  well_std,
                                                  sample_space,
-                                                 distributions)
+                                                 distributions,
+                                                 dist_range)
         return best_result
 
-    def _sample(self, start_pts, fit_pts, anz_map,
-                well_std, sample_space, distributions):
-        prev_fit = fit_pts[-1]
-        prev_start = start_pts[-1]
+    def _sample(self, prev_start, prev_fit, idx_map, well_std,
+                sample_space, distributions, dist_range):
         x = prev_start
         for prop in ['z_p', 'a_p', 'n_p']:
             if self.vary[prop]:
                 dist = distributions[prop]
-                p_space = sample_space[prop]
-                idx, p_std = (anz_map[prop], well_std[prop])
-                p_fit, p_start = (prev_fit[idx], prev_start[idx])
-                fit_well = 1 - gaussian(p_space, p_fit, p_std)
-                start_well = 1 - gaussian(p_space, p_start, p_std)
+                space = sample_space[prop]
+                min, max = dist_range[prop]
+                idx, std = (idx_map[prop], well_std[prop])
+                fit, start = (prev_fit[idx], prev_start[idx])
+                if (fit > max+3*std) or (fit < min-3*std):
+                    fit_well = 0.
+                else:
+                    fit_well = 1 - gaussian(space, fit, std)
+                start_well = 1 - gaussian(space, start, std)
                 dist += fit_well + start_well
-                distributions[prop] = normalize(dist)
-                sample = np.random.choice(p_space,
-                                          p=distributions[prop])
+                distributions[prop] = dist
+                sample = np.random.choice(space,
+                                          p=normalize(dist))
                 x[idx] = sample
         return x, distributions
 
@@ -452,10 +455,10 @@ class Feature(object):
         vary = [True] * 5
         vary.extend([False] * 4)
         # globalized optimization gaussian well standard deviation
-        well_std = [None, None, 2.5, .04, .025, None, None, None, None]
+        well_std = [None, None, 5, .03, .02, None, None, None, None]
         # ... sampling range for globalized optimization based on
         # Estimator error range
-        sample_range = [None, None, 30, .25, .15, None, None, None, None]
+        sample_range = [None, None, 40, .25, .15, None, None, None, None]
         # ... levenberg-marquardt variable scale factor
         x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2]
         # ... bounds around intial guess for bounded nelder-mead
@@ -502,7 +505,7 @@ class Feature(object):
             logger.warning(msg.format(self.saturated.size))
         # Get initial guess for fit
         x0 = []
-        anz_map = {}
+        idx_map = {}
         for prop in self.properties:
             if hasattr(self.model.particle, prop):
                 val = getattr(self.model.particle, prop)
@@ -513,14 +516,14 @@ class Feature(object):
             if self.vary[prop]:
                 x0.append(val)
                 if prop in ['a_p', 'n_p', 'z_p']:
-                    anz_map[prop] = len(x0) - 1
+                    idx_map[prop] = len(x0) - 1
         x0 = np.array(x0)
         self._subset_data = self._data[self.mask.sampled_index]
         if self.model.using_cuda:
             dtype = float if self.model.double_precision else np.float32
             self._subset_data = cp.asarray(self._subset_data,
                                            dtype=dtype)
-        return x0, anz_map
+        return x0, idx_map
 
     def _cleanup(self, method, square, result, nfits, options=None):
         if nfits > 1:
@@ -574,9 +577,9 @@ if __name__ == '__main__':
     p.n_p = 1.4
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
-    p.z_p += np.random.normal(0., 10, 1)
-    p.a_p += np.random.normal(0., 0.05, 1)
-    p.n_p += np.random.normal(0., 0.03, 1)
+    p.z_p += np.random.normal(0., 30, 1)
+    p.a_p += np.random.normal(0., 0.1, 1)
+    p.n_p += np.random.normal(0., 0.04, 1)
     print("Initial guess:\n{}".format(p))
     # a.model.using_cuda = False
     # a.model.double_precision = False
@@ -587,7 +590,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba', square=False, nfits=5)
+    result = a.optimize(method='amoeba-lm', square=True, nfits=3)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
