@@ -23,7 +23,7 @@ class GlobalSampler(object):
         self._x0 = None
 
         self._independent = True
-        self._npts = 100
+        self._npts = 500
 
     @property
     def distribution(self):
@@ -98,11 +98,11 @@ class GlobalSampler(object):
                 idx = self._idx_map[param]
                 space = self.param_space[param]
                 d = self.distribution[param]
-                s[idx] = np.random.choice(space, p=d)
+                dmax = d.max()
+                s[idx] = np.random.choice(space, p=normalize(dmax - d))
         else:
             raise ValueError("Dependent sampling not implemented yet.")
         self._update(s)
-        print(s)
         return s
 
     def _update(self, sample):
@@ -117,18 +117,17 @@ class GlobalSampler(object):
                     i = self._idx_map[param]
                     std = well_std[j]
                     s = sample[i]
-                    start_well = normalize(1 - gaussian(space, s, std))
+                    start = gaussian(space, s, std)
                     if type(self.xfit) is np.ndarray:
                         xi = self.xfit[i]
                         if (xi > max+3*std) or (xi < min-3*std):
-                            fit_well = 0.
+                            fit = 0.
                         else:
-                            fit_well = normalize(
-                                1 - gaussian(space, xi, std))
+                            fit = gaussian(space, xi, std)
                     else:
-                        fit_well = 0.
-                    d += fit_well + start_well
-                    self._distribution[param] = normalize(d)
+                        fit = 0.
+                    d += fit + start
+                    self._distribution[param] = d
             else:
                 raise ValueError("Dependent sampling not implemented yet.")
         else:
