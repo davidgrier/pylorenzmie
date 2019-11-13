@@ -49,17 +49,17 @@ class GlobalSampler(object):
             if param in vary.keys():
                 if vary[param]:
                     parameters.append(param)
-                else:
-                    raise ValueError("{} is not set to vary".
-                                     format(param))
             else:
                 raise ValueError("{} is not a valid parameter".
                                  format(param))
         self._params = parameters
         self._idx_map = {}
-        for idx, prop in enumerate(self.feature.properties):
-            if prop in self._params:
+        idx = 0
+        for prop in self.feature.properties:
+            if prop in parameters:
                 self._idx_map[prop] = idx
+            if self.feature.vary[prop]:
+                idx += 1
 
     @property
     def x0(self):
@@ -134,6 +134,7 @@ class GlobalSampler(object):
             raise ValueError("dist must be set to \'wells\'.")
 
     def _reset(self):
+        self.params = self._params
         settings = self.sampling_settings.getkwargs(self._params)
         sample_range = settings['sample_range']
         x0 = self.x0
