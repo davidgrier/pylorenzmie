@@ -541,7 +541,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm', square=True, nfits=7)
+    result = a.optimize(method='amoeba-lm', square=True, nfits=3)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
