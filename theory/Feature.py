@@ -8,7 +8,8 @@ from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
 from pylorenzmie.fitting.Settings import FitSettings, FitResult
-from pylorenzmie.fitting.Mask import Mask, gaussian, normalize
+from pylorenzmie.fitting.Mask import Mask
+from pylorenzmie.fitting.GlobalSampler import GlobalSampler
 from pylorenzmie.fitting import amoeba
 
 try:
@@ -95,7 +96,10 @@ class Feature(object):
         self.params = self._init_params()
         # Deserialize if needed
         self.deserialize(info)
+        # Random subset sampling
         self.mask = Mask(self.model.coordinates)
+        # Globalized optimization sampling
+        self.sampler = GlobalSampler(self)
 
     #
     # Fields for user to set data and model's initial guesses
@@ -188,7 +192,7 @@ class Feature(object):
         # Fit
         if nfits > 1:
             result, options = self._globalize(
-                method, nfits, x0, square, idx_map)
+                method, nfits, x0, square)
         elif nfits == 1:
             result, options = self._optimize(method, x0, square)
         else:
@@ -312,26 +316,9 @@ class Feature(object):
                 "Method keyword must either be lm, amoeba, or amoeba-lm")
         return result, options
 
-    def _globalize(self, method, nfits, x0, square, idx_map):
-        # Initialize sample space and unpack gaussian well parameters
-        # to sample new starting points
-        npts = 100
-        well_std = {}
-        sample_space = {}
-        distributions = {}
-        dist_range = {}
-        for prop in ['z_p', 'a_p', 'n_p']:
-            if self.vary[prop]:
-                p_0 = x0[idx_map[prop]]
-                opts = self.globalized_settings.parameters[prop].options
-                p_range = opts["sample_range"]
-                p_std = opts["well_std"]
-                p_space = np.linspace(p_0-p_range, p_0+p_range, npts)
-                dist_range[prop] = (p_0-p_range, p_0+p_range)
-                well_std[prop] = p_std
-                sample_space[prop] = p_space
-                distributions[prop] = np.zeros(npts)
+    def _globalize(self, method, nfits, x0, square):
         # Initialize for fitting iteration
+        self.sampler.x0 = x0
         x1 = x0
         best_eval, best_result = (np.inf, None)
         for i in range(nfits):
@@ -345,36 +332,9 @@ class Feature(object):
                 best_result = (result, options)
             if i < nfits - 1:
                 # Find new starting point and update distributions
-                x1, distributions = self._sample(x1,
-                                                 result.x,
-                                                 idx_map,
-                                                 well_std,
-                                                 sample_space,
-                                                 distributions,
-                                                 dist_range)
+                self.sampler.xfit = result.x
+                x1 = self.sampler.sample()
         return best_result
-
-    def _sample(self, prev_start, prev_fit, idx_map, well_std,
-                sample_space, distributions, dist_range):
-        x = prev_start
-        for prop in ['z_p', 'a_p', 'n_p']:
-            if self.vary[prop]:
-                dist = distributions[prop]
-                space = sample_space[prop]
-                min, max = dist_range[prop]
-                idx, std = (idx_map[prop], well_std[prop])
-                fit, start = (prev_fit[idx], prev_start[idx])
-                if (fit > max+3*std) or (fit < min-3*std):
-                    fit_well = 0.
-                else:
-                    fit_well = 1 - gaussian(space, fit, std)
-                start_well = 1 - gaussian(space, start, std)
-                dist += fit_well + start_well
-                distributions[prop] = dist
-                sample = np.random.choice(space,
-                                          p=normalize(dist))
-                x[idx] = sample
-        return x, distributions
 
     #
     # Under the hood objective function and its helpers
@@ -437,11 +397,6 @@ class Feature(object):
         # k_p, n_m, wavelength [um], magnification [um/pixel]
         vary = [True] * 5
         vary.extend([False] * 5)
-        # globalized optimization gaussian well standard deviation
-        well_std = [None, None, 5, .03, .02, None, None, None, None, None]
-        # ... sampling range for globalized optimization based on
-        # Estimator error range
-        sample_range = [None, None, 40, .25, .15, None, None, None, None, None]
         # ... levenberg-marquardt variable scale factor
         x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2, 1]
         # ... bounds around intial guess for bounded nelder-mead
@@ -453,7 +408,7 @@ class Feature(object):
         simplex_scale = np.array(
             [4., 4., 5., 0.01, 0.01, .2, .1, .1, .05, .05])
         # ... tolerance for nelder-mead termination
-        simplex_tol = [.1, .1, .007, .0003, .0003, .001, .01, .01, .01, .01]
+        simplex_tol = [.1, .1, .01, .001, .001, .001, .01, .01, .01, .01]
         # Default options for amoeba and lm not parameter dependent
         lm_options = {'method': 'lm',
                       'xtol': 1.e-6,
@@ -462,26 +417,21 @@ class Feature(object):
                       'max_nfev': 2000,
                       'diff_step': 1e-5,
                       'verbose': 0}
-        amoeba_options = {'ftol': 5.e-4, 'maxevals': 800}
+        amoeba_options = {'ftol': 1.e-3, 'maxevals': 800}
         # Initialize settings for fitting
         self.amoeba_settings = FitSettings(self.properties,
                                            options=amoeba_options)
         self.lm_settings = FitSettings(self.properties,
                                        options=lm_options)
-        self.globalized_settings = FitSettings(self.properties,
-                                               options={})
         self.vary = dict(zip(self.properties, vary))
         for idx, prop in enumerate(self.properties):
             amparam = self.amoeba_settings.parameters[prop]
             lmparam = self.lm_settings.parameters[prop]
-            glparam = self.globalized_settings.parameters[prop]
             amparam.options['simplex_scale'] = simplex_scale[idx]
             amparam.options['xtol'] = simplex_tol[idx]
             amparam.options['xmax'] = simplex_bounds[idx][1]
             amparam.options['xmin'] = simplex_bounds[idx][0]
             lmparam.options['x_scale'] = x_scale[idx]
-            glparam.options['well_std'] = well_std[idx]
-            glparam.options['sample_range'] = sample_range[idx]
 
     def _prepare(self, method):
         # Warnings
@@ -519,6 +469,9 @@ class Feature(object):
             self._subset_data = cp.asnumpy(self._subset_data)
         return result
 
+    #
+    # General helper routines
+    #
     def _set_properties(self, x):
         idx = 0
         for key in self.properties:
@@ -553,8 +506,8 @@ if __name__ == '__main__':
     a = Feature()
 
     # Read example image
-    img = cv2.imread('../tutorials/image0400.png')
-    # img = cv2.imread('/home/michael/data/FittingTests/stamp150.png')
+    #img = cv2.imread('../tutorials/image0400.png')
+    img = cv2.imread('/home/michael/data/FittingTests/stamp000.png')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = img / np.mean(img)
     shape = img.shape
@@ -570,9 +523,9 @@ if __name__ == '__main__':
 
     # Initial estimates for particle properties
     p = a.model.particle
-    p.r_p = [shape[0]//2, shape[1]//2, 370.]
-    p.a_p = 1.1
-    p.n_p = 1.4
+    p.r_p = [shape[0]//2, shape[1]//2, 130.]
+    p.a_p = .75
+    p.n_p = 1.68
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
     p.z_p += np.random.normal(0., 30, 1)
@@ -580,15 +533,15 @@ if __name__ == '__main__':
     p.n_p += np.random.normal(0., 0.04, 1)
     print("Initial guess:\n{}".format(p))
     # a.model.using_cuda = False
-    # a.model.double_precision = False
+    a.model.double_precision = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'donut'
-    a.mask.settings['percentpix'] = .15
+    a.mask.settings['percentpix'] = .2
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba', square=True, nfits=1)
+    result = a.optimize(method='amoeba-lm', square=True, nfits=7)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
