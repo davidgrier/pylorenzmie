@@ -58,9 +58,10 @@ class FitSettings(object):
 
         Arguments
         ---------
-        vary : dict of bools
-            Dictionary that determines whether or not parameter
-            will vary during fitting. Setting
+        vary : dict of bools or tuple
+            Dictionary or tuple that determines whether or not
+            parameter will vary during fitting. If a tuple, all 
+            elements in tuple are assumed to vary. Setting
             FitSettings.parameters.vary individually before
             calling this method will no have no effect.
 
@@ -74,7 +75,13 @@ class FitSettings(object):
         temp = []
         for key in self._keys:
             param = self.parameters[key]
-            param.vary = vary[key]
+            if type(vary) is dict:
+                param.vary = vary[key]
+            else:
+                if key in vary:
+                    param.vary = True
+                else:
+                    param.vary = False
             temp.append(list(param.options.keys()))
         names = temp[0]  # TODO: error checking
         noptions = len(names)
