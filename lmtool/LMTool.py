@@ -124,7 +124,7 @@ class LMTool(QtWidgets.QMainWindow):
         folder += str('/lmtool')
         with open(folder+'/LMTool.json', 'r') as file:
             settings = json.load(file)
-        names = ['wavelength', 'magnification', 'n_m',
+        names = ['wavelength', 'magnification', 'n_m', 'alpha',
                  'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p',
                  'bbox', 'noise']
         for name in names:
@@ -158,6 +158,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.theory.particle.a_p = self.ui.a_p.value()
         self.theory.particle.n_p = self.ui.n_p.value()
         self.theory.particle.z_p = self.ui.z_p.value()
+        self.theory.alpha = self.ui.alpha.value()
         self.updateTheoryProfile()
 
     def connectSignals(self):
@@ -174,6 +175,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.x_p.valueChanged['double'].connect(self.updateRp)
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
+        self.ui.alpha.valueChanged['double'].connect(self.updateHologram)
         self.ui.bbox.valueChanged['double'].connect(self.updateBBox)
         self.ui.noise.valueChanged['double'].connect(self.updateNoise)
         self.ui.optimizeButton.clicked.connect(self.optimize)
@@ -213,6 +215,13 @@ class LMTool(QtWidgets.QMainWindow):
             self.updateFit()
 
     @pyqtSlot(float)
+    def updateHologram(self, count):
+        self.theory.alpha = self.ui.alpha.value()
+        self.updateTheoryProfile()
+        if self.ui.tabs.currentIndex() == 2:
+            self.updateFit()
+
+    @pyqtSlot(float)
     def updateRp(self, r_p=0):
         x_p = [self.ui.x_p.value()]
         y_p = [self.ui.y_p.value()]
@@ -241,7 +250,7 @@ class LMTool(QtWidgets.QMainWindow):
         logger.info("Starting optimization...")
         self.updateFit()
         method = 'lm' if self.ui.LMButton.isChecked() else 'amoeba-lm'
-        for prop in self.feature.properties:
+        for prop in self.feature.params:
             propUi = getattr(self.ui, prop)
             self.feature.vary[prop] = not propUi.fixed
         (x_old, y_old) = (self.theory.particle.x_p, self.theory.particle.y_p)
@@ -263,19 +272,22 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.a_p.valueChanged['double'].disconnect(self.updateParticle)
         self.ui.n_p.valueChanged['double'].disconnect(self.updateParticle)
         self.ui.z_p.valueChanged['double'].disconnect(self.updateParticle)
+        self.ui.alpha.valueChanged['double'].disconnect(self.updateHologram)
         # Update
         particle, instrument = (self.theory.particle,
                                 self.theory.instrument)
-        for prop in self.feature.properties:
-            attrUi = getattr(self.ui, prop)
-            if prop in particle.properties:
-                if prop == 'x_p' or prop == 'y_p':
-                    delta = getattr(particle, prop)-eval(prop)
+        for p in self.feature.params:
+            attrUi = getattr(self.ui, p)
+            if p in particle.properties:
+                if p == 'x_p' or p == 'y_p':
+                    delta = getattr(particle, p)-eval(p)
                     attrUi.setValue(attrUi.value()+delta)
                 else:
-                    attrUi.setValue(getattr(particle, prop))
-            elif prop in instrument.properties:
-                attrUi.setValue(getattr(instrument, prop))
+                    attrUi.setValue(getattr(particle, p))
+            elif p in instrument.properties:
+                attrUi.setValue(getattr(instrument, p))
+            else:
+                attrUi.setValue(getattr(self.theory, p))
         # Reconnect
         self.ui.wavelength.valueChanged['double'].connect(
             self.updateInstrument)
@@ -285,6 +297,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.a_p.valueChanged['double'].connect(self.updateParticle)
         self.ui.n_p.valueChanged['double'].connect(self.updateParticle)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
+        self.ui.alpha.valueChanged['double'].connect(self.updateHologram)
 
     @pyqtSlot()
     def openFile(self, filename=None):
@@ -307,7 +320,7 @@ class LMTool(QtWidgets.QMainWindow):
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Parameters', '', 'JSON (*.json)')
         names = ['x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p',
-                 'magnification', 'wavelength', 'n_m']
+                 'magnification', 'wavelength', 'n_m', 'alpha']
         parameters = {name: getattr(self.ui, name).value()
                       for name in names}
         try:
@@ -389,8 +402,10 @@ def main():
     import sys
     import argparse
 
+    fn = '../tutorials/crop.png'
+
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename', type=str, default='sample.png',
+    parser.add_argument('filename', type=str, default=fn,
                         nargs='?', action='store')
     parser.add_argument('-b', '--background', metavar='filename',
                         dest='background', type=str, default=None,
