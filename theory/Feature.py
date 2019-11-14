@@ -506,8 +506,7 @@ if __name__ == '__main__':
     a = Feature()
 
     # Read example image
-    #img = cv2.imread('../tutorials/image0400.png')
-    img = cv2.imread('/home/michael/data/FittingTests/stamp000.png')
+    img = cv2.imread('../tutorials/crop.png')
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = img / np.mean(img)
     shape = img.shape
@@ -533,7 +532,7 @@ if __name__ == '__main__':
     p.n_p += np.random.normal(0., 0.04, 1)
     print("Initial guess:\n{}".format(p))
     # a.model.using_cuda = False
-    a.model.double_precision = False
+    # a.model.double_precision = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'donut'
