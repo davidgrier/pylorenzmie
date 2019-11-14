@@ -71,6 +71,14 @@
 	"value": 100.0,
 	"decimals": 2
     },
+    "alpha": {
+	"text": "alpha",
+	"range": [0.0, 2.0],
+	"step": 0.01,
+	"value": 1.0,
+	"fixed": true,
+	"decimals": 2
+    },
     "bbox": {
 	"text": "bbox",
 	"suffix": " pixel",
