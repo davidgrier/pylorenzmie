@@ -6,7 +6,7 @@ import numpy as np
 
 class FitSettings(object):
     '''
-    Stores information about an algorithm's general and 
+    Stores information about an algorithm's general and
     parameter specific options during fitting.
 
     ...
