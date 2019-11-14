@@ -59,6 +59,20 @@ class LMHologram(LorenzMie):
         p.update({'alpha': self.alpha})
         return p
 
+    @properties.setter
+    def properties(self, properties):
+        if type(properties) is dict:
+            for prop in properties.keys():
+                if hasattr(self.particle, prop):
+                    setattr(self.particle, prop, properties[prop])
+                elif hasattr(self.instrument, prop):
+                    setattr(self.instrument, prop, properties[prop])
+                elif hasattr(self, prop):
+                    setattr(self, prop, properties[prop])
+                else:
+                    msg = "{} is not a property of LMHologram"
+                    raise ValueError(msg.format(prop))
+
     def hologram(self, return_gpu=False):
         '''Return hologram of sphere
 
