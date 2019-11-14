@@ -204,14 +204,12 @@ class Feature(object):
         else:
             raise ValueError("nfits must be greater than or equal to 1.")
         # Post-fit cleanup
-        result = self._cleanup(method, square, result, nfits,
-                               options=options)
+        result, settings = self._cleanup(method, square, result, nfits,
+                                         options=options)
         # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
-        # Generate FitResult
-        fit_result = FitResult(
-            method, result, self.lm_settings, self.model, npix)
-        return fit_result
+
+        return FitResult(method, result, settings, self.model, npix)
 
     #
     # Methods for saving data
@@ -465,12 +463,16 @@ class Feature(object):
             self._update_model(result.x)
         if method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
+            settings = self.lm_settings
         elif method == 'amoeba':
             if not square:
                 result.fun = float(self._objective(reduce=True))
+            settings = self.amoeba_settings
+        else:
+            settings = self.lm_settings
         if self.model.using_cuda:
             self._subset_data = cp.asnumpy(self._subset_data)
-        return result
+        return result, settings
 
     def _update_model(self, x):
         vary = []
@@ -522,7 +524,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm', square=True, nfits=3)
+    result = a.optimize(method='amoeba-lm', square=True, nfits=1)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
