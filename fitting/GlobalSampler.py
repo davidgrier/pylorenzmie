@@ -3,7 +3,16 @@
 
 import numpy as np
 from pylorenzmie.fitting.Settings import FitSettings
-from pylorenzmie.fitting.Mask import normalize, gaussian
+
+
+def normalize(distribution):
+    total = np.sum(distribution)
+    normed = distribution / total
+    return normed
+
+
+def gaussian(x, mu, sig):
+    return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 
 class GlobalSampler(object):
@@ -55,7 +64,7 @@ class GlobalSampler(object):
         self._params = parameters
         self._idx_map = {}
         idx = 0
-        for prop in self.feature.properties:
+        for prop in self.feature.params:
             if prop in parameters:
                 self._idx_map[prop] = idx
             if self.feature.vary[prop]:
@@ -160,11 +169,11 @@ class GlobalSampler(object):
         # Sampling range for globalized optimization based on Estimator
         sample_range = [None, None, 30, .2, .1, None, None, None, None, None]
         sample_options = {"independent": True, "distribution": "wells"}
-        self.well_settings = FitSettings(self.feature.properties)
-        self.sampling_settings = FitSettings(self.feature.properties,
+        self.well_settings = FitSettings(self.feature.params)
+        self.sampling_settings = FitSettings(self.feature.params,
                                              options=sample_options)
-        for idx, prop in enumerate(self.feature.properties):
-            well_param = self.well_settings.parameters[prop]
-            param = self.sampling_settings.parameters[prop]
+        for idx, p in enumerate(self.feature.params):
+            well_param = self.well_settings.parameters[p]
+            param = self.sampling_settings.parameters[p]
             well_param.options['std'] = well_std[idx]
             param.options['sample_range'] = sample_range[idx]

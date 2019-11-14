@@ -60,6 +60,12 @@ class Feature(object):
         Settings for Levenberg-Marquardt optimization. Refer to
         scipy.optimize.least_squares and Settings.py -> FitSettings
         for documentation.
+    mask : Mask
+        Controls sampling scheme for random subset fitting.
+        Refer to pylorenzmie/fitting/Mask.py for documentation.
+    sampler : GlobalSampler
+        Controls sampling scheme of new initial conditions for
+        globalized optimization.
 
 
     Methods
@@ -91,9 +97,9 @@ class Feature(object):
         self.noise = noise
         self.coordinates = self.model.coordinates
         # Initialize Feature properties
-        self.properties = tuple(self.model.properties.keys())
+        self.params = tuple(self.model.properties.keys())
         # Set default options for fitting
-        self.params = self._init_params()
+        self._init_params()
         # Deserialize if needed
         self.deserialize(info)
         # Random subset sampling
@@ -188,7 +194,7 @@ class Feature(object):
         self.model.coordinates = self.mask.masked_coords()
         npix = self.model.coordinates.shape[1]
         # Prepare
-        x0, idx_map = self._prepare(method)
+        x0 = self._prepare(method)
         # Fit
         if nfits > 1:
             result, options = self._globalize(
@@ -239,7 +245,7 @@ class Feature(object):
                 'coordinates': coor,
                 'noise': self.noise}
 
-        keys = self.properties  # Keys for variables in properties
+        keys = self.params  # Keys for variables in properties
 
         for ex in exclude:  # Exclude things, if provided
             if ex in keys:
@@ -256,7 +262,7 @@ class Feature(object):
             else:
                 vals.append(getattr(self.model.instrument, key))
 
-        out = dict(zip(self.properties, vals))
+        out = dict(zip(self.params, vals))
         out.update(info)  # Combine dictionaries + finish serialization
         if filename is not None:
             with open(filename, 'w') as f:
@@ -279,7 +285,7 @@ class Feature(object):
         if isinstance(info, str):
             with open(info, 'rb') as f:
                 info = json.load(f)
-        self._set_properties(info)
+        self.model.properties = info
 
     #
     # Under the hood optimization helper functions
@@ -374,7 +380,7 @@ class Feature(object):
 
     def _residuals(self, x, reduce=False, square=True):
         '''Updates properties and returns residuals'''
-        self._set_properties(x)
+        self._update_model(x)
         objective = self._objective(reduce=reduce, square=square)
         return objective
 
@@ -419,14 +425,14 @@ class Feature(object):
                       'verbose': 0}
         amoeba_options = {'ftol': 1.e-3, 'maxevals': 800}
         # Initialize settings for fitting
-        self.amoeba_settings = FitSettings(self.properties,
+        self.amoeba_settings = FitSettings(self.params,
                                            options=amoeba_options)
-        self.lm_settings = FitSettings(self.properties,
+        self.lm_settings = FitSettings(self.params,
                                        options=lm_options)
-        self.vary = dict(zip(self.properties, vary))
-        for idx, prop in enumerate(self.properties):
-            amparam = self.amoeba_settings.parameters[prop]
-            lmparam = self.lm_settings.parameters[prop]
+        self.vary = dict(zip(self.params, vary))
+        for idx, p in enumerate(self.params):
+            amparam = self.amoeba_settings.parameters[p]
+            lmparam = self.lm_settings.parameters[p]
             amparam.options['simplex_scale'] = simplex_scale[idx]
             amparam.options['xtol'] = simplex_tol[idx]
             amparam.options['xmax'] = simplex_bounds[idx][1]
@@ -440,26 +446,23 @@ class Feature(object):
             logger.warning(msg.format(self.saturated.size))
         # Get initial guess for fit
         x0 = []
-        idx_map = {}
-        for prop in self.properties:
-            val = self._get_property(prop)
-            self.lm_settings.parameters[prop].initial = val
-            self.amoeba_settings.parameters[prop].initial = val
-            if self.vary[prop]:
+        for p in self.params:
+            val = self.model.properties[p]
+            self.lm_settings.parameters[p].initial = val
+            self.amoeba_settings.parameters[p].initial = val
+            if self.vary[p]:
                 x0.append(val)
-                if prop in ['a_p', 'n_p', 'z_p']:
-                    idx_map[prop] = len(x0) - 1
         x0 = np.array(x0)
         self._subset_data = self._data[self.mask.sampled_index]
         if self.model.using_cuda:
             dtype = float if self.model.double_precision else np.float32
             self._subset_data = cp.asarray(self._subset_data,
                                            dtype=dtype)
-        return x0, idx_map
+        return x0
 
     def _cleanup(self, method, square, result, nfits, options=None):
         if nfits > 1:
-            self._set_properties(result.x)
+            self._update_model(result.x)
         if method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
         elif method == 'amoeba':
@@ -469,33 +472,12 @@ class Feature(object):
             self._subset_data = cp.asnumpy(self._subset_data)
         return result
 
-    #
-    # General helper routines
-    #
-    def _set_properties(self, x):
-        idx = 0
-        for key in self.properties:
-            if self.vary[key]:
-                if type(x) is dict:
-                    val = x[key]
-                else:
-                    val = x[idx]
-                if hasattr(self.model.particle, key):
-                    setattr(self.model.particle, key, val)
-                elif hasattr(self.model, key):
-                    setattr(self.model, key, val)
-                else:
-                    setattr(self.model.instrument, key, val)
-                idx += 1
-
-    def _get_property(self, prop):
-        if hasattr(self.model.particle, prop):
-            val = getattr(self.model.particle, prop)
-        elif hasattr(self.model, prop):
-            val = getattr(self.model, prop)
-        else:
-            val = getattr(self.model.instrument, prop)
-        return val
+    def _update_model(self, x):
+        vary = []
+        for p in self.params:
+            if self.vary[p]:
+                vary.append(p)
+        self.model.properties = dict(zip(vary, x))
 
 
 if __name__ == '__main__':
@@ -522,9 +504,9 @@ if __name__ == '__main__':
 
     # Initial estimates for particle properties
     p = a.model.particle
-    p.r_p = [shape[0]//2, shape[1]//2, 130.]
-    p.a_p = .75
-    p.n_p = 1.68
+    p.r_p = [shape[0]//2, shape[1]//2, 330.]
+    p.a_p = 1.1
+    p.n_p = 1.4
     # add errors to parameters
     p.r_p += np.random.normal(0., 1, 3)
     p.z_p += np.random.normal(0., 30, 1)
@@ -536,7 +518,7 @@ if __name__ == '__main__':
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'donut'
-    a.mask.settings['percentpix'] = .2
+    a.mask.settings['percentpix'] = .1
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
