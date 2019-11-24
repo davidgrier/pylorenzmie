@@ -111,6 +111,11 @@ class Feature(object):
     # Fields for user to set data and model's initial guesses
     #
     @property
+    def shape(self):
+        '''Shape of Feature data'''
+        return self._shape
+
+    @property
     def data(self):
         '''Values of the (normalized) hologram at each pixel'''
         return self._data
@@ -122,6 +127,8 @@ class Feature(object):
     @data.setter
     def data(self, data):
         if type(data) is np.ndarray:
+            self._shape = data.shape
+            data = data.flatten()
             avg = np.mean(data)
             if not np.isclose(avg, 1., rtol=0, atol=.05):
                 msg = ('Mean of data ({:.02f}) is not near 1. '
@@ -237,14 +244,11 @@ class Feature(object):
         '''
         data = self.data.tolist() if self.data is not None \
             else self.data
-        coor = self.coordinates.tolist() if self.coordinates \
-            is not None else self.coordinates
         info = {'data': data,  # dict for variables not in properties
-                'coordinates': coor,
+                'shape': self.shape,
                 'noise': self.noise}
 
-        keys = self.params  # Keys for variables in properties
-
+        keys = self.params
         for ex in exclude:  # Exclude things, if provided
             if ex in keys:
                 keys.pop(ex)
@@ -253,14 +257,7 @@ class Feature(object):
             else:
                 print(ex + " not found in Feature's keylist")
 
-        vals = []  # Next, get values for variables in properties
-        for key in keys:
-            if hasattr(self.model.particle, key):
-                vals.append(getattr(self.model.particle, key))
-            else:
-                vals.append(getattr(self.model.instrument, key))
-
-        out = dict(zip(self.params, vals))
+        out = self.model.properties
         out.update(info)  # Combine dictionaries + finish serialization
         if filename is not None:
             with open(filename, 'w') as f:
@@ -279,15 +276,22 @@ class Feature(object):
         '''
         if info is None:
             return
-
         if isinstance(info, str):
             with open(info, 'rb') as f:
                 info = json.load(f)
-        self.model.properties = info
+        self.model.properties = {k: info[k] for k in
+                                 self.model.properties.keys()}
+        if 'data' in info.keys():
+            self.data = np.array(info['data'])
+        if 'shape' in info.keys():
+            self.model.coordinates = coordinates(info['shape'])
+        if 'noise' in info.keys():
+            self.noise = info['noise']
 
     #
     # Under the hood optimization helper functions
     #
+
     def _optimize(self, method, x0, square):
         options = {}
         if method == 'lm':
@@ -494,7 +498,6 @@ if __name__ == '__main__':
     img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img = img / np.mean(img)
     shape = img.shape
-    img = np.array([item for sublist in img for item in sublist])
     a.data = img
 
     # Instrument configuration
