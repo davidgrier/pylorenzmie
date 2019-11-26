@@ -111,11 +111,6 @@ class Feature(object):
     # Fields for user to set data and model's initial guesses
     #
     @property
-    def shape(self):
-        '''Shape of Feature data'''
-        return self._shape
-
-    @property
     def data(self):
         '''Values of the (normalized) hologram at each pixel'''
         return self._data
@@ -127,7 +122,6 @@ class Feature(object):
     @data.setter
     def data(self, data):
         if type(data) is np.ndarray:
-            self._shape = data.shape
             data = data.flatten()
             avg = np.mean(data)
             if not np.isclose(avg, 1., rtol=0, atol=.05):
@@ -240,12 +234,15 @@ class Feature(object):
         dict: serialized data
 
         NOTE: For a shallow serialization (i.e. for graphing/plotting),
-              use exclude = ['data', 'coordinates', 'noise']
+              use exclude = ['data', 'shape', 'corner', 'noise']
         '''
         data = self.data.tolist() if self.data is not None \
             else self.data
+        coor = self.model.coordinates
         info = {'data': data,  # dict for variables not in properties
-                'shape': self.shape,
+                'shape': (int(coor[0][-1] - coor[0][0])+1,
+                          int(coor[1][-1] - coor[1][0])+1),
+                'corner': (coor[0][0], coor[1][0]),
                 'noise': self.noise}
 
         keys = self.params
@@ -284,7 +281,12 @@ class Feature(object):
         if 'data' in info.keys():
             self.data = np.array(info['data'])
         if 'shape' in info.keys():
-            self.model.coordinates = coordinates(info['shape'])
+            if 'corner' in info.keys():
+                corner = info['corner']
+            else:
+                corner = (0, 0)
+            self.model.coordinates = coordinates(info['shape'],
+                                                 corner=corner)
         if 'noise' in info.keys():
             self.noise = info['noise']
 
