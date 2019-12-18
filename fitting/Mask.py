@@ -41,7 +41,7 @@ class Mask(object):
     def __init__(self, coordinates, exclude=[]):
         self.coordinates = coordinates
         self.settings = {'percentpix': 0.1,        # default settings
-                         'distribution': 'radial_gaussian'}
+                         'distribution': 'uniform'}
         self._exclude = exclude
         if coordinates is not None:
             img_size = coordinates[0].size
