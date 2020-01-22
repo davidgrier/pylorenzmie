@@ -53,7 +53,7 @@ class Frame(object):
             out = feature.serialize(exclude=omit_feat)
             features.append(out)
         shape = self.data.shape
-        info = {'data': list(self.data.flatten()),
+        info = {'data': self.data.flatten().tolist(),
                 'shape': (int(shape[0]), int(shape[1])),
                 'features': features,
                 'framenumber': str(self.framenumber)}
