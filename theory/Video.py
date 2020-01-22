@@ -5,25 +5,17 @@ import numpy as np
 import trackpy as tp
 import pandas as pd
 import json
-from pylorenzmie.theory.LMHologram import LMHologram
 from pylorenzmie.theory.Frame import Frame
 from pylorenzmie.theory.Trajectory import Trajectory
 
 
 class Video(object):
 
-    def __init__(
-            self, frames=[[]], images=[], save_empty=True, info=None):
-        self.model = LMHologram()
-        if info is not None:
-            self._frames = []
-            for i, frame in enumerate(frames):
-                if not save_empty and len(frame[i]) == 0:
-                    continue
-                self.appendFrame(
-                    images[i], frame[i], model=self.model, frame_no=i)
-            self._trajectories = None
-            self.setTrajectories()
+    def __init__(self, frames=[], info=None):
+        if info is None:
+            self._frames = frames
+            self._trajectories = []
+            self.set_trajectories()
         else:
             self.deserialize(info)
 
@@ -31,16 +23,15 @@ class Video(object):
     def frames(self):
         return self._frames
 
+    def add(self, frame):
+        self._frames.append(frame)
+
     @property
     def trajectories(self):
         return self._trajectories
 
-    def setTrajectories(self):
+    def set_trajectories(self):
         pass
-
-    def appendFrame(self, image, features, **kwargs):
-        self._frames.append(
-            Frame(data=image, features=features, **kwargs))
 
     def serialize(self, filename=None,
                   omit=[], omit_frame=[], omit_traj=[], omit_feat=[]):
@@ -55,7 +46,7 @@ class Video(object):
                 'frames': frames}
         for k in omit:
             if k in info.keys():
-                info.pop()
+                info.pop(k)
         if filename is not None:
             with open(filename, 'w') as f:
                 json.dump(info, f)
