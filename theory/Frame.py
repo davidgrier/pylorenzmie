@@ -10,11 +10,11 @@ from pylorenzmie.theory.LMHologram import LMHologram
 class Frame(object):
 
     def __init__(self, data=None, features=None,
-                 frame_no=None, info=None, model=None):
+                 framenumber=None, info=None, model=None):
         if model is None:
             self.model = LMHologram()
         self._data = data
-        self._frame_no = frame_no
+        self._framenumber = framenumber
         self._features = []
         if features is not None:
             for feature in features:
@@ -27,12 +27,12 @@ class Frame(object):
             self.deserialize(info)
 
     @property
-    def frame_no(self):
-        return self._frame_no
+    def framenumber(self):
+        return self._framenumber
 
-    @frame_no.setter
-    def frame_no(self, idx):
-        self._frame_no = idx
+    @framenumber.setter
+    def framenumber(self, idx):
+        self._framenumber = idx
 
     @property
     def data(self):
@@ -53,10 +53,10 @@ class Frame(object):
             out = feature.serialize(exclude=omit_feat)
             features.append(out)
         shape = self.data.shape
-        info = {'data': self.data.flatten(),
-                'shape': shape,
+        info = {'data': list(self.data.flatten()),
+                'shape': (int(shape[0]), int(shape[1])),
                 'features': features,
-                'frame_no': self.frame_no}
+                'framenumber': str(self.framenumber)}
         for k in omit:
             if k in info.keys():
                 info.pop()
@@ -80,10 +80,10 @@ class Frame(object):
             self._features = []
             for d in features:
                 self._features.append(Feature(model=self.model, info=d))
-        if 'frame_no' in info.keys():
-            self.frame_no = info['frame_no']
+        if 'framenumber' in info.keys():
+            self.framenumber = int(info['framenumber'])
         else:
-            self.frame_no = None
+            self.framenumber = None
 
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):
