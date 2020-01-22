@@ -12,12 +12,10 @@ from pylorenzmie.theory.Trajectory import Trajectory
 class Video(object):
 
     def __init__(self, frames=[], info=None):
-        if info is None:
-            self._frames = frames
-            self._trajectories = []
-            self.set_trajectories()
-        else:
-            self.deserialize(info)
+        self._frames = frames
+        self._trajectories = []
+        self.set_trajectories()
+        self.deserialize(info)
 
     @property
     def frames(self):
@@ -61,7 +59,7 @@ class Video(object):
         if 'trajectories' in info.keys():
             self._trajectories = []
             for d in info['trajectories']:
-                self.append(Trajectory(model=self.model, info=d))
+                self.add(Trajectory(info=d))
         elif 'frames' in info.keys():
             for d in info['frames']:
-                self.append(Frame(model=self.model, info=d))
+                self.add(Frame(info=d))
