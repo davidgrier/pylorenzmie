@@ -21,8 +21,9 @@ class Video(object):
     def frames(self):
         return self._frames
 
-    def add(self, frame):
-        self._frames.append(frame)
+    def add(self, frames):
+        for frame in frames:
+            self._frames.append(frame)
 
     @property
     def trajectories(self):
