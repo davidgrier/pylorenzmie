@@ -18,11 +18,15 @@ class Frame(object):
         self._features = []
         if features is not None:
             for feature in features:
-                if isinstance(feature, dict) or isinstance(feature, str):
+                if isinstance(feature, dict):
                     f = Feature(info=feature)
+                    self._features.append(f)
                 elif type(feature) is Feature:
                     f = feature
-                self._features.append(f)
+                    self._features.append(f)
+                else:
+                    msg = "Features must be list of Features or deserializable Features"
+                    raise(TypeError(msg))
         if info is not None:
             self.deserialize(info)
 
@@ -87,11 +91,6 @@ class Frame(object):
 
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):
-            if feature.data is None:
-                feature.data = self.crop(idx)
             result = feature.optimize(**kwargs)
             if report:
                 print(result)
-
-    def crop(self, idx):
-        return None
