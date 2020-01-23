@@ -158,6 +158,11 @@ class Feature(object):
         '''
         return self.model.hologram() - self.data
 
+    @property
+    def redchi(self):
+        r = self.resdiuals()
+        return r.dot(r) / self.data.size
+
     def optimize(self, method='amoeba', square=True, nfits=1):
         '''
         Fit Model to data
@@ -234,16 +239,18 @@ class Feature(object):
         dict: serialized data
 
         NOTE: For a shallow serialization (i.e. for graphing/plotting),
-              use exclude = ['data', 'shape', 'corner', 'noise']
+              use exclude = ['data', 'shape', 'corner', 'noise', 'redchi']
         '''
         data = self.data.tolist() if self.data is not None \
             else self.data
         coor = self.model.coordinates
+        redchi = self.redchi if self.data is not None else None
         info = {'data': data,  # dict for variables not in properties
                 'shape': (int(coor[0][-1] - coor[0][0])+1,
                           int(coor[1][-1] - coor[1][0])+1),
                 'corner': (coor[0][0], coor[1][0]),
-                'noise': self.noise}
+                'noise': self.noise,
+                'redchi': redchi}
 
         keys = self.params
         for ex in exclude:  # Exclude things, if provided
