@@ -56,14 +56,21 @@ class Frame(object):
             feature.data = None
             out = feature.serialize(exclude=omit_feat)
             features.append(out)
-        shape = self.data.shape
-        info = {'data': self.data.flatten().tolist(),
-                'shape': (int(shape[0]), int(shape[1])),
+        if self.data is not None:
+            shape = (int(self.data.shape[0]), int(self.data.shape[1]))
+            data = self.data.flatten().tolist()
+        else:
+            shape = None
+            data = self.data
+        info = {'data': data,
+                'shape': shape,
                 'features': features,
                 'framenumber': str(self.framenumber)}
         for k in omit:
             if k in info.keys():
-                info.pop()
+                info.pop(k)
+                if k == 'data':
+                    info.pop('shape')
         if filename is not None:
             with open(filename, 'w') as f:
                 json.dump(info, f)

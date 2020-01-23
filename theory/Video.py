@@ -63,4 +63,4 @@ class Video(object):
                 self.add(Trajectory(info=d))
         elif 'frames' in info.keys():
             for d in info['frames']:
-                self.add(Frame(info=d))
+                self.add([Frame(info=d)])
