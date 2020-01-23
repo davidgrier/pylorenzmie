@@ -21,4 +21,14 @@ except Exception as e:
             import GeneralizedLorenzMie
         from pylorenzmie.theory.Sphere import Sphere
 
-all = [GeneralizedLorenzMie, Sphere]
+from pylorenzmie.theory.Video import Video
+from pylorenzmie.theory.Frame import Frame
+from pylorenzmie.theory.Feature import Feature
+from pylorenzmie.theory.LMHologram import LMHologram
+from pylorenzmie.theory.Instrument import Instrument, coordinates
+from pylorenzmie.theory.Particle import Particle
+from pylorenzmie.theory.LorenzMie import LorenzMie
+from pylorenzmie.theory.Trajectory import Trajectory
+
+all = [GeneralizedLorenzMie, Sphere, Video, Frame, Feature,
+       LMHologram, Instrument, coordinates, Particle, LorenzMie, Trajectory]
