@@ -3,31 +3,37 @@
 
 import numpy as np
 import json
-from pylorenzmie.theory import Feature, LMHologram
+from pylorenzmie.theory import Feature
 
 
 class Frame(object):
 
-    def __init__(self, data=None, features=None,
-                 framenumber=None, info=None, model=None):
-        if model is None:
-            self.model = LMHologram()
+    def __init__(self, data=None, features=None, instrument=None,
+                 framenumber=None, info=None):
         self._data = data
+        self._instrument = instrument
         self._framenumber = framenumber
         self._features = []
         if features is not None:
             for feature in features:
                 if isinstance(feature, dict):
-                    f = Feature(info=feature)
-                    self._features.append(f)
+                    self.add([Feature(info=feature)])
                 elif type(feature) is Feature:
-                    f = feature
-                    self._features.append(f)
+                    self.add([feature])
                 else:
-                    msg = "Features must be list of Features or deserializable Features"
+                    msg = "features must be list of Features"
+                    msg += " or deserializable Features"
                     raise(TypeError(msg))
         if info is not None:
             self.deserialize(info)
+
+    @property
+    def instrument(self):
+        return self._instrument
+
+    @instrument.setter
+    def instrument(self, instrument):
+        self._instrument = instrument
 
     @property
     def framenumber(self):
@@ -48,6 +54,12 @@ class Frame(object):
     @property
     def features(self):
         return self._features
+
+    def add(self, features):
+        for feature in features:
+            if self.instrument is not None:
+                self.features.model.instrument = self.instrument
+            self._features.append(feature)
 
     def serialize(self, filename=None, omit=[], omit_feat=[]):
         features = []
@@ -89,7 +101,7 @@ class Frame(object):
             features = info['features']
             self._features = []
             for d in features:
-                self._features.append(Feature(model=self.model, info=d))
+                self._features.append(Feature(info=d))
         if 'framenumber' in info.keys():
             self.framenumber = int(info['framenumber'])
         else:

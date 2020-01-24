@@ -5,18 +5,26 @@ import numpy as np
 import trackpy as tp
 import pandas as pd
 import json
-from pylorenzmie.theory import Frame
-from pylorenzmie.theory import Trajectory
-from pylorenzmie.theory import Instrument
+from pylorenzmie.theory import Frame, Trajectory, Instrument
 
 
 class Video(object):
 
     def __init__(self, frames=[], instrument=None, info=None):
-        self._frames = frames
+        self._frames = []
+        self._instrument = instrument
+        self.add(frames)
         self._trajectories = []
         self.set_trajectories()
         self.deserialize(info)
+
+    @property
+    def instrument(self):
+        return self._instrument
+
+    @instrument.setter
+    def instrument(self, instrument):
+        self._instrument = instrument
 
     @property
     def frames(self):
@@ -24,6 +32,8 @@ class Video(object):
 
     def add(self, frames):
         for frame in frames:
+            if self.instrument is not None:
+                frame.instrument = self.instrument
             self._frames.append(frame)
 
     @property

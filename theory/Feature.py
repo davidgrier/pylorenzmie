@@ -120,11 +120,6 @@ class Feature(object):
     def data(self, data):
         if type(data) is np.ndarray:
             data = data.flatten()
-            avg = np.mean(data)
-            if not np.isclose(avg, 1., rtol=0, atol=.05):
-                msg = ('Mean of data ({:.02f}) is not near 1. '
-                       'Fit may not converge.')
-                logger.warning(msg.format(avg))
             # Find indices where data is saturated or nan/inf
             self.saturated = np.where(data == np.max(data))[0]
             self.nan = np.append(np.where(np.isnan(data))[0],
@@ -198,6 +193,13 @@ class Feature(object):
         npix = self.model.coordinates.shape[1]
         # Prepare
         x0 = self._prepare(method)
+        # Check mean of data
+        avg = self._subset_data.mean()
+        avg = avg.get() if self.model.using_cuda else avg
+        if not np.isclose(avg, 1., rtol=0, atol=.05):
+            msg = ('Mean of data ({:.02f}) is not near 1. '
+                   'Fit may not converge.')
+            logger.warning(msg.format(avg))
         # Fit
         if nfits > 1:
             result, options = self._globalize(
@@ -530,8 +532,8 @@ if __name__ == '__main__':
     p.a_p += np.random.normal(0., 0.1, 1)
     p.n_p += np.random.normal(0., 0.04, 1)
     print("Initial guess:\n{}".format(p))
-    # a.model.using_cuda = False
-    # a.model.double_precision = False
+    #a.model.using_cuda = False
+    #a.model.double_precision = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
     a.mask.settings['distribution'] = 'donut'
@@ -539,7 +541,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm', square=True, nfits=1)
+    result = a.optimize(method='amoeba-lm', nfits=1)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
