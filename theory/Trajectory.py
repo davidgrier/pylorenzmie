@@ -1,34 +1,53 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
 import json
-from pylorenzmie.theory import Feature, LMHologram
+from pylorenzmie.theory import Feature
 
 
 class Trajectory(object):
 
-    def __init__(self, features=None, info=None, model=None):
-        if model is None:
-            model = LMHologram()
+    def __init__(self, features=[], framenumbers=[],
+                 info=None, instrument=None):
         self._features = []
+        self._framenumbers = []
+        self._instrument = instrument
+        self.add(features, framenumbers)
         if features is not None:
             for feature in features:
-                if isinstance(feature, dict) or isinstance(feature, str):
-                    f = Feature(model=self.model, info=feature)
+                if isinstance(feature, dict):
+                    f = Feature(info=feature)
                 elif type(feature) is Feature:
                     f = feature
-                self._features.append(f)
+                self.add([f])
         if info is not None:
             self.deserialize(info)
+
+    @property
+    def instrument(self):
+        return self._instrument
+
+    @instrument.setter
+    def instrument(self, instrument):
+        self._instrument = instrument
 
     @property
     def features(self):
         return self._features
 
-    @features.setter
-    def features(self, features):
-        self._features = features
+    @property
+    def framenumbers(self):
+        return self._framenumbers
+
+    def add(self, features, framenumbers):
+        if len(features) != len(framenumbers):
+            msg = "features and framenumbers must be same length."
+            raise(ValueError(msg))
+        for idx, feature in enumerate(features):
+            if self.instrument is not None:
+                feature.instrument = self.instrument
+            self._features.append(feature)
+            self._framenumbers.append(framenumbers[idx])
 
     def serialize(self, filename=None, omit=[], **kwargs):
         features = []
