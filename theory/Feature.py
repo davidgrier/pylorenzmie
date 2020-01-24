@@ -7,9 +7,7 @@ import numpy as np
 from scipy.optimize import least_squares
 from pylorenzmie.theory.Instrument import coordinates
 from pylorenzmie.theory.LMHologram import LMHologram as Model
-from pylorenzmie.fitting.Settings import FitSettings, FitResult
-from pylorenzmie.fitting.Mask import Mask
-from pylorenzmie.fitting.GlobalSampler import GlobalSampler
+from pylorenzmie.fitting import FitSettings, FitResult, Mask, GlobalSampler
 from pylorenzmie.fitting import amoeba
 
 try:
@@ -241,17 +239,23 @@ class Feature(object):
         NOTE: For a shallow serialization (i.e. for graphing/plotting),
               use exclude = ['data', 'shape', 'corner', 'noise', 'redchi']
         '''
-        data = self.data.tolist() if self.data is not None \
-            else self.data
         coor = self.model.coordinates
-        redchi = self.redchi if self.data is not None else None
+        if self.data is None:
+            data = None
+            shape = None
+            corner = None
+            redchi = None
+        else:
+            data = self.data.tolist()
+            shape = (int(coor[0][-1] - coor[0][0])+1,
+                     int(coor[1][-1] - coor[1][0])+1)
+            corner = (coor[0][0], coor[1][0])
+            redchi = self.redchi
         info = {'data': data,  # dict for variables not in properties
-                'shape': (int(coor[0][-1] - coor[0][0])+1,
-                          int(coor[1][-1] - coor[1][0])+1),
-                'corner': (coor[0][0], coor[1][0]),
+                'shape': shape,
+                'corner': corner,
                 'noise': self.noise,
                 'redchi': redchi}
-
         keys = self.params
         for ex in exclude:  # Exclude things, if provided
             if ex in keys:
