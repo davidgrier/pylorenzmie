@@ -7,11 +7,12 @@ import pandas as pd
 import json
 from pylorenzmie.theory.Frame import Frame
 from pylorenzmie.theory.Trajectory import Trajectory
+from pylorenzmie.theory.Instrument import Instrument
 
 
 class Video(object):
 
-    def __init__(self, frames=[], info=None):
+    def __init__(self, frames=[], instrument=None, info=None):
         self._frames = frames
         self._trajectories = []
         self.set_trajectories()
