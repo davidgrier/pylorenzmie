@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
 import trackpy as tp
 import pandas as pd
 import json
@@ -38,8 +37,31 @@ class Video(object):
     def trajectories(self):
         return self._trajectories
 
-    def set_trajectories(self):
-        pass
+    def set_trajectories(self, search_range=2., **kwargs):
+        d = {'x': [], 'y': [], 'frame': [], 'idx': []}
+        for i, frame in enumerate(self.frames):
+            for j, feature in enumerate(frame.features):
+                d['x'].append(feature.model.x_p)
+                d['y'].append(feature.model.y_p)
+                d['idx'].append((i, j))
+                d['frame'] = frame.framenumber
+        df = tp.link_df(pd.DataFrame(data=d),
+                        search_range,
+                        **kwargs)
+        dfs = []
+        for particle in df.particle:
+            dfs.append(df[df.particle == particle])
+        trajectories = []
+        for idx in range(len(dfs)):
+            features, framenumbers = ([], [])
+            df = dfs[idx]
+            for (i, j) in df.idx:
+                features.append(self.frames[i].features[j])
+                framenumbers.append(self.frames[i].framenumber)
+            trajectories.append(Trajectory(instrument=self.instrument,
+                                           features=features,
+                                           framenumbers=framenumbers))
+        self._trajectories = trajectories
 
     def serialize(self, filename=None,
                   omit=[], omit_frame=[], omit_traj=[], omit_feat=[]):
