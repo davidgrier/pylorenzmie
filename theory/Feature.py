@@ -5,19 +5,18 @@ import json
 import logging
 import numpy as np
 from scipy.optimize import least_squares
-from pylorenzmie.theory.Instrument import coordinates
-from pylorenzmie.theory.LMHologram import LMHologram as Model
-from pylorenzmie.fitting import FitSettings, FitResult, Mask, GlobalSampler
-from pylorenzmie.fitting import amoeba
+from pylorenzmie.theory import coordinates
+from pylorenzmie.theory import LMHologram as Model
+from pylorenzmie.fitting import FitSettings, FitResult
+from pylorenzmie.fitting import Mask, GlobalSampler, amoeba
 
 try:
     import cupy as cp
-    import pylorenzmie.theory.cukernels as cuk
+    import cukernels as cuk
 except Exception:
     cp = None
 try:
-    from pylorenzmie.theory.fastkernels import \
-        fastresiduals, fastchisqr, fastabsolute
+    from fastkernels import fastresiduals, fastchisqr, fastabsolute
 except Exception:
     pass
 

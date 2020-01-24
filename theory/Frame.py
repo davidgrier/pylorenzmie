@@ -3,8 +3,7 @@
 
 import numpy as np
 import json
-from pylorenzmie.theory.Feature import Feature
-from pylorenzmie.theory.LMHologram import LMHologram
+from pylorenzmie.theory import Feature, LMHologram
 
 
 class Frame(object):

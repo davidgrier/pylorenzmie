@@ -5,9 +5,9 @@ import numpy as np
 import trackpy as tp
 import pandas as pd
 import json
-from pylorenzmie.theory.Frame import Frame
-from pylorenzmie.theory.Trajectory import Trajectory
-from pylorenzmie.theory.Instrument import Instrument
+from pylorenzmie.theory import Frame
+from pylorenzmie.theory import Trajectory
+from pylorenzmie.theory import Instrument
 
 
 class Video(object):
