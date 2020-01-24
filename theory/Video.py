@@ -5,7 +5,7 @@ import numpy as np
 import trackpy as tp
 import pandas as pd
 import json
-from pylorenzmie.theory import Frame, Trajectory, Instrument
+from pylorenzmie.theory import Frame, Trajectory
 
 
 class Video(object):
@@ -32,8 +32,6 @@ class Video(object):
 
     def add(self, frames):
         for frame in frames:
-            if self.instrument is not None:
-                frame.instrument = self.instrument
             self._frames.append(frame)
 
     @property
