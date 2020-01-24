@@ -41,8 +41,8 @@ class Video(object):
         d = {'x': [], 'y': [], 'frame': [], 'idx': []}
         for i, frame in enumerate(self.frames):
             for j, feature in enumerate(frame.features):
-                d['x'].append(feature.model.x_p)
-                d['y'].append(feature.model.y_p)
+                d['x'].append(feature.model.particle.x_p)
+                d['y'].append(feature.model.particle.y_p)
                 d['idx'].append((i, j))
                 d['frame'] = frame.framenumber
         df = tp.link_df(pd.DataFrame(data=d),

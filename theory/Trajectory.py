@@ -7,8 +7,7 @@ from pylorenzmie.theory import Feature
 
 class Trajectory(object):
 
-    def __init__(self, features=[], framenumbers=[],
-                 info=None, instrument=None):
+    def __init__(self, features=[], framenumbers=[], info=None, instrument=None):
         self._features = []
         self._framenumbers = []
         self._instrument = instrument
@@ -74,7 +73,7 @@ class Trajectory(object):
             features = info['features']
             self._features = []
             for d in features:
-                self._features.append(Feature(model=self.model, info=d))
+                self._features.append(Feature(info=d))
 
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):

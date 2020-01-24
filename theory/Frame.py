@@ -58,13 +58,12 @@ class Frame(object):
     def add(self, features):
         for feature in features:
             if self.instrument is not None:
-                self.features.model.instrument = self.instrument
+                feature.model.instrument = self.instrument
             self._features.append(feature)
 
     def serialize(self, filename=None, omit=[], omit_feat=[]):
         features = []
         for feature in self.features:
-            feature.data = None
             out = feature.serialize(exclude=omit_feat)
             features.append(out)
         if self.data is not None:
