@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from pylorenzmie.theory.Particle import Particle
-from pylorenzmie.theory.Instrument import Instrument
+from pylorenzmie.theory import Particle
+from pylorenzmie.theory import Instrument
 import json
 
 '''

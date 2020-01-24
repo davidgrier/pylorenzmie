@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from pylorenzmie.fitting.Settings import FitSettings
+from pylorenzmie.fitting import FitSettings
 
 
 def normalize(distribution):

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from pylorenzmie.theory.LorenzMie import LorenzMie
+from pylorenzmie.theory import LorenzMie
 from pylorenzmie.theory import GeneralizedLorenzMie
 import numpy as np
 try:
@@ -9,12 +9,12 @@ try:
     cp.cuda.Device()
     if 'Cuda' not in str(GeneralizedLorenzMie):
         raise Exception()
-    from pylorenzmie.theory.cukernels import cuhologram, cuhologramf
+    from cukernels import cuhologram, cuhologramf
 except Exception:
     cp = None
 try:
     import numba as nb
-    from pylorenzmie.theory.fastkernels import fasthologram
+    from fastkernels import fasthologram
 except Exception:
     nb = None
 
