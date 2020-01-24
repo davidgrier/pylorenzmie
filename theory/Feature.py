@@ -12,11 +12,12 @@ from pylorenzmie.fitting import Mask, GlobalSampler, amoeba
 
 try:
     import cupy as cp
-    import cukernels as cuk
-except Exception:
+    from pylorenzmie.theory import cukernels as cuk
+except Exception as e:
     cp = None
+    print(e)
 try:
-    from fastkernels import fastresiduals, fastchisqr, fastabsolute
+    from pylorenzmie.theory import fastkernels as fk
 except Exception:
     pass
 
@@ -90,6 +91,7 @@ class Feature(object):
                  **kwargs):
         self.model = Model(**kwargs) if model is None else model
         # Set fields
+        self._shape = None
         self.data = data
         self.noise = noise
         self.coordinates = self.model.coordinates
@@ -97,10 +99,10 @@ class Feature(object):
         self.params = tuple(self.model.properties.keys())
         # Set default options for fitting
         self._init_params()
-        # Deserialize if needed
-        self.deserialize(info)
         # Random subset sampling
         self.mask = Mask(self.model.coordinates)
+        # Deserialize if needed
+        self.deserialize(info)
         # Globalized optimization sampling
         self.sampler = GlobalSampler(self)
 
@@ -110,15 +112,12 @@ class Feature(object):
     @property
     def data(self):
         '''Values of the (normalized) hologram at each pixel'''
-        return self._data
-
-    @property
-    def subset_data(self):
-        return self._subset_data
+        return self._data.reshape(self._shape)
 
     @data.setter
     def data(self, data):
         if type(data) is np.ndarray:
+            self._shape = data.shape
             data = data.flatten()
             # Find indices where data is saturated or nan/inf
             self.saturated = np.where(data == np.max(data))[0]
@@ -148,11 +147,11 @@ class Feature(object):
         residuals : numpy.ndarray
             Difference between model and data at each pixel
         '''
-        return self.model.hologram() - self.data
+        return self.model.hologram().reshape(self._shape) - self.data
 
     @property
     def redchi(self):
-        r = self.resdiuals()
+        r = self.residuals().flatten()
         return r.dot(r) / self.data.size
 
     def optimize(self, method='amoeba', square=True, nfits=1):
@@ -248,10 +247,15 @@ class Feature(object):
             redchi = None
         else:
             data = self.data.tolist()
+            #shape = [0]*len(self._shape)
+            #for i in range(len(shape)):
+            #    shape[i] = int(self._shape[i])
             shape = (int(coor[0][-1] - coor[0][0])+1,
                      int(coor[1][-1] - coor[1][0])+1)
-            corner = (coor[0][0], coor[1][0])
-            redchi = self.redchi
+            #corner = (self.model.particle.x_p-shape[0]/2,
+            #          self.model.particle.y_p+shape[1]/2)
+            corner = (int(coor[0][0]), int(coor[1][0]))
+            redchi = float(self.redchi)
         info = {'data': data,  # dict for variables not in properties
                 'shape': shape,
                 'corner': corner,
@@ -265,7 +269,6 @@ class Feature(object):
                 info.pop(ex)
             else:
                 print(ex + " not found in Feature's keylist")
-
         out = self.model.properties
         out.update(info)  # Combine dictionaries + finish serialization
         if filename is not None:
@@ -290,8 +293,6 @@ class Feature(object):
                 info = json.load(f)
         self.model.properties = {k: info[k] for k in
                                  self.model.properties.keys()}
-        if 'data' in info.keys():
-            self.data = np.array(info['data'])
         if 'shape' in info.keys():
             if 'corner' in info.keys():
                 corner = info['corner']
@@ -299,6 +300,9 @@ class Feature(object):
                 corner = (0, 0)
             self.model.coordinates = coordinates(info['shape'],
                                                  corner=corner)
+            self.mask.coordinates = self.model.coordinates
+        if 'data' in info.keys():
+            self.data = np.array(info['data'])
         if 'noise' in info.keys():
             self.noise = info['noise']
 
@@ -379,12 +383,12 @@ class Feature(object):
         elif self.model.using_numba:
             if reduce:
                 if square:
-                    obj = fastchisqr(
+                    obj = fk.fastchisqr(
                         holo, self._subset_data, self.noise)
                 else:
-                    obj = fastabsolute(holo, self._subset_data, self.noise)
+                    obj = fk.fastabsolute(holo, self._subset_data, self.noise)
             else:
-                obj = fastresiduals(holo, self._subset_data, self.noise)
+                obj = fk.fastresiduals(holo, self._subset_data, self.noise)
         else:
             obj = (holo - self._subset_data) / self.noise
             if reduce:

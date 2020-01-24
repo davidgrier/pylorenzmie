@@ -9,12 +9,12 @@ try:
     cp.cuda.Device()
     if 'Cuda' not in str(GeneralizedLorenzMie):
         raise Exception()
-    from cukernels import cuhologram, cuhologramf
-except Exception:
+    from pylorenzmie.theory import cukernels as cuk
+except Exception as e:
     cp = None
 try:
     import numba as nb
-    from fastkernels import fasthologram
+    from pylorenzmie.theory import fastkernels as fk
 except Exception:
     nb = None
 
@@ -86,7 +86,7 @@ class LMHologram(LorenzMie):
             hologram = self.holo
             alpha = self._flt(self.alpha)
             Ex, Ey, Ez = field
-            kernel = cuhologram if self.double_precision else cuhologramf
+            kernel = cuk.cuhologram if self.double_precision else cuk.cuhologramf
             kernel((self.blockspergrid,), (self.threadsperblock,),
                    (Ex, Ey, Ez, alpha, hologram.size, hologram))
             if return_gpu is False:
@@ -94,7 +94,7 @@ class LMHologram(LorenzMie):
         elif self.using_numba:
             field = self.field()
             hologram = self.holo
-            fasthologram(field, self.alpha, hologram.size, hologram)
+            fk.fasthologram(field, self.alpha, hologram.size, hologram)
         else:
             field = self.alpha * self.field()
             field[0, :] += 1.
