@@ -11,7 +11,6 @@ class Trajectory(object):
         self._features = []
         self._framenumbers = []
         self._instrument = instrument
-        self.add(features, framenumbers)
         if features is not None:
             for idx, feature in enumerate(features):
                 if isinstance(feature, dict):

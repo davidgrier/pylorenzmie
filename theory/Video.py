@@ -14,7 +14,6 @@ class Video(object):
         self._instrument = instrument
         self.add(frames)
         self._trajectories = []
-        self.set_trajectories()
         self.deserialize(info)
 
     @property
@@ -44,12 +43,10 @@ class Video(object):
                 d['x'].append(feature.model.particle.x_p)
                 d['y'].append(feature.model.particle.y_p)
                 d['idx'].append((i, j))
-                d['frame'] = frame.framenumber
-        df = tp.link_df(pd.DataFrame(data=d),
-                        search_range,
-                        **kwargs)
+                d['frame'].append(frame.framenumber)
+        df = tp.link_df(pd.DataFrame(data=d), search_range, **kwargs)
         dfs = []
-        for particle in df.particle:
+        for particle in range(df.particle.max()+1):
             dfs.append(df[df.particle == particle])
         trajectories = []
         for idx in range(len(dfs)):
