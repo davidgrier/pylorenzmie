@@ -91,7 +91,7 @@ class Video(object):
         if 'trajectories' in info.keys():
             self._trajectories = []
             for d in info['trajectories']:
-                self.add(Trajectory(info=d))
-        elif 'frames' in info.keys():
+                self.trajectories.append(Trajectory(info=d))
+        if 'frames' in info.keys():
             for d in info['frames']:
                 self.add([Frame(info=d)])

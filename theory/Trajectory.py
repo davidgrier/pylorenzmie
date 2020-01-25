@@ -13,12 +13,12 @@ class Trajectory(object):
         self._instrument = instrument
         self.add(features, framenumbers)
         if features is not None:
-            for feature in features:
+            for idx, feature in enumerate(features):
                 if isinstance(feature, dict):
                     f = Feature(info=feature)
                 elif type(feature) is Feature:
                     f = feature
-                self.add([f])
+                self.add([f], [framenumbers[idx]])
         if info is not None:
             self.deserialize(info)
 
@@ -48,13 +48,15 @@ class Trajectory(object):
             self._features.append(feature)
             self._framenumbers.append(framenumbers[idx])
 
-    def serialize(self, filename=None, omit=[], **kwargs):
+    def serialize(self, filename=None, omit=[], omit_feat=[]):
         features = []
-        for feature in self.features:
-            feature.data = None
-            out = feature.serialize(**kwargs)
+        framenumbers = []
+        for idx, feature in enumerate(self.features):
+            out = feature.serialize(exclude=omit_feat)
             features.append(out)
-        info = {'features': features}
+            framenumbers.append(int(self.framenumbers[idx]))
+        info = {'features': features,
+                'framenumbers': self.framenumbers}
         for k in omit:
             if k in info.keys():
                 info.pop()
@@ -74,6 +76,8 @@ class Trajectory(object):
             self._features = []
             for d in features:
                 self._features.append(Feature(info=d))
+        if 'framenumbers' in info.keys():
+            self._framenumbers = info['framenumbers']
 
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):

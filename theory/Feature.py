@@ -112,7 +112,11 @@ class Feature(object):
     @property
     def data(self):
         '''Values of the (normalized) hologram at each pixel'''
-        return self._data.reshape(self._shape)
+        if type(self._data) is np.ndarray:
+            data = self._data.reshape(self._shape)
+        else:
+            data = self._data
+        return data
 
     @data.setter
     def data(self, data):
