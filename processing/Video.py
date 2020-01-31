@@ -105,4 +105,5 @@ class Video(object):
             for d in info['frames']:
                 self.add([Frame(info=d)])
         if 'fps' in info.keys():
-            self._fps = float(info['fps'])
+            if info['fps'] is not None:
+                self.fps = float(info['fps'])
