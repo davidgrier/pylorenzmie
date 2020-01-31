@@ -153,11 +153,6 @@ class Feature(object):
         '''
         return self.model.hologram().reshape(self._shape) - self.data
 
-    @property
-    def redchi(self):
-        r = self.residuals().flatten()
-        return r.dot(r) / self.data.size
-
     def optimize(self, method='amoeba', square=True, nfits=1):
         '''
         Fit Model to data
@@ -248,33 +243,34 @@ class Feature(object):
             data = None
             shape = None
             corner = None
-            redchi = None
         else:
             data = self.data.tolist()
-            #shape = [0]*len(self._shape)
-            #for i in range(len(shape)):
-            #    shape[i] = int(self._shape[i])
             shape = (int(coor[0][-1] - coor[0][0])+1,
                      int(coor[1][-1] - coor[1][0])+1)
-            #corner = (self.model.particle.x_p-shape[0]/2,
-            #          self.model.particle.y_p+shape[1]/2)
             corner = (int(coor[0][0]), int(coor[1][0]))
-            redchi = float(self.redchi)
-        info = {'data': data,  # dict for variables not in properties
+        # Dict for variables not in properties
+        info = {'data': data,
                 'shape': shape,
                 'corner': corner,
-                'noise': self.noise,
-                'redchi': redchi}
+                'noise': self.noise}
+        # Add reduced chi-squared
+        if self.result is not None:
+            redchi = self.result.redchi
+        else:
+            redchi = None
+        info.update({'redchi': redchi})
+        # Exclude things, if provided
         keys = self.params
-        for ex in exclude:  # Exclude things, if provided
+        for ex in exclude:
             if ex in keys:
                 keys.pop(ex)
             elif ex in info.keys():
                 info.pop(ex)
             else:
                 print(ex + " not found in Feature's keylist")
+        # Combine dictionaries + finish serialization
         out = self.model.properties
-        out.update(info)  # Combine dictionaries + finish serialization
+        out.update(info)
         if filename is not None:
             with open(filename, 'w') as f:
                 json.dump(out, f)
@@ -313,7 +309,6 @@ class Feature(object):
     #
     # Under the hood optimization helper functions
     #
-
     def _optimize(self, method, x0, square):
         options = {}
         if method == 'lm':
