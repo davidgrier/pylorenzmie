@@ -4,7 +4,8 @@
 import trackpy as tp
 import pandas as pd
 import json
-from pylorenzmie.theory import Frame, Trajectory
+from .Frame import Frame
+from .Trajectory import Trajectory
 
 
 class Video(object):
