@@ -10,12 +10,21 @@ from .Trajectory import Trajectory
 
 class Video(object):
 
-    def __init__(self, frames=[], instrument=None, info=None):
+    def __init__(self, frames=[], instrument=None, fps=None, info=None):
+        self._fps = None
         self._frames = []
         self._instrument = instrument
         self.add(frames)
         self._trajectories = []
         self.deserialize(info)
+
+    @property
+    def fps(self):
+        return self._fps
+
+    @fps.setter
+    def fps(self, fps):
+        self._fps = float(fps)
 
     @property
     def instrument(self):
@@ -72,7 +81,8 @@ class Video(object):
             frames.append(
                 frame.serialize(omit=omit_frame, omit_feat=omit_feat))
         info = {'trajectories': trajs,
-                'frames': frames}
+                'frames': frames,
+                'fps': self.fps}
         for k in omit:
             if k in info.keys():
                 info.pop(k)
@@ -94,3 +104,5 @@ class Video(object):
         if 'frames' in info.keys():
             for d in info['frames']:
                 self.add([Frame(info=d)])
+        if 'fps' in info.keys():
+            self._fps = float(info['fps'])
