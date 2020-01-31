@@ -27,10 +27,8 @@ except Exception as e:
 from .LorenzMie import LorenzMie
 from .LMHologram import LMHologram
 from .Feature import Feature
-from .Frame import Frame
-from .Trajectory import Trajectory
-from .Video import Video
 
 
-all = [GeneralizedLorenzMie, Sphere, Video, Frame, Feature,
-       LMHologram, Instrument, coordinates, Particle, LorenzMie, Trajectory]
+all = [GeneralizedLorenzMie, Sphere, Feature,
+       LMHologram, Instrument, coordinates, Particle, LorenzMie]
+
