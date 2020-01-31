@@ -46,8 +46,9 @@ class Video(object):
                 d['frame'].append(frame.framenumber)
         df = tp.link_df(pd.DataFrame(data=d), search_range, **kwargs)
         dfs = []
-        for particle in range(df.particle.max()+1):
-            dfs.append(df[df.particle == particle])
+        if not pd.isnull(df.particle.max()):
+            for particle in range(df.particle.max()+1):
+                dfs.append(df[df.particle == particle])
         trajectories = []
         for idx in range(len(dfs)):
             features, framenumbers = ([], [])
