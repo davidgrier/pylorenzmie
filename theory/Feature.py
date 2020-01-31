@@ -213,7 +213,11 @@ class Feature(object):
         # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
 
-        return FitResult(method, result, settings, self.model, npix)
+        # Store last result 
+        result = FitResult(method, result, settings, self.model, npix)
+        self.result = result
+
+        return result
 
     #
     # Methods for saving data
