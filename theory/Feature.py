@@ -94,6 +94,7 @@ class Feature(object):
         self._shape = None
         self.data = data
         self.noise = noise
+        self.result = None
         self.coordinates = self.model.coordinates
         # Initialize Feature properties
         self.params = tuple(self.model.properties.keys())
