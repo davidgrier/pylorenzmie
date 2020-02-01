@@ -15,7 +15,7 @@ from .GlobalSampler import GlobalSampler
 try:
     import cupy as cp
     from pylorenzmie.fitting import cukernels as cuk
-except Exception as e:
+except Exception:
     cp = None
 try:
     from pylorenzmie.fitting import fastkernels as fk
@@ -77,12 +77,7 @@ class Optimizer(object):
         the Model.
     '''
 
-    def __init__(self,
-                 model,
-                 data=None,
-                 noise=0.05,
-                 doconfig=False,
-                 **kwargs):
+    def __init__(self, model, data=None, noise=0.05):
         # Initialize properties
         self.params = tuple(model.properties.keys())
         # Set model
@@ -189,23 +184,19 @@ class Optimizer(object):
                    'Fit may not converge.')
             logger.warning(msg.format(avg))
         # Fit
-        if nfits > 1:
+        if nfits > 1 and self.sampler is not None:
             result, options = self._globalize(
                 method, nfits, x0, square)
         elif nfits == 1:
             result, options = self._optimize(method, x0, square)
-        else:
-            raise ValueError("nfits must be greater than or equal to 1.")
         # Post-fit cleanup
         result, settings = self._cleanup(method, square, result, nfits,
                                          options=options)
         # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
-
         # Store last result
         result = FitResult(method, result, settings, self.model, npix)
         self.result = result
-
         return result
 
     #

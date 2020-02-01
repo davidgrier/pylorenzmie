@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import os
 import numpy as np
 from pylorenzmie.fitting import Optimizer
 
@@ -43,10 +44,11 @@ class Feature(object):
 
     '''
 
-    def __init__(self, model=None, data=None, info=None, **kwargs):
+    def __init__(self, model=None, data=None, info=None):
         # Set fields
         self._optimizer = None
         self._model = None
+        self.coordinates = None
         # Run setters
         if model is not None:
             self.model = model
@@ -71,7 +73,8 @@ class Feature(object):
         if type(data) is np.ndarray:
             self._shape = data.shape
             data = data.flatten()
-            self.optimizer.data = data
+            if type(self.optimizer) is Optimizer:
+                self.optimizer.data = data
         self._data = data
 
     @property
@@ -82,11 +85,20 @@ class Feature(object):
     @model.setter
     def model(self, model):
         if model is not None:
-            if self._optimizer is None:
-                self.optimizer = Optimizer(model)
-            else:
-                self.optimizer.model = model
-            self.coordinates = model.coordinates
+            try:
+                path = '/'.join(__file__.split('/')[:-1])
+                fn = '.'+str(type(model)).split('.')[-1][:-2]
+                with open(os.path.join(path, fn), 'r') as f:
+                    d = json.load(f)
+                optimize = d['optimize']
+            except Exception:
+                optimize = False
+            if optimize:
+                if self._optimizer is None:
+                    self.optimizer = Optimizer(model)
+                else:
+                    self.optimizer.model = model
+                self.coordinates = model.coordinates
         self._model = model
 
     @property
@@ -139,30 +151,33 @@ class Feature(object):
         dict: serialized data
 
         NOTE: For a shallow serialization (i.e. for graphing/plotting),
-              use exclude = ['data', 'shape', 'corner', 'noise', 'redchi']
+              use exclude = ['data', 'shape', 'corner']
         '''
-        coor = self.model.coordinates
-        if self.data is None:
-            data = None
+        info = {}
+        # Data
+        if self.data is not None:
+            if 'data' not in exclude:
+                info['data'] = self.data.tolist()
+        # Coordinates
+        if self.coordinates is None:
             shape = None
             corner = None
         else:
-            data = self.data.tolist()
+            coor = self.model.coordinates
             shape = (int(coor[0][-1] - coor[0][0])+1,
                      int(coor[1][-1] - coor[1][0])+1)
             corner = (int(coor[0][0]), int(coor[1][0]))
-        # Dict for variables not in properties
-        info = {'data': data,
-                'shape': shape,
-                'corner': corner}
+            info['shape'] = shape
+            info['corner'] = corner
         # Add reduced chi-squared
-        if self.optimizer.result is not None:
-            redchi = self.optimizer.result.redchi
+        if self.optimizer is not None:
+            if self.optimizer.result is not None:
+                redchi = self.optimizer.result.redchi
+                info['redchi'] = redchi
         else:
             redchi = None
-        info.update({'redchi': redchi})
         # Exclude things, if provided
-        keys = self.params
+        keys = self.model.properties.keys()
         for ex in exclude:
             if ex in keys:
                 keys.pop(ex)
@@ -204,7 +219,10 @@ class Feature(object):
                                                  corner=corner)
             self.mask.coordinates = self.model.coordinates
         if 'data' in info.keys():
-            self.data = np.array(info['data'])
+            data = np.array(info['data'])
+            if info['shape'] is not None:
+                data = data.reshape(info['shape'])
+            self.data = data
 
 
 if __name__ == '__main__':
@@ -250,7 +268,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm', nfits=3)
+    result = a.optimize(method='amoeba-lm', nfits=2)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
