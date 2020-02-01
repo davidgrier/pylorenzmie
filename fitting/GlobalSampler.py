@@ -16,15 +16,12 @@ def gaussian(x, mu, sig):
 
 
 class GlobalSampler(object):
-    '''
-    TODO
-    '''
 
-    def __init__(self, feature):
-        self.feature = feature
-        self.params = ("z_p", "a_p", "n_p")
+    def __init__(self, optimizer, config):
 
-        self._init_settings()
+        self.optimizer = optimizer
+
+        self._init_settings(config)
 
         self._param_space = None
         self._param_range = None
@@ -52,7 +49,7 @@ class GlobalSampler(object):
 
     @params.setter
     def params(self, params):
-        vary = self.feature.vary
+        vary = self.optimizer.vary
         parameters = []
         for param in params:
             if param in vary.keys():
@@ -64,10 +61,10 @@ class GlobalSampler(object):
         self._params = parameters
         self._idx_map = {}
         idx = 0
-        for prop in self.feature.params:
+        for prop in self.optimizer.params:
             if prop in parameters:
                 self._idx_map[prop] = idx
-            if self.feature.vary[prop]:
+            if self.optimizer.vary[prop]:
                 idx += 1
 
     @property
@@ -163,16 +160,18 @@ class GlobalSampler(object):
             raise ValueError("Dependent sampling not implemented yet.")
         self._update(x0)
 
-    def _init_settings(self):
+    def _init_settings(self, config):
+        self.params = config['params']
         # Gaussian well standard deviation
-        well_std = [None, None, 5, .03, .02, None, None, None, None, None]
-        # Sampling range for globalized optimization based on Estimator
-        sample_range = [None, None, 30, .2, .1, None, None, None, None, None]
-        sample_options = {"independent": True, "distribution": "wells"}
-        self.well_settings = FitSettings(self.feature.params)
-        self.sampling_settings = FitSettings(self.feature.params,
+        well_std = config['well_std']
+        # ...sampling range for globalized optimization
+        sample_range = config['sample_range']
+        # ... options for distribution
+        sample_options = config['options']
+        self.well_settings = FitSettings(self.optimizer.params)
+        self.sampling_settings = FitSettings(self.optimizer.params,
                                              options=sample_options)
-        for idx, p in enumerate(self.feature.params):
+        for idx, p in enumerate(self.optimizer.params):
             well_param = self.well_settings.parameters[p]
             param = self.sampling_settings.parameters[p]
             well_param.options['std'] = well_std[idx]

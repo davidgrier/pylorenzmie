@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import json
-import logging
 import numpy as np
 from pylorenzmie.fitting import Optimizer
 
@@ -44,22 +43,14 @@ class Feature(object):
 
     '''
 
-    def __init__(self,
-                 model=None,
-                 data=None,
-                 info=None,
-                 **kwargs):
-        if model is not None:
-            self.optimizer = Optimizer(model)
-            self._model = model
-        else:
-            self.model, self.optimizer = (None, None)
+    def __init__(self, model=None, data=None, info=None, **kwargs):
         # Set fields
-        self._shape = None
+        self._optimizer = None
+        self._model = None
+        # Run setters
+        if model is not None:
+            self.model = model
         self.data = data
-        self.coordinates = self.model.coordinates
-        # Initialize Feature properties
-        self.params = tuple(self.model.properties.keys())
         # Deserialize if needed
         self.deserialize(info)
 
@@ -90,8 +81,21 @@ class Feature(object):
 
     @model.setter
     def model(self, model):
+        if model is not None:
+            if self._optimizer is None:
+                self.optimizer = Optimizer(model)
+            else:
+                self.optimizer.model = model
+            self.coordinates = model.coordinates
         self._model = model
-        self.optimizer.model = model
+
+    @property
+    def optimizer(self):
+        return self._optimizer
+
+    @optimizer.setter
+    def optimizer(self, optimizer):
+        self._optimizer = optimizer
 
     #
     # Methods to show residuals and optimize
@@ -246,7 +250,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm', nfits=1)
+    result = a.optimize(method='amoeba-lm', nfits=3)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
