@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from pylorenzmie.theory.Sphere import Sphere
-from pylorenzmie.theory.fastkernels import fast_mie_coefficients
+from pylorenzmie.theory.fastholo import fast_mie_coefficients
 
 
 class FastSphere(Sphere):
