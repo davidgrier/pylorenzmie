@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import json
+import os
 import logging
 import numpy as np
 from scipy.optimize import least_squares
-from pylorenzmie.theory import LMHologram as Model
 from pylorenzmie.fitting import amoeba
 
 from .Settings import FitSettings, FitResult
@@ -16,7 +17,6 @@ try:
     from pylorenzmie.fitting import cukernels as cuk
 except Exception as e:
     cp = None
-    print(e)
 try:
     from pylorenzmie.fitting import fastkernels as fk
 except Exception:
@@ -28,7 +28,8 @@ logger.setLevel(logging.WARNING)
 
 class Optimizer(object):
     '''
-    Abstraction of a feature in an in-line hologram
+    Optimization equipment for fitting a holographic model
+    to data.
 
     ...
 
@@ -51,7 +52,7 @@ class Optimizer(object):
         during fitting. True means the parameter will vary.
         Setting FitSettings.parameters.vary manually will not
         work.
-    amoeba_settings : FitSettings
+    nm_settings : FitSettings
         Settings for nelder-mead optimization. Refer to minimizers.py
         or cminimizers.pyx -> amoeba and Settings.py -> FitSettings
         for documentation.
@@ -82,21 +83,15 @@ class Optimizer(object):
                  noise=0.05,
                  doconfig=False,
                  **kwargs):
-        # Random subset sampling
-        self.mask = Mask(model.coordinates)
+        # Initialize properties
+        self.params = tuple(model.properties.keys())
         # Set model
-        self._model = model
+        self.model = model
         # Set fields
         self._shape = None
         self.data = data
         self.noise = noise
         self.result = None
-        # Initialize Feature properties
-        self.params = tuple(self.model.properties.keys())
-        # Set default options for fitting
-        self._init_params()
-        # Globalized optimization sampling
-        self.sampler = GlobalSampler(self)
 
     #
     # Fields for user to set data and model's initial guesses
@@ -129,7 +124,21 @@ class Optimizer(object):
     @model.setter
     def model(self, model):
         self._model = model
-        self.mask.coordinates = self.model.coordinates
+        # Random subset sampling
+        self.mask = Mask(model.coordinates)
+        # Try config
+        try:
+            path = '/'.join(__file__.split('/')[:-1])
+            fn = '.'+str(type(model)).split('.')[-1][:-2]
+            with open(os.path.join(path, fn), 'r') as f:
+                config = json.load(f)
+            self._init_settings(config)
+            # Globalized optimization sampling
+            self.sampler = GlobalSampler(self, config['global'])
+        except Exception:
+            self.lm_settings = None
+            self.nm_settings = None
+            self.sampler = None
 
     #
     # Public methods
@@ -214,11 +223,11 @@ class Optimizer(object):
             else:
                 objective = self._absolute
             result = amoeba(
-                objective, x0, **self.amoeba_settings.getkwargs(self.vary))
+                objective, x0, **self.nm_settings.getkwargs(self.vary))
         elif method == 'amoeba-lm':
             nmresult = amoeba(
                 self._chisqr, x0,
-                **self.amoeba_settings.getkwargs(self.vary))
+                **self.nm_settings.getkwargs(self.vary))
             if not nmresult.success:
                 msg = 'Nelder-Mead: {}. Falling back to least squares.'
                 logger.warning(msg.format(nmresult.message))
@@ -305,45 +314,33 @@ class Optimizer(object):
     #
     # Fitting preparation and cleanup
     #
-    def _init_params(self):
+    def _init_settings(self, config):
         '''
         Initialize default settings for levenberg-marquardt and
         nelder-mead optimization
         '''
-        # Default parameters to vary, in the following order:
-        # x_p, y_p, z_p [pixels], a_p [um], n_p,
-        # k_p, n_m, wavelength [um], magnification [um/pixel]
-        vary = [True] * 5
-        vary.extend([False] * 5)
+        cfg_lm = config['lm']
+        cfg_nm = config['nm']
+        # Default parameters to vary during fitting
+        vary = config['vary']
         # ... levenberg-marquardt variable scale factor
-        x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2, 1]
-        # ... bounds around intial guess for bounded nelder-mead
-        simplex_bounds = [(-np.inf, np.inf), (-np.inf, np.inf),
-                          (0., 2000.), (.05, 4.), (1., 3.),
-                          (0., 3.), (1., 3.), (.100, 2.00), (0., 1.),
-                          (0., 5.)]
+        x_scale = cfg_lm['x_scale']
         # ... scale of initial simplex
-        simplex_scale = np.array(
-            [4., 4., 5., 0.01, 0.01, .2, .1, .1, .05, .05])
+        simplex_scale = cfg_nm['simplex_scale']
+        # ... bounds around intial guess for bounded nelder-mead
+        simplex_bounds = cfg_nm['simplex_bounds']
         # ... tolerance for nelder-mead termination
-        simplex_tol = [.1, .1, .01, .001, .001, .001, .01, .01, .01, .01]
-        # Default options for amoeba and lm not parameter dependent
-        lm_options = {'method': 'lm',
-                      'xtol': 1.e-6,
-                      'ftol': 1.e-3,
-                      'gtol': 1e-6,
-                      'max_nfev': 2000,
-                      'diff_step': 1e-5,
-                      'verbose': 0}
-        amoeba_options = {'ftol': 1.e-3, 'maxevals': 800}
-        # Initialize settings for fitting
-        self.amoeba_settings = FitSettings(self.params,
-                                           options=amoeba_options)
+        simplex_tol = cfg_nm['simplex_tol']
+        # Non-vector arguments to fitting
+        lm_options = cfg_lm['options']
+        nm_options = cfg_nm['options']
+        self.nm_settings = FitSettings(self.params,
+                                       options=nm_options)
         self.lm_settings = FitSettings(self.params,
                                        options=lm_options)
         self.vary = dict(zip(self.params, vary))
         for idx, p in enumerate(self.params):
-            amparam = self.amoeba_settings.parameters[p]
+            amparam = self.nm_settings.parameters[p]
             lmparam = self.lm_settings.parameters[p]
             amparam.options['simplex_scale'] = simplex_scale[idx]
             amparam.options['xtol'] = simplex_tol[idx]
@@ -361,7 +358,7 @@ class Optimizer(object):
         for p in self.params:
             val = self.model.properties[p]
             self.lm_settings.parameters[p].initial = val
-            self.amoeba_settings.parameters[p].initial = val
+            self.nm_settings.parameters[p].initial = val
             if self.vary[p]:
                 x0.append(val)
         x0 = np.array(x0)
@@ -381,7 +378,7 @@ class Optimizer(object):
         elif method == 'amoeba':
             if not square:
                 result.fun = float(self._objective(reduce=True))
-            settings = self.amoeba_settings
+            settings = self.nm_settings
         else:
             settings = self.lm_settings
         if self.model.using_cuda:
