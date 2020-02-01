@@ -51,11 +51,13 @@ class Trajectory(object):
         features = []
         framenumbers = []
         for idx, feature in enumerate(self.features):
-            out = feature.serialize(exclude=omit_feat)
-            features.append(out)
-            framenumbers.append(int(self.framenumbers[idx]))
+            if 'features' not in omit:
+                out = feature.serialize(exclude=omit_feat)
+                features.append(out)
+            if 'framenumbers' not in omit:
+                framenumbers.append(int(self.framenumbers[idx]))
         info = {'features': features,
-                'framenumbers': self.framenumbers}
+                'framenumbers': framenumbers}
         for k in omit:
             if k in info.keys():
                 info.pop()

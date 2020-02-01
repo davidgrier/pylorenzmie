@@ -1,25 +1,23 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
 import json
 from pylorenzmie.theory import Feature
 
 
 class Frame(object):
 
-    def __init__(self, data=None, features=None, instrument=None,
+    def __init__(self, features=None, instrument=None,
                  framenumber=None, info=None):
-        self._data = data
         self._instrument = instrument
         self._framenumber = framenumber
         self._features = []
         if features is not None:
             for feature in features:
                 if isinstance(feature, dict):
-                    self.add([Feature(info=feature)])
+                    self.features.append(Feature(info=feature))
                 elif type(feature) is Feature:
-                    self.add([feature])
+                    self.features.append(feature)
                 else:
                     msg = "features must be list of Features"
                     msg += " or deserializable Features"
@@ -44,14 +42,6 @@ class Frame(object):
         self._framenumber = idx
 
     @property
-    def data(self):
-        return self._data
-
-    @data.setter
-    def data(self, data):
-        self._data = data
-
-    @property
     def features(self):
         return self._features
 
@@ -61,19 +51,20 @@ class Frame(object):
                 feature.model.instrument = self.instrument
             self._features.append(feature)
 
+    def optimize(self, report=True, **kwargs):
+        for idx, feature in enumerate(self.features):
+            result = feature.optimize(**kwargs)
+            if report:
+                print(result)
+
     def serialize(self, filename=None, omit=[], omit_feat=[]):
         info = {}
         features = []
-        for feature in self.features:
-            out = feature.serialize(exclude=omit_feat)
-            features.append(out)
+        if 'features' not in omit:
+            for feature in self.features:
+                out = feature.serialize(exclude=omit_feat)
+                features.append(out)
         info['features'] = features
-        if self.data is not None:
-            if 'data' not in omit:
-                shape = (int(self.data.shape[0]), int(self.data.shape[1]))
-                data = self.data.flatten().tolist()
-                info['shape'] = shape
-                info['data'] = data
         if self.framenumber is not None:
             info['framenumber'] = str(self.framenumber)
         for k in omit:
@@ -90,22 +81,12 @@ class Frame(object):
         if isinstance(info, str):
             with open(info, 'rb') as f:
                 info = json.load(f)
-        if 'data' in info.keys():
-            self.data = np.array(info['data'])
-            if 'shape' in info.keys():
-                self.data.reshape(info['shape'])
         if 'features' in info.keys():
             features = info['features']
             self._features = []
             for d in features:
-                self._features.append(Feature(info=d))
+                self.features.append(Feature(info=d))
         if 'framenumber' in info.keys():
             self.framenumber = int(info['framenumber'])
         else:
             self.framenumber = None
-
-    def optimize(self, report=True, **kwargs):
-        for idx, feature in enumerate(self.features):
-            result = feature.optimize(**kwargs)
-            if report:
-                print(result)
