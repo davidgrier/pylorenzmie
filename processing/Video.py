@@ -81,8 +81,9 @@ class Video(object):
             frames.append(
                 frame.serialize(omit=omit_frame, omit_feat=omit_feat))
         info = {'trajectories': trajs,
-                'frames': frames,
-                'fps': self.fps}
+                'frames': frames}
+        if self.fps is not None:
+            info['fps'] = self.fps
         for k in omit:
             if k in info.keys():
                 info.pop(k)
