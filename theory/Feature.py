@@ -5,6 +5,7 @@ import json
 import os
 import numpy as np
 from pylorenzmie.fitting import Optimizer
+from pylorenzmie.theory import LMHologram
 
 
 class Feature(object):
@@ -17,14 +18,17 @@ class Feature(object):
     ----------
     data : numpy.ndarray
         [npts] normalized intensity values
-    coordinates : numpy.ndarray
-        [npts, 3] array of pixel coordinates
-        Note: This property is shared with the underlying Model
-    model : LMHologram
+    model : [LMHologram, ]
         Incorporates information about the Particle and the Instrument
-        and uses this information to compute a hologram at the
-        specified coordinates.  Keywords for the Model can be
-        provided at initialization.
+        and for supported models, uses this information to compute a
+        hologram at the specified coordinates.
+    optimizer : Optimizer
+        Optimization equipment for fitting holographic models to data.
+        IMPORTANT: Supported models decide whether or not to initialize
+                   optimizers based on config files! See
+                   pylorenzmie/fitting/.LMHologram and
+                   pylorenzmie/theory/.LMHologram
+                   for examples.
 
 
     Methods
@@ -48,11 +52,10 @@ class Feature(object):
         # Set fields
         self._optimizer = None
         self._model = None
-        self.coordinates = None
         # Run setters
+        self.data = data
         if model is not None:
             self.model = model
-        self.data = data
         # Deserialize if needed
         self.deserialize(info)
 
@@ -98,7 +101,8 @@ class Feature(object):
                     self.optimizer = Optimizer(model)
                 else:
                     self.optimizer.model = model
-                self.coordinates = model.coordinates
+                if self.data is not None:
+                    self.optimizer.data = self._data
         self._model = model
 
     @property
@@ -109,9 +113,6 @@ class Feature(object):
     def optimizer(self, optimizer):
         self._optimizer = optimizer
 
-    #
-    # Methods to show residuals and optimize
-    #
     def residuals(self):
         '''Returns difference bewteen data and current model
 
@@ -129,9 +130,6 @@ class Feature(object):
         '''
         return self.optimizer.optimize(**kwargs)
 
-    #
-    # Methods for saving data
-    #
     def serialize(self, filename=None, exclude=[]):
         '''
         Serialization: Save state of Feature in dict
@@ -151,15 +149,21 @@ class Feature(object):
         dict: serialized data
 
         NOTE: For a shallow serialization (i.e. for graphing/plotting),
-              use exclude = ['data', 'shape', 'corner']
+              use exclude = ['data', 'coordinates']
         '''
         info = {}
         # Data
         if self.data is not None:
             if 'data' not in exclude:
                 info['data'] = self.data.tolist()
+            else:
+                info['data'] = None
+        # Model type
+        if self.model is not None:
+            model = str(type(self.model)).split('.')[-1][:-2]
+            info['model'] = model
         # Coordinates
-        if self.coordinates is None:
+        if self.model.coordinates is None:
             shape = None
             corner = None
         else:
@@ -167,8 +171,7 @@ class Feature(object):
             shape = (int(coor[0][-1] - coor[0][0])+1,
                      int(coor[1][-1] - coor[1][0])+1)
             corner = (int(coor[0][0]), int(coor[1][0]))
-            info['shape'] = shape
-            info['corner'] = corner
+            info['coordinates'] = (shape, corner)
         # Add reduced chi-squared
         if self.optimizer is not None:
             if self.optimizer.result is not None:
@@ -208,26 +211,24 @@ class Feature(object):
         if isinstance(info, str):
             with open(info, 'rb') as f:
                 info = json.load(f)
-        self.model.properties = {k: info[k] for k in
-                                 self.model.properties.keys()}
-        if 'shape' in info.keys():
-            if 'corner' in info.keys():
-                corner = info['corner']
-            else:
-                corner = (0, 0)
-            self.model.coordinates = coordinates(info['shape'],
-                                                 corner=corner)
-            self.mask.coordinates = self.model.coordinates
+        if 'model' in info.keys():
+            if info['model'] == 'LMHologram':
+                self.model = LMHologram()
+                self.model.properties = {k: info[k] for k in
+                                         self.model.properties.keys()}
+        if 'coordinates' in info.keys():
+            if hasattr(self.model, 'coordinates'):
+                args = info['coordinates']
+                self.model.coordinates = coordinates(*args)
         if 'data' in info.keys():
             data = np.array(info['data'])
-            if info['shape'] is not None:
+            if 'shape' in info.keys():
                 data = data.reshape(info['shape'])
             self.data = data
 
 
 if __name__ == '__main__':
     from pylorenzmie.theory import coordinates
-    from pylorenzmie.theory import LMHologram
     import cv2
     import matplotlib.pyplot as plt
     from time import time
@@ -268,7 +269,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm', nfits=2)
+    result = a.optimize(method='amoeba-lm', nfits=1)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
@@ -282,3 +283,9 @@ if __name__ == '__main__':
     # plot mask
     plt.imshow(data, cmap='gray')
     a.optimizer.mask.draw_mask()
+
+    # test serialization
+    out = a.serialize()
+    f = Feature()
+    f.deserialize(out)
+    f.optimize()
