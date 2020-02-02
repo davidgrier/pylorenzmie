@@ -2,12 +2,13 @@
 # -*- coding: utf-8 -*-
 
 import json
-from pylorenzmie.theory import Feature
+from .Feature import Feature
 
 
 class Trajectory(object):
 
-    def __init__(self, features=[], framenumbers=[], info=None, instrument=None):
+    def __init__(self, features=[], framenumbers=[],
+                 info=None, instrument=None):
         self._features = []
         self._framenumbers = []
         self._instrument = instrument
