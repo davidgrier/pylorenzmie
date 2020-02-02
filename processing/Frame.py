@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
-from pylorenzmie.theory import Feature
+from .Feature import Feature
 
 
 class Frame(object):

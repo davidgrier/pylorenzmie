@@ -26,9 +26,9 @@ except Exception as e:
 
 from .LorenzMie import LorenzMie
 from .LMHologram import LMHologram
-from .Feature import Feature
 
 
-all = [GeneralizedLorenzMie, Sphere, Feature,
+all = [GeneralizedLorenzMie, Sphere,
        LMHologram, Instrument, coordinates, Particle, LorenzMie]
+
 
