@@ -3,7 +3,7 @@
 
 import numpy as np
 from pylorenzmie.theory.GeneralizedLorenzMie import GeneralizedLorenzMie
-from pylorenzmie.theory.fastkernels import fastfield
+from pylorenzmie.theory.fastholo import fastfield
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the

@@ -2,22 +2,23 @@
 # -*- coding: utf-8 -*-
 
 import json
+import os
 import logging
 import numpy as np
 from scipy.optimize import least_squares
-from pylorenzmie.theory import coordinates
-from pylorenzmie.theory import LMHologram as Model
-from pylorenzmie.fitting import FitSettings, FitResult
-from pylorenzmie.fitting import Mask, GlobalSampler, amoeba
+from pylorenzmie.fitting import amoeba
+
+from .Settings import FitSettings, FitResult
+from .Mask import Mask
+from .GlobalSampler import GlobalSampler
 
 try:
     import cupy as cp
-    from pylorenzmie.theory import cukernels as cuk
-except Exception as e:
+    from pylorenzmie.fitting import cukernels as cuk
+except Exception:
     cp = None
-    print(e)
 try:
-    from pylorenzmie.theory import fastkernels as fk
+    from pylorenzmie.fitting import fastkernels as fk
 except Exception:
     pass
 
@@ -25,9 +26,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-class Feature(object):
+class Optimizer(object):
     '''
-    Abstraction of a feature in an in-line hologram
+    Optimization equipment for fitting a holographic model
+    to data.
 
     ...
 
@@ -37,9 +39,6 @@ class Feature(object):
         [npts] normalized intensity values
     noise : float
         Estimate for the additive noise value at each data pixel
-    coordinates : numpy.ndarray
-        [npts, 3] array of pixel coordinates
-        Note: This property is shared with the underlying Model
     model : LMHologram
         Incorporates information about the Particle and the Instrument
         and uses this information to compute a hologram at the
@@ -50,7 +49,7 @@ class Feature(object):
         during fitting. True means the parameter will vary.
         Setting FitSettings.parameters.vary manually will not
         work.
-    amoeba_settings : FitSettings
+    nm_settings : FitSettings
         Settings for nelder-mead optimization. Refer to minimizers.py
         or cminimizers.pyx -> amoeba and Settings.py -> FitSettings
         for documentation.
@@ -68,51 +67,30 @@ class Feature(object):
 
     Methods
     -------
-    residuals() : numpy.ndarray
-        Difference between the current model and the data,
-        normalized by the noise estimate.
     optimize() : FitResult
         Optimize the Model to fit the data. A FitResult is
         returned and can be printed for a comprehensive report,
         which is also reflected in updates to the properties of
         the Model.
-    serialize() : dict
-        Serialize select attributes and properties of Feature to a dict.
-    deserialize(info) : None
-        Restore select attributes and properties to a Feature from a dict.
-
     '''
 
-    def __init__(self,
-                 model=None,
-                 data=None,
-                 noise=0.05,
-                 info=None,
-                 **kwargs):
-        self.model = Model(**kwargs) if model is None else model
+    def __init__(self, model, data=None, noise=0.05):
+        # Initialize properties
+        self.params = tuple(model.properties.keys())
+        # Set model
+        self.model = model
         # Set fields
         self._shape = None
         self.data = data
         self.noise = noise
         self.result = None
-        self.coordinates = self.model.coordinates
-        # Initialize Feature properties
-        self.params = tuple(self.model.properties.keys())
-        # Set default options for fitting
-        self._init_params()
-        # Random subset sampling
-        self.mask = Mask(self.model.coordinates)
-        # Deserialize if needed
-        self.deserialize(info)
-        # Globalized optimization sampling
-        self.sampler = GlobalSampler(self)
 
     #
     # Fields for user to set data and model's initial guesses
     #
     @property
     def data(self):
-        '''Values of the (normalized) hologram at each pixel'''
+        '''Values of the (normalized) data at each pixel'''
         if type(self._data) is np.ndarray:
             data = self._data.reshape(self._shape)
         else:
@@ -122,8 +100,6 @@ class Feature(object):
     @data.setter
     def data(self, data):
         if type(data) is np.ndarray:
-            self._shape = data.shape
-            data = data.flatten()
             # Find indices where data is saturated or nan/inf
             self.saturated = np.where(data == np.max(data))[0]
             self.nan = np.append(np.where(np.isnan(data))[0],
@@ -140,20 +116,26 @@ class Feature(object):
     @model.setter
     def model(self, model):
         self._model = model
+        # Random subset sampling
+        self.mask = Mask(model.coordinates)
+        # Try config
+        try:
+            abs = os.path.abspath(__file__)
+            path = '/'.join(abs.split('/')[:-1])
+            fn = '.'+str(type(model)).split('.')[-1][:-2]
+            with open(os.path.join(path, fn), 'r') as f:
+                config = json.load(f)
+            self._init_settings(config)
+            # Globalized optimization sampling
+            self.sampler = GlobalSampler(self, config['global'])
+        except Exception:
+            self.lm_settings = None
+            self.nm_settings = None
+            self.sampler = None
 
     #
-    # Methods to show residuals and optimize
+    # Public methods
     #
-    def residuals(self):
-        '''Returns difference bewteen data and current model
-
-        Returns
-        -------
-        residuals : numpy.ndarray
-            Difference between model and data at each pixel
-        '''
-        return self.model.hologram().reshape(self._shape) - self.data
-
     def optimize(self, method='amoeba', square=True, nfits=1):
         '''
         Fit Model to data
@@ -200,116 +182,20 @@ class Feature(object):
                    'Fit may not converge.')
             logger.warning(msg.format(avg))
         # Fit
-        if nfits > 1:
+        if nfits > 1 and self.sampler is not None:
             result, options = self._globalize(
                 method, nfits, x0, square)
         elif nfits == 1:
             result, options = self._optimize(method, x0, square)
-        else:
-            raise ValueError("nfits must be greater than or equal to 1.")
         # Post-fit cleanup
         result, settings = self._cleanup(method, square, result, nfits,
                                          options=options)
         # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
-
-        # Store last result 
+        # Store last result
         result = FitResult(method, result, settings, self.model, npix)
         self.result = result
-
         return result
-
-    #
-    # Methods for saving data
-    #
-    def serialize(self, filename=None, exclude=[]):
-        '''
-        Serialization: Save state of Feature in dict
-
-        Arguments
-        ---------
-        filename: str
-            If provided, write data to file. filename should
-            end in .json
-        exclude : list of keys
-            A list of keys to exclude from serialization.
-            If no variables are excluded, then by default,
-            data, coordinates, noise, and all instrument +
-            particle properties) are serialized.
-        Returns
-        -------
-        dict: serialized data
-
-        NOTE: For a shallow serialization (i.e. for graphing/plotting),
-              use exclude = ['data', 'shape', 'corner', 'noise', 'redchi']
-        '''
-        coor = self.model.coordinates
-        if self.data is None:
-            data = None
-            shape = None
-            corner = None
-        else:
-            data = self.data.tolist()
-            shape = (int(coor[0][-1] - coor[0][0])+1,
-                     int(coor[1][-1] - coor[1][0])+1)
-            corner = (int(coor[0][0]), int(coor[1][0]))
-        # Dict for variables not in properties
-        info = {'data': data,
-                'shape': shape,
-                'corner': corner,
-                'noise': self.noise}
-        # Add reduced chi-squared
-        if self.result is not None:
-            redchi = self.result.redchi
-        else:
-            redchi = None
-        info.update({'redchi': redchi})
-        # Exclude things, if provided
-        keys = self.params
-        for ex in exclude:
-            if ex in keys:
-                keys.pop(ex)
-            elif ex in info.keys():
-                info.pop(ex)
-            else:
-                print(ex + " not found in Feature's keylist")
-        # Combine dictionaries + finish serialization
-        out = self.model.properties
-        out.update(info)
-        if filename is not None:
-            with open(filename, 'w') as f:
-                json.dump(out, f)
-        return out
-
-    def deserialize(self, info):
-        '''
-        Restore serialized state of Feature from dict
-
-        Arguments
-        ---------
-        info: dict | str
-            Restore keyword/value pairs from dict.
-            Alternatively restore dict from named file.
-        '''
-        if info is None:
-            return
-        if isinstance(info, str):
-            with open(info, 'rb') as f:
-                info = json.load(f)
-        self.model.properties = {k: info[k] for k in
-                                 self.model.properties.keys()}
-        if 'shape' in info.keys():
-            if 'corner' in info.keys():
-                corner = info['corner']
-            else:
-                corner = (0, 0)
-            self.model.coordinates = coordinates(info['shape'],
-                                                 corner=corner)
-            self.mask.coordinates = self.model.coordinates
-        if 'data' in info.keys():
-            self.data = np.array(info['data'])
-        if 'noise' in info.keys():
-            self.noise = info['noise']
 
     #
     # Under the hood optimization helper functions
@@ -326,11 +212,11 @@ class Feature(object):
             else:
                 objective = self._absolute
             result = amoeba(
-                objective, x0, **self.amoeba_settings.getkwargs(self.vary))
+                objective, x0, **self.nm_settings.getkwargs(self.vary))
         elif method == 'amoeba-lm':
             nmresult = amoeba(
                 self._chisqr, x0,
-                **self.amoeba_settings.getkwargs(self.vary))
+                **self.nm_settings.getkwargs(self.vary))
             if not nmresult.success:
                 msg = 'Nelder-Mead: {}. Falling back to least squares.'
                 logger.warning(msg.format(nmresult.message))
@@ -417,45 +303,33 @@ class Feature(object):
     #
     # Fitting preparation and cleanup
     #
-    def _init_params(self):
+    def _init_settings(self, config):
         '''
         Initialize default settings for levenberg-marquardt and
         nelder-mead optimization
         '''
-        # Default parameters to vary, in the following order:
-        # x_p, y_p, z_p [pixels], a_p [um], n_p,
-        # k_p, n_m, wavelength [um], magnification [um/pixel]
-        vary = [True] * 5
-        vary.extend([False] * 5)
+        cfg_lm = config['lm']
+        cfg_nm = config['nm']
+        # Default parameters to vary during fitting
+        vary = config['vary']
         # ... levenberg-marquardt variable scale factor
-        x_scale = [1.e4, 1.e4, 1.e3, 1.e4, 1.e5, 1.e7, 1.e2, 1.e2, 1.e2, 1]
-        # ... bounds around intial guess for bounded nelder-mead
-        simplex_bounds = [(-np.inf, np.inf), (-np.inf, np.inf),
-                          (0., 2000.), (.05, 4.), (1., 3.),
-                          (0., 3.), (1., 3.), (.100, 2.00), (0., 1.),
-                          (0., 5.)]
+        x_scale = cfg_lm['x_scale']
         # ... scale of initial simplex
-        simplex_scale = np.array(
-            [4., 4., 5., 0.01, 0.01, .2, .1, .1, .05, .05])
+        simplex_scale = cfg_nm['simplex_scale']
+        # ... bounds around intial guess for bounded nelder-mead
+        simplex_bounds = cfg_nm['simplex_bounds']
         # ... tolerance for nelder-mead termination
-        simplex_tol = [.1, .1, .01, .001, .001, .001, .01, .01, .01, .01]
-        # Default options for amoeba and lm not parameter dependent
-        lm_options = {'method': 'lm',
-                      'xtol': 1.e-6,
-                      'ftol': 1.e-3,
-                      'gtol': 1e-6,
-                      'max_nfev': 2000,
-                      'diff_step': 1e-5,
-                      'verbose': 0}
-        amoeba_options = {'ftol': 1.e-3, 'maxevals': 800}
-        # Initialize settings for fitting
-        self.amoeba_settings = FitSettings(self.params,
-                                           options=amoeba_options)
+        simplex_tol = cfg_nm['simplex_tol']
+        # Non-vector arguments to fitting
+        lm_options = cfg_lm['options']
+        nm_options = cfg_nm['options']
+        self.nm_settings = FitSettings(self.params,
+                                       options=nm_options)
         self.lm_settings = FitSettings(self.params,
                                        options=lm_options)
         self.vary = dict(zip(self.params, vary))
         for idx, p in enumerate(self.params):
-            amparam = self.amoeba_settings.parameters[p]
+            amparam = self.nm_settings.parameters[p]
             lmparam = self.lm_settings.parameters[p]
             amparam.options['simplex_scale'] = simplex_scale[idx]
             amparam.options['xtol'] = simplex_tol[idx]
@@ -473,7 +347,7 @@ class Feature(object):
         for p in self.params:
             val = self.model.properties[p]
             self.lm_settings.parameters[p].initial = val
-            self.amoeba_settings.parameters[p].initial = val
+            self.nm_settings.parameters[p].initial = val
             if self.vary[p]:
                 x0.append(val)
         x0 = np.array(x0)
@@ -493,7 +367,7 @@ class Feature(object):
         elif method == 'amoeba':
             if not square:
                 result.fun = float(self._objective(reduce=True))
-            settings = self.amoeba_settings
+            settings = self.nm_settings
         else:
             settings = self.lm_settings
         if self.model.using_cuda:
@@ -506,60 +380,3 @@ class Feature(object):
             if self.vary[p]:
                 vary.append(p)
         self.model.properties = dict(zip(vary, x))
-
-
-if __name__ == '__main__':
-    import cv2
-    import matplotlib.pyplot as plt
-    from time import time
-
-    a = Feature()
-
-    # Read example image
-    img = cv2.imread('../tutorials/crop.png')
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img = img / np.mean(img)
-    shape = img.shape
-    a.data = img
-
-    # Instrument configuration
-    a.model.coordinates = coordinates(shape)
-    ins = a.model.instrument
-    ins.wavelength = 0.447
-    ins.magnification = 0.048
-    ins.n_m = 1.34
-
-    # Initial estimates for particle properties
-    p = a.model.particle
-    p.r_p = [shape[0]//2, shape[1]//2, 330.]
-    p.a_p = 1.1
-    p.n_p = 1.4
-    # add errors to parameters
-    p.r_p += np.random.normal(0., 1, 3)
-    p.z_p += np.random.normal(0., 30, 1)
-    p.a_p += np.random.normal(0., 0.1, 1)
-    p.n_p += np.random.normal(0., 0.04, 1)
-    print("Initial guess:\n{}".format(p))
-    #a.model.using_cuda = False
-    #a.model.double_precision = False
-    # init dummy hologram for proper speed gauge
-    a.model.hologram()
-    a.mask.settings['distribution'] = 'donut'
-    a.mask.settings['percentpix'] = .1
-    # a.amoeba_settings.options['maxevals'] = 1
-    # ... and now fit
-    start = time()
-    result = a.optimize(method='amoeba-lm', nfits=1)
-    print("Time to fit: {:03f}".format(time() - start))
-    print(result)
-
-    # plot residuals
-    resid = a.residuals().reshape(shape)
-    hol = a.model.hologram().reshape(shape)
-    data = a.data.reshape(shape)
-    plt.imshow(np.hstack([hol, data, resid+1]), cmap='gray')
-    plt.show()
-
-    # plot mask
-    plt.imshow(data, cmap='gray')
-    a.mask.draw_mask()

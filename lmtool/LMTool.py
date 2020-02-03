@@ -3,15 +3,18 @@
 
 import logging
 from scipy.interpolate import BSpline, splrep
+import os
 import json
 import cv2
 import numpy as np
 import pyqtgraph as pg
-import pylorenzmie
-from pylorenzmie.theory.Feature import Feature
-from pylorenzmie.theory.Instrument import coordinates
-from pylorenzmie.lmtool.LMTool_Ui import Ui_MainWindow
-import os
+import pylorenzmie as pylm
+
+from pylorenzmie.theory import LMHologram
+from pylorenzmie.theory import Feature
+from pylorenzmie.theory import coordinates
+
+from LMTool_Ui import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot
 from PyQt5 import QtWidgets, QtCore
 
@@ -52,19 +55,15 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
         self.setupParameters()
         self.maxrange = int(self.ui.bbox.value() // 2)
-        self._profile_coordinates = np.arange(self.maxrange)
-        self._fit_coordinates = coordinates((self.maxrange*2,
-                                             self.maxrange*2))
-        self._coordinates = self._profile_coordinates
         self.setupImageTab()
         self.setupProfileTab()
         self.setupFitTab()
         self.setupTheory()
-        self.connectSignals()
         if data is None:
             self.openFile(filename)
         else:
             self.data = data.astype(np.float)
+        self.connectSignals()
         self.updateRp()
 
     #
@@ -120,36 +119,38 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.fitTab.addViewBox(**options).addItem(self.residuals)
 
     def setupParameters(self):
-        folder = os.path.dirname(pylorenzmie.__file__)
+        folder = os.path.dirname(pylm.__file__)
         folder += str('/lmtool')
         with open(folder+'/LMTool.json', 'r') as file:
             settings = json.load(file)
-        names = ['wavelength', 'magnification', 'n_m', 'alpha',
+        names = ['wavelength', 'magnification', 'n_m',
                  'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p',
-                 'bbox', 'noise']
+                 'bbox']
         for name in names:
-            prop = getattr(self.ui, name)
-            setting = settings[name]
-            if 'text' in setting:
-                prop.setText(setting['text'])
-            if 'suffix' in setting:
-                prop.spinbox.setSuffix(setting['suffix'])
-            if 'range' in setting:
-                range = setting['range']
-                prop.setRange(range[0], range[1])
-            if 'decimals' in setting:
-                prop.setDecimals(setting['decimals'])
-            if 'step' in setting:
-                prop.setSingleStep(setting['step'])
-            if 'value' in setting:
-                prop.setValue(setting['value'])
-            if 'fixed' in setting:
-                prop.fixed = setting['fixed']
+            if hasattr(self.ui, name):
+                prop = getattr(self.ui, name)
+                setting = settings[name]
+                if 'text' in setting:
+                    prop.setText(setting['text'])
+                if 'suffix' in setting:
+                    prop.spinbox.setSuffix(setting['suffix'])
+                if 'range' in setting:
+                    range = setting['range']
+                    prop.setRange(range[0], range[1])
+                if 'decimals' in setting:
+                    prop.setDecimals(setting['decimals'])
+                if 'step' in setting:
+                    prop.setSingleStep(setting['step'])
+                if 'value' in setting:
+                    prop.setValue(setting['value'])
+                if 'fixed' in setting:
+                    prop.fixed = setting['fixed']
         self.ui.bbox.checkbox.hide()
-        self.ui.noise.checkbox.hide()
 
     def setupTheory(self):
-        self.feature = Feature()
+        self.profile_coords = np.arange(self.maxrange)
+        self._coordinates = self.profile_coords
+        self.feature = Feature(model=LMHologram())
         self.theory = self.feature.model
         self.theory.coordinates = self.coordinates
         self.theory.instrument.wavelength = self.ui.wavelength.value()
@@ -158,7 +159,6 @@ class LMTool(QtWidgets.QMainWindow):
         self.theory.particle.a_p = self.ui.a_p.value()
         self.theory.particle.n_p = self.ui.n_p.value()
         self.theory.particle.z_p = self.ui.z_p.value()
-        self.theory.alpha = self.ui.alpha.value()
         self.updateTheoryProfile()
 
     def connectSignals(self):
@@ -175,9 +175,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.x_p.valueChanged['double'].connect(self.updateRp)
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
-        self.ui.alpha.valueChanged['double'].connect(self.updateHologram)
         self.ui.bbox.valueChanged['double'].connect(self.updateBBox)
-        self.ui.noise.valueChanged['double'].connect(self.updateNoise)
         self.ui.optimizeButton.clicked.connect(self.optimize)
 
     #
@@ -216,7 +214,6 @@ class LMTool(QtWidgets.QMainWindow):
 
     @pyqtSlot(float)
     def updateHologram(self, count):
-        self.theory.alpha = self.ui.alpha.value()
         self.updateTheoryProfile()
         if self.ui.tabs.currentIndex() == 2:
             self.updateFit()
@@ -233,36 +230,29 @@ class LMTool(QtWidgets.QMainWindow):
     @pyqtSlot(float)
     def updateBBox(self, count):
         self.maxrange = int(self.ui.bbox.value() / 2)
-        self._profile_coordinates = np.arange(self.maxrange)
-        self._fit_coordinates = coordinates((self.maxrange*2,
-                                             self.maxrange*2))
+        self.profile_coords = np.arange(self.maxrange)
         self.ui.profilePlot.setXRange(0., self.maxrange)
         self.updateDataProfile()
         self.updateTheoryProfile()
         self.updateFit()
-
-    @pyqtSlot(float)
-    def updateNoise(self, count):
-        self.feature.noise = self.ui.noise.value() / 100.
 
     @pyqtSlot()
     def optimize(self):
         logger.info("Starting optimization...")
         self.updateFit()
         method = 'lm' if self.ui.LMButton.isChecked() else 'amoeba-lm'
-        for prop in self.feature.params:
-            propUi = getattr(self.ui, prop)
-            self.feature.vary[prop] = not propUi.fixed
-        (x_old, y_old) = (self.theory.particle.x_p, self.theory.particle.y_p)
+        for prop in self.feature.optimizer.params:
+            if hasattr(self.ui, prop):
+                propUi = getattr(self.ui, prop)
+                self.feature.optimizer.vary[prop] = not propUi.fixed
         result = self.feature.optimize(method=method)
-        self.updateParameterUi(x_old, y_old)
+        self.updateParameterUi()
         self.updateFit()
         self.updateDataProfile()
         self.updateTheoryProfile()
-        logger.info("Finished!")
-        print(result)
+        logger.info("Finished!\n{}".format(str(result)))
 
-    def updateParameterUi(self, x_p, y_p):
+    def updateParameterUi(self):
         # Disconnect
         self.ui.wavelength.valueChanged['double'].disconnect(
             self.updateInstrument)
@@ -272,22 +262,18 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.a_p.valueChanged['double'].disconnect(self.updateParticle)
         self.ui.n_p.valueChanged['double'].disconnect(self.updateParticle)
         self.ui.z_p.valueChanged['double'].disconnect(self.updateParticle)
-        self.ui.alpha.valueChanged['double'].disconnect(self.updateHologram)
         # Update
         particle, instrument = (self.theory.particle,
                                 self.theory.instrument)
-        for p in self.feature.params:
-            attrUi = getattr(self.ui, p)
-            if p in particle.properties:
-                if p == 'x_p' or p == 'y_p':
-                    delta = getattr(particle, p)-eval(p)
-                    attrUi.setValue(attrUi.value()+delta)
-                else:
+        for p in self.feature.optimizer.params:
+            if hasattr(self.ui, p):
+                attrUi = getattr(self.ui, p)
+                if p in particle.properties:
                     attrUi.setValue(getattr(particle, p))
-            elif p in instrument.properties:
-                attrUi.setValue(getattr(instrument, p))
-            else:
-                attrUi.setValue(getattr(self.theory, p))
+                elif p in instrument.properties:
+                    attrUi.setValue(getattr(instrument, p))
+                else:
+                    attrUi.setValue(getattr(self.theory, p))
         # Reconnect
         self.ui.wavelength.valueChanged['double'].connect(
             self.updateInstrument)
@@ -297,14 +283,16 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.a_p.valueChanged['double'].connect(self.updateParticle)
         self.ui.n_p.valueChanged['double'].connect(self.updateParticle)
         self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
-        self.ui.alpha.valueChanged['double'].connect(self.updateHologram)
 
     @pyqtSlot()
     def openFile(self, filename=None):
         if filename is None:
             filename, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self, 'Open Hologram', '', 'Images (*.png)')
-        self.data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+        data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+        if data is None:
+            return
+        self.data = data.astype(float)
 
     @pyqtSlot()
     def openBackground(self, filename=None):
@@ -320,7 +308,7 @@ class LMTool(QtWidgets.QMainWindow):
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Parameters', '', 'JSON (*.json)')
         names = ['x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p',
-                 'magnification', 'wavelength', 'n_m', 'alpha']
+                 'magnification', 'wavelength', 'n_m']
         parameters = {name: getattr(self.ui, name).value()
                       for name in names}
         try:
@@ -333,7 +321,7 @@ class LMTool(QtWidgets.QMainWindow):
     # Routines to update plots
     #
     def updateDataProfile(self):
-        self.coordinates = self._profile_coordinates
+        self.coordinates = self.profile_coords
         center = (self.ui.x_p.value(), self.ui.y_p.value())
         avg, std = aziavg(self.data, center)
         self.dataProfile.setData(avg)
@@ -341,7 +329,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.regionLower.setData(avg - std)
 
     def updateTheoryProfile(self):
-        self.coordinates = self._profile_coordinates
+        self.coordinates = self.profile_coords
         self.theory.particle.x_p, self.theory.particle.y_p = (0, 0)
         xsmooth = np.linspace(0, self.maxrange - 1, 300)
         y = self.theory.hologram()
@@ -355,24 +343,23 @@ class LMTool(QtWidgets.QMainWindow):
         x_p = self.ui.x_p.value()
         y_p = self.ui.y_p.value()
         h, w = self.data.shape
-        self.coordinates = self._fit_coordinates
         x0 = int(np.clip(x_p - dim, 0, w - 2))
         y0 = int(np.clip(y_p - dim, 0, h - 2))
         x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
         y1 = int(np.clip(y_p + dim, y0 + 1, h - 1))
-        self.theory.particle.x_p = x_p - x0
-        self.theory.particle.y_p = y_p - y0
-        hol = self.theory.hologram().reshape(dim*2, dim*2)
         img = self.data[y0:y1, x0:x1]
-        if img.shape != hol.shape:
-            s1 = img.shape[0] - hol.shape[0]
-            s2 = img.shape[1] - hol.shape[1]
-            img = self.data[y0:y1-s1, x0:x1-s2]
-        self.feature.data = img.flatten()
+        xcoords = self.data_coords[0].reshape(self.data.shape)
+        xcoords = xcoords[y0:y1, x0:x1].flatten()
+        ycoords = self.data_coords[1].reshape(self.data.shape)
+        ycoords = ycoords[y0:y1, x0:x1].flatten()
+        self.coordinates = np.stack((xcoords, ycoords))
+        self.theory.particle.x_p = x_p
+        self.theory.particle.y_p = y_p
+        hol = self.theory.hologram().reshape(img.shape)
+        self.feature.data = img
         self.region.setImage(img)
         self.fit.setImage(hol)
-        self.residuals.setImage(self.feature.residuals()
-                                .reshape(dim*2, dim*2)+1)
+        self.residuals.setImage(self.feature.residuals())
 
     @property
     def data(self):
@@ -383,6 +370,7 @@ class LMTool(QtWidgets.QMainWindow):
         self._data = data / self.background
         self._data /= np.mean(self._data)
         self.image.setImage(self._data)
+        self.data_coords = coordinates(data.shape)
         self.ui.x_p.setRange(0, data.shape[1]-1)
         self.ui.y_p.setRange(0, data.shape[0]-1)
         self.ui.bbox.setRange(0, min(data.shape[0]-1, data.shape[1]-1))
