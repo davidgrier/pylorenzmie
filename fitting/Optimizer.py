@@ -39,9 +39,6 @@ class Optimizer(object):
         [npts] normalized intensity values
     noise : float
         Estimate for the additive noise value at each data pixel
-    coordinates : numpy.ndarray
-        [npts, 3] array of pixel coordinates
-        Note: This property is shared with the underlying Model
     model : LMHologram
         Incorporates information about the Particle and the Instrument
         and uses this information to compute a hologram at the
