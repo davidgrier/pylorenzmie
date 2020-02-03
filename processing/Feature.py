@@ -156,7 +156,7 @@ class Feature(object):
         # Data
         if self.data is not None:
             if 'data' not in exclude:
-                info['data'] = self.data.tolist()
+                info['data'] = self._data.tolist()
             else:
                 info['data'] = None
         # Model type
