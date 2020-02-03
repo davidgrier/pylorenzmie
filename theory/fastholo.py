@@ -211,24 +211,3 @@ def fasthologram(field, alpha, n, hologram):
         e *= alpha
         i = e * np.conj(e)
         hologram[idx] = np.real(np.sum(i))
-
-
-@njit(parallel=True, fastmath=False, cache=True)
-def fastresiduals(holo, data, noise):
-    return (holo - data) / noise
-
-
-@njit(parallel=True, fastmath=False, cache=True)
-def fastchisqr(holo, data, noise):
-    chisqr = 0.
-    for idx in prange(holo.size):
-        chisqr += ((holo[idx] - data[idx]) / noise) ** 2
-    return chisqr
-
-
-@njit(parallel=True, fastmath=False, cache=True)
-def fastabsolute(holo, data, noise):
-    s = 0.
-    for idx in prange(holo.size):
-        s += abs((holo[idx] - data[idx]) / noise)
-    return s

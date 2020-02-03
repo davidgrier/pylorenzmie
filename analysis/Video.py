@@ -74,15 +74,18 @@ class Video(object):
     def serialize(self, filename=None,
                   omit=[], omit_frame=[], omit_traj=[], omit_feat=[]):
         trajs, frames = ([], [])
-        for traj in self.trajectories:
-            trajs.append(
-                traj.serialize(omit=omit_traj, omit_feat=omit_feat))
-        for frame in self.frames:
-            frames.append(
-                frame.serialize(omit=omit_frame, omit_feat=omit_feat))
+        if 'trajectories' not in omit:
+            for traj in self.trajectories:
+                trajs.append(
+                    traj.serialize(omit=omit_traj, omit_feat=omit_feat))
+        if 'frames' not in omit:
+            for frame in self.frames:
+                frames.append(
+                    frame.serialize(omit=omit_frame, omit_feat=omit_feat))
         info = {'trajectories': trajs,
-                'frames': frames,
-                'fps': self.fps}
+                'frames': frames}
+        if self.fps is not None:
+            info['fps'] = self.fps
         for k in omit:
             if k in info.keys():
                 info.pop(k)
