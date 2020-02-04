@@ -27,7 +27,7 @@ class Feature(object):
         IMPORTANT: Supported models decide whether or not to initialize
                    optimizers based on config files! See
                    pylorenzmie/fitting/.LMHologram and
-                   pylorenzmie/theory/.LMHologram
+                   pylorenzmie/analysis/.LMHologram
                    for examples.
 
 
@@ -89,9 +89,9 @@ class Feature(object):
     def model(self, model):
         if model is not None:
             try:
-                abs = os.path.abspath(__file__)
-                path = '/'.join(abs.split('/')[:-2])+'/theory'
-                fn = '.'+str(type(model)).split('.')[-1][:-2]
+                path = '/'.join(os.path.abspath(__file__)
+                                .split('/')[:-1])
+                fn = '.'+model.__class__.__name__
                 with open(os.path.join(path, fn), 'r') as f:
                     d = json.load(f)
                 optimize = d['optimize']
