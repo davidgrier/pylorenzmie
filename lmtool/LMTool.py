@@ -10,9 +10,8 @@ import numpy as np
 import pyqtgraph as pg
 import pylorenzmie as pylm
 
-from pylorenzmie.theory import LMHologram
-from pylorenzmie.theory import Feature
-from pylorenzmie.theory import coordinates
+from pylorenzmie.theory import LMHologram, coordinates
+from pylorenzmie.analysis import Feature
 
 from LMTool_Ui import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot
