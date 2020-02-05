@@ -89,8 +89,7 @@ class Feature(object):
     def model(self, model):
         if model is not None:
             try:
-                path = '/'.join(os.path.abspath(__file__)
-                                .split('/')[:-1])
+                path = os.path.dirname(os.path.abspath(__file__))
                 fn = '.'+model.__class__.__name__
                 with open(os.path.join(path, fn), 'r') as f:
                     d = json.load(f)

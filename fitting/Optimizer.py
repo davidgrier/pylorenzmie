@@ -120,8 +120,7 @@ class Optimizer(object):
         self.mask = Mask(model.coordinates)
         # Try config
         try:
-            path = '/'.join(os.path.abspath(__file__)
-                            .split('/')[:-1])
+            path = os.path.dirname(os.path.abspath(__file__))
             fn = '.'+model.__class__.__name__
             with open(os.path.join(path, fn), 'r') as f:
                 config = json.load(f)
