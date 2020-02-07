@@ -5,7 +5,7 @@ import json
 import os
 import numpy as np
 from pylorenzmie.fitting import Optimizer
-from pylorenzmie.theory import LMHologram
+from pylorenzmie.theory import LMHologram, coordinates
 
 
 class Feature(object):
