@@ -135,7 +135,8 @@ class Optimizer(object):
     #
     # Public methods
     #
-    def optimize(self, method='amoeba', square=True, nfits=1):
+    def optimize(self, method='amoeba',
+                 square=True, nfits=1, verbose=False):
         '''
         Fit Model to data
 
@@ -151,6 +152,14 @@ class Optimizer(object):
             If False, 'amoeba' fitting method will minimize the sum of
             absolute values of the residuals. This keyword has no effect
             on 'amoeba-lm' or 'lm' methods.
+        nfits : int
+            Choose number of initial values to try for optimization.
+            Optimizer.sampler, a GlobalSampler, samples new points
+            that are perturbed from the initial guess based on
+            a probability distribution iteratively built with each 
+            new initial and final point.
+        verbose : bool
+            Choose whether or not to print warning messages.
 
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.least_squares()
@@ -172,20 +181,22 @@ class Optimizer(object):
         self.model.coordinates = self.mask.masked_coords()
         npix = self.model.coordinates.shape[1]
         # Prepare
-        x0 = self._prepare(method)
+        x0 = self._prepare(method, verbose=verbose)
         # Check mean of data
-        avg = self._subset_data.mean()
-        avg = avg.get() if self.model.using_cuda else avg
-        if not np.isclose(avg, 1., rtol=0, atol=.05):
-            msg = ('Mean of data ({:.02f}) is not near 1. '
-                   'Fit may not converge.')
-            logger.warning(msg.format(avg))
+        if verbose:
+            avg = self._subset_data.mean()
+            avg = avg.get() if self.model.using_cuda else avg
+            if not np.isclose(avg, 1., rtol=0, atol=.1):
+                msg = ('Mean of data ({:.02f}) is not near 1. '
+                       'Fit may not converge.')
+                logger.warning(msg.format(avg))
         # Fit
         if nfits > 1 and self.sampler is not None:
             result, options = self._globalize(
                 method, nfits, x0, square)
         elif nfits == 1:
-            result, options = self._optimize(method, x0, square)
+            result, options = self._optimize(
+                method, x0, square, verbose=verbose)
         # Post-fit cleanup
         result, settings = self._cleanup(method, square, result, nfits,
                                          options=options)
@@ -199,7 +210,7 @@ class Optimizer(object):
     #
     # Under the hood optimization helper functions
     #
-    def _optimize(self, method, x0, square):
+    def _optimize(self, method, x0, square, verbose=False):
         options = {}
         if method == 'lm':
             result = least_squares(
@@ -217,8 +228,9 @@ class Optimizer(object):
                 self._chisqr, x0,
                 **self.nm_settings.getkwargs(self.vary))
             if not nmresult.success:
-                msg = 'Nelder-Mead: {}. Falling back to least squares.'
-                logger.warning(msg.format(nmresult.message))
+                if verbose:
+                    msg = 'Nelder-Mead: {}. Falling back to least squares.'
+                    logger.warning(msg.format(nmresult.message))
                 x1 = x0
             else:
                 x1 = nmresult.x
@@ -336,11 +348,12 @@ class Optimizer(object):
             amparam.options['xmin'] = simplex_bounds[idx][0]
             lmparam.options['x_scale'] = x_scale[idx]
 
-    def _prepare(self, method):
+    def _prepare(self, method, verbose=False):
         # Warnings
-        if self.saturated.size > 10:
-            msg = "Excluding {} saturated pixels from optimization."
-            logger.warning(msg.format(self.saturated.size))
+        if verbose:
+            if self.saturated.size > 10:
+                msg = "Excluding {} saturated pixels from optimization."
+                logger.warning(msg.format(self.saturated.size))
         # Get initial guess for fit
         x0 = []
         for p in self.params:

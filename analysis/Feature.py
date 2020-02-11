@@ -30,7 +30,6 @@ class Feature(object):
                    pylorenzmie/analysis/.LMHologram
                    for examples.
 
-
     Methods
     -------
     residuals() : numpy.ndarray
@@ -269,7 +268,7 @@ if __name__ == '__main__':
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm', nfits=1)
+    result = a.optimize(method='amoeba-lm', nfits=1, verbose=False)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
