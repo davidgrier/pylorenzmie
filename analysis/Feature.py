@@ -47,19 +47,21 @@ class Feature(object):
 
     '''
 
-    def __init__(self, model=None, data=None, info=None):
+    def __init__(self, model=None, data=None, info=None, label=None):
         # Set fields
         self._optimizer = None
         self._model = None
+        self._label = None
         # Run setters
         self.data = data
         if model is not None:
             self.model = model
+        self.label = label
         # Deserialize if needed
         self.deserialize(info)
 
     #
-    # Fields for user to set data and model's initial guesses
+    # Fields for user to set data, model, optimizer, and classification label
     #
     @property
     def data(self):
@@ -106,11 +108,21 @@ class Feature(object):
 
     @property
     def optimizer(self):
+        '''Optimizer to refine holographic model parameters'''
         return self._optimizer
 
     @optimizer.setter
     def optimizer(self, optimizer):
         self._optimizer = optimizer
+
+    @property
+    def label(self):
+        '''Classifies what a Feature may be'''
+        return self._label
+
+    @label.setter
+    def label(self, label):
+        self._label = str(label)
 
     def residuals(self):
         '''Returns difference bewteen data and current model
@@ -178,6 +190,9 @@ class Feature(object):
                 info['redchi'] = redchi
         else:
             redchi = None
+        # Classification label
+        if self.label is not None:
+            info['label'] = self.label
         # Exclude things, if provided
         keys = self.model.properties.keys()
         for ex in exclude:
@@ -224,6 +239,8 @@ class Feature(object):
             if 'shape' in info.keys():
                 data = data.reshape(info['shape'])
             self.data = data
+        if 'label' in info.keys():
+            self.label = info['label']
 
 
 if __name__ == '__main__':
@@ -283,6 +300,9 @@ if __name__ == '__main__':
     plt.imshow(data, cmap='gray')
     a.optimizer.mask.draw_mask()
 
+    # classify
+    a.label = 'silica'
+    
     # test serialization
     out = a.serialize()
     f = Feature()
