@@ -70,6 +70,8 @@ class Mask(object):
     def uniform_distribution(self):
         img_size = self.coordinates[0].size
         distribution = np.ones(img_size)
+        distribution[self.exclude] = 0.
+        distribution = normalize(distribution)
         return distribution
 
     def radial_gaussian(self):  # it's like a donut, but ~ hazier ~
@@ -92,6 +94,9 @@ class Mask(object):
         pixels = self.coordinates[:2, :]
         dist = np.linalg.norm(pixels.T - center, axis=1)
         distribution *= gaussian(dist, mu, sigma)
+
+        distribution[self.exclude] = 0.
+        distribution = normalize(distribution)
 
         return distribution
 
@@ -120,6 +125,9 @@ class Mask(object):
                                 distribution * 10,
                                 distribution)
 
+        distribution[self.exclude] = 0.
+        distribution = normalize(distribution)
+
         return distribution
 
     def get_distribution(self):
@@ -130,12 +138,11 @@ class Mask(object):
             distribution = self.donut_distribution()
         elif d_name == 'radial_gaussian':
             distribution = self.radial_gaussian()
+        elif d_name == 'fast':
+            distribution = None
         else:
             raise ValueError(
                 "Invalid distribution name")
-
-        distribution[self.exclude] = 0.
-        distribution = normalize(distribution)
         return distribution
 
     # Get new pixels to sample
@@ -151,8 +158,9 @@ class Mask(object):
         else:
             p_dist = self.get_distribution()
             numpixels = int(totalpix*percentpix)
+            replace = True if p_dist is None else False
             sampled_index = np.random.choice(
-                totalpix, numpixels, p=p_dist, replace=False)
+                totalpix, numpixels, p=p_dist, replace=replace)
         self.sampled_index = sampled_index
 
     # Draw sampled and excluded pixels
