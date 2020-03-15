@@ -10,15 +10,15 @@ logger = logging.getLogger(__name__)
 # logger.setLevel(logging.DEBUG)
 
 
-def coordinates(shape, corner=None):
+def coordinates(shape, corner=None, dtype=np.float64):
     '''Return coordinate system for Lorenz-Mie microscopy images'''
     (ny, nx) = shape
     if corner is None:
         (left, top) = (0, 0)
     else:
         (left, top) = corner
-    x = np.arange(left, nx + left)
-    y = np.arange(top, ny + top)
+    x = np.arange(left, nx + left, dtype=dtype)
+    y = np.arange(top, ny + top, dtype=dtype)
     xv, yv = np.meshgrid(x, y)
     xv = xv.flatten()
     yv = yv.flatten()

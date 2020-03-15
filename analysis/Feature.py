@@ -260,6 +260,7 @@ if __name__ == '__main__':
 
     # Instrument configuration
     a.model.coordinates = coordinates(shape)
+    a.model.coordinates = a.model.coordinates.astype(np.float32)
     ins = a.model.instrument
     ins.wavelength = 0.447
     ins.magnification = 0.048
@@ -276,35 +277,41 @@ if __name__ == '__main__':
     p.a_p += np.random.normal(0., 0.1, 1)
     p.n_p += np.random.normal(0., 0.04, 1)
     print("Initial guess:\n{}".format(p))
-    #a.model.using_cuda = False
-    #a.model.double_precision = False
+    a.model.double_precision = False
     # init dummy hologram for proper speed gauge
     a.model.hologram()
-    a.optimizer.mask.settings['distribution'] = 'donut'
+    a.optimizer.mask.settings['distribution'] = 'fast'
     a.optimizer.mask.settings['percentpix'] = .1
     # a.amoeba_settings.options['maxevals'] = 1
     # ... and now fit
     start = time()
-    result = a.optimize(method='amoeba-lm', nfits=1, verbose=False)
+    a.model.coordinates = coordinates(shape, dtype=np.float32)
+    result = a.optimize(method='lm', nfits=1, verbose=False)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
+    # classify
+    a.label = 'silica'
+
+    # test serialization
+    out = a.serialize()
+    f = Feature()
+    f.deserialize(out)
+    f.model.double_precision = False
+    f.optimizer.mask.settings['distribution'] = 'fast'
+    f.optimizer.mask.settings['percentpix'] = .1
+    start = time()
+    f.model.coordinates = coordinates(shape, dtype=np.float32)
+    f.optimize(method='lm')
+    print("Time to fit (after deserialize): {:03f}".format(time() - start))
+
     # plot residuals
-    resid = a.residuals().reshape(shape)
-    hol = a.model.hologram().reshape(shape)
-    data = a.data.reshape(shape)
+    resid = f.residuals().reshape(shape)
+    hol = f.model.hologram().reshape(shape)
+    data = f.data.reshape(shape)
     plt.imshow(np.hstack([hol, data, resid+1]), cmap='gray')
     plt.show()
 
     # plot mask
     plt.imshow(data, cmap='gray')
-    a.optimizer.mask.draw_mask()
-
-    # classify
-    a.label = 'silica'
-    
-    # test serialization
-    out = a.serialize()
-    f = Feature()
-    f.deserialize(out)
-    f.optimize()
+    f.optimizer.mask.draw_mask()
