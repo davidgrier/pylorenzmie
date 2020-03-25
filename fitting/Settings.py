@@ -52,7 +52,27 @@ class FitSettings(object):
         for idx, key in enumerate(keys):
             self.parameters[key] = ParameterSettings()
 
-    def getkwargs(self, vary):
+    @property
+    def settings(self):
+        keys = self._keys
+        N = len(keys)
+        vary = dict(zip(keys, N*[True]))
+        return self.getkwargs(vary, ndarray=False)
+
+    @settings.setter
+    def settings(self, settings):
+        for s in settings.keys():
+            setting = settings[s]
+            if isinstance(setting, list):
+                if len(setting) == len(self._keys):
+                    for idx, val in enumerate(setting):
+                        p = self._keys[idx]
+                        param = self.parameters[p]
+                        param.options[s] = val
+            else:
+                self.options[s] = setting
+
+    def getkwargs(self, vary, ndarray=True):
         '''
         Returns keyword dictionary for fitting algorithm
 
@@ -92,7 +112,9 @@ class FitSettings(object):
                 param = self.parameters[key]
                 if param.vary:
                     l.append(param.options[name])
-            options[name] = np.array(l)
+            if ndarray:
+                l = np.array(l)
+            options[name] = l
         return options
 
 
