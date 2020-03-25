@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import json
-import pickle
 import os
 import numpy as np
 from pylorenzmie.fitting import Optimizer
