@@ -245,6 +245,7 @@ class Feature(object):
 
 if __name__ == '__main__':
     from pylorenzmie.theory import coordinates
+    #from pylorenzmie.theory.cuholo import cucoordinates as coordinates
     import cv2
     import matplotlib.pyplot as plt
     from time import time
@@ -259,8 +260,7 @@ if __name__ == '__main__':
     a.data = img
 
     # Instrument configuration
-    a.model.coordinates = coordinates(shape)
-    a.model.coordinates = a.model.coordinates.astype(np.float32)
+    a.model.coordinates = coordinates(shape, dtype=np.float32)
     ins = a.model.instrument
     ins.wavelength = 0.447
     ins.magnification = 0.048
@@ -314,4 +314,5 @@ if __name__ == '__main__':
 
     # plot mask
     plt.imshow(data, cmap='gray')
+
     f.optimizer.mask.draw_mask()

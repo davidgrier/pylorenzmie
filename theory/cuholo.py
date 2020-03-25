@@ -395,3 +395,18 @@ void hologram(cuFloatComplex *Ex,
     }
 }
 ''', 'hologram')
+
+
+def cucoordinates(shape, corner=None, dtype=cp.float32):
+    '''Return coordinate system for Lorenz-Mie microscopy images'''
+    (ny, nx) = shape
+    if corner is None:
+        (left, top) = (0, 0)
+    else:
+        (left, top) = corner
+    x = cp.arange(left, nx + left, dtype=dtype)
+    y = cp.arange(top, ny + top, dtype=dtype)
+    xv, yv = cp.meshgrid(x, y)
+    xv = xv.flatten()
+    yv = yv.flatten()
+    return cp.stack((xv, yv))

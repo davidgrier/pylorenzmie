@@ -87,6 +87,29 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
         self._flt = float
 
     @property
+    def coordinates(self):
+        '''Three-dimensional coordinates at which field is calculated'''
+        return self._coordinates
+
+    @coordinates.setter
+    def coordinates(self, coordinates):
+        xp = cp.get_array_module(coordinates)
+        try:
+            shape = coordinates.shape
+        except AttributeError:
+            self._coordinates = None
+            return
+        if coordinates.ndim == 1:
+            self._coordinates = xp.zeros((3, shape[0]))
+            self._coordinates[0, :] = coordinates
+        elif shape[0] == 2:
+            self._coordinates = xp.zeros((3, shape[1]))
+            self._coordinates[[0, 1], :] = coordinates
+        else:
+            self._coordinates = coordinates
+        self._reallocate = True
+
+    @property
     def double_precision(self):
         '''Toggles between single and double precision for CUDA'''
         return self._double_precision
