@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import pickle
+import json
 import os
 import logging
 import numpy as np
@@ -68,15 +68,19 @@ class Optimizer(object):
         the Model.
     '''
 
-    def __init__(self, model, data=None, noise=0.05):
+    def __init__(self, model, data=None, noise=0.05, config=None):
         # Initialize properties
         self.params = tuple(model.properties.keys())
         # Set model and fitting equipment
         self.model = model
         self.mask = Mask(model.coordinates)
-        self.vary = dict(zip(self.params, len(self.params)*[True]))
         self.nm_settings = FitSettings(self.params)
         self.lm_settings = FitSettings(self.params)
+        if type(config) == str:
+            self.load(config)
+        else:
+            params = self.params
+            self.vary = dict(zip(params, len(params)*[True]))
         # Set fields
         self._shape = None
         self.data = data
@@ -179,21 +183,31 @@ class Optimizer(object):
 
         return result
 
-    def serialize(self):
+    def dump(self, fn=None):
         '''
-        Saves state of Optimizer for the current model.
-        Overwrites previous configuration.
+        Saves current fit settings for Optimizer.
         '''
-        flagged = [self.data, self.result, self.mask.coordinates]
-        if None not in flagged:
-            err = "Optimizer.data, Optimizer.results, and "
-            err += "Optimizer.mask.coordinates must be None."
-            raise ValueError(err)
+        settings = {}
+        settings['lm'] = self.lm_settings.settings
+        settings['nm'] = self.nm_settings.settings
+        settings['vary'] = self.vary
+        if fn is None:
+            return settings
         else:
-            fn = self.model.__class__.__name__+'.pickle'
-            directory = os.path.dirname(os.path.abspath(__file__))
-            config = os.path.join(directory, fn)
-            pickle.dump(self, open(config, 'wb'))
+            with open(fn, 'w') as f:
+                json.dump(settings, f)
+
+    def load(self, fn=None):
+        '''
+        Configure Optimizer settings from Optimizer.dump
+        output.
+        '''
+        if type(fn) is str:
+            with open(fn, 'rb') as f:
+                settings = json.load(f)
+            self.lm_settings.settings = settings['lm']
+            self.nm_settings.settings = settings['nm']
+            self.vary = settings['vary']
 
     #
     # Under the hood optimization helper functions

@@ -89,16 +89,18 @@ class Feature(object):
 
     @model.setter
     def model(self, model):
+        '''
+        Sets Feature's model, and if there exists
+        a configuration file for fitting, also create an
+        Optimizer.
+        '''
         if model is not None:
             path = os.path.dirname(os.path.abspath(__file__))
-            path = os.path.join(path, '../fitting')
-            fn = model.__class__.__name__+'.pickle'
+            fn = model.__class__.__name__+'.json'
             config = os.path.join(path, fn)
             try:
-                optimizer = pickle.load(open(config, 'rb'))
-                optimizer.model = model
-                if self.data is not None:
-                    optimizer.data = self._data
+                optimizer = Optimizer(model, config=config)
+                optimizer.data = self._data
                 self.optimizer = optimizer
             except FileNotFoundError:
                 self.optimizer = None
