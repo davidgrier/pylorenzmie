@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import pickle
 import os
 import numpy as np
 from pylorenzmie.fitting import Optimizer
@@ -77,7 +78,7 @@ class Feature(object):
         if type(data) is np.ndarray:
             self._shape = data.shape
             data = data.flatten()
-            if type(self.optimizer) is Optimizer:
+            if isinstance(self.optimizer, Optimizer):
                 self.optimizer.data = data
         self._data = data
 
@@ -89,21 +90,18 @@ class Feature(object):
     @model.setter
     def model(self, model):
         if model is not None:
+            path = os.path.dirname(os.path.abspath(__file__))
+            path = os.path.join(path, '../fitting')
+            fn = model.__class__.__name__+'.pickle'
+            config = os.path.join(path, fn)
             try:
-                path = os.path.dirname(os.path.abspath(__file__))
-                fn = '.'+model.__class__.__name__
-                with open(os.path.join(path, fn), 'r') as f:
-                    d = json.load(f)
-                optimize = d['optimize']
-            except Exception:
-                optimize = False
-            if optimize:
-                if self._optimizer is None:
-                    self.optimizer = Optimizer(model)
-                else:
-                    self.optimizer.model = model
+                optimizer = pickle.load(open(config, 'rb'))
+                optimizer.model = model
                 if self.data is not None:
-                    self.optimizer.data = self._data
+                    optimizer.data = self._data
+                self.optimizer = optimizer
+            except FileNotFoundError:
+                self.optimizer = None
         self._model = model
 
     @property
@@ -286,7 +284,7 @@ if __name__ == '__main__':
     # ... and now fit
     start = time()
     a.model.coordinates = coordinates(shape, dtype=np.float32)
-    result = a.optimize(method='lm', nfits=1, verbose=False)
+    result = a.optimize(method='lm', verbose=False)
     print("Time to fit: {:03f}".format(time() - start))
     print(result)
 
