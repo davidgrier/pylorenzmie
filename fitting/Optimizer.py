@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import json
+import pickle
 import os
 import logging
 import numpy as np
@@ -10,7 +10,6 @@ from pylorenzmie.fitting import amoeba
 
 from .Settings import FitSettings, FitResult
 from .Mask import Mask
-from .GlobalSampler import GlobalSampler
 
 try:
     import cupy as cp
@@ -30,7 +29,6 @@ class Optimizer(object):
     '''
     Optimization equipment for fitting a holographic model
     to data.
-
     ...
 
     Attributes
@@ -60,10 +58,6 @@ class Optimizer(object):
     mask : Mask
         Controls sampling scheme for random subset fitting.
         Refer to pylorenzmie/fitting/Mask.py for documentation.
-    sampler : GlobalSampler
-        Controls sampling scheme of new initial conditions for
-        globalized optimization.
-
 
     Methods
     -------
@@ -77,8 +71,12 @@ class Optimizer(object):
     def __init__(self, model, data=None, noise=0.05):
         # Initialize properties
         self.params = tuple(model.properties.keys())
-        # Set model
+        # Set model and fitting equipment
         self.model = model
+        self.mask = Mask(model.coordinates)
+        self.vary = dict(zip(self.params, len(self.params)*[True]))
+        self.nm_settings = FitSettings(self.params)
+        self.lm_settings = FitSettings(self.params)
         # Set fields
         self._shape = None
         self.data = data
@@ -116,27 +114,11 @@ class Optimizer(object):
     @model.setter
     def model(self, model):
         self._model = model
-        # Random subset sampling
-        self.mask = Mask(model.coordinates)
-        # Try config
-        try:
-            path = os.path.dirname(os.path.abspath(__file__))
-            fn = '.'+model.__class__.__name__
-            with open(os.path.join(path, fn), 'r') as f:
-                config = json.load(f)
-            self._init_settings(config)
-            # Globalized optimization sampling
-            self.sampler = GlobalSampler(self, config['global'])
-        except Exception:
-            self.lm_settings = None
-            self.nm_settings = None
-            self.sampler = None
 
     #
     # Public methods
     #
-    def optimize(self, method='amoeba',
-                 square=True, nfits=1, verbose=False):
+    def optimize(self, method='amoeba', square=True, verbose=False):
         '''
         Fit Model to data
 
@@ -152,12 +134,6 @@ class Optimizer(object):
             If False, 'amoeba' fitting method will minimize the sum of
             absolute values of the residuals. This keyword has no effect
             on 'amoeba-lm' or 'lm' methods.
-        nfits : int
-            Choose number of initial values to try for optimization.
-            Optimizer.sampler, a GlobalSampler, samples new points
-            that are perturbed from the initial guess based on
-            a probability distribution iteratively built with each 
-            new initial and final point.
         verbose : bool
             Choose whether or not to print warning messages.
 
@@ -191,42 +167,49 @@ class Optimizer(object):
                        'Fit may not converge.')
                 logger.warning(msg.format(avg))
         # Fit
-        if nfits > 1 and self.sampler is not None:
-            result, options = self._globalize(
-                method, nfits, x0, square)
-        elif nfits == 1:
-            result, options = self._optimize(
-                method, x0, square, verbose=verbose)
+        result, options = self._optimize(method, x0, square, verbose=verbose)
         # Post-fit cleanup
-        result, settings = self._cleanup(method, square, result, nfits,
+        result, settings = self._cleanup(method, square, result,
                                          options=options)
         # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
         # Store last result
         result = FitResult(method, result, settings, self.model, npix)
         self.result = result
+
         return result
+
+    def serialize(self):
+        '''
+        Saves state of Optimizer for the current model.
+        Overwrites previous configuration.
+        '''
+        flagged = [self.data, self.result, self.mask.coordinates]
+        if None not in flagged:
+            err = "Optimizer.data, Optimizer.results, and "
+            err += "Optimizer.mask.coordinates must be None."
+            raise ValueError(err)
+        else:
+            fn = self.model.__class__.__name__+'.pickle'
+            directory = os.path.dirname(os.path.abspath(__file__))
+            config = os.path.join(directory, fn)
+            pickle.dump(self, open(config, 'wb'))
 
     #
     # Under the hood optimization helper functions
     #
     def _optimize(self, method, x0, square, verbose=False):
         options = {}
+        vary = self.vary
+        nmkwargs = self.nm_settings.getkwargs(vary)
+        lmkwargs = self.lm_settings.getkwargs(vary)
         if method == 'lm':
-            result = least_squares(
-                self._residuals, x0,
-                **self.lm_settings.getkwargs(self.vary))
+            result = least_squares(self._residuals, x0, **lmkwargs)
         elif method == 'amoeba':
-            if square:
-                objective = self._chisqr
-            else:
-                objective = self._absolute
-            result = amoeba(
-                objective, x0, **self.nm_settings.getkwargs(self.vary))
+            objective = self._chisqr if square else self._absolute
+            result = amoeba(objective, x0, **nmkwargs)
         elif method == 'amoeba-lm':
-            nmresult = amoeba(
-                self._chisqr, x0,
-                **self.nm_settings.getkwargs(self.vary))
+            nmresult = amoeba(self._chisqr, x0, **nmkwargs)
             if not nmresult.success:
                 if verbose:
                     msg = 'Nelder-Mead: {}. Falling back to least squares.'
@@ -234,64 +217,47 @@ class Optimizer(object):
                 x1 = x0
             else:
                 x1 = nmresult.x
-            result = least_squares(
-                self._residuals, x1,
-                **self.lm_settings.getkwargs(self.vary))
+            result = least_squares(self._residuals, x1, **lmkwargs)
             options['nmresult'] = nmresult
         else:
             raise ValueError(
                 "Method keyword must either be lm, amoeba, or amoeba-lm")
         return result, options
 
-    def _globalize(self, method, nfits, x0, square):
-        # Initialize for fitting iteration
-        self.sampler.x0 = x0
-        x1 = x0
-        best_eval, best_result = (np.inf, None)
-        for i in range(nfits):
-            result, options = self._optimize(method, x1, square)
-            # Determine if this result is better than previous
-            eval = result.fun
-            if type(result.fun) is np.ndarray:
-                eval = (result.fun).dot(result.fun)
-            if eval < best_eval:
-                best_eval = eval
-                best_result = (result, options)
-            if i < nfits - 1:
-                # Find new starting point and update distributions
-                self.sampler.xfit = result.x
-                x1 = self.sampler.sample()
-        return best_result
-
     #
     # Under the hood objective function and its helpers
     #
     def _objective(self, reduce=False, square=True):
         holo = self.model.hologram(self.model.using_cuda)
+        data = self._subset_data
+        noise = self.noise
         if self.model.using_cuda:
-            (cuchisqr, curesiduals, cuabsolute) = (
-                cuk.cuchisqr, cuk.curesiduals, cuk.cuabsolute)  \
-                if self.model.double_precision else (
-                cuk.cuchisqrf, cuk.curesidualsf, cuk.cuabsolutef)
+            if self.model.double_precision:
+                cuchisqr, curesiduals, cuabsolute = (cuk.cuchisqr,
+                                                     cuk.curesiduals,
+                                                     cuk.cuabsolute)
+            else:
+                cuchisqr, curesiduals, cuabsolute = (cuk.cuchisqrf,
+                                                     cuk.curesidualsf,
+                                                     cuk.cuabsolutef)
             if reduce:
                 if square:
-                    obj = cuchisqr(holo, self._subset_data, self.noise)
+                    obj = cuchisqr(holo, data, noise)
                 else:
-                    obj = cuabsolute(holo, self._subset_data, self.noise)
+                    obj = cuabsolute(holo, data, noise)
             else:
-                obj = curesiduals(holo, self._subset_data, self.noise)
+                obj = curesiduals(holo, data, noise)
             obj = obj.get()
         elif self.model.using_numba:
             if reduce:
                 if square:
-                    obj = fk.fastchisqr(
-                        holo, self._subset_data, self.noise)
+                    obj = fk.fastchisqr(holo, data, noise)
                 else:
-                    obj = fk.fastabsolute(holo, self._subset_data, self.noise)
+                    obj = fk.fastabsolute(holo, data, noise)
             else:
-                obj = fk.fastresiduals(holo, self._subset_data, self.noise)
+                obj = fk.fastresiduals(holo, data, noise)
         else:
-            obj = (holo - self._subset_data) / self.noise
+            obj = (holo - data) / noise
             if reduce:
                 if square:
                     obj = obj.dot(obj)
@@ -314,40 +280,6 @@ class Optimizer(object):
     #
     # Fitting preparation and cleanup
     #
-    def _init_settings(self, config):
-        '''
-        Initialize default settings for levenberg-marquardt and
-        nelder-mead optimization
-        '''
-        cfg_lm = config['lm']
-        cfg_nm = config['nm']
-        # Default parameters to vary during fitting
-        vary = config['vary']
-        # ... levenberg-marquardt variable scale factor
-        x_scale = cfg_lm['x_scale']
-        # ... scale of initial simplex
-        simplex_scale = cfg_nm['simplex_scale']
-        # ... bounds around intial guess for bounded nelder-mead
-        simplex_bounds = cfg_nm['simplex_bounds']
-        # ... tolerance for nelder-mead termination
-        simplex_tol = cfg_nm['simplex_tol']
-        # Non-vector arguments to fitting
-        lm_options = cfg_lm['options']
-        nm_options = cfg_nm['options']
-        self.nm_settings = FitSettings(self.params,
-                                       options=nm_options)
-        self.lm_settings = FitSettings(self.params,
-                                       options=lm_options)
-        self.vary = dict(zip(self.params, vary))
-        for idx, p in enumerate(self.params):
-            amparam = self.nm_settings.parameters[p]
-            lmparam = self.lm_settings.parameters[p]
-            amparam.options['simplex_scale'] = simplex_scale[idx]
-            amparam.options['xtol'] = simplex_tol[idx]
-            amparam.options['xmax'] = simplex_bounds[idx][1]
-            amparam.options['xmin'] = simplex_bounds[idx][0]
-            lmparam.options['x_scale'] = x_scale[idx]
-
     def _prepare(self, method, verbose=False):
         # Warnings
         if verbose:
@@ -370,9 +302,7 @@ class Optimizer(object):
                                            dtype=dtype)
         return x0
 
-    def _cleanup(self, method, square, result, nfits, options=None):
-        if nfits > 1:
-            self._update_model(result.x)
+    def _cleanup(self, method, square, result, options=None):
         if method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
             settings = self.lm_settings
