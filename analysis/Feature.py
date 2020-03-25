@@ -117,12 +117,13 @@ class Feature(object):
 
     @property
     def label(self):
-        '''Classifies what a Feature may be'''
+        '''Qualitative properties of a Feature'''
         return self._label
 
     @label.setter
     def label(self, label):
-        self._label = str(label)
+        if label is not None:
+            self._label = dict(label)
 
     def residuals(self):
         '''Returns difference bewteen data and current model
@@ -291,7 +292,7 @@ if __name__ == '__main__':
     print(result)
 
     # classify
-    a.label = 'silica'
+    a.label = {'material': 'silica'}
 
     # test serialization
     out = a.serialize()

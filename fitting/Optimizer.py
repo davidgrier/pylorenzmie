@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import json
-import os
 import logging
 import numpy as np
 from scipy.optimize import least_squares
