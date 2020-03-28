@@ -54,8 +54,7 @@ class Feature(object):
         self._label = None
         # Run setters
         self.data = data
-        if model is not None:
-            self.model = model
+        self.model = model
         self.label = label
         # Deserialize if needed
         self.deserialize(info)
