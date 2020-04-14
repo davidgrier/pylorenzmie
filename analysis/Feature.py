@@ -166,8 +166,10 @@ class Feature(object):
         if self.data is not None:
             if 'data' not in exclude:
                 info['data'] = self._data.tolist()
+                info['shape'] = self._shape
             else:
                 info['data'] = None
+                info['shape'] = None
         # Model type
         if self.model is not None:
             model = str(type(self.model)).split('.')[-1][:-2]
@@ -186,7 +188,7 @@ class Feature(object):
         if self.optimizer is not None:
             if self.optimizer.result is not None:
                 redchi = self.optimizer.result.redchi
-                info['redchi'] = redchi
+                info['redchi'] = float(redchi)
         else:
             redchi = None
         # Classification label

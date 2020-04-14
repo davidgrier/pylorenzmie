@@ -57,6 +57,9 @@ class LMHologram(LorenzMie):
         p.update(self.particle.properties)
         p.update(self.instrument.properties)
         p.update({'alpha': self.alpha})
+        for k in p.keys():
+            if type(p[k]) is np.ndarray:
+                p[k] = p[k].tolist()
         return p
 
     @properties.setter

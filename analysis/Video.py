@@ -46,7 +46,9 @@ class Video(object):
     def trajectories(self):
         return self._trajectories
 
-    def set_trajectories(self, search_range=2., **kwargs):
+    def set_trajectories(self, search_range=2., verbose=True, **kwargs):
+        if not verbose:
+            tp.quiet(suppress=True)
         d = {'x': [], 'y': [], 'frame': [], 'idx': []}
         for i, frame in enumerate(self.frames):
             for j, feature in enumerate(frame.features):
@@ -85,7 +87,7 @@ class Video(object):
         info = {'trajectories': trajs,
                 'frames': frames}
         if self.fps is not None:
-            info['fps'] = self.fps
+            info['fps'] = float(self.fps)
         for k in omit:
             if k in info.keys():
                 info.pop(k)
