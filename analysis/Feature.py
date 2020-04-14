@@ -24,11 +24,9 @@ class Feature(object):
         hologram at the specified coordinates.
     optimizer : Optimizer
         Optimization equipment for fitting holographic models to data.
-        IMPORTANT: Supported models decide whether or not to initialize
-                   optimizers based on config files! See
-                   pylorenzmie/fitting/.LMHologram and
-                   pylorenzmie/analysis/.LMHologram
-                   for examples.
+        Supported models decide whether or not to initialize
+        optimizers based on config file, which is obtained with
+        Optimizer.dump. See pylorenzmie/analysis/LMHologram.json for example.
 
     Methods
     -------
