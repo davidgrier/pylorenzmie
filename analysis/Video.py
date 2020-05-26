@@ -16,6 +16,7 @@ class Video(object):
         self._instrument = instrument
         self.add(frames)
         self._trajectories = []
+        self._traj_df = pd.DataFrame();
         self.deserialize(info)
 
     @property
@@ -45,6 +46,9 @@ class Video(object):
     @property
     def trajectories(self):
         return self._trajectories
+    @property
+    def traj_df(self):
+        return self._traj_df
 
     def set_trajectories(self, search_range=2., verbose=True, **kwargs):
         if not verbose:
@@ -57,6 +61,7 @@ class Video(object):
                 d['idx'].append((i, j))
                 d['frame'].append(frame.framenumber)
         df = tp.link_df(pd.DataFrame(data=d), search_range, **kwargs)
+        self.traj_df = df;
         dfs = []
         if not pd.isnull(df.particle.max()):
             for particle in range(df.particle.max()+1):
