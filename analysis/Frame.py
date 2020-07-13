@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import numpy as np
 from .Feature import Feature
 
 class Frame(object):
@@ -74,9 +75,15 @@ class Frame(object):
             self._features.append(feature)
             self._bboxes.append(bbox)         
 
-    def crop(self, center, cropshape):
+    def crop(self, bbox):
+        (x, y, w, h) = bbox
+        center = ( int(np.round(x)), int(np.round(y)) )
+        cropshape = (w, h)
         cropped, corner = crop_center(self.data, center, cropshape)
         return cropped
+    
+    def reshape(self, crop, new_shape):
+        pass 
     
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):
