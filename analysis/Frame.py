@@ -16,16 +16,16 @@ class Frame(object):
    
 """
     def __init__(self, features=None, instrument=None, 
-                 framenumber=None, image=None, info=None):
+                 framenumber=None, image=None, image_path=None, info=None):
         self._instrument = instrument
         self._framenumber = framenumber
-        self.image = image
         self._bboxes = []
         self._features = []
-        if features is not None:
-            self.add(features)
-        if info is not None:
-            self.deserialize(info)
+        self.image_path = image_path
+        if self.image is None:
+            self.image = image
+        self.add(features)
+        self.deserialize(info)
     
     @property
     def instrument(self):
@@ -93,6 +93,8 @@ class Frame(object):
         return self._bboxes
     
     def add(self, features): 
+        if features is None:
+            return
         if type(features) is Feature:
             features = [features] 
         for feature in features:
