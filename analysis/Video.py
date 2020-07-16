@@ -4,16 +4,18 @@
 import trackpy as tp
 import pandas as pd
 import json
+import os
 from .Frame import Frame
 from .Trajectory import Trajectory
 
 
 class Video(object):
 
-    def __init__(self, frames=[], instrument=None, fps=None, info=None):
+    def __init__(self, frames=[], video_path=None, instrument=None, fps=None, info=None):
         self._fps = None
         self._frames = []
         self._instrument = instrument
+        self.video_path = video_path
         self.add(frames)
         self._trajectories = []
         self.deserialize(info)
@@ -37,11 +39,78 @@ class Video(object):
     @property
     def frames(self):
         return self._frames
-
-    def add(self, frames):
-        for frame in frames:
+    
+    def add(self, frame, framenum=None):
+        if frame is None:
+            return
+        elif isinstance(frame, Frame):
             self._frames.append(frame)
-
+        elif isinstance(frame, np.ndarray) or isinstance(frame, String):
+            self._frames.append(Frame(instrument=self.instrument, framenum=framenum, image=frame))
+        elif isinstance(frame, list):
+            framenum = framenum if isinstance(framenum, list) else [framenum for _frame in frame]
+            for i, _frame in frame:
+                self.add(_frame, framenum[i])
+        else:
+            print('Warning: could not add frame of type {}'.format(type(Frame)))
+                        
+    @property 
+    def path(self):
+        return self._path
+   
+    @property 
+    def filename(self):
+        return self._filename 
+            
+    @property
+    def video_path(self):
+        if self.path is None or self.filename is None:
+            return None
+        else:
+            return self.path + '/videos/' + self.filename + '.avi'
+    
+    @property 
+    def image_path(self, framenum=None):
+        if self.path is None or self.filename is None:
+            return None
+        else:
+            image_path = self.path + '/' + self.filename + '_norm_images/'
+            if framenum is not None:
+                image_path += 'image' + str(framenum).rjust(4, '0') + '.png'
+            return image_path 
+    
+    @video_path.setter
+    def video_path.setter(self, path):
+        if not isinstance(path, string):
+            if path is not None:
+                print('Warning: could not recognize path of type {}'.format(type(path)))
+            self._path = None
+            self._filename = None
+        elif len(path.split('videos/')) is 2:
+            self._path, self._filename = path.split('videos/')
+            if self._filename[-4:] is '.avi':
+                self._filename = self._filename[:-4]
+        else:
+            pathlist = path.split('/')
+            if len(pathlist) is 1:
+                print('Warning: path {} is incomplete'.format(path))
+                self.video_path = None
+            else:
+                self._filename = pathlist[-1]
+                self._path = '/'.join(pathlist[:-1])
+        
+        if self.video_path is not None:
+            self.add( [Frame(image_path=path) for path in os.listdir(self.image_path())] )
+            #### TODO: load in predictions from MLpreds/refined using regexpressions
+            
+            
+        
+    
+        
+                                      
+               
+           
+       
     @property
     def trajectories(self):
         return self._trajectories
@@ -112,3 +181,11 @@ class Video(object):
         if 'fps' in info.keys():
             if info['fps'] is not None:
                 self.fps = float(info['fps'])
+        if 'video_path' in info.keys():
+            if info['video_path'] is not None:
+                self.video_path = info['video_path']
+        if 'video_name' in info.keys():
+            if info['video_path'] is not None:
+                self.video_path = info['video_name']
+                
+            
