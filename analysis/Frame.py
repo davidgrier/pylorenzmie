@@ -4,6 +4,7 @@
 import cv2, json
 import numpy as np
 from .Feature import Feature
+from ..Theory import coordinates
 
 class Frame(object):
     '''
@@ -117,19 +118,15 @@ class Frame(object):
     def add(self, features, info=None): 
         if features is None:
             return
-        if not isinstance(features, list):                         #### Ensure input is a list
-            features = [features] 
-        if not isinstance(info, list):
-            info = [info for feature in features]
+        features = [features] if not isinstance(features, list) else features                         #### Ensure input is a list
+        info = [info for feature in features] if not isinstance(info, list) else info
         for i, feature in enumerate(features):
+            bbox = None
             if isinstance(feature, tuple) and len(feature) is 4:    #### case where bbox passed
                 bbox = feature
                 feature = Feature()  
             elif isinstance(feature, dict):                         #### case where serialized feature passed
-                bbox = None
-                feature = Feature().deserialize(info=feature)       #### case where Feature object passed
-            elif isinstance(feature, Feature):
-                bbox = None
+                feature = Feature().deserialize(info=feature)      
             if isinstance(feature, Feature):                        #### If a feature was found, add it
                 self._bboxes.append(bbox)
                 if self.instrument is not None:
@@ -154,12 +151,15 @@ class Frame(object):
                     else:
                         (x, y, w, h) = bbox
                         center = ( int(np.round(x)), int(np.round(y)) )
-                        cropshape = (w, h)
-                        cropped, corner = crop_center(self.image, center, cropshape)
+                        crop_shape = (w, h)
+                        cropped, corner = crop_center(self.image, center, crop_shape)
                         feature.data = cropped
-                        feature.x_p = x if feature.x_p is None else feature.x_p
-                        feature.y_p = y if feature.y_p is None else feature.y_p
-                                            
+                        feature.model.coordinates = coordinates(shape=crop_shape, corner=corner)
+                        if feature.model.particle.x_p is None:
+                            feature.model.particle.x_p = x
+                        if feature.model.particle.y_p is None:
+                            feature.model.particle.y_p = y
+       
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):
             result = feature.optimize(**kwargs)
