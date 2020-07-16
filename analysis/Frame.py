@@ -35,19 +35,8 @@ class Frame(object):
         all : boolean
             if all is False (default), then only update Features which do not already have data. 
         
-    
-  
     '''
-"""
-    Object representation of an experimental video frame. 
-    Attributes:Frames can have an image, a framenumber, an instrument for fitting, a list of Feature objects
-    and a corresponding list of bounding boxes. Features can be added in two ways: 
-      1) If the frame has an image, then Features are added by specifying a bbox (via a dict) in deserialize . The bbox specifies x_p and y_p, and 
-         Feature data (cropped image) is obtained by using the bbox to crop the Frame data. Optionally, the dict can also pass other feature info 
-         (like z_p, a_p, etc.)  through a dict 'bbox_info'
-      2) Feature objects can be passed directly. Their corresponding bbox will be 'none' and are serialized individually (under 'features') with their own data.
-   
-"""
+    
     def __init__(self, features=None, instrument=None, 
                  framenumber=None, image=None, image_path=None, info=None):
         self._instrument = instrument
@@ -163,7 +152,7 @@ class Frame(object):
                     if self.image is None:
                         feature.data = None
                     else:
-                    (x, y, w, h) = bbox
+                        (x, y, w, h) = bbox
                         center = ( int(np.round(x)), int(np.round(y)) )
                         cropshape = (w, h)
                         cropped, corner = crop_center(self.image, center, cropshape)
@@ -200,9 +189,9 @@ class Frame(object):
             info['image_path'] = self.image_path
         if self.framenumber is not None:
             info['framenumber'] = str(self.framenumber)
-        for k in omit:
-            if k in info.keys():
-                info.pop(k)
+#         for k in omit:
+#             if k in info.keys():
+#                 info.pop(k)
         if filename is not None:
             with open(filename, 'w') as f:
                 json.dump(info, f)
