@@ -47,11 +47,13 @@ class Frame(object):
     def image_path(self):
         return self._image_path
     
-    @impath.setter
+    @image_path.setter                   #### Method for reading an image path into a frame
     def image_path(self, path):
-        image = cv2.imread(path, 0)
-        if image is None and self.framenumber is not None:
-            image = cv2.imread(path + 'image'+ str(self.framenumber).rjust(4, '0')+'.png')  
+        image = cv2.imread(path, 0)      #### 0 is grayscale
+        if image is not None:            #### If this path is valid, then read framenumber for the path (unless Frame already has a framenumber) 
+            self.framenumber = int(path[:-8:-4]) if self.framenumber is not None else self.framenumber
+        elif self.framenumber is not None:
+            image = cv2.imread(path + 'image'+ str(self.framenumber).rjust(4, '0')+'.png') 
         if image is not None
             self.image = image
             self._image_path = path
