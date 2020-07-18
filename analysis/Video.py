@@ -44,11 +44,13 @@ class Video(object):
         if frame is None:
             return
         elif isinstance(frame, Frame):
+            if frame.framenumber is not None:
+                frame.framenumber = framenum
             self._frames.append(frame)
         elif isinstance(frame, np.ndarray) or isinstance(frame, String):
-            self._frames.append(Frame(instrument=self.instrument, framenum=framenum, image=frame))
+            self._frames.append(Frame(instrument=self.instrument, framenumber=framenum, image=frame))
         elif isinstance(frame, list):
-            framenum = framenum if isinstance(framenum, list) else [framenum for _frame in frame]
+            framenum = framenum if isinstance(framenum, list) else [None for f in frame]
             for i, _frame in frame:
                 self.add(_frame, framenum[i])
         else:
