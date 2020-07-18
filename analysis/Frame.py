@@ -4,7 +4,6 @@
 import cv2, json
 import numpy as np
 from .Feature import Feature
-from ..Theory import coordinates
 
 class Frame(object):
     '''
@@ -42,11 +41,11 @@ class Frame(object):
                  framenumber=None, image=None, image_path=None, info=None):
         self._instrument = instrument
         self._framenumber = framenumber
-        self._bboxes = []
-        self._features = []
         self.image_path = image_path
         if self.image is None:
             self.image = image
+        self._bboxes = []
+        self._features = []
         self.add(features)
         self.deserialize(info)
     
@@ -92,7 +91,7 @@ class Frame(object):
         return self._image
     
     @image.setter(self):
-    def image(self, image):
+    def image(self, image):                                                     #### Note: Changing the image will reset the image path
         self._image_path = None
         if not isinstance(image, np.ndarray):
             self._image = None
@@ -105,7 +104,6 @@ class Frame(object):
         else:
             self._image = None
             print("Warning: invalid image dimensions: {}".format(np.shape(image)))            
-         self.crop(all=True) 
     
     @property
     def features(self):
@@ -139,27 +137,7 @@ class Frame(object):
 #                 msg = "features must be list of Features"
 #                 msg += " or deserializable Features"
 #                 raise(TypeError(msg))
-        self.crop()                                                 #### find bboxes from features
     
-    def crop(self, all=False):
-        for i, bbox in enumerate(self.bboxes):
-            if bbox is not None:
-                feature = self._features[i]
-                if all or feature.data is None:
-                    if self.image is None:
-                        feature.data = None
-                    else:
-                        (x, y, w, h) = bbox
-                        center = ( int(np.round(x)), int(np.round(y)) )
-                        crop_shape = (w, h)
-                        cropped, corner = crop_center(self.image, center, crop_shape)
-                        feature.data = cropped
-                        feature.model.coordinates = coordinates(shape=crop_shape, corner=corner)
-                        if feature.model.particle.x_p is None:
-                            feature.model.particle.x_p = x
-                        if feature.model.particle.y_p is None:
-                            feature.model.particle.y_p = y
-       
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):
             result = feature.optimize(**kwargs)
@@ -221,8 +199,26 @@ class Frame(object):
                 self.add_bbox(bboxes)
 
 
-                
-#### Static helper method. Literally copy-pasted from Lauren Altman's crop_feature - can probably just import it instead in the future                                 
+ #### Crop all features in a frame, using an old cropping method literally copy-pasted from Lauren Altman's CNNLorenzMie. Will likely replace with crop_feature in the future     
+ def crop(frame, all=False):
+        for i, bbox in enumerate(self.bboxes):
+            if bbox is not None:
+                feature = frame.features[i]
+                if all or feature.data is None:
+                    if self.image is None:
+                        feature.data = None
+                    else:
+                        (x, y, w, h) = bbox
+                        center = ( int(np.round(x)), int(np.round(y)) )
+                        crop_shape = (w, h)
+                        cropped, corner = crop_center(self.image, center, crop_shape)
+                        feature.data = cropped
+                        feature.model.coordinates = coordinates(shape=crop_shape, corner=corner)
+                        if feature.model.particle.x_p is None:
+                            feature.model.particle.x_p = x
+                        if feature.model.particle.y_p is None:
+                            feature.model.particle.y_p = y   
+                            
 def crop_center(img_local, center, cropshape):
     (xc, yc) = center
     (crop_img_rows, crop_img_cols) = cropshape
