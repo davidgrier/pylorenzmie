@@ -8,14 +8,16 @@ import os
 from .Frame import Frame
 from .Trajectory import Trajectory
 
-
+#### path format: a video at home/experiment1/videos/myrun.avi has path 'home/experiment1/' (don't forget '/' at the end!) and filename 'myrun'. 
+#### Path setters are designed so that the full video path (path='home/experiment1/videos/myrun.avi') and no filename will give the same result
 class Video(object):
 
-    def __init__(self, frames=[], video_path=None, instrument=None, fps=None, info=None):
-        self._fps = None
+    def __init__(self, frames=[], path=None, filename=None, instrument=None, fps=30, info=None):
         self._frames = []
+        self._fps = None
         self._instrument = instrument
-        self.video_path = video_path
+        self.path = path
+        self.filename = filename
         self.add(frames)
         self._trajectories = []
         self.deserialize(info)
@@ -40,79 +42,66 @@ class Video(object):
     def frames(self):
         return self._frames
     
-    def add(self, frame, framenum=None):
-        if frame is None:
+    def add(self, frames, framenums=[]):
+        if frames is None:
             return
-        elif isinstance(frame, Frame):
-            if frame.framenumber is not None:
-                frame.framenumber = framenum
-            self._frames.append(frame)
-        elif isinstance(frame, np.ndarray) or isinstance(frame, String):
-            self._frames.append(Frame(instrument=self.instrument, framenumber=framenum, image=frame))
-        elif isinstance(frame, list):
-            framenum = framenum if isinstance(framenum, list) else [None for f in frame]
-            for i, _frame in frame:
-                self.add(_frame, framenum[i])
-        else:
-            print('Warning: could not add frame of type {}'.format(type(Frame)))
-                        
+        frames = [frames] if not isinstance(frames, list) else frames                               #### Ensure input is a list
+        framenums = [None for frame in frames] if len(framenums) != len(frames) else framenums      #### Ensure framenums is same size as frames
+        for i, frame in enumerate(frames):    
+            if isinstance(frame, Frame):
+                if framenums[i] is not None:
+                    frame.framenumber = framenums[i]
+                self._frames.append(frame)
+            elif isinstance(frame, np.ndarray) 
+                self._frames.append(Frame(instrument=self.instrument, framenumber=framenums[i], image=frame))
+            elif isinstance(frame, String):
+                self._frames.append(Frame(instrument=self.instrument, framenumber=framenums[i], image_path=frame))
+            elif frame is not None:
+                print('Warning: could not add frame of type {}'.format(type(Frame)))
+    
+    def clear(self):
+        self._frames = []
+        
     @property 
     def path(self):
         return self._path
-   
+    
+    @path.setter                   
+    def path(self, path):
+        self._path = path if isinstance(path, string) else ''    #### Ensure path is always string type
+    
     @property 
     def filename(self):
         return self._filename 
             
+    @filename.setter                                            #### Update filename and search for video
+    def filename(self, filename):             
+        if isinstance(filename, string):                        #### If filename is a string, remove suffix (if present) and get frames
+            self._filename = filename[:-4] if filename[-4:] is '.avi' else filename
+            if os.path.exists(self.images_path):
+                self.add( [Frame(image_path=path) for path in os.listdir(self.images_path)] )
+            elif os.path.exists(self.video_path):
+                self.get_normalized_video()       
+        else:                                                   #### If invalid or None filename is passed, look for path+filename in self.path
+            self._filename = None               
+            if len(self.path.split('videos/')) is 2:        
+                path, filename = path.split('videos/')
+                self.path = path
+                self.filename = filename                        #### If filename found in self.path, call the setter again
+            elif filename is not None:
+                print('Warning: invalid filename of type {}'.format(type(filename)))
+ 
     @property
     def video_path(self):
-        if self.path is None or self.filename is None:
-            return None
-        else:
-            return self.path + '/videos/' + self.filename + '.avi'
+        return None if self.filename is None else self.path + 'videos' + self.filename + '.avi'
     
     @property 
-    def image_path(self, framenum=None):
-        if self.path is None or self.filename is None:
-            return None
-        else:
-            image_path = self.path + '/' + self.filename + '_norm_images/'
-            if framenum is not None:
-                image_path += 'image' + str(framenum).rjust(4, '0') + '.png'
-            return image_path 
+    def images_path(self, framenum=None):
+        return None if self.filename is None else self.path + self.filename + '_norm_images/' 
     
-    @video_path.setter
-    def video_path.setter(self, path):
-        if not isinstance(path, string):
-            if path is not None:
-                print('Warning: could not recognize path of type {}'.format(type(path)))
-            self._path = None
-            self._filename = None
-        elif len(path.split('videos/')) is 2:
-            self._path, self._filename = path.split('videos/')
-            if self._filename[-4:] is '.avi':
-                self._filename = self._filename[:-4]
-        else:
-            pathlist = path.split('/')
-            if len(pathlist) is 1:
-                print('Warning: path {} is incomplete'.format(path))
-                self.video_path = None
-            else:
-                self._filename = pathlist[-1]
-                self._path = '/'.join(pathlist[:-1])
-        
-        if self.video_path is not None:
-            self.add( [Frame(image_path=path) for path in os.listdir(self.image_path())] )
-            #### TODO: load in predictions from MLpreds/refined using regexpressions
-            
-            
-        
+    def get_normalized_video(self):
+        pass     #### background path is self.path+'videos/background.avi'
     
-        
-                                      
-               
-           
-       
     @property
     def trajectories(self):
         return self._trajectories
@@ -144,6 +133,7 @@ class Video(object):
                                            framenumbers=framenumbers))
         self._trajectories = trajectories
 
+        
     def serialize(self, filename=None,
                   omit=[], omit_frame=[], omit_traj=[], omit_feat=[]):
         trajs, frames = ([], [])
