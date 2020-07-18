@@ -52,13 +52,16 @@ class Video(object):
                 if framenums[i] is not None:
                     frame.framenumber = framenums[i]
                 self._frames.append(frame)
-            elif isinstance(frame, np.ndarray) 
+            elif isinstance(frame, np.ndarray): 
                 self._frames.append(Frame(instrument=self.instrument, framenumber=framenums[i], image=frame))
-            elif isinstance(frame, String):
+            elif isinstance(frame, str):
                 self._frames.append(Frame(instrument=self.instrument, framenumber=framenums[i], image_path=frame))
             elif frame is not None:
                 print('Warning: could not add frame of type {}'.format(type(Frame)))
-    
+            
+    def sort(self):
+        self._frames = sorted(self._frames, key=lambda x: x.framenumber if x.framenumber is not None else 100000)        
+        
     def clear(self):
         self._frames = []
         
@@ -68,7 +71,7 @@ class Video(object):
     
     @path.setter                   
     def path(self, path):
-        self._path = path if isinstance(path, string) else ''    #### Ensure path is always string type
+        self._path = path if isinstance(path, str) else ''    #### Ensure path is always string type
     
     @property 
     def filename(self):
@@ -76,10 +79,10 @@ class Video(object):
             
     @filename.setter                                            #### Update filename and search for video
     def filename(self, filename):             
-        if isinstance(filename, string):                        #### If filename is a string, remove suffix (if present) and get frames
+        if isinstance(filename, str):                        #### If filename is a string, remove suffix (if present) and get frames
             self._filename = filename[:-4] if filename[-4:] is '.avi' else filename
             if os.path.exists(self.images_path):
-                self.add( [Frame(image_path=path) for path in os.listdir(self.images_path)] )
+                self.add( [Frame(image_path=self.images_path+name) for name in os.listdir(self.images_path)] )
             elif os.path.exists(self.video_path):
                 self.get_normalized_video()       
         else:                                                   #### If invalid or None filename is passed, look for path+filename in self.path
