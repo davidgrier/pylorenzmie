@@ -71,7 +71,7 @@ class Frame(object):
     
     @image_path.setter                   
     def image_path(self, path):
-        if not isinstance(path, String):
+        if not isinstance(path, str):
             self.image = None                                                   #### If invalid format, clear image and path
             if path is not None:
                 print('Warning: could not read path of type {}'.print(type(path)))
@@ -82,7 +82,7 @@ class Frame(object):
         if self.image is not None:
             self._image_path = path                                             #### If an image was found, then keep the path
             if self.framenumber is None:                                        #### If path leads to an image and framenumber isn't set, try to
-                self.framenumber = int(path[:-8:-4])                            ####    read framenumber from the path  (i.e. 0107 from '...image0107.png')                 
+                self.framenumber = int(path[-8:-4])                            ####    read framenumber from the path  (i.e. 0107 from '...image0107.png')                 
         else:
             print("Warning: image not found at path '{}'".format(path))
 
@@ -90,7 +90,7 @@ class Frame(object):
     def image(self):
         return self._image
     
-    @image.setter(self):
+    @image.setter
     def image(self, image):                                                     #### Note: Changing the image will reset the image path
         self._image_path = None
         if not isinstance(image, np.ndarray):
@@ -153,7 +153,7 @@ class Frame(object):
                 if self.bboxes[i] is None:
                     features.append(feature.serialize( exclude=omit_feat ))
                 else:
-                    bbox_info.append(feature.serialize( exclude=['data'].extend(omit_feat) )) ))
+                    bbox_info.append(feature.serialize( exclude=['data'].extend(omit_feat) )) 
             info['features'] = features
             info['bbox_info'] = [(x if len(x.keys()) > 0 else None) for x in bbox_info] 
         
@@ -200,7 +200,7 @@ class Frame(object):
 
 
  #### Crop all features in a frame, using an old cropping method literally copy-pasted from Lauren Altman's CNNLorenzMie. Will likely replace with crop_feature in the future     
- def crop(frame, all=False):
+def crop(frame, all=False):
         for i, bbox in enumerate(self.bboxes):
             if bbox is not None:
                 feature = frame.features[i]
