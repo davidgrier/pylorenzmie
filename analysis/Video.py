@@ -8,7 +8,8 @@ import os
 from .Frame import Frame
 from .Trajectory import Trajectory
 
-#### path format: a video at home/experiment1/videos/myrun.avi has path 'home/experiment1/' (don't forget '/' at the end!) and filename 'myrun'. 
+
+#### path format: a video at home/experiment1/videos/myrun.avi has path 'home/experiment1/' (don't forget '/' at the end!) and filename 'myrun'. If your working directory is already the main directory (i.e. this file is  in experiment1) then path can be blank.
 #### Path setters are designed so that the full video path (path='home/experiment1/videos/myrun.avi') and no filename will give the same result
 class Video(object):
 
@@ -52,16 +53,20 @@ class Video(object):
                 if framenums[i] is not None:
                     frame.framenumber = framenums[i]
                 self._frames.append(frame)
-            elif isinstance(frame, np.ndarray): 
-                self._frames.append(Frame(instrument=self.instrument, framenumber=framenums[i], image=frame))
             elif isinstance(frame, str):
                 self._frames.append(Frame(instrument=self.instrument, framenumber=framenums[i], image_path=frame))
+            elif isinstance(frame, np.ndarray): 
+                self._frames.append(Frame(instrument=self.instrument, framenumber=framenums[i], image=frame))
             elif frame is not None:
                 print('Warning: could not add frame of type {}'.format(type(Frame)))
             
     def sort(self):
         self._frames = sorted(self._frames, key=lambda x: x.framenumber if x.framenumber is not None else 100000)        
-        
+    
+    def renumber(self):
+        for i, frame in enumerate(self._frames):
+            frame.framenumber = i
+            
     def clear(self):
         self._frames = []
         
@@ -77,18 +82,19 @@ class Video(object):
     def filename(self):
         return self._filename 
             
-    @filename.setter                                            #### Update filename and search for video
+    @filename.setter                                          #### Update filename and search for video
     def filename(self, filename):             
-        if isinstance(filename, str):                        #### If filename is a string, remove suffix (if present) and get frames
-            self._filename = filename[:-4] if filename[-4:] is '.avi' else filename
-            if os.path.exists(self.images_path):
-                self.add( [Frame(image_path=self.images_path+name) for name in os.listdir(self.images_path)] )
+        if isinstance(filename, str):                         #### If filename is a string, remove suffix (if present) and get frames
+            self._filename = filename.split('.avi')[0]
+            if os.path.exists(self.images_path):              #### If we have a valid im directory, read frames one-at-a-time
+                frames = [Frame(image_path=self.images_path+name) for name in os.listdir(self.images_path)] 
+                self.add(frames)
             elif os.path.exists(self.video_path):
                 self.get_normalized_video()       
         else:                                                   #### If invalid or None filename is passed, look for path+filename in self.path
             self._filename = None               
             if len(self.path.split('videos/')) is 2:        
-                path, filename = path.split('videos/')
+                path, filename = self.path.split('videos/')
                 self.path = path
                 self.filename = filename                        #### If filename found in self.path, call the setter again
             elif filename is not None:
@@ -99,8 +105,9 @@ class Video(object):
         return None if self.filename is None else self.path + 'videos' + self.filename + '.avi'
     
     @property 
-    def images_path(self, framenum=None):
+    def images_path(self):
         return None if self.filename is None else self.path + self.filename + '_norm_images/' 
+    
     
     def get_normalized_video(self):
         pass     #### background path is self.path+'videos/background.avi'
