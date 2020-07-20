@@ -78,7 +78,7 @@ class Frame(object):
             return
         if path[-1] is '/' and self.framenumber is not None:                    #### If path is a directory, look for image of format 'path/image(framenumber).png'
             path = path + 'image'+ str(self.framenumber).rjust(4, '0')+'.png'    
-        self.image = cv2.imread(path, 0)                                        #### Read image (0 is grayscale)
+        self.image = cv2.imread(path)                                        #### Read image (0 is grayscale)
         if self.image is not None:
             self._image_path = path                                             #### If an image was found, then keep the path
             if self.framenumber is None:                                        #### If path leads to an image and framenumber isn't set, try to
@@ -97,13 +97,15 @@ class Frame(object):
             self._image = None
             if image is not None:
                 print("Warning: could not read image of type {}".format(type(im)))
-        elif len(np.shape(image)) is 2:
-            self._image = image
-        elif len(np.shape(image)) is 3:
-            self._image = image[:, :, 0]
         else:
-            self._image = None
-            print("Warning: invalid image dimensions: {}".format(np.shape(image)))            
+            self._image = image
+#         elif len(np.shape(image)) is 2:
+#             self._image = image
+#         elif len(np.shape(image)) is 3:
+#             self._image = image[:, :, 0]
+#         else:
+#             self._image = None
+#             print("Warning: invalid image dimensions: {}".format(np.shape(image)))            
     
     @property
     def features(self):
@@ -153,9 +155,9 @@ class Frame(object):
                 if self.bboxes[i] is None:
                     features.append(feature.serialize( exclude=omit_feat ))
                 else:
-                    bbox_info.append(feature.serialize( exclude=['data'].extend(omit_feat) )) 
+                    bbox_info.append(feature.serialize( exclude=omit_feat )) 
             info['features'] = features
-            info['bbox_info'] = [(x if len(x.keys()) > 0 else None) for x in bbox_info] 
+            info['bbox_info'] = bbox_info
         
         if 'bboxes' not in omit:
             bboxes = []
@@ -183,21 +185,15 @@ class Frame(object):
                 info = json.load(f)
         if 'framenumber' in info.keys():
             self.framenumber = int(info['framenumber']) 
-        else:
-            self.framenumber = None
         if 'image_path' in info.keys():
             self.image_path = image_path
-        else:
-            self.image = None
         if 'features' in info.keys():          #### Add any features passed in serial form
             self.add(info['features'])
         if 'bboxes' in info.keys():            #### Add any features specified by bboxes
-            bboxes = info['bboxes']
             if 'bbox_info' in info.keys():
-                self.add_bbox(bboxes, info=info['bbox_info'])
-            else:
-                self.add_bbox(bboxes)
-
+                if 'bbox_info' not in info.keys():
+                    info['bbox_info'] = None
+                self.add(info['bboxes'], info=info['bbox_info'])           
 
  #### Crop all features in a frame, using an old cropping method literally copy-pasted from Lauren Altman's CNNLorenzMie. Will likely replace with crop_feature in the future     
 def crop(frame, all=False):
