@@ -3,6 +3,8 @@
 
 import cv2, json
 import numpy as np
+import os
+import pandas as pd
 from .Feature import Feature
 
 class Frame(object):
@@ -98,14 +100,7 @@ class Frame(object):
             if image is not None:
                 print("Warning: could not read image of type {}".format(type(im)))
         else:
-            self._image = image
-#         elif len(np.shape(image)) is 2:
-#             self._image = image
-#         elif len(np.shape(image)) is 3:
-#             self._image = image[:, :, 0]
-#         else:
-#             self._image = None
-#             print("Warning: invalid image dimensions: {}".format(np.shape(image)))            
+            self._image = image         
     
     @property
     def features(self):
@@ -115,25 +110,22 @@ class Frame(object):
     def bboxes(self):
         return self._bboxes
     
-    def add(self, features, info=None): 
-        if features is None:
-            return
-        features = [features] if not isinstance(features, list) else features                         #### Ensure input is a list
-        info = [info for feature in features] if not isinstance(info, list) else info
-        for i, feature in enumerate(features):
-            bbox = None
-            if isinstance(feature, tuple) and len(feature) is 4:    #### case where bbox passed
-                bbox = feature
-                feature = Feature()  
-            elif isinstance(feature, dict):                         #### case where serialized feature passed
-                feature = Feature().deserialize(info=feature)      
-            if isinstance(feature, Feature):                        #### If a feature was found, add it
-                self._bboxes.append(bbox)
+    def add(self, features=[], bboxes=[]):
+        features = [features] if not isinstance(features, list) else features           #### Ensure input is a list
+        bboxes = [bboxes] if not isinstance(bboxes, list) else bboxes
+        for i in range( max(len(bboxes), len(features)) ):
+            bbox = bboxes[i] if i < len(bboxes) else None                               #### If no bbox/feature, use None
+            feature = features[i] if i < len(features) else None                        
+            if isinstance(feature, dict):                                               #### If feature is serialized, then deserialize
+                feature = Feature(info=feature)     
+            if not isinstance(feature, Feature) and bbox is not None:                   #### If bbox but no feature, pass empty feature
+                if len(bbox) == 4:
+                    feature = Feature()
+            if isinstance(feature, Feature):                                            #### If we have a feature to add, set instrument and add with appropriate bbox
                 if self.instrument is not None:
                     feature.model.instrument = self.instrument
-                if info[i] is not None:
-                    feature.deserialize(info=info[i])
                 self._features.append(feature)
+                self._bboxes.append(bbox)
             elif feature is not None:
                 print('Warning: could not add feature {} of type {}'.format(i, type(feature)))
 #                 msg = "features must be list of Features"
@@ -146,33 +138,23 @@ class Frame(object):
             if report:
                 print(result)
 
-    def serialize(self, filename=None, omit=[], omit_feat=[]):
+    def serialize(self, save=False, path=None, omit=[], omit_feat=[]):
         info = {}
         if 'features' not in omit:
-            features = []
-            bbox_info = []
-            for i, feature in enumerate(self.features):
-                if self.bboxes[i] is None:
-                    features.append(feature.serialize( exclude=omit_feat ))
-                else:
-                    bbox_info.append(feature.serialize( exclude=omit_feat )) 
-            info['features'] = features
-            info['bbox_info'] = bbox_info
-        
+            info['features'] = [feature.serialize( exclude=omit_feat ) for feature in self.features]
         if 'bboxes' not in omit:
-            bboxes = []
-            for bbox in self.bboxes:
-                if bbox is not None:
-                    bboxes.append(bbox)
-            info['bboxes'] = bboxes
+            info['bboxes'] = self.bboxes
         if self.image_path is not None:
             info['image_path'] = self.image_path
         if self.framenumber is not None:
             info['framenumber'] = str(self.framenumber)
-#         for k in omit:
-#             if k in info.keys():
-#                 info.pop(k)
-        if filename is not None:
+        save = save if path is None else True
+        if save and self.image_path is not None:
+            path = self.image_path.split('_norm_images/')[0] if path is None else path
+            path += '_frames/'
+            if not os.path.exists(path):
+                os.makedirs(path)
+            filename = path + 'frame' + str(self.framenumber).rjust(4, '0') + '.json'
             with open(filename, 'w') as f:
                 json.dump(info, f)
         return info
@@ -185,69 +167,33 @@ class Frame(object):
                 info = json.load(f)
         if 'framenumber' in info.keys():
             self.framenumber = int(info['framenumber']) 
-        if 'image_path' in info.keys():
-            self.image_path = image_path
-        if 'features' in info.keys():          #### Add any features passed in serial form
-            self.add(info['features'])
-        if 'bboxes' in info.keys():            #### Add any features specified by bboxes
-            if 'bbox_info' in info.keys():
-                if 'bbox_info' not in info.keys():
-                    info['bbox_info'] = None
-                self.add(info['bboxes'], info=info['bbox_info'])           
+        if 'image_path' in info.keys():                   
+            self.image_path = info['image_path']                           #### Note: setting image path will call image setter
+        features = info['features'] if 'features' in info.keys() else []
+        bboxes = info['bboxes'] if 'bboxes' in info.keys() else []
+        self.add(features=features, bboxes=bboxes) 
+        
+    def to_df(self, info=None):
+        info = info or self.serialize(omit_feat=['data'])
+        df = pd.DataFrame()
+        features = info['features'] if 'features' in info.keys() else {}
+        bboxes = info['bboxes'] if 'bboxes' in info.keys() else []
+        df = pd.DataFrame.from_dict(features)
+        df['bboxes'] = bboxes
+        df['framenumber'] = info['framenumber'] if 'framenumber' in info.keys() else None  
+        return df
+    
+# if __name__ == '__main__':    
 
- #### Crop all features in a frame, using an old cropping method literally copy-pasted from Lauren Altman's CNNLorenzMie. Will likely replace with crop_feature in the future     
-def crop(frame, all=False):
-        for i, bbox in enumerate(self.bboxes):
-            if bbox is not None:
-                feature = frame.features[i]
-                if all or feature.data is None:
-                    if self.image is None:
-                        feature.data = None
-                    else:
-                        (x, y, w, h) = bbox
-                        center = ( int(np.round(x)), int(np.round(y)) )
-                        crop_shape = (w, h)
-                        cropped, corner = crop_center(self.image, center, crop_shape)
-                        feature.data = cropped
-                        feature.model.coordinates = coordinates(shape=crop_shape, corner=corner)
-                        if feature.model.particle.x_p is None:
-                            feature.model.particle.x_p = x
-                        if feature.model.particle.y_p is None:
-                            feature.model.particle.y_p = y   
-                            
-def crop_center(img_local, center, cropshape):
-    (xc, yc) = center
-    (crop_img_rows, crop_img_cols) = cropshape
-    (img_cols, img_rows) = img_local.shape[:2]
-    if crop_img_rows % 2 == 0:
-        right_frame = left_frame = int(crop_img_rows/2)
-    else:
-        left_frame = int(np.floor(crop_img_rows/2.))
-        right_frame = int(np.ceil(crop_img_rows/2.))
-    xbot = xc - left_frame
-    xtop = xc + right_frame
-    if crop_img_cols % 2 == 0:
-        top_frame = bot_frame = int(crop_img_cols/2.)
-    else:
-        top_frame = int(np.ceil(crop_img_cols/2.))
-        bot_frame = int(np.floor(crop_img_cols/2.))
-    ybot = yc - bot_frame
-    ytop = yc + top_frame
-    if xbot < 0:
-        xbot = 0
-        xtop = crop_img_rows
-    if ybot < 0:
-        ybot = 0
-        ytop = crop_img_cols
-    if xtop > img_rows:
-        xtop = img_rows
-        xbot = img_rows - crop_img_rows
-    if ytop > img_cols:
-        ytop = img_cols
-        ybot = img_cols - crop_img_cols
-    cropped = img_local[ybot:ytop, xbot:xtop]
-    corner = (xbot, ybot)
-    return cropped, corner
-                                  
-                               
-            
+
+#     img_path = 'examples/test_image_crop_201.png'
+#     img = cv2.imread(img_path)
+#     estimator = Estimator(model_path=keras_model_path, config_file=config_json)
+#     data = estimator.predict(img_list = [img], scale_list=[1])
+#     example_z = round(data['z_p'][0],1)
+#     example_a = round(data['a_p'][0],3)
+#     example_n = round(data['n_p'][0],3)
+#     print('Example Image:')
+#     print('Particle of size {}um with refractive index {} at height {}'.format(example_a, example_n, example_z))
+    
+
