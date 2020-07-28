@@ -172,16 +172,29 @@ class Feature(object):
         if self.model is not None:
             model = str(type(self.model)).split('.')[-1][:-2]
             info['model'] = model
-        # Coordinates
-        if self.model.coordinates is None:
-            shape = None
-            corner = None
+            # Coordinates
+            if self.model.coordinates is None:
+                shape = None
+                corner = None
+            else:
+                coor = self.model.coordinates
+                shape = (int(coor[0][-1] - coor[0][0])+1,
+                         int(coor[1][-1] - coor[1][0])+1)
+                corner = (int(coor[0][0]), int(coor[1][0]))
+                info['coordinates'] = (shape, corner)
+            keys = self.model.properties.keys()
+            for ex in exclude:
+                if ex in keys:
+                    keys.pop(ex)
+                elif ex in info.keys():
+                    info.pop(ex)
+                else:
+                    print(ex + " not found in Feature's keylist")
+            # Combine dictionaries + finish serialization
+            out = self.model.properties
+            out.update(info)
         else:
-            coor = self.model.coordinates
-            shape = (int(coor[0][-1] - coor[0][0])+1,
-                     int(coor[1][-1] - coor[1][0])+1)
-            corner = (int(coor[0][0]), int(coor[1][0]))
-            info['coordinates'] = (shape, corner)
+            out = info
         # Add reduced chi-squared
         if self.optimizer is not None:
             if self.optimizer.result is not None:
@@ -193,17 +206,6 @@ class Feature(object):
         if self.label is not None:
             info['label'] = self.label
         # Exclude things, if provided
-        keys = self.model.properties.keys()
-        for ex in exclude:
-            if ex in keys:
-                keys.pop(ex)
-            elif ex in info.keys():
-                info.pop(ex)
-            else:
-                print(ex + " not found in Feature's keylist")
-        # Combine dictionaries + finish serialization
-        out = self.model.properties
-        out.update(info)
         if filename is not None:
             with open(filename, 'w') as f:
                 json.dump(out, f)
