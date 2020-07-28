@@ -13,29 +13,29 @@ class Frame(object):
     ...
     Attributes
     ----------
-    image : numpy.ndarray
-        Image from camera. Setter ensures the image is grayscale. Directly choosing an image sets image_path to None. 
-    framenumber : int
     image_path : string    
-        The setter will attempt to read the image from file at image_path. Additionally, if the Frame 
-        does not have a framenumber, the setter will attempt to read one from the end of the string.
+    image : numpy.ndarray
+        Image from camera. If None (default), the getter tries to read from local image_path. To save image, call load()
+    framenumber : int
+    features : List of Feature objects
     bboxes : List of tuples ( {x, y, w, h} )
         Bounding box of dimensions (w, h) around feature at (x, y). Used for cropping to obtain image stamps
-    features : List of Feature objects
+    
         
     Methods
     ------- 
-    add(features, info=None) : None
-        features: (list of) Feature objects / list of serialized Features (dicts) / or list of bboxes (tuples)
+    add(features, info=None) 
+        features: list of Feature objects / list of serialized Features (dicts) / or list of bboxes (tuples)
         optional: info: (list of) serialized feature info (dicts)
-            - Unpack and add (each) Feature to the Frame, 
-            - if (each) input is a bbox, add it to Frame; otherwise, add None to frame's bbox list
-            - deserialize info into Feature(s), if info passed
-            
-    crop(all) : None
-        - Use each (not-None) bbox to crop the frame's image and update the corresponding feature's data
-        all : boolean
-            if all is False (default), then only update Features which do not already have data. 
+            - Unpack and add each Feature to the Frame, 
+            - if each input is a bbox, add it to Frame; otherwise, add None to frame's bbox list
+            - deserialize info into Features, if info passed
+    
+    remove(index)
+        index : list of integers. Remove features and bboxes at indices.
+        
+    load() 
+        read image from local image_path 
         
     '''
     
@@ -43,12 +43,13 @@ class Frame(object):
                  framenumber=None, image=None, image_path=None, info=None):
         self._instrument = instrument
         self._framenumber = framenumber
+        self._image = None
+        self.image = image
         self.image_path = image_path
-        if self.image is None:
-            self.image = image
+        if self.image_path is None: print('Warning - image path not set')
         self._bboxes = []
         self._features = []
-        self.add(features)
+        self.add(features=features)
         self.deserialize(info)
     
     @property
@@ -73,35 +74,41 @@ class Frame(object):
     
     @image_path.setter                   
     def image_path(self, path):
-        if not isinstance(path, str):
-            self.image = None                                                   #### If invalid format, clear image and path
+        if not isinstance(path, str):                                           #### Catch invalid format
+            self._image_path = None
             if path is not None:
-                print('Warning: could not read path of type {}'.print(type(path)))
+                print('Warning - could not read path of type {}'.print(type(path)))
             return
         if path[-1] is '/' and self.framenumber is not None:                    #### If path is a directory, look for image of format 'path/image(framenumber).png'
             path = path + 'image'+ str(self.framenumber).rjust(4, '0')+'.png'    
-        self.image = cv2.imread(path)                                        #### Read image (0 is grayscale)
-        if self.image is not None:
+        if os.path.exists(path):
             self._image_path = path                                             #### If an image was found, then keep the path
+            print('file found - set path to '+path)
             if self.framenumber is None:                                        #### If path leads to an image and framenumber isn't set, try to
-                self.framenumber = int(path[-8:-4])                            ####    read framenumber from the path  (i.e. 0107 from '...image0107.png')                 
+                self.framenumber = int(path[-8:-4])                             ####    read framenumber from the path  (i.e. 0107 from '...image0107.png')
+                print('read framenumber {} from path'.format(self.framenumber))
         else:
-            print("Warning: image not found at path '{}'".format(path))
-
+            self._image_path = None
+            print("Warning - invalid path: "+path)
+           
     @property
     def image(self):
-        return self._image
-    
-    @image.setter
-    def image(self, image):                                                     #### Note: Changing the image will reset the image path
-        self._image_path = None
-        if not isinstance(image, np.ndarray):
-            self._image = None
-            if image is not None:
-                print("Warning: could not read image of type {}".format(type(im)))
-        else:
-            self._image = image         
-    
+        return self._image or cv2.imread(self.image_path)
+                
+    def load(self):
+        self._image = self.image
+        if self.image is None: print('Warning - failed to load image from path '+self.image_path)
+
+                    
+    def unload(self):
+        self._image = None   
+      
+    @image.setter    #### Warning: images set directly will be lost when they are unloaded() 
+    def image(self, image):
+        if isinstance(image, np.ndarray):
+            print('Warning - image passed directly to Frame without use of a path!')
+            self._image = image
+   
     @property
     def features(self):
         return self._features
@@ -127,11 +134,17 @@ class Frame(object):
                 self._features.append(feature)
                 self._bboxes.append(bbox)
             elif feature is not None:
-                print('Warning: could not add feature {} of type {}'.format(i, type(feature)))
+                print('Warning - could not add feature {} of type {}'.format(i, type(feature)))
 #                 msg = "features must be list of Features"
 #                 msg += " or deserializable Features"
 #                 raise(TypeError(msg))
     
+    def remove(indices):
+        for i in sorted(list(indices), reverse=True):
+            print(i)
+            self._features.remove(i)
+            self._bboxes.remove(i)
+        
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):
             result = feature.optimize(**kwargs)
@@ -182,7 +195,11 @@ class Frame(object):
         df['bboxes'] = bboxes
         df['framenumber'] = info['framenumber'] if 'framenumber' in info.keys() else None  
         return df
+
     
+    
+
+
 # if __name__ == '__main__':    
 
 
