@@ -85,20 +85,28 @@ class Frame(object):
             self._image_path = path                                             #### If an image was found, then keep the path
             print('file found - set path to '+path)
             if self.framenumber is None:                                        #### If path leads to an image and framenumber isn't set, try to
-                self.framenumber = int(path[-8:-4])                             ####    read framenumber from the path  (i.e. 0107 from '...image0107.png')
-                print('read framenumber {} from path'.format(self.framenumber))
+                try:
+                    self.framenumber = int(path[-8:-4])                             ####    read framenumber from the path  (i.e. 0107 from '...image0107.png')
+                    print('read framenumber {} from path'.format(self.framenumber))
+                except ValueError:
+                    print('Warning - could not read integer framenumber from pathname')
         else:
             self._image_path = None
             print("Warning - invalid path: "+path)
            
     @property
     def image(self):
-        return self._image or cv2.imread(self.image_path)
+        return self._image if self._image is not None else cv2.imread(self.image_path)
                 
     def load(self):
         self._image = self.image
-        if self.image is None: print('Warning - failed to load image from path '+self.image_path)
-
+        if isinstance(self._image, np.ndarray):
+            print('Successfully loaded image from file path')
+        elif self._image is None:
+            print('Warning - failed to load image from path '+self.image_path)
+        else:
+            print('Warning - Invalid image format: setting to None')
+            self.unload()
                     
     def unload(self):
         self._image = None   
@@ -129,7 +137,7 @@ class Frame(object):
                 if len(bbox) == 4:
                     feature = Feature()
             if isinstance(feature, Feature):                                            #### If we have a feature to add, set instrument and add with appropriate bbox
-                if self.instrument is not None:
+                if feature.model is not None and self.instrument is not None: 
                     feature.model.instrument = self.instrument
                 self._features.append(feature)
                 self._bboxes.append(bbox)
@@ -139,7 +147,7 @@ class Frame(object):
 #                 msg += " or deserializable Features"
 #                 raise(TypeError(msg))
     
-    def remove(indices):
+    def remove(self, indices):
         for i in sorted(list(indices), reverse=True):
             print(i)
             self._features.remove(i)
@@ -185,7 +193,7 @@ class Frame(object):
         features = info['features'] if 'features' in info.keys() else []
         bboxes = info['bboxes'] if 'bboxes' in info.keys() else []
         self.add(features=features, bboxes=bboxes) 
-        
+    
     def to_df(self, info=None):
         info = info or self.serialize(omit_feat=['data'])
         df = pd.DataFrame()
