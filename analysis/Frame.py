@@ -5,15 +5,20 @@ import cv2, json
 import numpy as np
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 from .Feature import Feature
 
 class Frame(object):
     '''
-    Abstraction of an experimental video frame
+    Abstraction of an experimental video frame. 
     ...
     Attributes
     ----------
+    path : string
+        path leading to a base folder containing information about this particular experiment
     image_path : string    
+        path leading to the frame's corresponding .png image
     image : numpy.ndarray
         Image from camera. If None (default), the getter tries to read from local image_path. To save image, call load()
     framenumber : int
@@ -40,13 +45,13 @@ class Frame(object):
     '''
     
     def __init__(self, features=None, instrument=None, 
-                 framenumber=None, image=None, image_path=None, info=None):
+                 framenumber=None, image=None, path=None, info=None):
         self._instrument = instrument
         self._framenumber = framenumber
         self._image = None
+        self._image_path = None
         self.image = image
-        self.image_path = image_path
-        if self.image_path is None: print('Warning - image path not set')
+        self.path = path
         self._bboxes = []
         self._features = []
         self.add(features=features)
@@ -59,6 +64,9 @@ class Frame(object):
     @instrument.setter
     def instrument(self, instrument):
         self._instrument = instrument
+        for feature in self.features:
+            if feature.model is not None:
+                feature.model.instrument = instrument
     
     @property
     def framenumber(self):
@@ -67,46 +75,83 @@ class Frame(object):
     @framenumber.setter
     def framenumber(self, idx):
         self._framenumber = idx
+        if self.image_path is None and self.path is not None:
+            self.path = self.path
+       
     
+    @property
+    def path(self):
+        return self._path
+    
+    @path.setter
+    def path(self, path):
+        if not isinstance(path, str):               #### Catch invalid format
+            self._path = None
+        elif len(path) >= 4 and path[-4:] == '.png':
+            self.image_path = path
+        elif '.' in path:
+            print('warning - {} is an invalid directory name'.format(path))
+            self._path = None        
+        else:
+            self._path = path
+            if os.path.isdir(path):
+#                 print('set path to existing directory {}'.format(path))
+                if self.image_path is None:
+                    if path[-1] !='/':
+                        path += '/'
+                    filename = 'image' + str(self.framenumber).rjust(4, '0') + '.png'
+                    if os.path.exists(path + filename):
+                        self._image_path = path + filename
+                    elif os.path.exists(path + 'norm_images/' + filename):
+                        self._image_path = path + 'norm_images/' + filename
+
+            else:
+#                 print('setting path to new directory at path {}'.format(path))
+                os.mkdir(path)      
+   
     @property
     def image_path(self):
         return self._image_path
-    
+   
     @image_path.setter                   
     def image_path(self, path):
-        if not isinstance(path, str):                                           #### Catch invalid format
+        if not isinstance(path, str):   #### Catch invalid format
+#             print('error: cannot read path of type {}'.format(type(path)))
             self._image_path = None
-            if path is not None:
-                print('Warning - could not read path of type {}'.print(type(path)))
-            return
-        if path[-1] is '/' and self.framenumber is not None:                    #### If path is a directory, look for image of format 'path/image(framenumber).png'
-            path = path + 'image'+ str(self.framenumber).rjust(4, '0')+'.png'    
-        if os.path.exists(path):
-            self._image_path = path                                             #### If an image was found, then keep the path
-            print('file found - set path to '+path)
-            if self.framenumber is None:                                        #### If path leads to an image and framenumber isn't set, try to
-                try:
-                    self.framenumber = int(path[-8:-4])                             ####    read framenumber from the path  (i.e. 0107 from '...image0107.png')
-                    print('read framenumber {} from path'.format(self.framenumber))
-                except ValueError:
-                    print('Warning - could not read integer framenumber from pathname')
+        elif len(path) <= 4 or path[-4:] != '.png':
+            print('error: image path must lead to file of type .png')
+            self._image_path = None
         else:
-            self._image_path = None
-            print("Warning - invalid path: "+path)
-           
+            self._image_path = path
+            try:
+                fnum = int(path[-8:-4])  #### Try to read framenumber from end of path (i.e. 0107 from '...image0107.png')
+                if self.framenumber is None:
+                    self.framenumber = fnum  #### If unset, set framenumber to obtained value
+                    print('read framenumber {} from image_path'.format(fnum))
+                path = path[:-8] + '/'       #### Remove framenumber and extension
+            except ValueError:
+                print('Warning - could not read integer framenumber from pathname')
+                path = path[:-4] + '/'       #### If framenumber not found at end, just remove extension
+            finally:
+                if self.path is None:
+                    if 'norm_images/' in path:    #### If image is in '.../folder/norm_images/...' then path is '...folder/'
+                        path = path.split('norm_images/')[0]
+#                     print('Obtained path {} from image_path'.format(path))
+                    self.path = path
+    
+    @property 
+    def serial_path(self):
+        if self.path is None or self.framenumber is None:
+            return None
+        else:
+            return self.path+'/frames/frame'+str(self.framenumber).rjust(4, '0') +'.json'   
+        
     @property
     def image(self):
         return self._image if self._image is not None else cv2.imread(self.image_path)
                 
     def load(self):
         self._image = self.image
-        if isinstance(self._image, np.ndarray):
-            print('Successfully loaded image from file path')
-        elif self._image is None:
-            print('Warning - failed to load image from path '+self.image_path)
-        else:
-            print('Warning - Invalid image format: setting to None')
-            self.unload()
                     
     def unload(self):
         self._image = None   
@@ -116,6 +161,7 @@ class Frame(object):
         if isinstance(image, np.ndarray):
             print('Warning - image passed directly to Frame without use of a path!')
             self._image = image
+ 
    
     @property
     def features(self):
@@ -147,11 +193,47 @@ class Frame(object):
 #                 msg += " or deserializable Features"
 #                 raise(TypeError(msg))
     
-    def remove(self, indices):
-        for i in sorted(list(indices), reverse=True):
-            print(i)
-            self._features.remove(i)
-            self._bboxes.remove(i)
+    def remove(self, index):
+        if isinstance(index, int):
+#             print(index)
+            self._features.pop(index)
+#             print(self._bboxes.pop(index))
+        elif isinstance(index, Feature):
+            try:
+                self.remove(self.features.index(index))
+            except ValueError:
+                print('Warning - could not remove Feature: Feature not found')
+                return
+        elif isinstance(index, list):
+            for i in sorted(list(index), reverse=True): 
+                self.remove(i)
+
+    def no_edges(self, tol=200, image_shape=(1280,1024)):
+        image_shape = image_shape or np.shape(self.image)
+        minwidth = np.min(image_shape)
+        if tol < 0 or tol > minwidth/2:
+            print('Invalid tolerance for this frame size')
+            return None
+        xmin, ymin = (tol, tol)
+        xmax, ymax = np.subtract(image_shape, (tol, tol))
+        
+        toss = []
+        for i, bbox in enumerate(self.bboxes):
+            if bbox is not None and (bbox[0]<xmin or bbox[0]>xmax or bbox[1]<ymin or bbox[1]>ymax):
+                toss.append(i)
+        self.remove(toss)
+    
+    def nodoubles(self, tol=5):
+        toss = []
+        for i, bbox1 in enumerate(self.bboxes):
+            for j, bbox2 in enumerate(self.bboxes[:i]):
+                x1, y1 = bbox1[:2]
+                x2, y2 = bbox2[:2]
+                dist = np.sqrt((x1-x2)**2 + (y1-y2)**2)
+                if dist<tol:
+                    toss.append(i)
+                    break
+        self.remove(toss)
         
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):
@@ -169,15 +251,15 @@ class Frame(object):
             info['image_path'] = self.image_path
         if self.framenumber is not None:
             info['framenumber'] = str(self.framenumber)
-        save = save if path is None else True
-        if save and self.image_path is not None:
-            path = self.image_path.split('_norm_images/')[0] if path is None else path
-            path += '_frames/'
-            if not os.path.exists(path):
-                os.makedirs(path)
-            filename = path + 'frame' + str(self.framenumber).rjust(4, '0') + '.json'
-            with open(filename, 'w') as f:
-                json.dump(info, f)
+        if save:
+            if path is None:
+                if self.path is not None and self.framenumber is not None:
+                    if not os.path.exists(self.path+'/frames/'):
+                        os.mkdir(self.path+'/frames/')
+                    path = self.serial_path     
+            if path is not None:
+                with open(path, 'w') as f:
+                    json.dump(info, f)
         return info
 
     def deserialize(self, info):
@@ -189,14 +271,13 @@ class Frame(object):
         if 'framenumber' in info.keys():
             self.framenumber = int(info['framenumber']) 
         if 'image_path' in info.keys():                   
-            self.image_path = info['image_path']                           #### Note: setting image path will call image setter
+            self.image_path = info['image_path']                           
         features = info['features'] if 'features' in info.keys() else []
         bboxes = info['bboxes'] if 'bboxes' in info.keys() else []
         self.add(features=features, bboxes=bboxes) 
-    
+        
     def to_df(self, info=None):
-        info = info or self.serialize(omit_feat=['data'])
-        df = pd.DataFrame()
+        info = info if info is not None else self.serialize(omit_feat=['data'])
         features = info['features'] if 'features' in info.keys() else {}
         bboxes = info['bboxes'] if 'bboxes' in info.keys() else []
         df = pd.DataFrame.from_dict(features)
@@ -204,10 +285,19 @@ class Frame(object):
         df['framenumber'] = info['framenumber'] if 'framenumber' in info.keys() else None  
         return df
 
+    def show(self):
+        image = self.image
+        if image is None: return
+        fig, ax = plt.subplots()
+        ax.imshow(image, cmap='gray')
+        for bbox in self.bboxes:
+            if bbox is not None:
+                x,y,w,h= bbox
+                test_rect = Rectangle(xy=(x - w/2, y - h/2), width=w, height=h, fill=False, linewidth=3, edgecolor='r')
+                ax.add_patch(test_rect)
+        plt.show()
     
     
-
-
 # if __name__ == '__main__':    
 
 
