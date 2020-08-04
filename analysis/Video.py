@@ -6,21 +6,22 @@ import pandas as pd
 import json
 import os
 from .Frame import Frame
-from .Trajectory import Trajectory
 
 
 #### path format: a video at home/experiment1/videos/myrun.avi has path 'home/experiment1/' (don't forget '/' at the end!) and filename 'myrun'. If your working directory is already the main directory (i.e. this file is  in experiment1) then path can be blank.
 #### Path setters are designed so that the full video path (path='home/experiment1/videos/myrun.avi') and no filename will give the same result
 class Video(object):
 
-    def __init__(self, frames=[], path=None, filename=None, instrument=None, fps=30, info=None):
-        self._frames = []
+    def __init__(self, frames={}, path=None, video_path=None, instrument=None, fps=30, info=None):
+        self._frames = {}
         self._fps = None
         self._instrument = instrument
+        self._path = None
+        self._video_path = None
         self.path = path
-        self.filename = filename
-        self.add(frames)
-        self._trajectories = []
+        if self.video_path is None: self.video_path = video_path  
+        if len(frames) > 0: self.add(frames)
+#         self._trajectories = []
         self.deserialize(info)
 
     @property
@@ -39,79 +40,119 @@ class Video(object):
     def instrument(self, instrument):
         self._instrument = instrument
 
+        
     @property
     def frames(self):
-        return self._frames
+        return list(self._frames.values())
     
-    def add(self, frames, framenums=[]):
-        if frames is None:
+    @property
+    def framenumbers(self):
+        return list(self._frames.keys())
+    
+    def get_frame(self, framenumber):
+        return self._frames[framenumber]
+
+    def get_frames(self, framenumbers):
+        return [self.get_frame(fnum) for fnum in framenumbers]
+    
+    def set_frame(self, frame=None, framenumber=None):
+        if frame is None:
+            frame=Frame(framenumber=framenumber, path=self.path)
+        if framenumber is not None:
+            frame.framenumber = framenumber
+        if frame.framenumber is None:
+            print('Cannot set frame without framenumber')
+        else:
+            if frame.framenumber in self.framenumbers:
+                print('Warning - overwriting frame {}'.format(framenumber))
+            self._frames[frame.framenumber] = frame
+            frame.path = self.path
+            if self.instrument is not None:
+                frame.instrument = iself.instrument
+    
+    def set_frames(self, frames=None, framenumbers=None):
+        if frames is None and framenumbers is None: 
             return
-        frames = [frames] if not isinstance(frames, list) else frames                               #### Ensure input is a list
-        framenums = [None for frame in frames] if len(framenums) != len(frames) else framenums      #### Ensure framenums is same size as frames
-        for i, frame in enumerate(frames):    
-            if isinstance(frame, Frame):
-                if framenums[i] is not None:
-                    frame.framenumber = framenums[i]
-                self._frames.append(frame)
-            elif isinstance(frame, str):
-                self._frames.append(Frame(instrument=self.instrument, framenumber=framenums[i], image_path=frame))
-            elif isinstance(frame, np.ndarray): 
-                self._frames.append(Frame(instrument=self.instrument, framenumber=framenums[i], image=frame))
-            elif frame is not None:
-                print('Warning: could not add frame of type {}'.format(type(Frame)))
-            
+        elif isinstance(frames, dict):
+            self.set_frames(frames=list(frames.values()), framenumbers=list(frames.keys()))
+            return
+        elif framenumbers is None:
+            framenumbers = [None for frame in frames]
+        elif frames is None:
+            frames = [Frame(path=self.path) for fnum in framenumbers]
+        for i in range(len(frames)):
+            self.set_frame(frames[i], framenumbers[i])
+                           
+    def add(self, frames):
+        print('Adding {} frames to the end of video...'.format(len(frames)))
+        if len(self.frames) > 0:
+            nframes = max(self.framenumbers()) + 1
+        else:
+            nframes = 0
+        self.set_frames( frames=frames, framenumbers = list(range(nframes, nframes+len(frames))) )
+             
     def sort(self):
-        self._frames = sorted(self._frames, key=lambda x: x.framenumber if x.framenumber is not None else 100000)        
-    
-    def renumber(self):
-        for i, frame in enumerate(self._frames):
-            frame.framenumber = i
+        self._frames = dict(sorted(self._frames.items(), key=lambda x: x[0]))        
             
     def clear(self):
-        self._frames = []
+        self._frames = {}
+        
         
     @property 
+    def video_path(self):
+        return self._video_path        
+
+    @video_path.setter                   
+    def video_path(self, path):
+        if not isinstance(path, str):
+            self._video_path = None
+        elif len(path) < 4 or path[-4:] !='.avi':
+            print('error: video path must lead to file of type .avi')
+        else:
+            self._video_path = path
+            if self.path is None:
+                path = path.replace('videos/', '')[:-4]
+                print('obtained path {} from corresponding video path'.format(path))
+                self.path = path
+           
+    @property
     def path(self):
         return self._path
     
-    @path.setter                   
+    @path.setter
     def path(self, path):
-        self._path = path if isinstance(path, str) else ''    #### Ensure path is always string type
-    
-    @property 
-    def filename(self):
-        return self._filename 
-            
-    @filename.setter                                          #### Update filename and search for video
-    def filename(self, filename):             
-        if isinstance(filename, str):                         #### If filename is a string, remove suffix (if present) and get frames
-            self._filename = filename.split('.avi')[0]
-            if os.path.exists(self.images_path):              #### If we have a valid im directory, read frames one-at-a-time
-                frames = [Frame(image_path=self.images_path+name) for name in os.listdir(self.images_path)] 
-                self.add(frames)
-            elif os.path.exists(self.video_path):
-                self.get_normalized_video()       
-        else:                                                   #### If invalid or None filename is passed, look for path+filename in self.path
-            self._filename = None               
-            if len(self.path.split('videos/')) is 2:        
-                path, filename = self.path.split('videos/')
-                self.path = path
-                self.filename = filename                        #### If filename found in self.path, call the setter again
-            elif filename is not None:
-                print('Warning: invalid filename of type {}'.format(type(filename)))
- 
-    @property
-    def video_path(self):
-        return None if self.filename is None else self.path + 'videos' + self.filename + '.avi'
-    
-    @property 
-    def images_path(self):
-        return None if self.filename is None else self.path + self.filename + '_norm_images/' 
-    
-    
-    def get_normalized_video(self):
-        pass     #### background path is self.path+'videos/background.avi'
-    
+        if not isinstance(path, str):
+            self._path = None
+        elif len(path) >= 4 and path[-4:] == '.avi':
+            self.video_path = path
+        elif '.' in path:
+            print('warning - {} is an invalid directory name'.format(path))
+            self._path = None
+        else:
+            self._path = path
+            if os.path.isdir(path):
+#                 print('set path to existing directory {}'.format(path))
+                if self.video_path is None:
+                    if path[-1] == '/':
+                        path = path[:-1]
+                    filename = path.split('/')[-1]
+#                     print(path.replace(filename, 'videos/'+filename) + '.avi')
+#                     print(os.path.exists(path.replace(filename, 'videos/'+filename) + '.avi'))
+                    
+#                     print(path+'.avi')
+                    if os.path.exists(path.replace(filename, 'videos/'+filename) + '.avi'):
+                        self.video_path = path.replace(filename, 'videos/'+filename) + '.avi'
+                    elif os.path.exists(path + '.avi'):
+                        self.video_path = path + '.avi'
+
+            else:
+                print('setting path to new directory at path {}'.format(path))
+                os.mkdir(path)
+        
+    def load(self):
+        if self.path is not None:
+            self.set_frames(frames=[Frame(path=self.path + '/norm_images/' + s) for s in os.listdir(self.path + '/norm_images')])
+                
     @property
     def trajectories(self):
         return self._trajectories
