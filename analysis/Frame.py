@@ -15,20 +15,34 @@ class Frame(object):
     ...
     Attributes
     ----------
-    path : string
-        path leading to a base folder containing information about this particular experiment
-    image_path : string    
-        path leading to the frame's corresponding .png image
-    image : numpy.ndarray
-        Image from camera. If None (default), the getter tries to read from local image_path. To save image, call load()
-    framenumber : int
     features : List of Feature objects
     bboxes : List of tuples ( {x, y, w, h} )
         Bounding box of dimensions (w, h) around feature at (x, y). Used for cropping to obtain image stamps
+    framenumber : int
+    path : string
+        path leading to a base directory with data related to this particular experiment.
+    image_path : string    
+        path leading to the frame's corresponding .png image. By default, this is path/norm_images/image####.png (where #### is the framenumber)     
+    image_path : string               
+        path leading to the .png image file for this particular video frame. 
+     ** Note: image_path doesn't have a setter - both path and image_path are determined by the framenumber and the path setter.
+          If path setter gets a filename (i.e. frame.path='exp/image0123.png' or frame.path='myexp/norm_images/image0123.png') 
+              then it sets the image_path; the path is set to the directory 'myexp'; and if framenumber isn't set, it's obtained
+              from the filename (in this case, framenumber=123)
+          If the path setter gets a directory (i.e. vid.path='myexp') then it sets the path and, if framenumber is set, checks 
+              for a corresponding image ('myexp/image0123.png' or 'myexp/norm_images/image0123.png') and sets the image_path 
+              (if file is found). 
     
+    image : numpy.ndarray
+        Image from camera. If None (default), the getter tries to read from local image_path. To save image, call load()
+    
+    instrument : Instrument
+        Instrument instance used for prediction
         
-    Methods
+    Methods ##TODO
     ------- 
+    add(features=[], bboxes=[]):
+        
     add(features, info=None) 
         features: list of Feature objects / list of serialized Features (dicts) / or list of bboxes (tuples)
         optional: info: (list of) serialized feature info (dicts)
@@ -50,6 +64,7 @@ class Frame(object):
         self._framenumber = framenumber
         self._image = None
         self._image_path = None
+        self._path = None
         self.image = image
         self.path = path
         self._bboxes = []
@@ -75,8 +90,9 @@ class Frame(object):
     @framenumber.setter
     def framenumber(self, idx):
         self._framenumber = idx
-        if self.image_path is None and self.path is not None:
-            self.path = self.path
+        self.path = self.path
+#         if self.image_path is None and self.path is not None:
+#             self.path = self.path
        
     
     @property
@@ -85,19 +101,29 @@ class Frame(object):
     
     @path.setter
     def path(self, path):
-        if not isinstance(path, str):               #### Catch invalid format
+        if not isinstance(path, str):               
             self._path = None
-        elif len(path) >= 4 and path[-4:] == '.png':
-            self.image_path = path
-        elif '.' in path:
+        elif len(path) >= 4 and path[-4:] == '.png':  #### If path is a file, then set image_path 
+            self._image_path = path        
+            filename = path.split('/')[-1]
+            if self.framenumber is None and len(filename) > 8:
+                try:                        #### Try to read framenumber from end of path (i.e. 0107 from '...image0107.png')
+                    self.framenumber = int(filename[-8:-4]) 
+                except ValueError:
+                    print('Warning - could not read integer framenumber from pathname')
+            path = path.replace(filename, '')         #### remove filename (and norm_images/) to get base directory
+            path = path.replace('norm_images/', '')
+#             print('Set path to {}'.format(path))
+            self._path = path
+        elif '.' in path:    
             print('warning - {} is an invalid directory name'.format(path))
             self._path = None        
         else:
-            self._path = path
-            if os.path.isdir(path):
+            self._path = path               #### If path is a directory, set path and use framenumber to search for image_path                       
+            if os.path.isdir(path):       
 #                 print('set path to existing directory {}'.format(path))
-                if self.image_path is None:
-                    if path[-1] !='/':
+                if self.image_path is None and self.framenumber is not None:
+                    if path[-1] !='/':          
                         path += '/'
                     filename = 'image' + str(self.framenumber).rjust(4, '0') + '.png'
                     if os.path.exists(path + filename):
@@ -105,47 +131,14 @@ class Frame(object):
                     elif os.path.exists(path + 'norm_images/' + filename):
                         self._image_path = path + 'norm_images/' + filename
 
-            else:
+            else:         #### If path does not exist, make new directory
 #                 print('setting path to new directory at path {}'.format(path))
                 os.mkdir(path)      
    
     @property
     def image_path(self):
         return self._image_path
-   
-    @image_path.setter                   
-    def image_path(self, path):
-        if not isinstance(path, str):   #### Catch invalid format
-#             print('error: cannot read path of type {}'.format(type(path)))
-            self._image_path = None
-        elif len(path) <= 4 or path[-4:] != '.png':
-            print('error: image path must lead to file of type .png')
-            self._image_path = None
-        else:
-            self._image_path = path
-            try:
-                fnum = int(path[-8:-4])  #### Try to read framenumber from end of path (i.e. 0107 from '...image0107.png')
-                if self.framenumber is None:
-                    self.framenumber = fnum  #### If unset, set framenumber to obtained value
-                    print('read framenumber {} from image_path'.format(fnum))
-                path = path[:-8] + '/'       #### Remove framenumber and extension
-            except ValueError:
-                print('Warning - could not read integer framenumber from pathname')
-                path = path[:-4] + '/'       #### If framenumber not found at end, just remove extension
-            finally:
-                if self.path is None:
-                    if 'norm_images/' in path:    #### If image is in '.../folder/norm_images/...' then path is '...folder/'
-                        path = path.split('norm_images/')[0]
-#                     print('Obtained path {} from image_path'.format(path))
-                    self.path = path
     
-    @property 
-    def serial_path(self):
-        if self.path is None or self.framenumber is None:
-            return None
-        else:
-            return self.path+'/frames/frame'+str(self.framenumber).rjust(4, '0') +'.json'   
-        
     @property
     def image(self):
         return self._image if self._image is not None else cv2.imread(self.image_path)
@@ -197,7 +190,8 @@ class Frame(object):
         if isinstance(index, int):
 #             print(index)
             self._features.pop(index)
-#             print(self._bboxes.pop(index))
+            bbox = self.bboxes.pop(index)
+#             print(bbox)
         elif isinstance(index, Feature):
             try:
                 self.remove(self.features.index(index))
@@ -241,7 +235,7 @@ class Frame(object):
             if report:
                 print(result)
 
-    def serialize(self, save=False, path=None, omit=[], omit_feat=[]):
+    def serialize(self, save=False, path='frames', omit=[], omit_feat=[]):
         info = {}
         if 'features' not in omit:
             info['features'] = [feature.serialize( exclude=omit_feat ) for feature in self.features]
@@ -252,16 +246,16 @@ class Frame(object):
         if self.framenumber is not None:
             info['framenumber'] = str(self.framenumber)
         if save:
-            if path is None:
-                if self.path is not None and self.framenumber is not None:
-                    if not os.path.exists(self.path+'/frames/'):
-                        os.mkdir(self.path+'/frames/')
-                    path = self.serial_path     
-            if path is not None:
-                with open(path, 'w') as f:
-                    json.dump(info, f)
+            path = path if self.path is None else self.path + '/' + path
+            if not (len(path) >= 5 and path[-5:] == '.json'):
+                if not os.path.exists(path): os.mkdir(path)
+                framenumber = str(self.framenumber).rjust(4, '0') if self.framenumber is not None else ''
+                path = path + '/frame{}.json'.format(framenumber)
+                path = path.replace('//', '/')
+            with open(path, 'w') as f:
+                json.dump(info, f)
         return info
-
+    
     def deserialize(self, info):
         if info is None:
             return
@@ -271,7 +265,7 @@ class Frame(object):
         if 'framenumber' in info.keys():
             self.framenumber = int(info['framenumber']) 
         if 'image_path' in info.keys():                   
-            self.image_path = info['image_path']                           
+            self.path = info['image_path']                           
         features = info['features'] if 'features' in info.keys() else []
         bboxes = info['bboxes'] if 'bboxes' in info.keys() else []
         self.add(features=features, bboxes=bboxes) 
@@ -297,18 +291,3 @@ class Frame(object):
                 ax.add_patch(test_rect)
         plt.show()
     
-    
-# if __name__ == '__main__':    
-
-
-#     img_path = 'examples/test_image_crop_201.png'
-#     img = cv2.imread(img_path)
-#     estimator = Estimator(model_path=keras_model_path, config_file=config_json)
-#     data = estimator.predict(img_list = [img], scale_list=[1])
-#     example_z = round(data['z_p'][0],1)
-#     example_a = round(data['a_p'][0],3)
-#     example_n = round(data['n_p'][0],3)
-#     print('Example Image:')
-#     print('Particle of size {}um with refractive index {} at height {}'.format(example_a, example_n, example_z))
-    
-
