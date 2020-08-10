@@ -201,33 +201,6 @@ class Frame(object):
         elif isinstance(index, list):
             for i in sorted(list(index), reverse=True): 
                 self.remove(i)
-
-    def no_edges(self, tol=200, image_shape=(1280,1024)):
-        image_shape = image_shape or np.shape(self.image)
-        minwidth = np.min(image_shape)
-        if tol < 0 or tol > minwidth/2:
-            print('Invalid tolerance for this frame size')
-            return None
-        xmin, ymin = (tol, tol)
-        xmax, ymax = np.subtract(image_shape, (tol, tol))
-        
-        toss = []
-        for i, bbox in enumerate(self.bboxes):
-            if bbox is not None and (bbox[0]<xmin or bbox[0]>xmax or bbox[1]<ymin or bbox[1]>ymax):
-                toss.append(i)
-        self.remove(toss)
-    
-    def nodoubles(self, tol=5):
-        toss = []
-        for i, bbox1 in enumerate(self.bboxes):
-            for j, bbox2 in enumerate(self.bboxes[:i]):
-                x1, y1 = bbox1[:2]
-                x2, y2 = bbox2[:2]
-                dist = np.sqrt((x1-x2)**2 + (y1-y2)**2)
-                if dist<tol:
-                    toss.append(i)
-                    break
-        self.remove(toss)
         
     def optimize(self, report=True, **kwargs):
         for idx, feature in enumerate(self.features):
