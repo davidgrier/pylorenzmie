@@ -74,22 +74,14 @@ class Video(object):
     
     def __init__(self, frames={}, path=None, instrument=None, fps=30, info=None):
         self._frames = {}
-        self._fps = None
-        self._instrument = instrument
-        self._path = None
-        self._video_path = None
-        self.path = path
+        self.fps = fps
+        self.instrument = instrument
+        self.path = None
+        self.video_path = None
+        self.setDefaultPath(path)
         self._trajectories = pd.DataFrame()
         if len(frames) > 0: self.add(frames)
         self.deserialize(info)
-
-    @property
-    def fps(self):
-        return self._fps
-
-    @fps.setter
-    def fps(self, fps):
-        self._fps = float(fps)
 
     @property
     def instrument(self):
@@ -98,7 +90,14 @@ class Video(object):
     @instrument.setter
     def instrument(self, instrument):
         self._instrument = instrument
+        
+    @property
+    def fps(self):
+        return self._fps
 
+    @fps.setter
+    def fps(self, fps):
+        self._fps = float(fps)    
         
     @property
     def frames(self):
@@ -122,25 +121,24 @@ class Video(object):
         if frame.framenumber is None:
             print('Cannot set frame without framenumber')
         else:
-            if frame.framenumber in self.framenumbers:
-                print('Warning - overwriting frame {}'.format(framenumber))
+#             if frame.framenumber in self.framenumbers:
+#                 print('Warning - overwriting frame {}'.format(framenumber))
             self._frames[frame.framenumber] = frame
             frame.path = self.path
             if self.instrument is not None:
-                frame.instrument = iself.instrument
+                frame.instrument = self.instrument
+        return frame
     
     def set_frames(self, frames=None, framenumbers=None):
-#         print(frames)
-#         print(framenumbers)
         if frames is None and framenumbers is None: 
             if self.path is not None:
                 print('Setting frames using contents of path {}/norm_images:'.format(self.path))
                 self.set_frames(frames=[Frame(path=self.path + '/norm_images/' + s) for s in os.listdir(self.path + '/norm_images')])
                 self.sort()
                 return
-#         elif isinstance(frames, dict):
-#             self.set_frames(frames=list(frames.values()), framenumbers=list(frames.keys()))
-#             return
+        elif isinstance(frames, dict):
+             self._frames.update(frames)
+             
         elif framenumbers is None:
             framenumbers = [None for frame in frames]
         elif frames is None:
@@ -162,43 +160,28 @@ class Video(object):
     def clear(self):
         self._frames = {}
                       
-
-    @property
-    def path(self):
-        return self._path
-    
-    @path.setter
-    def path(self, path):
+    def setDefaultPath(self, path=None, viddir='videos/'):
+        if path is None:
+            path = self.path or self.video_path
         if not isinstance(path, str):
-            self._path = None
-        elif len(path) >= 4 and path[-4:] == '.avi':
-            self._video_path = path
-            path = path.replace('videos/', '')[:-4]
-            print('obtained path {} from corresponding video path'.format(path))
-            self._path = path
-        elif '.' in path:
-            print('warning - {} is an invalid directory name'.format(path))
-            self._path = None
+            return
+        
+        if len(path) >= 4 and path[-4:] == '.avi':
+            self.video_path = path
+            self.path = path.replace(viddir, '')[:-4]
         else:
-            self._path = path
-            if os.path.isdir(path):
-#                 print('set path to existing directory {}'.format(path))
-                if self._video_path is None:
-                    if path[-1] == '/':
-                        path = path[:-1]
-                    filename = path.split('/')[-1]
-                    if os.path.exists(path.replace(filename, 'videos/'+filename) + '.avi'):
-                        self.video_path = path.replace(filename, 'videos/'+filename) + '.avi'
-                    elif os.path.exists(path + '.avi'):
-                        self.video_path = path + '.avi'
-            else:
-                print('setting path to new directory at path {}'.format(path))
+            if '.' in path:
+                print('warning - {} is an invalid directory name'.format(path))
+                return
+            self.path = path
+            if not os.path.isdir(path):
                 os.mkdir(path)
-   
-    @property 
-    def video_path(self):
-        return self._video_path        
-                                
+            if self.video_path is None:
+                if path[-1] == '/':
+                    path = path[:-1]
+                filename = path.split('/')[-1]
+                self.video_path = viddir + path + '.avi'
+                               
     @property
     def trajectories(self):
         return self._trajectories 
@@ -221,7 +204,7 @@ class Video(object):
     def clear_trajectories(self):
         self._trajectories = pd.DataFrame()
             
-    def serialize(self, save=False, path='', traj_path=None,
+    def serialize(self, save=False, path=None, traj_path=None,
                   omit=[], omit_frame=[], omit_feat=[]):
         info={}
         if traj_path is not None:
@@ -230,18 +213,19 @@ class Video(object):
         if 'frames' not in omit:
             frames = [self._frames[key].serialize(omit=omit_frame, omit_feat=omit_feat) for key in self.framenumbers]
             info['frames'] = dict(zip(self.framenumbers, frames))
-        if self.fps is not None:
-            info['fps'] = float(self.fps)
+        info['fps'] = self.fps
+        if self.path is not None:
+            info['path'] = self.path
         if self.video_path is not None:
             info['video_path'] = self.video_path
-        for k in omit:
-            if k in info.keys():
-                info.pop(k)
         if save:
-            path = path if self.path is None else self.path + '/' + path
+            path = path or self.path
+            if path is None:
+                return info
             if not (len(path) >= 5 and path[-5:] == '.json'):
                 if not os.path.exists(path): os.mkdir(path)
                 path += '/video.json'
+                path = path.replace('//', '/')
             with open(path, 'w') as f:
                 json.dump(info, f)
         return info
@@ -263,8 +247,11 @@ class Video(object):
         if 'fps' in info.keys():
             if info['fps'] is not None:
                 self.fps = float(info['fps'])
+        if 'path' in info.keys():
+            if info['path'] is not None:
+                self.path = info['path']
         if 'video_path' in info.keys():
             if info['video_path'] is not None:
-                self.path = info['video_path']
+                self.video_path = info['video_path']
        
             
