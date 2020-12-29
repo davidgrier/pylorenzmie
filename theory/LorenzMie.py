@@ -62,8 +62,12 @@ class LorenzMie(GeneralizedLorenzMie):
 
 
 if __name__ == '__main__':
-    import numpy as np
-    import cupy as cp
+    try:
+        import cupy as np
+        using_cupy = True
+    except:
+        import numpy as np
+        using_cupy = False
     from matplotlib import pyplot as plt
     from pylorenzmie.theory.Instrument import Instrument, coordinates
 
@@ -85,7 +89,8 @@ if __name__ == '__main__':
     field = kernel.field()
     # Compute hologram from field and show it
     field[0, :] += 1.
-    hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
-    hologram = hologram.get()
+    hologram = np.sum(np.real(field * np.conj(field)), axis=0)
+    if using_cupy:
+        hologram = hologram.get()
     plt.imshow(hologram.reshape(201, 201), cmap='gray')
     plt.show()
