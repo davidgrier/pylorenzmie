@@ -43,7 +43,7 @@ class Particle(object):
 
     def __str__(self):
         str = '{}(r_p={})'
-        return str.format(self.__class__.__name__, self.r_p)
+        return str.format(self.__class__.__name__, self.r_p.tolist())
 
     def __repr__(self):
         return self.__str__()
@@ -118,7 +118,7 @@ class Particle(object):
         '''
         self.properties = json.loads(str)
 
-    def ab(self, n_m=1. + 0.j, wavelength=0.):
+    def ab(self, n_m=1.+0.j, wavelength=0.):
         '''Returns the Mie scattering coefficients
 
         Subclasses of Particle should override this
@@ -139,7 +139,7 @@ class Particle(object):
         return np.asarray([1, 1], dtype=np.complex)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     p = Particle()
     print(p.r_p)
     p.x_p = 100.
