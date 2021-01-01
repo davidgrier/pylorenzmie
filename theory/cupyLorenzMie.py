@@ -8,7 +8,7 @@ from .GeneralizedLorenzMie import GeneralizedLorenzMie
 cp.cuda.Device()
 
 
-class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
+class cupyLorenzMie(LorenzMie):
     '''
     Compute scattered light field with CUDA acceleration.
 
@@ -35,7 +35,7 @@ class CudaGeneralizedLorenzMie(GeneralizedLorenzMie):
 
     def __init__(self, *args, double_precision=True, **kwargs):
         self.double_precision = double_precision
-        super(CudaGeneralizedLorenzMie, self).__init__(*args, **kwargs)
+        super(cupyLorenzMie, self).__init__(*args, **kwargs)
         
     @property
     def double_precision(self):
@@ -447,9 +447,9 @@ if __name__ == '__main__':
     instrument.n_m = 1.335
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
-    kernel = CudaGeneralizedLorenzMie(coordinates=coordinates,
-                                      particle=particles,
-                                      instrument=instrument)
+    kernel = cupyLorenzMie(coordinates=coordinates,
+                           particle=particles,
+                           instrument=instrument)
     kernel.field()
     start = time()
     field = kernel.field()

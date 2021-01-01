@@ -157,18 +157,6 @@ class Mask(object):
                                      p=rho, replace=False)
         self._index = index
 
-#    # Draw sampled and excluded pixels
-#    def draw_mask(self):
-#        maskcoords = self.masked_coords()
-#        maskx, masky = maskcoords[:2]
-#        excluded = self.exclude
-#        excludex = self.coordinates[0][excluded]
-#        excludey = self.coordinates[1][excluded]
-#        plt.scatter(excludex, excludey, color='blue', alpha=1, s=1, lw=0)
-#        plt.scatter(maskx, masky, color='red', alpha=1, s=1, lw=0)
-#        plt.title('sampled pixels')
-#        plt.show()
-
     # Return coordinates array from sampled indices
     def masked_coords(self):
         return np.take(self.coordinates, self.index, axis=1)

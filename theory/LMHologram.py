@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from . import GeneralizedLorenzMie
+from . import LorenzMie
 import numpy as np
 
-class LMHologram(GeneralizedLorenzMie):
+class LMHologram(LorenzMie):
 
     '''
     Compute in-line holograms of spheres
