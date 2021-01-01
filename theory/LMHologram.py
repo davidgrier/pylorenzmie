@@ -34,29 +34,11 @@ class LMHologram(LorenzMie):
     def alpha(self, alpha):
         self._alpha = float(alpha)
 
-    @property
+    @LorenzMie.properties.getter
     def properties(self):
-        p = dict()
-        p.update(self.particle.properties)
-        p.update(self.instrument.properties)
-        p.update({'alpha': self.alpha})
-        for k in p.keys():
-            if type(p[k]) is np.ndarray:
-                p[k] = p[k].tolist()
+        p = LorenzMie.properties.fget(self)
+        p['alpha'] = self.alpha
         return p
-
-    @properties.setter
-    def properties(self, properties):
-        for prop in properties.keys():
-            if hasattr(self.particle, prop):
-                setattr(self.particle, prop, properties[prop])
-            elif hasattr(self.instrument, prop):
-                setattr(self.instrument, prop, properties[prop])
-            elif hasattr(self, prop):
-                setattr(self, prop, properties[prop])
-            else:
-                msg = "{} is not a property of LMHologram"
-                raise ValueError(msg.format(prop))
 
     def hologram(self):
         '''Return hologram of sphere
