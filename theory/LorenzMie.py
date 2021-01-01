@@ -138,6 +138,20 @@ class LorenzMie(object):
         if isinstance(instrument, Instrument):
             self._instrument = instrument
 
+    @property
+    def properties(self):
+        p = dict()
+        p.update(self.particle.properties)
+        p.update(self.instrument.properties)
+        return p
+
+    @properties.setter
+    def properties(self, properties):
+        for property, value in properties.items():
+            for subsystem in [self.particle, self.instrument, self]:
+                if hasattr(subsystem, property):
+                    setattr(subsystem, property, value)
+
     def dumps(self, **kwargs):
         '''Returns JSON string of adjustable properties
 

@@ -55,6 +55,12 @@ class cupyLorenzMie(LorenzMie):
             self.dtype = np.float32
             self.ctype = np.complex64
 
+    @LorenzMie.properties.getter
+    def properties(self):
+        p = LorenzMie.properties.fget(self)
+        p['double_precision'] = self.double_precision
+        return p
+
     def field(self, cartesian=True, bohren=True, gpu=False):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):

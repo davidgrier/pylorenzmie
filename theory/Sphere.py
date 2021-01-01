@@ -115,17 +115,13 @@ class Sphere(Particle):
     def k_p(self, k_p):
         self._k_p = np.asarray(k_p, dtype=float)
 
-    @property
+    @Particle.properties.getter
     def properties(self):
         props = Particle.properties.fget(self)
         props['a_p'] = self.a_p
         props['n_p'] = self.n_p
         props['k_p'] = self.k_p
         return props
-
-    @properties.setter
-    def properties(self, properties):
-        Particle.properties.fset(self, properties)
 
     def ab(self, n_m, wavelength):
         '''Returns the Mie scattering coefficients
