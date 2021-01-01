@@ -1,13 +1,16 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pylorenzmie.theory import GeneralizedLorenzMie
-from pylorenzmie.theory import Sphere
+from . import GeneralizedLorenzMie
+from .Sphere import Sphere
 
 
 class LorenzMie(GeneralizedLorenzMie):
 
     '''
+    NOTE: DEPRECATED: This class is made redundant by
+    the default settings of GLM.
+
     Class to compute light scattering by a sphere
 
     Presumes that the sphere is illumianted by light

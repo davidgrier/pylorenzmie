@@ -2,19 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import matplotlib.pyplot as plt
-
-
-# Rescale distribution so sum = 1.
-def normalize(distribution):
-    total = np.sum(distribution)
-    normed = distribution / total
-    return normed
-
-# Gaussian function for radial gaussian distribution
-
 
 def gaussian(x, mu, sig):
+    '''Gaussian function for radial distribution'''
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
 
 
@@ -25,37 +15,69 @@ class Mask(object):
 
     ...
 
-    Attributes
+    Properties
     ----------
-    coordinates: ndarray (3, npix)
+    coordinates : ndarray (3, npix)
 
-    settings: dict
-              'percentpix': percent of pixels to sample
-              'distribution': probability distribution for random sampling
+    percentpix : float
+        percentage of pixels to sample
 
-    sampled_index: ndarray (nsampled)
+    distribution : str
+        probability distribution for random sampling
 
-    exclude: ndarray
+    index : ndarray (nsampled)
+
+    exclude : ndarray
     '''
 
-    def __init__(self, coordinates, exclude=[]):
-        self.coordinates = coordinates
-        self.settings = {'percentpix': 0.1,        # default settings
-                         'distribution': 'uniform'}
-        self._exclude = exclude
-        if coordinates is not None:
-            img_size = coordinates[0].size
-            self._sampled_index = np.arange(int(0.1*img_size))
-        else:
-            self._sampled_index = None
+    def __init__(self, coordinates,
+                 percentpix=0.1,
+                 distribution='fast',
+                 exclude=None):
+        self.d_map = {'uniform': self.uniform_distribution,
+                      'radial': self.radial_distribution,
+                      'donut': self.donut_distribution,
+                      'fast': self.fast_distribution}
+        
+        self._coordinates = coordinates
+        self._percentpix = percentpix
+        self._distribution = distribution
+        self._exclude = exclude or []
+        self.update()
 
     @property
-    def sampled_index(self):
-        return self._sampled_index
+    def percentpix(self):
+        return self._percentpix
 
-    @sampled_index.setter
-    def sampled_index(self, sample):
-        self._sampled_index = sample
+    @percentpix.setter
+    def percentpix(self, value):
+        self._percentpix = np.clip(float(value), 0, 1)
+        self.update()
+
+    @property
+    def distribution(self):
+        return self._distribution
+
+    @distribution.setter
+    def distribution(self, name):
+        if name in self.d_map:
+            self._distribution = name
+        else:
+            self._distribution = 'fast'
+        self.update()
+
+    @property
+    def coordinates(self):
+        return self._coordinates
+
+    @coordinates.setter
+    def coordinates(self, coordinates):
+        self._coordinates = coordinates
+        self.update()
+
+    @property
+    def index(self):
+        return self._index
 
     @property
     def exclude(self):
@@ -68,50 +90,38 @@ class Mask(object):
     # Various sampling probability distributions
 
     def uniform_distribution(self):
-        img_size = self.coordinates[0].size
-        distribution = np.ones(img_size)
-        distribution[self.exclude] = 0.
-        distribution = normalize(distribution)
-        return distribution
+        npts = self.coordinates[0].size
+        rho = np.ones(npts)
+        return rho
 
-    def radial_gaussian(self):  # it's like a donut, but ~ hazier ~
-        img_size = self.coordinates[0].size
-        ext_size = int(np.sqrt(img_size))
-        distribution = np.ones(img_size)
-        leftcorner, rightcorner, topcorner, botcorner = [int(x) for sublist in [list(
-            coord[::len(coord)-1]) for coord in self.coordinates[:2]] for x in sublist]
-        numrows = botcorner - topcorner
-        numcols = rightcorner - leftcorner
-        center = (int(numcols/2.)+leftcorner, int(numrows/2.)+topcorner)
+    def radial_distribution(self):
+        npts = self.coordinates[0].size
+        ext_size = int(np.sqrt(npts))
+        x0, x1 = self.coordinates[0, [0,-1]]
+        y0, y1 = self.coordinates[1, [0,-1]]
+        nrows = y1 - y0
+        ncols = x1 - x0
+        center = np.array([int(ncols/2.) + x0, int(nrows/2.) + y0])
 
         # mean and stdev of gaussian as percentages of max radius
-        mu_ = 0.6
-        sigma_ = 0.2
-
-        mu = ext_size*1/2 * mu_
-        sigma = ext_size*1/2*sigma_
+        mu = 0.6 * ext_size/2.
+        sigma = 0.2 * ext_size/2.
 
         pixels = self.coordinates[:2, :]
         dist = np.linalg.norm(pixels.T - center, axis=1)
-        distribution *= gaussian(dist, mu, sigma)
-
-        distribution[self.exclude] = 0.
-        distribution = normalize(distribution)
-
-        return distribution
+        rho = gaussian(dist, mu, sigma)
+        return rho
 
     def donut_distribution(self):
-        img_size = self.coordinates[0].size
-        ext_size = int(np.sqrt(img_size))
-        distribution = np.ones(img_size)
-        leftcorner, rightcorner, topcorner, botcorner = [int(x) for sublist in [list(
-            coord[::len(coord)-1]) for coord in self.coordinates[:2]] for x in sublist]
-        numrows = botcorner - topcorner
-        numcols = rightcorner - leftcorner
-        center = np.array([int(numcols/2.)+leftcorner,
-                           int(numrows/2.)+topcorner])
+        npts = self.coordinates[0].size
+        ext_size = int(np.sqrt(npts))
+        x0, x1 = self.coordinates[0, [0,-1]]
+        y0, y1 = self.coordinates[1, [0,-1]]
+        nrows = y1 - y0
+        ncols = x1 - x0
+        center = np.array([int(ncols/2.) + x0, int(nrows/2.) + y0])
 
-        # outer concetric circle lies at 0% of edge
+        # outer concentric circle lies at 0% of edge
         outer = 0.0
         # inner concentric circle lies at 100% of edge
         inner = 1.
@@ -121,63 +131,47 @@ class Mask(object):
 
         pixels = self.coordinates[:2, :]
         dist = np.linalg.norm(pixels.T - center, axis=1)
-        distribution = np.where((dist > radius2) & (dist < radius1),
-                                distribution * 10,
-                                distribution)
+        rho = np.where((dist > radius2) & (dist < radius1), 10., 1.)
+        return rho
 
-        distribution[self.exclude] = 0.
-        distribution = normalize(distribution)
-
-        return distribution
+    def fast_distribution(self):
+        return None
 
     def get_distribution(self):
-        d_name = self.settings['distribution']
-        if d_name == 'uniform':
-            distribution = self.uniform_distribution()
-        elif d_name == 'donut':
-            distribution = self.donut_distribution()
-        elif d_name == 'radial_gaussian':
-            distribution = self.radial_gaussian()
-        elif d_name == 'fast':
-            distribution = None
-        else:
-            raise ValueError(
-                "Invalid distribution name")
-        return distribution
+        return self.d_map[self.distribution]()
 
-    # Get new pixels to sample
-    def initialize_sample(self):
-        totalpix = int(self.coordinates[0].size)
-        percentpix = float(self.settings['percentpix'])
-        if percentpix == 1.:
-            sampled_index = np.delete(np.arange(totalpix),
-                                      self.exclude)
-        elif percentpix <= 0 or percentpix > 1:
-            raise ValueError(
-                "percent of pixels must be a value between 0 and 1.")
+    def update(self):
+        if self.coordinates is None:
+            self._index = None
+            return
+        npts = self.coordinates[0].size
+        if self.percentpix == 1.:
+            index = np.delete(np.arange(npts), self.exclude)
         else:
-            p_dist = self.get_distribution()
-            numpixels = int(totalpix*percentpix)
-            replace = True if p_dist is None else False
-            sampled_index = np.random.choice(
-                totalpix, numpixels, p=p_dist, replace=replace)
-        self.sampled_index = sampled_index
+            nchosen = int(npts * self.percentpix)
+            rho = self.get_distribution()
+            if rho is not None:
+                rho[self.exclude] = 0.
+                rho /= np.sum(rho)
+            index = np.random.choice(npts, nchosen,
+                                     p=rho, replace=False)
+        self._index = index
 
-    # Draw sampled and excluded pixels
-    def draw_mask(self):
-        maskcoords = self.masked_coords()
-        maskx, masky = maskcoords[:2]
-        excluded = self.exclude
-        excludex = self.coordinates[0][excluded]
-        excludey = self.coordinates[1][excluded]
-        plt.scatter(excludex, excludey, color='blue', alpha=1, s=1, lw=0)
-        plt.scatter(maskx, masky, color='red', alpha=1, s=1, lw=0)
-        plt.title('sampled pixels')
-        plt.show()
+#    # Draw sampled and excluded pixels
+#    def draw_mask(self):
+#        maskcoords = self.masked_coords()
+#        maskx, masky = maskcoords[:2]
+#        excluded = self.exclude
+#        excludex = self.coordinates[0][excluded]
+#        excludey = self.coordinates[1][excluded]
+#        plt.scatter(excludex, excludey, color='blue', alpha=1, s=1, lw=0)
+#        plt.scatter(maskx, masky, color='red', alpha=1, s=1, lw=0)
+#        plt.title('sampled pixels')
+#        plt.show()
 
     # Return coordinates array from sampled indices
     def masked_coords(self):
-        return np.take(self.coordinates, self._sampled_index, axis=1)
+        return np.take(self.coordinates, self.index, axis=1)
 
 
 if __name__ == '__main__':

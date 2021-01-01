@@ -1,34 +1,16 @@
-import logging
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
 from .Particle import Particle
-from .Instrument import Instrument, coordinates
+from .Sphere import Sphere
+
+from .Instrument import (Instrument, coordinates)
 
 try:
-    from .CudaGeneralizedLorenzMie \
-        import CudaGeneralizedLorenzMie as GeneralizedLorenzMie
-    from .FastSphere import FastSphere as Sphere
-except Exception as e:
-    logger.info("Could not import CUDA GPU pipeline. "
-                + str(e))
-    try:
-        from .FastGeneralizedLorenzMie \
-            import FastGeneralizedLorenzMie as GeneralizedLorenzMie
-        from .FastSphere import FastSphere as Sphere
-    except Exception as e:
-        logger.info(
-            "Could not import numba CPU pipeline. "
-            + str(e))
-        from .GeneralizedLorenzMie import GeneralizedLorenzMie
-        from .Sphere import Sphere
+    from .CudaGeneralizedLorenzMie import CudaGeneralizedLorenzMie \
+        as GeneralizedLorenzMie
+except:
+    from .GeneralizedLorenzMie import GeneralizedLorenzMie
 
 from .LorenzMie import LorenzMie
 from .LMHologram import LMHologram
 
-
-all = [GeneralizedLorenzMie, Sphere,
-       LMHologram, Instrument, coordinates, Particle, LorenzMie]
-
-
+__all__ = [Particle, Sphere, Instrument, coordinates,
+           GeneralizedLorenzMie, LorenzMie, LMHologram]

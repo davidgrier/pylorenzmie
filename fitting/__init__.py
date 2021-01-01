@@ -11,9 +11,7 @@ except Exception as e:
 
 from .Settings import FitSettings, FitResult
 from .Mask import Mask
-from .GlobalSampler import GlobalSampler
 from .Optimizer import Optimizer
 
 
-all = ['mie_fit.py', 'minimizers.py', amoeba, GlobalSampler,
-       FitSettings, FitResult, Mask, Optimizer]
+__all__ = [amoeba, FitSettings, FitResult, Mask, Optimizer]

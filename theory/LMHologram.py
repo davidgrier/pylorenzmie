@@ -1,32 +1,17 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from pylorenzmie.theory import LorenzMie
-from pylorenzmie.theory import GeneralizedLorenzMie
+from . import GeneralizedLorenzMie
 import numpy as np
-try:
-    import cupy as cp
-    cp.cuda.Device()
-    if 'Cuda' not in str(GeneralizedLorenzMie):
-        raise Exception()
-    from pylorenzmie.theory import cuholo as cuh
-except Exception:
-    cp = None
-try:
-    import numba as nb
-    from pylorenzmie.theory import fastholo as fh
-except Exception:
-    nb = None
 
-
-class LMHologram(LorenzMie):
+class LMHologram(GeneralizedLorenzMie):
 
     '''
-    A class that computes in-line holograms of spheres
+    Compute in-line holograms of spheres
 
     ...
 
-    Attributes
+    Properties
     ----------
     alpha : float, optional
         weight of scattered field in superposition
@@ -37,9 +22,7 @@ class LMHologram(LorenzMie):
         Computed hologram of sphere
     '''
 
-    def __init__(self,
-                 alpha=1.,
-                 *args, **kwargs):
+    def __init__(self, *args, alpha=1., **kwargs):
         super(LMHologram, self).__init__(*args, **kwargs)
         self.alpha = alpha
 
@@ -53,7 +36,7 @@ class LMHologram(LorenzMie):
 
     @property
     def properties(self):
-        p = {}
+        p = dict()
         p.update(self.particle.properties)
         p.update(self.instrument.properties)
         p.update({'alpha': self.alpha})
@@ -64,19 +47,18 @@ class LMHologram(LorenzMie):
 
     @properties.setter
     def properties(self, properties):
-        if type(properties) is dict:
-            for prop in properties.keys():
-                if hasattr(self.particle, prop):
-                    setattr(self.particle, prop, properties[prop])
-                elif hasattr(self.instrument, prop):
-                    setattr(self.instrument, prop, properties[prop])
-                elif hasattr(self, prop):
-                    setattr(self, prop, properties[prop])
-                else:
-                    msg = "{} is not a property of LMHologram"
-                    raise ValueError(msg.format(prop))
+        for prop in properties.keys():
+            if hasattr(self.particle, prop):
+                setattr(self.particle, prop, properties[prop])
+            elif hasattr(self.instrument, prop):
+                setattr(self.instrument, prop, properties[prop])
+            elif hasattr(self, prop):
+                setattr(self, prop, properties[prop])
+            else:
+                msg = "{} is not a property of LMHologram"
+                raise ValueError(msg.format(prop))
 
-    def hologram(self, return_gpu=False):
+    def hologram(self):
         '''Return hologram of sphere
 
         Returns
@@ -84,24 +66,9 @@ class LMHologram(LorenzMie):
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        if self.using_cuda:
-            field = self.field()
-            hologram = self.holo
-            alpha = self._flt(self.alpha)
-            Ex, Ey, Ez = field
-            kernel = cuh.cuhologram if self.double_precision else cuh.cuhologramf
-            kernel((self.blockspergrid,), (self.threadsperblock,),
-                   (Ex, Ey, Ez, alpha, hologram.size, hologram))
-            if return_gpu is False:
-                hologram = hologram.get()
-        elif self.using_numba:
-            field = self.field()
-            hologram = self.holo
-            fh.fasthologram(field, self.alpha, hologram.size, hologram)
-        else:
-            field = self.alpha * self.field()
-            field[0, :] += 1.
-            hologram = np.sum(np.real(field * np.conj(field)), axis=0)
+        field = self.alpha * self.field()
+        field[0, :] += 1.
+        hologram = np.sum(np.real(field * np.conj(field)), axis=0)
         return hologram
 
 
