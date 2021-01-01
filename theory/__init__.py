@@ -4,13 +4,11 @@ from .Sphere import Sphere
 from .Instrument import (Instrument, coordinates)
 
 try:
-    from .CudaGeneralizedLorenzMie import CudaGeneralizedLorenzMie \
-        as GeneralizedLorenzMie
+    from .cupyLorenzMie import cupyLorenzMie as LorenzMie
 except:
-    from .GeneralizedLorenzMie import GeneralizedLorenzMie
+    from .LorenzMie import LorenzMie
 
-from .LorenzMie import LorenzMie
 from .LMHologram import LMHologram
 
 __all__ = [Particle, Sphere, Instrument, coordinates,
-           GeneralizedLorenzMie, LorenzMie, LMHologram]
+           LorenzMie, LMHologram]
