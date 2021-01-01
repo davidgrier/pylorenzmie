@@ -1,36 +1,27 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import json
-import logging
 import numpy as np
+import json
+
 from scipy.optimize import least_squares
-from pylorenzmie.fitting import amoeba
+from . import amoeba
 
 from .Settings import FitSettings, FitResult
 from .Mask import Mask
 
-try:
-    import cupy as cp
-    from pylorenzmie.fitting import cukernels as cuk
-except Exception:
-    cp = None
-try:
-    from pylorenzmie.fitting import fastkernels as fk
-except Exception:
-    pass
-
+import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
 class Optimizer(object):
     '''
-    Optimization equipment for fitting a holographic model
-    to data.
+    Fit generative light-scattering model to data
+
     ...
 
-    Attributes
+    Properties
     ----------
     data : numpy.ndarray
         [npts] normalized intensity values
@@ -86,27 +77,19 @@ class Optimizer(object):
         self.noise = noise
         self.result = None
 
-    #
-    # Fields for user to set data and model's initial guesses
-    #
     @property
     def data(self):
         '''Values of the (normalized) data at each pixel'''
-        if type(self._data) is np.ndarray:
-            data = self._data.reshape(self._shape)
-        else:
-            data = self._data
-        return data
+        return self._data.reshape(self._shape)
 
     @data.setter
     def data(self, data):
         if type(data) is np.ndarray:
-            # Find indices where data is saturated or nan/inf
-            self.saturated = np.where(data == np.max(data))[0]
-            self.nan = np.append(np.where(np.isnan(data))[0],
-                                 np.where(np.isinf(data))[0])
-            exclude = np.append(self.saturated, self.nan)
-            self.mask.exclude = exclude
+            print(type(data))
+            saturated = data == np.max(data)
+            nan = np.isnan(data)
+            infinite = np.isinf(data)
+            self.mask.exclude = np.nonzero(saturated | nan | infinite)[0]
         self._data = data
 
     @property
@@ -121,7 +104,7 @@ class Optimizer(object):
     #
     # Public methods
     #
-    def optimize(self, method='amoeba', square=True, verbose=False):
+    def optimize(self, method='amoeba', robust=False, verbose=False):
         '''
         Fit Model to data
 
@@ -132,13 +115,10 @@ class Optimizer(object):
             'lm': scipy.least_squares
             'amoeba' : Nelder-Mead optimization from pylorenzmie.fitting
             'amoeba-lm': Nelder-Mead/Levenberg-Marquardt hybrid
-        square : bool
-            If True, 'amoeba' fitting method will minimize chi-squared.
-            If False, 'amoeba' fitting method will minimize the sum of
-            absolute values of the residuals. This keyword has no effect
-            on 'amoeba-lm' or 'lm' methods.
+        robust : bool
+            If True, attempt to minimize the absolute error.
         verbose : bool
-            Choose whether or not to print warning messages.
+            If True, print verbose warning messages
 
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.least_squares()
@@ -156,7 +136,6 @@ class Optimizer(object):
         '''
         # Get array of pixels to sample
         self.mask.coordinates = self.model.coordinates
-        self.mask.initialize_sample()
         self.model.coordinates = self.mask.masked_coords()
         npix = self.model.coordinates.shape[1]
         # Prepare
@@ -164,16 +143,15 @@ class Optimizer(object):
         # Check mean of data
         if verbose:
             avg = self._subset_data.mean()
-            avg = avg.get() if self.model.using_cuda else avg
             if not np.isclose(avg, 1., rtol=0, atol=.1):
                 msg = ('Mean of data ({:.02f}) is not near 1. '
                        'Fit may not converge.')
                 logger.warning(msg.format(avg))
         # Fit
-        result, options = self._optimize(method, x0, square, verbose=verbose)
+        result, options = self._optimize(method, x0,
+                                         robust=robust, verbose=verbose)
         # Post-fit cleanup
-        result, settings = self._cleanup(method, square, result,
-                                         options=options)
+        result, settings = self._cleanup(method, result, options=options)
         # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
         # Store last result
@@ -211,94 +189,61 @@ class Optimizer(object):
     #
     # Under the hood optimization helper functions
     #
-    def _optimize(self, method, x0, square, verbose=False):
+    def _optimize(self, method, x0, robust=False, verbose=False):
         options = {}
         vary = self.vary
         nmkwargs = self.nm_settings.getkwargs(vary)
         lmkwargs = self.lm_settings.getkwargs(vary)
-        if method == 'lm':
-            result = least_squares(self._residuals, x0, **lmkwargs)
-        elif method == 'amoeba':
-            objective = self._chisqr if square else self._absolute
+        converged = False
+        if 'amoeba' in method:
+            objective = self._absolute if robust else self._chisq
             result = amoeba(objective, x0, **nmkwargs)
-        elif method == 'amoeba-lm':
-            nmresult = amoeba(self._chisqr, x0, **nmkwargs)
-            if not nmresult.success:
-                if verbose:
-                    msg = 'Nelder-Mead: {}. Falling back to least squares.'
-                    logger.warning(msg.format(nmresult.message))
-                x1 = x0
-            else:
-                x1 = nmresult.x
-            result = least_squares(self._residuals, x1, **lmkwargs)
-            options['nmresult'] = nmresult
-        else:
-            raise ValueError(
-                "Method keyword must either be lm, amoeba, or amoeba-lm")
+            converged = result.success
+        if method == 'lm-amoeba':
+            options['nmresult'] = result
+            if converged:
+                x0 = nmresult.x
+        if 'lm' in method:
+            result = least_squares(self._residuals, x0, **lmkwargs)
         return result, options
 
     #
     # Under the hood objective function and its helpers
     #
     def _objective(self, reduce=False, square=True):
-        holo = self.model.hologram(self.model.using_cuda)
+        holo = self.model.hologram()
         data = self._subset_data
         noise = self.noise
-        if self.model.using_cuda:
-            if self.model.double_precision:
-                cuchisqr, curesiduals, cuabsolute = (cuk.cuchisqr,
-                                                     cuk.curesiduals,
-                                                     cuk.cuabsolute)
+        obj = (holo - data) / noise
+        if reduce:
+            if square:
+                obj = obj.dot(obj)
             else:
-                cuchisqr, curesiduals, cuabsolute = (cuk.cuchisqrf,
-                                                     cuk.curesidualsf,
-                                                     cuk.cuabsolutef)
-            if reduce:
-                if square:
-                    obj = cuchisqr(holo, data, noise)
-                else:
-                    obj = cuabsolute(holo, data, noise)
-            else:
-                obj = curesiduals(holo, data, noise)
-            obj = obj.get()
-        elif self.model.using_numba:
-            if reduce:
-                if square:
-                    obj = fk.fastchisqr(holo, data, noise)
-                else:
-                    obj = fk.fastabsolute(holo, data, noise)
-            else:
-                obj = fk.fastresiduals(holo, data, noise)
-        else:
-            obj = (holo - data) / noise
-            if reduce:
-                if square:
-                    obj = obj.dot(obj)
-                else:
-                    obj = np.absolute(obj).sum()
+                obj = np.absolute(obj).sum()
         return obj
 
-    def _residuals(self, x, reduce=False, square=True):
+    def _residuals(self, x):
         '''Updates properties and returns residuals'''
-        self._update_model(x)
-        objective = self._objective(reduce=reduce, square=square)
-        return objective
+        vary = [p for p in self.params if self.vary[p]]
+        self.model.properties = dict(zip(vary, x))
+        return (self.model.hologram() - self._subset_data) / self.noise
 
-    def _chisqr(self, x):
-        return self._residuals(x, reduce=True)
+    def _chisq(self, x):
+        delta = self._residuals(x)
+        chisq = delta.dot(delta)
+        return chisq
 
     def _absolute(self, x):
-        return self._residuals(x, reduce=True, square=False)
+        delta = self._residuals(x)
+        return np.absolute(delta).sum()
 
-    #
-    # Fitting preparation and cleanup
-    #
     def _prepare(self, method, verbose=False):
         # Warnings
-        if verbose:
-            if self.saturated.size > 10:
-                msg = "Excluding {} saturated pixels from optimization."
-                logger.warning(msg.format(self.saturated.size))
+        if (self.mask.distribution == 'fast'):
+            nbad = len(self.mask.exclude)
+            if nbad > 10:
+                msg = 'Including {} saturated pixels'
+                logger.warning(msg.format(nbad))
         # Get initial guess for fit
         x0 = []
         for p in self.params:
@@ -308,30 +253,17 @@ class Optimizer(object):
             if self.vary[p]:
                 x0.append(val)
         x0 = np.array(x0)
-        self._subset_data = self._data[self.mask.sampled_index]
-        if self.model.using_cuda:
-            dtype = float if self.model.double_precision else np.float32
-            self._subset_data = cp.asarray(self._subset_data,
-                                           dtype=dtype)
+        self._subset_data = self._data[self.mask.index]
         return x0
 
-    def _cleanup(self, method, square, result, options=None):
+    def _cleanup(self, method, result, options=None):
         if method == 'amoeba-lm':
             result.nfev += options['nmresult'].nfev
             settings = self.lm_settings
         elif method == 'amoeba':
-            if not square:
-                result.fun = float(self._objective(reduce=True))
             settings = self.nm_settings
         else:
             settings = self.lm_settings
-        if self.model.using_cuda:
-            self._subset_data = cp.asnumpy(self._subset_data)
         return result, settings
 
-    def _update_model(self, x):
-        vary = []
-        for p in self.params:
-            if self.vary[p]:
-                vary.append(p)
-        self.model.properties = dict(zip(vary, x))
+    

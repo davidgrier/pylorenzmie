@@ -1,14 +1,14 @@
 import numpy as np
 import math
 from numba import njit, prange
-from pylorenzmie.theory.Sphere import mie_coefficients
+from pylorenzmie.theory import Sphere
 
 # See https://llvm.org/docs/LangRef.html#fast-math-flags
 # for a list of fastmath flags for LLVM compiler
 safe_flags = {'nnan', 'ninf', 'arcp', 'nsz'}
 
 
-fast_mie_coefficients = njit(mie_coefficients, cache=True)
+fast_mie_coefficients = njit(Sphere.mie_coefficients, cache=True)
 
 
 @njit(parallel=True, fastmath=False, cache=True)

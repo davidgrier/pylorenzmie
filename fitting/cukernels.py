@@ -1,5 +1,6 @@
 import cupy as cp
 
+# Double precision
 
 curesiduals = cp.ElementwiseKernel(
     'float64 holo, float64 data, float64 noise',
@@ -25,6 +26,7 @@ cuabsolute = cp.ReductionKernel(
     '0',
     'cuabsolute')
 
+# Single precision
 
 curesidualsf = cp.ElementwiseKernel(
     'float32 holo, float32 data, float32 noise',
