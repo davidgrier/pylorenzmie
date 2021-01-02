@@ -1,6 +1,7 @@
-#lorenzmie
+# pylorenzmie
 
-<b>Python routines for producing and analyzing in-line holographic video microscopy (HVM) images </b>
+<b>Python routines for tracking and characterizing colloidal particles
+with in-line holographic video microscopy (HVM)</b>
 
 ## Explanation of the module
 `lorenzmie` provides a set of routines for producing and analyzing holographic images of transparent dielectric spheres (pretty niche, huh?). An example image is given below:
