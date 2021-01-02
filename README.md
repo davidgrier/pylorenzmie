@@ -26,6 +26,13 @@ based on the Lorenz-Mie theory of light scattering.
 [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
 
 ## References:
+### Lorenz-Mie analysis of colloidal particles
+1. S.-H. Lee, Y. Roichman, G.-R. Yi, S.-H. Kim, S.-M. Yang,
+   A. van Blaaderen, P. van Oostrum and D. G. Grier,
+   "Characterizing and tracking single colloidal particles with video
+   holographic microscopy," 
+   _Optics Express_ **15**, 18275-18282 (2007).
+
 ### Lorenz-Mie theory of light scattering
 1. C. F. Bohren and D. R. Huffman, Absorption and Scattering of Light
    by Small Particles (Wiley 1983).
@@ -46,10 +53,3 @@ based on the Lorenz-Mie theory of light scattering.
 1. A. A. R. Neves and D. Pisignano, "Effect of finite terms on the
    truncation error of Mie series," _Optics Letters_ **37**,
    2481-2420 (2012).
-
-### Lorenz-Mie analysis of colloidal particles
-1. S.-H. Lee, Y. Roichman, G.-R. Yi, S.-H. Kim, S.-M. Yang,
-   A. van Blaaderen, P. van Oostrum and D. G. Grier,
-   "Characterizing and tracking single colloidal particles with video
-   holographic microscopy," 
-   _Optics Express_ **15**, 18275-18282 (2007).
