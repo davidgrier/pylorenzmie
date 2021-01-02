@@ -9,35 +9,7 @@ try:                         # pragma: no cover
 except:                      # pragma: no cover
     from utilities.numba import njit
 
-'''
-REFERENCES
-1. Adapted from Chapter 8 in
-   C. F. Bohren and D. R. Huffman,
-   Absorption and Scattering of Light by Small Particles,
-   (New York, Wiley, 1983).
-2. W. Yang,
-   Improved recursive algorithm for light scattering
-   by a multilayered sphere,
-   Applied Optics 42, 1710--1720 (2003).
-3. O. Pena, U. Pal,
-   Scattering of electromagnetic radiation by a multilayered sphere,
-   Computer Physics Communications 180, 2348--2354 (2009).
-   NB: Equation numbering follows this reference.
-4. W. J. Wiscombe,
-   Improved Mie scattering algorithms,
-   Applied Optics 19, 1505-1509 (1980).
-5. A. A. R. Neves and D. Pisignano,
-   Effect of finite terms on the truncation error of Mie series,
-   Optics Letters 37, 2481-2420 (2012).
-HISTORY
-Adapted from the IDL routine sphere_coefficients.pro
-which calculates scattering coefficients for layered spheres.
-The IDL code was
-Copyright (c) 2010-2016 F. C. Cheong and D. G. Grier
-The present python adaptation is
-Copyright (c) 2018 Mark D. Hannel and David G. Grier
-'''
-
+    
 class Sphere(Particle):
 
     '''
@@ -61,6 +33,27 @@ class Sphere(Particle):
     -------
     ab(n_m, wavelength) : numpy.ndarray
         returns the Mie scattering coefficients for the sphere
+        
+    References
+    ----------
+    1. Adapted from Chapter 8 in
+       C. F. Bohren and D. R. Huffman,
+       Absorption and Scattering of Light by Small Particles,
+       (New York, Wiley, 1983).
+    2. W. Yang,
+       Improved recursive algorithm for light scattering
+       by a multilayered sphere,
+       Applied Optics 42, 1710--1720 (2003).
+    3. O. Pena, U. Pal,
+       Scattering of electromagnetic radiation by a multilayered sphere,
+       Computer Physics Communications 180, 2348--2354 (2009).
+       NB: Equation numbering follows this reference.
+    4. W. J. Wiscombe,
+       Improved Mie scattering algorithms,
+       Applied Optics 19, 1505-1509 (1980).
+    5. A. A. R. Neves and D. Pisignano,
+       Effect of finite terms on the truncation error of Mie series,
+       Optics Letters 37, 2481-2420 (2012).
     '''
 
     def __init__(self,
