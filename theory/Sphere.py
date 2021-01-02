@@ -7,7 +7,7 @@ import numpy as np
 try:                         # pragma: no cover
     from numba import njit
 except:                      # pragma: no cover
-    from pylorenzmie.utilities.numba import njit
+    from utilities.numba import njit
 
 '''
 REFERENCES
