@@ -4,9 +4,9 @@
 from .Particle import Particle
 import numpy as np
 
-try:
+try:                         # pragma: no cover
     from numba import njit
-except:
+except:                      # pragma: no cover
     from pylorenzmie.utilities.numba import njit
 
 '''
