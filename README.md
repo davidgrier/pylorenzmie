@@ -13,14 +13,9 @@ based on the Lorenz-Mie theory of light scattering.
 
 <img src="docs/tutorials/crop.png" alt="Typical Hologram" width="200"/>
 
-## Author List:
-* David G. Grier (New York University)
-* Lauren Altman
-* Sanghyuk Lee
-* Fook Chiong Cheong
-* Mark D. Hannel
-* Michael O'Brien
-* Jackie Sustiel
+## Authors
+David G. Grier (New York University), Lauren Altman, Sanghyuk Lee, Fook Chiong Cheong, 
+Mark D. Hannel, Michael O'Brien, Jackie Sustiel
 
 ## Licensing.
 [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
