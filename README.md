@@ -11,7 +11,7 @@ composition, and location in three dimensions. This package extracts
 that information by fitting a recorded hologram to a generative model
 based on the Lorenz-Mie theory of light scattering.
 
-![Typical Hologram](docs/tutorials/crop.png)
+![Typical Hologram](docs/tutorials/crop.png =250x)
 
 ## Author List:
 * David G. Grier (New York University)
