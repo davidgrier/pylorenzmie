@@ -26,6 +26,30 @@ class TestSphere(unittest.TestCase):
         self.particle.a_p = value
         self.assertTrue((self.particle.a_p == value).all())
 
+    def test_setn(self):
+        value = 1.5
+        self.particle.n_p = value
+        self.assertEqual(self.particle.n_p, value)
+        
+        self.particle.n_p = [value]
+        self.assertEqual(self.particle.n_p, value)
+
+        value = [1.4, 1.5]
+        self.particle.n_p = value
+        self.assertTrue((self.particle.n_p == value).all())
+
+    def test_setk(self):
+        value = 1e-3
+        self.particle.k_p = value
+        self.assertEqual(self.particle.k_p, value)
+        
+        self.particle.k_p = [value]
+        self.assertEqual(self.particle.k_p, value)
+
+        value = [1e-3, 1.e-4]
+        self.particle.k_p = value
+        self.assertTrue((self.particle.k_p == value).all())
+
     def test_ab(self):
         ab = self.particle.ab(self.n_m, self.wavelength)
         self.assertEqual(ab.size, 64)
