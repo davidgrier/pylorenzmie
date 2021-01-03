@@ -7,10 +7,10 @@ from .Sphere import Sphere
 from .Instrument import Instrument
 import json
 
-#try:                         # pragma: no cover
-#    from numba import njit
-#except:                      # pragma: no cover
-#    from pylorenzmie.utilities.numba import njit
+try:                         # pragma: no cover
+    from numba import njit
+except:                      # pragma: no cover
+    from pylorenzmie.utilities.numba import njit
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the
@@ -107,19 +107,15 @@ class LorenzMie(object):
 
     @coordinates.setter
     def coordinates(self, coordinates):
-        try:
-            shape = coordinates.shape
-        except AttributeError:
+        if coordinates is None:
             self._coordinates = None
             return
-        if coordinates.ndim == 1:
-            self._coordinates = np.zeros((3, shape[0]))
-            self._coordinates[0, :] = coordinates
-        elif shape[0] == 2:
-            self._coordinates = np.zeros((3, shape[1]))
-            self._coordinates[[0, 1], :] = coordinates
-        else:
-            self._coordinates = coordinates
+        c = np.array(coordinates)
+        if (c.ndim == 1):                     # single point
+            c = np.reshape(c, (len(c), 1))
+        if (c.ndim == 2) & (c.shape[0] == 2): # only (x, y) specified
+            c = np.append(c, np.zeros((1, c.shape[1])), axis=0)
+        self._coordinates = c
         self.allocate()
 
     @property
@@ -204,6 +200,8 @@ class LorenzMie(object):
 
     def allocate(self):
         '''Allocate ndarrays for calculation'''
+        if self.coordinates is None:
+            return
         shape = self.coordinates.shape
         self.krv = np.empty(shape, dtype=float)
         self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
