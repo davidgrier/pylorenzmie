@@ -3,7 +3,7 @@
 
 import numpy as np
 import cupy as cp
-from .GeneralizedLorenzMie import GeneralizedLorenzMie
+from .LorenzMie import LorenzMie
 
 cp.cuda.Device()
 
