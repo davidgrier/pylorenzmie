@@ -195,8 +195,6 @@ class LorenzMie(object):
 
     def allocate(self):
         '''Allocate ndarrays for calculation'''
-        if self.coordinates is None:
-            return
         shape = self.coordinates.shape
         self.krv = np.empty(shape, dtype=float)
         self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
@@ -363,7 +361,7 @@ class LorenzMie(object):
             return es
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     from Sphere import Sphere
     import matplotlib.pyplot as plt
     from time import time

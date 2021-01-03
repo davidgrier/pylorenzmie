@@ -48,6 +48,31 @@ class TestLorenzMie(unittest.TestCase):
         self.method.loads(s)
         self.assertEqual(self.method.particle.n_p, n_0)
 
+    def test_field_nocoordinates(self):
+        self.method.coordinates = None
+        field = self.method.field()
+        self.assertEqual(field, None)
+
+    def test_field(self, bohren=False, cartesian=False):
+        p = self.method.particle
+        p.a_p = 1.
+        p.n_p = 1.4
+        p.r_p = [64, 64, 100]
+        c = coordinates([128, 128])
+        self.method.coordinates = c
+        field = self.method.field(bohren=bohren, cartesian=cartesian)
+        self.assertEqual(field.shape[1], c.shape[1])
+
+    def test_field_bohren(self):
+        self.test_field(bohren=True)
+
+    def test_field_cartesian(self):
+        self.test_field(cartesian=True)
+
+    def test_field_both(self):
+        self.test_field(bohren=True, cartesian=True)
+        
+
         
 if __name__ == '__main__':
     unittest.main()
