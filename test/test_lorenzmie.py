@@ -26,7 +26,28 @@ class TestLorenzMie(unittest.TestCase):
         self.assertEqual(self.method.coordinates.shape[0], 3)
         self.assertTrue(np.allclose(self.method.coordinates[0:2,:], c))
 
+    def test_coordinates_3dlist(self):
+        c = [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
+        self.method.coordinates = c
+        self.assertTrue(np.allclose(self.method.coordinates, np.array(c)))
 
+    def test_properties(self):
+        '''Get properties, change one, and set properties'''
+        value = -42
+        p = self.method.properties
+        p['x_p'] = value
+        self.method.properties = p        
+        self.assertEqual(self.method.particle.x_p, value)
 
+    def test_serialize(self):
+        n_0 = 1.5
+        n_1 = 1.4
+        self.method.particle.n_p = n_0
+        s = self.method.dumps()
+        self.method.particle.n_p = n_1
+        self.method.loads(s)
+        self.assertEqual(self.method.particle.n_p, n_0)
+
+        
 if __name__ == '__main__':
     unittest.main()

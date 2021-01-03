@@ -162,25 +162,20 @@ class LorenzMie(object):
 
         Returns
         -------
-        str : string
+        s : string
             JSON-encoded string of properties
         '''
         return json.dumps(self.properties, **kwargs)
-        s = {'particle': self.particle.dumps(**kwargs),
-             'instrument': self.instrument.dumps(**kwargs)}
-        return json.dumps(s, **kwargs)
 
-    def loads(self, str):
+    def loads(self, s):
         '''Loads JSON string of adjustable properties
 
         Parameters
         ----------
-        str : string
+        s : string
             JSON-encoded string of properties
         '''
-        s = json.loads(str)
-        self.particle.loads(s['particle'])
-        self.instrument.loads(s['instrument'])
+        self.properties = json.loads(s)
 
     def field(self, cartesian=True, bohren=True):
         '''Return field scattered by particles in the system'''
