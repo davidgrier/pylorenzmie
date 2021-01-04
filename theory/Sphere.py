@@ -131,8 +131,7 @@ class Sphere(Particle):
         ab : numpy.ndarray
             Mie AB scattering coefficients
         '''
-        return mie_coefficients(self.a_p, self.n_p, self.k_p,
-                                n_m, wavelength)
+        return mie_coefficients(self.a_p, self.n_p, self.k_p, n_m, wavelength)
 
     
 @njit(parallel=True, cache=True)

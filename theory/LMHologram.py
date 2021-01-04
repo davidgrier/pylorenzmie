@@ -48,7 +48,10 @@ class LMHologram(LorenzMie):
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        field = self.alpha * self.field()
+        try:
+            field = self.alpha * self.field()
+        except TypeError:
+            return None
         field[0, :] += 1.
         hologram = np.sum(np.real(field * np.conj(field)), axis=0)
         return hologram
