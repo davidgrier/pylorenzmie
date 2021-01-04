@@ -5,8 +5,6 @@ import numpy as np
 import cupy as cp
 from .LorenzMie import LorenzMie
 
-cp.cuda.Device()
-
 
 class cupyLorenzMie(LorenzMie):
     '''
@@ -54,12 +52,6 @@ class cupyLorenzMie(LorenzMie):
             self.kernel = self.cufieldf()
             self.dtype = np.float32
             self.ctype = np.complex64
-
-    @LorenzMie.properties.getter
-    def properties(self):
-        p = LorenzMie.properties.fget(self)
-        p['double_precision'] = self.double_precision
-        return p
 
     def field(self, cartesian=True, bohren=True, gpu=False):
         '''Return field scattered by particles in the system'''
