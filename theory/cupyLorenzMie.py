@@ -32,8 +32,8 @@ class cupyLorenzMie(LorenzMie):
     method = 'cupy'
 
     def __init__(self, *args, double_precision=True, **kwargs):
-        self.double_precision = double_precision
         super(cupyLorenzMie, self).__init__(*args, **kwargs)
+        self.double_precision = double_precision
         
     @property
     def double_precision(self):
@@ -52,6 +52,7 @@ class cupyLorenzMie(LorenzMie):
             self.kernel = self.cufieldf()
             self.dtype = np.float32
             self.ctype = np.complex64
+        self.allocate()
 
     def field(self, cartesian=True, bohren=True, gpu=False):
         '''Return field scattered by particles in the system'''
@@ -80,6 +81,8 @@ class cupyLorenzMie(LorenzMie):
 
     def allocate(self):
         '''Allocate buffers for calculation'''
+        if self.coordinates is None:
+            return
         shape = self.coordinates.shape
         self.result = cp.empty(shape, dtype=self.ctype)
         self.device_coordinates = cp.asarray(self.coordinates, self.dtype)
