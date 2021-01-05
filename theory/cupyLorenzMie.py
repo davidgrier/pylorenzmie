@@ -81,15 +81,17 @@ class cupyLorenzMie(LorenzMie):
 
     def allocate(self):
         '''Allocate buffers for calculation'''
-        if self.coordinates is None:
-            return
-        shape = self.coordinates.shape
-        self.result = cp.empty(shape, dtype=self.ctype)
-        self.device_coordinates = cp.asarray(self.coordinates, self.dtype)
-        self.holo = cp.empty(shape[1], dtype=self.dtype)
-        self.threadsperblock = 32
-        self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
-                              self.threadsperblock)
+        try:
+            shape = self.coordinates.shape
+            self.result = cp.empty(shape, dtype=self.ctype)
+            self.device_coordinates = cp.asarray(self.coordinates,
+                                                 self.dtype)
+            self.holo = cp.empty(shape[1], dtype=self.dtype)
+            self.threadsperblock = 32
+            self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
+                                  self.threadsperblock)
+        except:
+            pass
 
     def cufield(self):
         return cp.RawKernel(r'''

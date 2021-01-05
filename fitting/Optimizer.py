@@ -85,7 +85,6 @@ class Optimizer(object):
     @data.setter
     def data(self, data):
         if type(data) is np.ndarray:
-            print(type(data))
             saturated = data == np.max(data)
             nan = np.isnan(data)
             infinite = np.isinf(data)
