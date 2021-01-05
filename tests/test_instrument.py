@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-from theory.Instrument import Instrument, coordinates
+from theory import (Instrument, coordinates)
 
 
 class TestSphere(unittest.TestCase):

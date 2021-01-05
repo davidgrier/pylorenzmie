@@ -1,6 +1,6 @@
 import unittest
 
-from theory.Particle import Particle
+from theory import Particle
 
 
 class TestParticle(unittest.TestCase):
