@@ -420,7 +420,7 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 ''', 'field')
 
         
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     from pylorenzmie.theory.FastSphere import FastSphere
     from pylorenzmie.theory.Instrument import Instrument
     import matplotlib.pyplot as plt
