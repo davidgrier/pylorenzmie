@@ -34,7 +34,7 @@ class TestSphere(unittest.TestCase):
 
     def test_str(self):
         s = str(self.instrument)
-        self.assertTrue(isinstance(s, str))
+        self.assertIsInstance(s, str)
 
     def test_properties(self):
         value = 1.339
