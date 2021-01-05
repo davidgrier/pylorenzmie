@@ -57,7 +57,7 @@ class LMHologram(LorenzMie):
         return hologram
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     import matplotlib.pyplot as plt
     from Instrument import coordinates
     from time import time
