@@ -3,7 +3,6 @@
 
 import numpy as np
 import json
-from future.utils import iteritems
 import logging
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -131,9 +130,9 @@ class Instrument(object):
 
     @properties.setter
     def properties(self, properties):
-        for (name, value) in iteritems(properties):
-            if hasattr(self, name):
-                setattr(self, name, value)
+        for property, value in properties.items():
+            if hasattr(self, property):
+                setattr(self, property, value)
 
     def dumps(self, **kwargs):
         '''Returns JSON string of adjustable properties
@@ -184,6 +183,6 @@ class Instrument(object):
         return k
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     a = Instrument()
     print(a.wavelength, a.magnification)
