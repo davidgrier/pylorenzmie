@@ -1,8 +1,8 @@
 import unittest
 
-from theory.LorenzMie import LorenzMie
-from theory.Instrument import coordinates
 import numpy as np
+from theory.LorenzMie import LorenzMie
+from theory import coordinates
 
 
 class TestLorenzMie(unittest.TestCase):

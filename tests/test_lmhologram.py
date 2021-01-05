@@ -1,7 +1,7 @@
 import unittest
 
-from theory.LMHologram import LMHologram
-from theory.Instrument import coordinates
+from theory import LMHologram
+from theory import coordinates
 import numpy as np
 
 
