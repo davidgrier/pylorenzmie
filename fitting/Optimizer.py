@@ -103,7 +103,7 @@ class Optimizer(object):
     #
     # Public methods
     #
-    def optimize(self, method='amoeba', robust=False, verbose=False):
+    def optimize(self, method='amoeba', robust=False):
         '''
         Fit Model to data
 
@@ -116,8 +116,6 @@ class Optimizer(object):
             'amoeba-lm': Nelder-Mead/Levenberg-Marquardt hybrid
         robust : bool
             If True, attempt to minimize the absolute error.
-        verbose : bool
-            If True, print verbose warning messages
 
         For Levenberg-Marquardt fitting, see arguments for
         scipy.optimize.least_squares()
@@ -138,17 +136,14 @@ class Optimizer(object):
         self.model.coordinates = self.mask.masked_coords()
         npix = self.model.coordinates.shape[1]
         # Prepare
-        x0 = self._prepare(method, verbose=verbose)
+        x0 = self._prepare(method)
         # Check mean of data
-        if verbose:
-            avg = self._subset_data.mean()
-            if not np.isclose(avg, 1., rtol=0, atol=.1):
-                msg = ('Mean of data ({:.02f}) is not near 1. '
-                       'Fit may not converge.')
-                logger.warning(msg.format(avg))
+        avg = self._subset_data.mean()
+        if not np.isclose(avg, 1., rtol=0, atol=.1):
+            msg = 'Mean of data ({:.02f}) should be near 1.'
+            logger.warning(msg.format(avg))
         # Fit
-        result, options = self._optimize(method, x0,
-                                         robust=robust, verbose=verbose)
+        result, options = self._optimize(method, x0, robust=robust)
         # Post-fit cleanup
         result, settings = self._cleanup(method, result, options=options)
         # Reassign original coordinates
@@ -190,7 +185,7 @@ class Optimizer(object):
     #
     # Under the hood optimization helper functions
     #
-    def _optimize(self, method, x0, robust=False, verbose=False):
+    def _optimize(self, method, x0, robust=False):
         options = {}
         vary = self.vary
         nmkwargs = self.nm_settings.getkwargs(vary)
@@ -238,7 +233,7 @@ class Optimizer(object):
         delta = self._residuals(x)
         return np.absolute(delta).sum()
 
-    def _prepare(self, method, verbose=False):
+    def _prepare(self, method):
         # Warnings
         if (self.mask.distribution == 'fast'):
             nbad = len(self.mask.exclude)
