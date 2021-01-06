@@ -44,33 +44,25 @@ class FitSettings(object):
             Non-vector args or kwargs options for fitting algorithm.
         '''
         self._keys = keys
-        if type(options) is not dict:
-            self.options = dict()
-        else:
-            self.options = options
-        self.parameters = {}
-        for idx, key in enumerate(keys):
-            self.parameters[key] = ParameterSettings()
+        self.options = options or dict()
+        self.parameters = {key: ParameterSettings() for key in keys}
 
     @property
     def settings(self):
-        keys = self._keys
-        N = len(keys)
-        vary = dict(zip(keys, N*[True]))
+        var = {key: True for key in self._keys}
         return self.getkwargs(vary, ndarray=False)
 
     @settings.setter
     def settings(self, settings):
-        for s in settings.keys():
-            setting = settings[s]
-            if isinstance(setting, list):
-                if len(setting) == len(self._keys):
-                    for idx, val in enumerate(setting):
+        for key, value in settings.items():
+            if isinstance(value, list):
+                if len(value) == len(self._keys):
+                    for idx, val in enumerate(value):
                         p = self._keys[idx]
                         param = self.parameters[p]
-                        param.options[s] = val
+                        param.options[key] = val
             else:
-                self.options[s] = setting
+                self.options[key] = value
 
     def getkwargs(self, vary, ndarray=True):
         '''

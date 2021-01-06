@@ -163,27 +163,29 @@ class Optimizer(object):
         '''
         Saves current fit settings for Optimizer.
         '''
-        settings = {}
+        settings = dict()
         settings['lm'] = self.lm_settings.settings
         settings['nm'] = self.nm_settings.settings
         settings['vary'] = self.vary
-        if fn is None:
-            return settings
-        else:
+        try:
             with open(fn, 'w') as f:
                 json.dump(settings, f)
+        except:
+            pass
 
     def load(self, fn=None):
         '''
         Configure Optimizer settings from Optimizer.dump
         output.
         '''
-        if type(fn) is str:
+        try:
             with open(fn, 'rb') as f:
                 settings = json.load(f)
             self.lm_settings.settings = settings['lm']
             self.nm_settings.settings = settings['nm']
             self.vary = settings['vary']
+        except:
+            pass
 
     #
     # Under the hood optimization helper functions
@@ -241,7 +243,7 @@ class Optimizer(object):
         if (self.mask.distribution == 'fast'):
             nbad = len(self.mask.exclude)
             if nbad > 10:
-                msg = 'Including {} saturated pixels'
+                msg = 'Including {} invalid pixels'
                 logger.warning(msg.format(nbad))
         # Get initial guess for fit
         x0 = []
