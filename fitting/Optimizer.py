@@ -271,12 +271,3 @@ class Optimizer(object):
             if self.vary[p]:
                 x0.append(value)
         return np.array(x0)
-
-    def _cleanup(self, method, result, options=None):
-        if method == 'amoeba':
-            settings = self.nm_settings
-        else:
-            settings = self.lm_settings
-        return result, settings
-
-    
