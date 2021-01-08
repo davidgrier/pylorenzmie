@@ -59,9 +59,7 @@ class Optimizer(object):
     '''
 
     def __init__(self, model, data=None, noise=0.05, config=None):
-        # Initialize properties
         self.params = tuple(model.properties.keys())
-        # Set model and fitting equipment
         self.model = model
         self.mask = Mask(model.coordinates)
         self.nm_settings = FitSettings(self.params)
@@ -71,8 +69,6 @@ class Optimizer(object):
         else:
             self._default_settings()
             
-        # Set fields
-        self._shape = None
         self.data = data
         self.noise = noise
         self.result = None
@@ -80,7 +76,7 @@ class Optimizer(object):
     @property
     def data(self):
         '''Values of the (normalized) data at each pixel'''
-        return self._data.reshape(self._shape)
+        return self._data
 
     @data.setter
     def data(self, data):
