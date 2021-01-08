@@ -162,7 +162,7 @@ class Mask(object):
         return np.take(self.coordinates, self.index, axis=1)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     from pylorenzmie.theory.Instrument import coordinates
 
     shape = (201, 201)
