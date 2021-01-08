@@ -69,8 +69,8 @@ class Optimizer(object):
         if type(config) == str:
             self.load(config)
         else:
-            params = self.params
-            self.vary = dict(zip(params, len(params)*[True]))
+            self._default_settings()
+            self.vary = {p: True for p in self.params}
         # Set fields
         self._shape = None
         self.data = data
@@ -141,7 +141,7 @@ class Optimizer(object):
         avg = self._subset_data.mean()
         if not np.isclose(avg, 1., rtol=0, atol=.1):
             msg = 'Mean of data ({:.02f}) should be near 1.'
-            logger.warning(msg.format(avg))
+            logger.info(msg.format(avg))
         # Fit
         result, options = self._optimize(method, x0, robust=robust)
         # Post-fit cleanup
@@ -173,19 +173,36 @@ class Optimizer(object):
         Configure Optimizer settings from Optimizer.dump
         output.
         '''
-        try:
-            with open(fn, 'rb') as f:
-                settings = json.load(f)
-            self.lm_settings.settings = settings['lm']
-            self.nm_settings.settings = settings['nm']
-            self.vary = settings['vary']
-        except:
-            pass
+        with open(fn, 'rb') as f:
+            settings = json.load(f)
+        self.lm_settings.settings = settings['lm']
+        self.nm_settings.settings = settings['nm']
+        self.vary = settings['vary']
 
     #
-    # Under the hood optimization helper functions
+    # Private methods
     #
+    def _default_settings(self):
+        x_scale = [10000.0, 10000.0, 1000.0, 10000.0, 100000.0,
+                   10000000.0, 100.0, 100.0, 100.0, 1]
+        settings = {'method': 'lm', 'xtol': 1e-06, 'ftol': 0.001,
+                    'gtol': 1e-06, 'max_nfev': 2000, 'diff_step': 1e-05,
+                    'verbose': 0, 'x_scale': x_scale}
+        self.lm_settings.settings = settings
+
+        simplex_scale = [4.0, 4.0, 5.0, 0.01, 0.01,
+                         0.2, 0.1, 0.1, 0.05, 0.05]
+        xtol = [0.1, 0.1, 0.01, 0.001, 0.001,
+                0.001, 0.01, 0.01, 0.01, 0.01]
+        xmin = [-np.inf, -np.inf, 0.0, 0.05, 1.0, 0.0, 1.0, 0.1, 0.0, 0.0]
+        xmax = [np.inf, np.inf, 2000.0, 4.0, 3.0, 3.0, 3.0, 2.0, 1.0, 5.0]
+        settings = {'ftol': 0.001, 'maxevals': 800,
+                    'simplex_scale': simplex_scale,
+                    'xtol': xtol, 'xmin': xmin, 'xmax': xmax}
+        self.nm_settings.settings = settings
+
     def _optimize(self, method, x0, robust=False):
+        '''Perform optimization'''
         options = {}
         vary = self.vary
         nmkwargs = self.nm_settings.getkwargs(vary)
@@ -218,10 +235,10 @@ class Optimizer(object):
                 obj = np.absolute(obj).sum()
         return obj
 
-    def _residuals(self, x):
+    def _residuals(self, values):
         '''Updates properties and returns residuals'''
-        vary = [p for p in self.params if self.vary[p]]
-        self.model.properties = dict(zip(vary, x))
+        variables = [p for p in self.params if self.vary[p]]
+        self.model.properties = dict(zip(variables, values))
         return (self.model.hologram() - self._subset_data) / self.noise
 
     def _chisq(self, x):
@@ -234,23 +251,22 @@ class Optimizer(object):
         return np.absolute(delta).sum()
 
     def _prepare(self, method):
-        # Warnings
+        # Mask data
         if (self.mask.distribution == 'fast'):
             nbad = len(self.mask.exclude)
             if nbad > 10:
                 msg = 'Including {} invalid pixels'
-                logger.warning(msg.format(nbad))
-        # Get initial guess for fit
+                logger.info(msg.format(nbad))
+        self._subset_data = self._data[self.mask.index]
+        # Initial estimates
         x0 = []
         for p in self.params:
-            val = self.model.properties[p]
-            self.lm_settings.parameters[p].initial = val
-            self.nm_settings.parameters[p].initial = val
+            value = self.model.properties[p]
+            self.lm_settings.parameters[p].initial = value
+            self.nm_settings.parameters[p].initial = value
             if self.vary[p]:
-                x0.append(val)
-        x0 = np.array(x0)
-        self._subset_data = self._data[self.mask.index]
-        return x0
+                x0.append(value)
+        return np.array(x0)
 
     def _cleanup(self, method, result, options=None):
         if method == 'amoeba-lm':
