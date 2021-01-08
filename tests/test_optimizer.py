@@ -68,3 +68,7 @@ class TestOptimizer(unittest.TestCase):
         opt = Optimizer(model, config = self.configfile)
         self.assertIsInstance(opt, Optimizer)
         os.remove(self.configfile)
+
+
+if __name__ == '__main__':
+    unittest.main()
