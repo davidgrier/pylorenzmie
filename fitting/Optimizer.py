@@ -84,13 +84,16 @@ class Optimizer(object):
 
     @data.setter
     def data(self, data):
-        if type(data) is np.ndarray:
-            saturated = data == np.max(data)
-            nan = np.isnan(data)
-            infinite = np.isinf(data)
-            self.mask.exclude = np.nonzero(saturated | nan | infinite)[0]
+        if data is None:
+            self._data = None
+            self._subset_data = None
+            return
+        saturated = data == np.max(data)
+        nan = np.isnan(data)
+        infinite = np.isinf(data)
+        self.mask.exclude = np.nonzero(saturated | nan | infinite)[0]
         self._data = data
-
+    
     @property
     def model(self):
         '''Model for hologram formation'''
@@ -134,24 +137,31 @@ class Optimizer(object):
         # Get array of pixels to sample
         self.mask.coordinates = self.model.coordinates
         self.model.coordinates = self.mask.masked_coords()
-        npix = self.model.coordinates.shape[1]
-        # Prepare
-        x0 = self._prepare(method)
-        # Check mean of data
-        avg = self._subset_data.mean()
-        if not np.isclose(avg, 1., rtol=0, atol=0.1):
-            msg = 'Mean of data ({:.02f}) should be near 1.'
-            logger.info(msg.format(avg))
-        # Fit
-        result, options = self._optimize(method, x0, robust=robust)
-        # Reassign original coordinates
+        self._subset_data = self._data[self.mask.index]
+
+        # Perform fit
+        p0 = self._initial_estimates()
+        result, options = self._optimize(method, p0, robust=robust)
+
+        # Restore original coordinates
         self.model.coordinates = self.mask.coordinates
+        
         # Store last result
         if method == 'amoeba':
             settings = self.nm_settings
         else:
             settings = self.lm_settings
+        npix = self.model.coordinates.shape[1]
         self.result = FitResult(method, result, settings, self.model, npix)
+
+        if not self.result.success:
+            # Check mean of data
+            logger.info('Optimization did not succeed')
+            avg = self._subset_data.mean()
+            if not np.isclose(avg, 1., rtol=0, atol=0.1):
+                msg = 'Mean of data ({:.02f}) should be near 1.'
+                logger.info(msg.format(avg))
+                
         return self.result
 
     def dump(self, fn=None):
@@ -205,6 +215,16 @@ class Optimizer(object):
         for p in ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']:
             self.vary[p] = False
 
+    def _initial_estimates(self):
+        p0 = []
+        for p in self.params:
+            value = self.model.properties[p]
+            self.lm_settings.parameters[p].initial = value
+            self.nm_settings.parameters[p].initial = value
+            if self.vary[p]:
+                p0.append(value)
+        return np.array(p0)
+    
     def _optimize(self, method, x0, robust=False):
         '''Perform optimization'''
         options = {}
@@ -224,21 +244,6 @@ class Optimizer(object):
             result = least_squares(self._residuals, x0, **lmkwargs)
         return result, options
 
-    #
-    # Under the hood objective function and its helpers
-    #
-    def _objective(self, reduce=False, square=True):
-        holo = self.model.hologram()
-        data = self._subset_data
-        noise = self.noise
-        obj = (holo - data) / noise
-        if reduce:
-            if square:
-                obj = obj.dot(obj)
-            else:
-                obj = np.absolute(obj).sum()
-        return obj
-
     def _residuals(self, values):
         '''Updates properties and returns residuals'''
         variables = [p for p in self.params if self.vary[p]]
@@ -254,20 +259,4 @@ class Optimizer(object):
         delta = self._residuals(x)
         return np.absolute(delta).sum()
 
-    def _prepare(self, method):
-        # Mask data
-        if (self.mask.distribution == 'fast'):
-            nbad = len(self.mask.exclude)
-            if nbad > 10:
-                msg = 'Including {} invalid pixels'
-                logger.info(msg.format(nbad))
-        self._subset_data = self._data[self.mask.index]
-        # Initial estimates
-        x0 = []
-        for p in self.params:
-            value = self.model.properties[p]
-            self.lm_settings.parameters[p].initial = value
-            self.nm_settings.parameters[p].initial = value
-            if self.vary[p]:
-                x0.append(value)
-        return np.array(x0)
+   
