@@ -144,11 +144,13 @@ class Optimizer(object):
             logger.info(msg.format(avg))
         # Fit
         result, options = self._optimize(method, x0, robust=robust)
-        # Post-fit cleanup
-        result, settings = self._cleanup(method, result, options=options)
         # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
         # Store last result
+        if method == 'amoeba':
+            settings = self.nm_settings
+        else:
+            settings = self.lm_settings
         self.result = FitResult(method, result, settings, self.model, npix)
         return self.result
 
@@ -271,10 +273,7 @@ class Optimizer(object):
         return np.array(x0)
 
     def _cleanup(self, method, result, options=None):
-        if method == 'amoeba-lm':
-            result.nfev += options['nmresult'].nfev
-            settings = self.lm_settings
-        elif method == 'amoeba':
+        if method == 'amoeba':
             settings = self.nm_settings
         else:
             settings = self.lm_settings
