@@ -152,19 +152,24 @@ class Optimizer(object):
         else:
             settings = self.lm_settings
         npix = self.model.coordinates.shape[1]
-        self.result = FitResult(method, result, settings, self.model, npix)
+        result = FitResult(method, result, settings, self.model, npix)
 
-        if not self.result.success:
-            # Check mean of data
+        if not result.success or (result.redchi > 100.):
             logger.info('Optimization did not succeed')
             avg = self._subset_data.mean()
             if not np.isclose(avg, 1., rtol=0, atol=0.1):
                 msg = 'Mean of data ({:.02f}) should be near 1.'
                 logger.info(msg.format(avg))
-                
-        return self.result
+            nbad = len(self.mask.exclude)
+            if self.mask.distribution == 'fast':
+                nbad = len(self.mask.exclude)
+                msg = 'Fit included {} potentially bad pixels.'
+                logger.info(msg.format(nbad))
 
-    def dump(self, fn=None):
+        self.result = result
+        return result
+
+    def dump(self, filename=None):
         '''
         Saves current fit settings for Optimizer.
         '''
@@ -172,17 +177,16 @@ class Optimizer(object):
         settings['lm'] = self.lm_settings.settings
         settings['nm'] = self.nm_settings.settings
         settings['vary'] = self.vary
-        try:
-            with open(fn, 'w') as f:
-                json.dump(settings, f)
-        except:
-            pass
+        fn = filename or 'Optimizer.json'
+        with open(fn, 'w') as f:
+            json.dump(settings, f)
 
-    def load(self, fn=None):
+    def load(self, filename=None):
         '''
         Configure Optimizer settings from Optimizer.dump
         output.
         '''
+        fn = filename or 'Optimizer.json'
         with open(fn, 'rb') as f:
             settings = json.load(f)
         self.lm_settings.settings = settings['lm']
@@ -225,7 +229,7 @@ class Optimizer(object):
                 p0.append(value)
         return np.array(p0)
     
-    def _optimize(self, method, x0, robust=False):
+    def _optimize(self, method, p0, robust=False):
         '''Perform optimization'''
         options = {}
         vary = self.vary
@@ -234,14 +238,14 @@ class Optimizer(object):
         converged = False
         if 'amoeba' in method:
             objective = self._absolute if robust else self._chisq
-            result = amoeba(objective, x0, **nmkwargs)
+            result = amoeba(objective, p0, **nmkwargs)
             converged = result.success
-        if method == 'lm-amoeba':
+        if method == 'amoeba-lm':
             options['nmresult'] = result
             if converged:
-                x0 = nmresult.x
+                p0 = result.x
         if 'lm' in method:
-            result = least_squares(self._residuals, x0, **lmkwargs)
+            result = least_squares(self._residuals, p0, **lmkwargs)
         return result, options
 
     def _residuals(self, values):
