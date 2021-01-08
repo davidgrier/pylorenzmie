@@ -70,7 +70,7 @@ class Optimizer(object):
             self.load(config)
         else:
             self._default_settings()
-            self.vary = {p: True for p in self.params}
+            
         # Set fields
         self._shape = None
         self.data = data
@@ -139,7 +139,7 @@ class Optimizer(object):
         x0 = self._prepare(method)
         # Check mean of data
         avg = self._subset_data.mean()
-        if not np.isclose(avg, 1., rtol=0, atol=.1):
+        if not np.isclose(avg, 1., rtol=0, atol=0.1):
             msg = 'Mean of data ({:.02f}) should be near 1.'
             logger.info(msg.format(avg))
         # Fit
@@ -149,10 +149,8 @@ class Optimizer(object):
         # Reassign original coordinates
         self.model.coordinates = self.mask.coordinates
         # Store last result
-        result = FitResult(method, result, settings, self.model, npix)
-        self.result = result
-
-        return result
+        self.result = FitResult(method, result, settings, self.model, npix)
+        return self.result
 
     def dump(self, fn=None):
         '''
@@ -200,6 +198,10 @@ class Optimizer(object):
                     'simplex_scale': simplex_scale,
                     'xtol': xtol, 'xmin': xmin, 'xmax': xmax}
         self.nm_settings.settings = settings
+
+        self.vary = {p: True for p in self.params}
+        for p in ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']:
+            self.vary[p] = False
 
     def _optimize(self, method, x0, robust=False):
         '''Perform optimization'''
