@@ -3,7 +3,6 @@
 
 import numpy as np
 import json
-from future.utils import iteritems
 
 
 class Particle(object):
@@ -90,7 +89,7 @@ class Particle(object):
 
     @properties.setter
     def properties(self, properties):
-        for (name, value) in iteritems(properties):
+        for name, value in properties.items():
             if hasattr(self, name):
                 setattr(self, name, value)
 
