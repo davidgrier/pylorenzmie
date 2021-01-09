@@ -4,7 +4,7 @@ import numpy as np
 from theory import (Instrument, coordinates)
 
 
-class TestSphere(unittest.TestCase):
+class TestInstrument(unittest.TestCase):
 
     def setUp(self):
         self.instrument = Instrument()
@@ -51,9 +51,17 @@ class TestSphere(unittest.TestCase):
         self.instrument.n_m = n_1
         self.instrument.loads(s)
         self.assertEqual(self.instrument.n_m, n_0)
+
+    def test_dark_count(self):
+        value = 10.
+        self.instrument.dark_count = value
+        self.assertEqual(self.instrument.dark_count, value)
+
+    def test_background(self):
+        value = 10.
+        self.instrument.background = value
+        self.assertEqual(self.instrument.background, value)
+
         
-
-    
-
 if __name__ == '__main__':
     unittest.main()

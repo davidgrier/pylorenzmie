@@ -57,9 +57,6 @@ class Feature(object):
         # Deserialize if needed
         self.deserialize(info)
 
-    #
-    # Fields for user to set data, model, optimizer, and classification label
-    #
     @property
     def data(self):
         '''Values of the (normalized) data at each pixel'''
@@ -244,7 +241,7 @@ class Feature(object):
             self.label = info['label']
 
 
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     from pylorenzmie.theory import coordinates
     #from pylorenzmie.theory.cuholo import cucoordinates as coordinates
     import cv2

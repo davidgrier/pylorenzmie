@@ -16,8 +16,7 @@ class FitSettings(object):
     options : dict
         Dictionary that can be passed to a fitting algorithm,
         consisting of vector and scalar keywords
-    parameters: dict of ParameterSettings
-        See ParameterSettings documentation to see attributes.
+    parameters: dict of Parameter()
 
     Methods
     -------
@@ -25,7 +24,7 @@ class FitSettings(object):
         Returns a dictionary of arguments and keywords to be
         passed to a fitting algorithm. Before calling, set
         all non-vector keywords in FitSettings.options
-        and all vector keywords in each ParameterSettings.options
+        and all vector keywords in each Parameter.options
         stored in FitSettings.parameters. However, setting
         FitSettings.parameters.vary will not have an effect on the
         output; only the argument to this function, vary, will.
@@ -45,7 +44,7 @@ class FitSettings(object):
         '''
         self._keys = keys
         self.options = dict(options or dict())
-        self.parameters = {key: ParameterSettings() for key in keys}
+        self.parameters = {key: Parameter() for key in keys}
 
     @property
     def settings(self):
@@ -107,7 +106,7 @@ class FitSettings(object):
         return options
 
 
-class ParameterSettings(object):
+class Parameter(object):
     '''
     Stores information about each parameter's initial value, 
     final value, whether or not it will vary during fitting,
