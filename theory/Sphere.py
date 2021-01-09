@@ -110,11 +110,11 @@ class Sphere(Particle):
 
     @Particle.properties.getter
     def properties(self):
-        props = Particle.properties.fget(self)
-        props['a_p'] = self.a_p
-        props['n_p'] = self.n_p
-        props['k_p'] = self.k_p
-        return props
+        p = Particle.properties.fget(self)
+        p['a_p'] = self.a_p
+        p['n_p'] = self.n_p
+        p['k_p'] = self.k_p
+        return p
 
     def ab(self, n_m, wavelength):
         '''Returns the Mie scattering coefficients
