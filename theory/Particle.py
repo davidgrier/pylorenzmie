@@ -41,8 +41,9 @@ class Particle(object):
         self.r_p = r_p
 
     def __str__(self):
-        str = '{}(r_p={:.2f})'
-        return str.format(self.__class__.__name__, self.r_p.tolist())
+        str = '{}(r_p={})'
+        r_p = ['{:.2f}'.format(c) for c in self.r_p]
+        return str.format(self.__class__.__name__, r_p)
 
     def __repr__(self):
         return self.__str__()
