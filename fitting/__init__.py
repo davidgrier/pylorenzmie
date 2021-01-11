@@ -9,9 +9,9 @@ except Exception as e:
     logger.info(e)
     from .minimizers import amoeba
 
-from .Settings import FitSettings, FitResult
+from .Settings import (Parameter, FitSettings, FitResult)
 from .Mask import Mask
 from .Optimizer import Optimizer
 
 
-__all__ = [amoeba, FitSettings, FitResult, Mask, Optimizer]
+__all__ = [amoeba, Parameter, FitSettings, FitResult, Mask, Optimizer]

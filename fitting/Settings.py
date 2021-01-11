@@ -128,10 +128,28 @@ class Parameter(object):
         fitting
     '''
 
-    def __init__(self):
+    def __init__(self, value=None, uncertainty=None, vary=False):
+        self.initial = value or 0.
+        self.uncertainty = uncertainty or 0.
+        self.vary = vary
         self._options = dict()
-        self._vary = bool()
-        self._initial = float()
+
+    @property
+    def value(self):
+        '''Current value of parameter'''
+        return self._value
+
+    @value.setter
+    def value(self, value):
+        self._value = value
+
+    @property
+    def uncertainty(self):
+        return self._uncertainty
+
+    @uncertainty.setter
+    def uncertainty(self, uncertainty):
+        self._uncertainty = uncertainty
 
     @property
     def vary(self):
@@ -149,6 +167,7 @@ class Parameter(object):
 
     @initial.setter
     def initial(self, initial):
+        self._value = initial
         self._initial = initial
 
     @property
@@ -158,7 +177,7 @@ class Parameter(object):
 
     @options.setter
     def options(self, options):
-        self._options = options
+        self._options = dict(options)
 
 
 class FitResult(object):
