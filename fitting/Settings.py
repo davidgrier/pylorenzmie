@@ -301,11 +301,8 @@ class FitResult(object):
             redchi = self.result.fun / nfree
         self._redchi = redchi
 
-    def save(self):
-        pass
 
-
-if __name__ == '__main__':
+if __name__ == '__main__': # pragma: no cover
     settings = FitSettings(('x', 'y'))
     settings.parameters['x'].vary = True
     settings.parameters['y'].vary = True
