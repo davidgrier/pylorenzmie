@@ -68,9 +68,9 @@ class Sphere(Particle):
 
     def __str__(self):
         name = self.__class__.__name__
-        str = '{}(a_p={}, n_p={}, k_p={}, r_p={})'
+        str = '{}(a_p={:.3f}, n_p={:.3f}, k_p={:.3f}, r_p={})'
         return str.format(name, self.a_p, self.n_p, self.k_p,
-                          self.r_p.tolist())
+                          np.round(self.r_p, 2).tolist())
 
     @property
     def a_p(self):
