@@ -194,16 +194,16 @@ class Optimizer(object):
     #
     def _default_settings(self):
         # least_squares
-        x_scale = [10000.0, 10000.0, 1000.0, 10000.0, 100000.0,
-                   10000000.0, 100.0, 100.0, 100.0, 1.0]
+        # x_scale = [10000.0, 10000.0, 1000.0, 10000.0, 100000.0,
+        #           10000000.0, 100.0, 100.0, 100.0, 1.0]
         settings = {'method': 'lm',
-                    'ftol': 1e-3,       # default: 1e-8
-                    'xtol': 1e-6,       # default: 1e-8
-                    'gtol': 1e-6,       # default: 1e-8
-                    'loss': 'linear',   # (a)
-                    'max_nfev': 2000,   # max function evaluations
-                    'diff_step': 1e-5,  # default: machine epsilon
-                    'x_scale': 'jac'} # (b)
+                    'ftol': 1e-3,      # default: 1e-8
+                    'xtol': 1e-6,      # default: 1e-8
+                    'gtol': 1e-6,      # default: 1e-8
+                    'loss': 'linear',  # (a)
+                    'max_nfev': 2000,  # max function evaluations
+                    'diff_step': 1e-5, # default: machine epsilon
+                    'x_scale': 'jac'}  # (b)
         self.lm_settings.settings = settings
         # NOTES:
         # (a) linear:  default: standard least squares
@@ -212,6 +212,7 @@ class Optimizer(object):
         #     cauchy:  strong least squares
         #     arctan:  limits maximum loss
         # (b) jac:     dynamic rescaling
+        #     x_scale: specify scale for each adjustable variable
 
         # amoeba
         simplex_scale = [4.0, 4.0, 5.0, 0.01, 0.01,
