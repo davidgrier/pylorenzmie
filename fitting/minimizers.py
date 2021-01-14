@@ -6,7 +6,7 @@ def amoeba(objective, x0, xmin, xmax,
            simplex_scale=.1, xtol=1e-7, ftol=1e-7,
            maxevals=int(1e3), initial_simplex=None):
     '''
-    Nelder-mead optimization adapted from scipy.optimize.fmin
+    Nelder-Mead optimization adapted from scipy.optimize.fmin
 
     Arguments
     ---------

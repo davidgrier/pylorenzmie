@@ -4,10 +4,12 @@
 import numpy as np
 import json
 
-from scipy.optimize import least_squares
-from . import amoeba
+from scipy.optimize import (least_squares, minimize)
+# from . import amoeba
 
-from .Settings import FitSettings, FitResult
+from scipy.linalg import svd
+import pandas as pd
+
 from .Mask import Mask
 
 import logging
@@ -23,54 +25,35 @@ class Optimizer(object):
 
     Properties
     ----------
-    data : numpy.ndarray
-        [npts] normalized intensity values
-    noise : float
-        Estimate for the additive noise value at each data pixel
     model : LMHologram
         Incorporates information about the Particle and the Instrument
         and uses this information to compute a hologram at the
         specified coordinates.  Keywords for the Model can be
-        provided at initialization.
-    vary : dict of booleans
-        Allows user to select whether or not to vary parameter
-        during fitting. True means the parameter will vary.
-        Setting FitSettings.parameters.vary manually will not
-        work.
-    nm_settings : FitSettings
-        Settings for nelder-mead optimization. Refer to minimizers.py
-        or cminimizers.pyx -> amoeba and Settings.py -> FitSettings
-        for documentation.
-    lm_settings : FitSettings
-        Settings for Levenberg-Marquardt optimization. Refer to
-        scipy.optimize.least_squares and Settings.py -> FitSettings
-        for documentation.
-    mask : Mask
-        Controls sampling scheme for random subset fitting.
-        Refer to pylorenzmie/fitting/Mask.py for documentation.
+        provided at initialization    
+    data : numpy.ndarray
+        [npts] normalized intensity values
+    noise : float
+        Estimate for the additive noise value at each data pixel
+    method : str
+        Optimization method.
+        'lm': scipy.least_squares
+        'amoeba' : Nelder-Mead optimization from pylorenzmie.fitting
+        'amoeba-lm': Nelder-Mead/Levenberg-Marquardt hybrid
 
     Methods
     -------
-    optimize() : FitResult
-        Optimize the Model to fit the data. A FitResult is
-        returned and can be printed for a comprehensive report,
-        which is also reflected in updates to the properties of
-        the Model.
+    optimize() : pandas.Series
+        Optimize the Model to fit the data.
     '''
 
-    def __init__(self, model, data=None, noise=0.05, config=None):
-        self.params = tuple(model.properties.keys())
+    def __init__(self, model, data=None, noise=0.05, method=None, config=None):
         self.model = model
         self.mask = Mask(model.coordinates)
-        self.nm_settings = FitSettings(self.params)
-        self.lm_settings = FitSettings(self.params)
-        if type(config) == str:
-            self.load(config)
-        else:
-            self._default_settings()
+        self._default_settings()
             
         self.data = data
         self.noise = noise
+        self.method = method or 'lm'
         self.result = None
 
     @property
@@ -102,17 +85,12 @@ class Optimizer(object):
     #
     # Public methods
     #
-    def optimize(self, method='amoeba', robust=False):
+    def optimize(self, robust=False):
         '''
         Fit Model to data
 
         Keywords
-        ---------
-        method : str
-            Optimization method.
-            'lm': scipy.least_squares
-            'amoeba' : Nelder-Mead optimization from pylorenzmie.fitting
-            'amoeba-lm': Nelder-Mead/Levenberg-Marquardt hybrid
+        --------- 
         robust : bool
             If True, attempt to minimize the absolute error.
 
@@ -124,71 +102,91 @@ class Optimizer(object):
 
         Returns
         -------
-        result : FitResult
-            Stores useful information about the fit. It also has this
-            nice quirk where if it's printed, it gives a nice-looking
-            fit report. For further description, see documentation for
-            FitResult in pylorenzmie.fitting.Settings.py.
+        result : pandas.Series
+            Values, uncertainties and statistics from fit
         '''
         # Get array of pixels to sample
         self.mask.coordinates = self.model.coordinates
         self.model.coordinates = self.mask.masked_coords()
         self._subset_data = self._data[self.mask.index]
+        self.npix = len(self.mask.index)
 
         # Perform fit
         p0 = self._initial_estimates()
-        result, options = self._optimize(method, p0, robust=robust)
-
-        # Restore original coordinates
-        self.model.coordinates = self.mask.coordinates
-        
-        # Store last result
-        if method == 'amoeba':
-            settings = self.nm_settings
-        else:
-            settings = self.lm_settings
-        npix = self.model.coordinates.shape[1]
-        result = FitResult(method, result, settings, self.model, npix)
-
-        if not result.success or (result.redchi > 100.):
-            logger.info('Optimization did not succeed')
-            avg = self._subset_data.mean()
-            if not np.isclose(avg, 1., rtol=0, atol=0.1):
-                msg = 'Mean of data ({:.02f}) should be near 1.'
-                logger.info(msg.format(avg))
-            nbad = len(self.mask.exclude)
-            if self.mask.distribution == 'fast':
-                nbad = len(self.mask.exclude)
-                msg = 'Fit included {} potentially bad pixels.'
-                logger.info(msg.format(nbad))
+        if 'amoeba' in self.method:
+            objective = self._absolute if robust else self._chisq
+            result = minimize(objective, p0, **self.nm_settings)
+            converged = result.success
+        if self.method == 'amoeba-lm':
+            if converged:
+                p0 = result.x
+        if 'lm' in self.method:
+            result = least_squares(self._residuals, p0, **self.lm_settings)
 
         self.result = result
-        return result
+        
+        # Restore original coordinates
+        self.model.coordinates = self.mask.coordinates
+            
+        # Store last result
+        # if method == 'amoeba':
+        #    settings = self.nm_settings
+        # else:
+        #    settings = self.lm_settings
+        # npix = self.model.coordinates.shape[1]
+        # result = FitResult(method, result, settings, self.model, npix)
 
-    def dump(self, filename=None):
-        '''
-        Saves current fit settings for Optimizer.
-        '''
-        settings = dict()
-        settings['lm'] = self.lm_settings.settings
-        settings['nm'] = self.nm_settings.settings
-        settings['vary'] = self.vary
-        fn = filename or 'Optimizer.json'
-        with open(fn, 'w') as f:
-            json.dump(settings, f)
+        #if not result.success or (result.redchi > 100.):
+        #    logger.info('Optimization did not succeed')
+        #    avg = self._subset_data.mean()
+        #    if not np.isclose(avg, 1., rtol=0, atol=0.1):
+        #        msg = 'Mean of data ({:.02f}) should be near 1.'
+        #        logger.info(msg.format(avg))
+        #    nbad = len(self.mask.exclude)
+        #    if self.mask.distribution == 'fast':
+        #        nbad = len(self.mask.exclude)
+        #        msg = 'Fit included {} potentially bad pixels.'
+        #        logger.info(msg.format(nbad))
 
-    def load(self, filename=None):
-        '''
-        Configure Optimizer settings from Optimizer.dump
-        output.
-        '''
-        fn = filename or 'Optimizer.json'
-        with open(fn, 'rb') as f:
-            settings = json.load(f)
-        self.lm_settings.settings = settings['lm']
-        self.nm_settings.settings = settings['nm']
-        self.vary = settings['vary']
+        return self.report()
 
+    def report(self):
+        if self.result is None:
+            return None
+        a = self.variables
+        b = ['d'+c for c in a]
+        keys = list(sum(zip(a, b), ()))
+        keys.extend(['success', 'npix', 'redchi'])
+
+        values = self.result.x
+        redchi, uncertainties = self._statistics()
+        values = list(sum(zip(values, uncertainties), ()))
+        values.extend([self.result.success, self.npix, redchi])
+
+        return pd.Series(dict(zip(keys, values)))
+
+    @property
+    def properties(self):
+        p = dict()
+        p['lm'] = self.lm_settings
+        p['nm'] = self.nm_settings
+        p['fixed'] = self.fixed
+        p['variables'] = self.variables
+        return p
+
+    @properties.setter
+    def properties(self, p):
+        self.lm_settings = p['lm']
+        self.nm_settings = p['nm']
+        self.fixed = p['fixed']
+        self.variables = p['variables']
+        
+    def dumps(self, **kwargs):
+        return json.dumps(self.properties, **kwargs)
+
+    def loads(self, serial):
+        self.properties = json.loads(serial)
+        
     #
     # Private methods
     #
@@ -196,73 +194,61 @@ class Optimizer(object):
         # least_squares
         # x_scale = [10000.0, 10000.0, 1000.0, 10000.0, 100000.0,
         #           10000000.0, 100.0, 100.0, 100.0, 1.0]
-        settings = {'method': 'lm',
+        settings = {'method': 'lm',    # (a)
                     'ftol': 1e-3,      # default: 1e-8
                     'xtol': 1e-6,      # default: 1e-8
                     'gtol': 1e-6,      # default: 1e-8
-                    'loss': 'linear',  # (a)
+                    'loss': 'linear',  # (b)
                     'max_nfev': 2000,  # max function evaluations
                     'diff_step': 1e-5, # default: machine epsilon
-                    'x_scale': 'jac'}  # (b)
-        self.lm_settings.settings = settings
+                    'x_scale': 'jac'}  # (c)
+        self.lm_settings = settings
         # NOTES:
-        # (a) linear:  default: standard least squares
+        # (a) trf:     Trust Region Reflective
+        #     dogbox:  
+        #     lm:      Levenberg-Marquardt
+        # (b) linear:  default: standard least squares
         #     soft_l1: robust least squares
         #     huber:   robust least squares
         #     cauchy:  strong least squares
         #     arctan:  limits maximum loss
-        # (b) jac:     dynamic rescaling
+        # (c) jac:     dynamic rescaling
         #     x_scale: specify scale for each adjustable variable
 
         # amoeba
-        simplex_scale = [4.0, 4.0, 5.0, 0.01, 0.01,
-                         0.2, 0.1, 0.1, 0.05, 0.05]
-        xtol = [0.1, 0.1, 0.01, 0.001, 0.001,
-                0.001, 0.01, 0.01, 0.01, 0.01]
-        xmin = [-np.inf, -np.inf, 0.0, 0.05, 1.0, 0.0, 1.0, 0.1, 0.0, 0.0]
-        xmax = [np.inf, np.inf, 2000.0, 4.0, 3.0, 3.0, 3.0, 2.0, 1.0, 5.0]
-        settings = {'ftol': 0.001, 'maxevals': 800,
-                    'simplex_scale': simplex_scale,
-                    'xtol': xtol, 'xmin': xmin, 'xmax': xmax}
-        self.nm_settings.settings = settings
+        # simplex_scale = np.array([4.0, 4.0, 5.0, 0.01, 0.01,
+        #                          0.2, 0.1, 0.1, 0.05, 0.05])
+        # xtol = np.array([0.1, 0.1, 0.01, 0.001, 0.001,
+        #                  0.001, 0.01, 0.01, 0.01, 0.01])
+        # xmin = np.array([-np.inf, -np.inf, 0.0, 0.05,
+        #                  1.0, 0.0, 1.0, 0.1, 0.0, 0.0])
+        # xmax = np.array([np.inf, np.inf, 2000.0, 4.0, 3.0,
+        #                  3.0, 3.0, 2.0, 1.0, 5.0])
+        # settings = {'ftol': 0.001, 'maxevals': 800,
+        #             'simplex_scale': simplex_scale,
+        #            'xtol': xtol, 'xmin': xmin, 'xmax': xmax}
 
-        self.vary = {p: True for p in self.params}
-        for p in ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']:
-            self.vary[p] = False
+        options = {'maxfev': 2000,
+                   'xatol': 1e-2,
+                   'fatol': 1e-2,
+                   'adaptive': True}
+        settings = {'method': 'Nelder-Mead',
+                    'options': options}
+        self.nm_settings = settings
+
+        properties = self.model.properties
+        self.fixed = ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
+        self.variables = [p for p in properties if p not in self.fixed]
 
     def _initial_estimates(self):
         p0 = []
-        for p in self.params:
-            value = self.model.properties[p]
-            self.lm_settings.parameters[p].initial = value
-            self.nm_settings.parameters[p].initial = value
-            if self.vary[p]:
-                p0.append(value)
+        for p in self.variables:
+            p0.append(self.model.properties[p])
         return np.array(p0)
     
-    def _optimize(self, method, p0, robust=False):
-        '''Perform optimization'''
-        options = {}
-        vary = self.vary
-        nmkwargs = self.nm_settings.getkwargs(vary)
-        lmkwargs = self.lm_settings.getkwargs(vary)
-        converged = False
-        if 'amoeba' in method:
-            objective = self._absolute if robust else self._chisq
-            result = amoeba(objective, p0, **nmkwargs)
-            converged = result.success
-        if method == 'amoeba-lm':
-            options['nmresult'] = result
-            if converged:
-                p0 = result.x
-        if 'lm' in method:
-            result = least_squares(self._residuals, p0, **lmkwargs)
-        return result, options
-
     def _residuals(self, values):
         '''Updates properties and returns residuals'''
-        variables = [p for p in self.params if self.vary[p]]
-        self.model.properties = dict(zip(variables, values))
+        self.model.properties = dict(zip(self.variables, values))
         return (self.model.hologram() - self._subset_data) / self.noise
 
     def _chisq(self, x):
@@ -274,4 +260,21 @@ class Optimizer(object):
         delta = self._residuals(x)
         return np.absolute(delta).sum()
 
-   
+    def _statistics(self):
+        '''return standard uncertainties in fit parameters'''
+        res = self.result
+        ndeg = self.npix - res.x.size       # number of degrees of freedom
+        if self.method == 'amoeba':
+            redchi = res.fun / ndeg
+            uncertainty = res.x * 0.        # no uncertainty estimate
+        else:
+            redchi = 2.*res.cost / ndeg # reduced chi-squared
+            # covariance matrix
+            # Moore-Penrose inverse discarding zero singular values.
+            _, s, VT = svd(res.jac, full_matrices=False)
+            threshold = np.finfo(float).eps * max(res.jac.shape) * s[0]
+            s = s[s > threshold]
+            VT = VT[:s.size]
+            pcov = np.dot(VT.T / s**2, VT)
+            uncertainty = np.sqrt(redchi * np.diag(pcov))
+        return redchi, uncertainty
