@@ -6,6 +6,8 @@ import pandas as pd
 import json
 import os
 from .Frame import Frame
+from CNNLorenzMie.experiments.normalize_image import normalize_video
+from CNNLorenzMIe.experiments.running_normal import running_normalize
 
 
 
@@ -110,7 +112,11 @@ class Video(object):
     @property
     def framenumbers(self):
         return list(self._frames.keys())
-    
+
+    @property
+    def trajectories(self):
+        return self._trajectories 
+
     def get_frame(self, framenumber):
         return self._frames[framenumber]
 
@@ -191,10 +197,6 @@ class Video(object):
                 base_path = path.replace(filename, '')
                 base_path = base_path.replace(viddir, '')
                 self.video_path = '/'.join([base_path, viddir, filename + '.avi'])
-                               
-    @property
-    def trajectories(self):
-        return self._trajectories 
 
     def set_trajectories(self, link=True, search_range=2., verbose=True, **kwargs):
         df = self.trajectories
@@ -215,6 +217,17 @@ class Video(object):
      
     def clear_trajectories(self):
         self._trajectories = pd.DataFrame()
+
+    def normalize(self, save_folder=None, order=2, dark=None):
+        if save_folder is None:
+            save_folder = self.path + '/norm_images/'
+        else:
+            print('not sure how to handle this yet')
+        if self.bg_path is None: #assume if no background video that this is a flow experiment
+            running_normalize(self.video_path, save_folder = save_folder, order = order, dark = dark)
+        else: #use background video if there is one
+            normalize_video(self.bg_path, self.video_path, save_folder = save_folder, order = order)
+        self.set_frames()
             
     def serialize(self, save=False, framenumbers=None, path=None, traj_path=None,
                   omit=[], omit_frame=[], omit_feat=[]):
