@@ -128,14 +128,6 @@ class Optimizer(object):
         # Restore original coordinates
         self.model.coordinates = self.mask.coordinates
             
-        # Store last result
-        # if method == 'amoeba':
-        #    settings = self.nm_settings
-        # else:
-        #    settings = self.lm_settings
-        # npix = self.model.coordinates.shape[1]
-        # result = FitResult(method, result, settings, self.model, npix)
-
         #if not result.success or (result.redchi > 100.):
         #    logger.info('Optimization did not succeed')
         #    avg = self._subset_data.mean()
@@ -192,8 +184,6 @@ class Optimizer(object):
     #
     def _default_settings(self):
         # least_squares
-        # x_scale = [10000.0, 10000.0, 1000.0, 10000.0, 100000.0,
-        #           10000000.0, 100.0, 100.0, 100.0, 1.0]
         settings = {'method': 'lm',    # (a)
                     'ftol': 1e-3,      # default: 1e-8
                     'xtol': 1e-6,      # default: 1e-8
@@ -216,18 +206,6 @@ class Optimizer(object):
         #     x_scale: specify scale for each adjustable variable
 
         # amoeba
-        # simplex_scale = np.array([4.0, 4.0, 5.0, 0.01, 0.01,
-        #                          0.2, 0.1, 0.1, 0.05, 0.05])
-        # xtol = np.array([0.1, 0.1, 0.01, 0.001, 0.001,
-        #                  0.001, 0.01, 0.01, 0.01, 0.01])
-        # xmin = np.array([-np.inf, -np.inf, 0.0, 0.05,
-        #                  1.0, 0.0, 1.0, 0.1, 0.0, 0.0])
-        # xmax = np.array([np.inf, np.inf, 2000.0, 4.0, 3.0,
-        #                  3.0, 3.0, 2.0, 1.0, 5.0])
-        # settings = {'ftol': 0.001, 'maxevals': 800,
-        #             'simplex_scale': simplex_scale,
-        #            'xtol': xtol, 'xmin': xmin, 'xmax': xmax}
-
         options = {'maxfev': 2000,
                    'xatol': 1e-2,
                    'fatol': 1e-2,
