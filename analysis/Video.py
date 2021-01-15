@@ -7,7 +7,7 @@ import json
 import os
 from .Frame import Frame
 from CNNLorenzMie.experiments.normalize_image import normalize_video
-from CNNLorenzMIe.experiments.running_normal import running_normalize
+from CNNLorenzMie.experiments.running_normal import running_normalize
 
 
 
@@ -181,7 +181,7 @@ class Video(object):
         
         if len(path) >= 4 and path[-4:] == '.avi':
             self.video_path = path
-            self.bg_path = self.video_path.replace(self.video_path.split('/')[-1], 'background.avi')
+            #self.bg_path = self.video_path.replace(self.video_path.split('/')[-1], 'background.avi') #don't do this
             self.path = path.replace(viddir, '')[:-4]
         else:
             if '.' in path:
@@ -218,14 +218,18 @@ class Video(object):
     def clear_trajectories(self):
         self._trajectories = pd.DataFrame()
 
-    def normalize(self, save_folder=None, order=2, dark=None):
+    def normalize(self, save_folder=None, order=None, dark=None):
         if save_folder is None:
             save_folder = self.path + '/norm_images/'
         else:
             print('not sure how to handle this yet')
         if self.bg_path is None: #assume if no background video that this is a flow experiment
+            if order is None:
+                order = 3
             running_normalize(self.video_path, save_folder = save_folder, order = order, dark = dark)
         else: #use background video if there is one
+            if order is None:
+                order = 2
             normalize_video(self.bg_path, self.video_path, save_folder = save_folder, order = order)
         self.set_frames()
             
