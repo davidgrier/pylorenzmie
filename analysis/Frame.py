@@ -173,11 +173,17 @@ class Frame(object):
             if not isinstance(feature, Feature) and bbox is not None:                   #### If bbox but no feature, pass empty feature
                 if len(bbox) == 4:
                     feature = Feature()
-            if isinstance(feature, Feature):                                            #### If we have a feature to add, set instrument and add with appropriate bbox
+            if isinstance(feature, Feature):   
+                #### If we have a feature to add, set instrument and add with appropriate bbox
                 if feature.model is not None and self.instrument is not None: 
                     feature.model.instrument = self.instrument
-                self._features.append(feature)
-                self._bboxes.append(bbox)
+                if bbox not in self.bboxes:
+                    self._features.append(feature)
+                    self._bboxes.append(bbox)
+            elif not feature:
+                pass
+            elif bbox is None:
+                pass
             elif feature is not None:
                 print('Warning - could not add feature {} of type {}'.format(i, type(feature)))
 #                 msg = "features must be list of Features"
