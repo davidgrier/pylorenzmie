@@ -5,7 +5,6 @@ from theory import (LMHologram, coordinates)
 import os
 import cv2
 import numpy as np
-import tempfile
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_IMAGE = os.path.join(THIS_DIR, 'data/crop.png')
@@ -28,13 +27,18 @@ class TestOptimizer(unittest.TestCase):
         model.particle.n_p = 1.4
         self.optimizer = Optimizer(model=model)
 
+    def test_report_none(self):
+        r = self.optimizer.report()
+        self.assertIs(r, None)
+
     def test_data(self):
         self.optimizer.data = self.data
         self.assertEqual(self.optimizer.data.size, self.data.size)
 
     def test_optimize(self, method='lm', robust=False):
+        self.optimizer.method = method
         self.optimizer.data = self.data
-        result = self.optimizer.optimize(method=method, robust=robust)
+        result = self.optimizer.optimize(robust=robust)
         if not result.success:
             print(result)
         self.assertTrue(result.success)
@@ -42,32 +46,23 @@ class TestOptimizer(unittest.TestCase):
     def test_optimize_amoeba(self):
         self.test_optimize(method='amoeba')
 
+    def test_optimize_amoeba_robust(self):
+        self.test_optimize(method='amoeba', robust=True)
+
     def test_optimize_lm_amoeba(self):
         self.test_optimize(method='amoeba-lm')
 
-    def test_optimize_robust(self):
-        self.test_optimize(method='amoeba', robust=True)
-
     def test_optimize_failure(self):
+        self.optimizer.method = 'lm'
         self.optimizer.data = self.data + 100.
-        result = self.optimizer.optimize(method='lm')
+        result = self.optimizer.optimize()
         failure = not result.success or (result.redchi > 100.)
         self.assertTrue(failure)
 
-    def test_dump_load(self):
-        self.configfile = tempfile.mkstemp()[1]
-        self.optimizer.dump(self.configfile)
-        self.optimizer.load(self.configfile)
-        self.assertTrue(os.path.exists(self.configfile))
-        os.remove(self.configfile)
-
-    def test_init_config(self):
-        self.configfile = tempfile.mkstemp()[1]
-        self.optimizer.dump(self.configfile)
-        model = LMHologram(coordinates=coordinates(self.shape))
-        opt = Optimizer(model, config = self.configfile)
-        self.assertIsInstance(opt, Optimizer)
-        os.remove(self.configfile)
+    def test_dumps_loads(self):
+        s = self.optimizer.dumps()
+        self.optimizer.loads(s)
+        self.assertIsInstance(s, str)
 
 
 if __name__ == '__main__':
