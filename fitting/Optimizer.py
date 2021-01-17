@@ -5,12 +5,9 @@ import numpy as np
 import json
 
 from scipy.optimize import (least_squares, minimize)
-# from . import amoeba
 
 from scipy.linalg import svd
 import pandas as pd
-
-from .Mask import Mask
 
 import logging
 logger = logging.getLogger(__name__)
@@ -32,6 +29,8 @@ class Optimizer(object):
         provided at initialization    
     data : numpy.ndarray
         [npts] normalized intensity values
+    coordinates : numpy.ndarray
+        [2, npts] pixel coordinates
     noise : float
         Estimate for the additive noise value at each data pixel
     method : str
@@ -39,23 +38,43 @@ class Optimizer(object):
         'lm': scipy.least_squares
         'amoeba' : Nelder-Mead optimization from pylorenzmie.fitting
         'amoeba-lm': Nelder-Mead/Levenberg-Marquardt hybrid
+    properties : dict
+        Dictionary of settings for the optimzer
+    result : scipy.optimize.OptimizeResult
+        Set by optimize()
 
     Methods
     -------
     optimize() : pandas.Series
-        Optimize the Model to fit the data.
+        Parameters that optimize model to fit the data.
+
+    report() : pandas.Series
+        Result of last call to optimize()
     '''
 
-    def __init__(self, model, data=None, noise=0.05, method=None, config=None):
-        self.model = model
-        self.mask = Mask(model.coordinates)
-        self._default_settings()
-            
+    def __init__(self,
+                 model=None,
+                 data=None,
+                 coordinates=None,
+                 noise=0.05,
+                 method=None,
+                 **kwargs):
+        self.model = model or LMHologram(**kwargs)
         self.data = data
         self.noise = noise
         self.method = method or 'lm'
-        self.result = None
+        self._result = None
+        self._default_settings()
 
+    @property
+    def model(self):
+        '''Generative model for hologram computation'''
+        return self._model
+
+    @model.setter
+    def model(self, model):
+        self._model = model
+        
     @property
     def data(self):
         '''Values of the (normalized) data at each pixel'''
@@ -63,25 +82,39 @@ class Optimizer(object):
 
     @data.setter
     def data(self, data):
-        if data is None:
-            self._data = None
-            self._subset_data = None
-            return
-        saturated = data == np.max(data)
-        nan = np.isnan(data)
-        infinite = np.isinf(data)
-        self.mask.exclude = np.nonzero(saturated | nan | infinite)[0]
         self._data = data
-    
+
     @property
-    def model(self):
-        '''Model for hologram formation'''
-        return self._model
+    def coordinates(self):
+        '''Coordinates of data pixels'''
+        return self.model.coordinates
 
-    @model.setter
-    def model(self, model):
-        self._model = model
+    @coordinates.setter
+    def coordinates(self, coordinates):
+        self.model.coordinates = coordinates
 
+    @property
+    def result(self):
+        return self._result
+
+    @property
+    def properties(self):
+        p = dict()
+        p['method'] = self.method
+        p['lm'] = self.lm_settings
+        p['nm'] = self.nm_settings
+        p['fixed'] = self.fixed
+        p['variables'] = self.variables
+        return p
+
+    @properties.setter
+    def properties(self, p):
+        self.method = p['method']
+        self.lm_settings = p['lm']
+        self.nm_settings = p['nm']
+        self.fixed = p['fixed']
+        self.variables = p['variables']
+        
     #
     # Public methods
     #
@@ -105,13 +138,7 @@ class Optimizer(object):
         result : pandas.Series
             Values, uncertainties and statistics from fit
         '''
-        # Get array of pixels to sample
-        self.mask.coordinates = self.model.coordinates
-        self.model.coordinates = self.mask.masked_coords()
-        self._subset_data = self._data[self.mask.index]
-        self.npix = len(self.mask.index)
 
-        # Perform fit
         p0 = self._initial_estimates()
         if 'amoeba' in self.method:
             objective = self._absolute if robust else self._chisq
@@ -123,26 +150,21 @@ class Optimizer(object):
         if 'lm' in self.method:
             result = least_squares(self._residuals, p0, **self.lm_settings)
 
-        self.result = result
+        self._result = result
         
-        # Restore original coordinates
-        self.model.coordinates = self.mask.coordinates
-            
         #if not result.success or (result.redchi > 100.):
         #    logger.info('Optimization did not succeed')
         #    avg = self._subset_data.mean()
         #    if not np.isclose(avg, 1., rtol=0, atol=0.1):
         #        msg = 'Mean of data ({:.02f}) should be near 1.'
         #        logger.info(msg.format(avg))
-        #    nbad = len(self.mask.exclude)
-        #    if self.mask.distribution == 'fast':
-        #        nbad = len(self.mask.exclude)
         #        msg = 'Fit included {} potentially bad pixels.'
         #        logger.info(msg.format(nbad))
 
         return self.report()
 
     def report(self):
+        '''Parse result into pandas.Series'''
         if self.result is None:
             return None
         a = self.variables
@@ -151,28 +173,13 @@ class Optimizer(object):
         keys.extend(['success', 'npix', 'redchi'])
 
         values = self.result.x
+        npix = self.data.size
         redchi, uncertainties = self._statistics()
         values = list(sum(zip(values, uncertainties), ()))
-        values.extend([self.result.success, self.npix, redchi])
+        values.extend([self.result.success, npix, redchi])
 
         return pd.Series(dict(zip(keys, values)))
-
-    @property
-    def properties(self):
-        p = dict()
-        p['lm'] = self.lm_settings
-        p['nm'] = self.nm_settings
-        p['fixed'] = self.fixed
-        p['variables'] = self.variables
-        return p
-
-    @properties.setter
-    def properties(self, p):
-        self.lm_settings = p['lm']
-        self.nm_settings = p['nm']
-        self.fixed = p['fixed']
-        self.variables = p['variables']
-        
+   
     def dumps(self, **kwargs):
         return json.dumps(self.properties, **kwargs)
 
@@ -219,15 +226,13 @@ class Optimizer(object):
         self.variables = [p for p in properties if p not in self.fixed]
 
     def _initial_estimates(self):
-        p0 = []
-        for p in self.variables:
-            p0.append(self.model.properties[p])
+        p0 = [self.model.properties[p] for p in self.variables]
         return np.array(p0)
     
     def _residuals(self, values):
         '''Updates properties and returns residuals'''
         self.model.properties = dict(zip(self.variables, values))
-        return (self.model.hologram() - self._subset_data) / self.noise
+        return (self.model.hologram() - self._data) / self.noise
 
     def _chisq(self, x):
         delta = self._residuals(x)
@@ -241,7 +246,7 @@ class Optimizer(object):
     def _statistics(self):
         '''return standard uncertainties in fit parameters'''
         res = self.result
-        ndeg = self.npix - res.x.size       # number of degrees of freedom
+        ndeg = self.data.size - res.x.size  # number of degrees of freedom
         if self.method == 'amoeba':
             redchi = res.fun / ndeg
             uncertainty = res.x * 0.        # no uncertainty estimate
