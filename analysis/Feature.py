@@ -5,7 +5,8 @@ import json
 import os
 import numpy as np
 from pylorenzmie.fitting import Optimizer
-from pylorenzmie.theory import LMHologram, coordinates
+from pylorenzmie.theory import (LMHologram, coordinates)
+from . import Mask
 
 
 class Feature(object):
@@ -45,60 +46,53 @@ class Feature(object):
 
     '''
 
-    def __init__(self, model=None, data=None, info=None, label=None):
-        # Set fields
-        self._optimizer = None
-        self._model = None
-        self._label = None
-        # Run setters
+    def __init__(self,
+                 optimizer=None,
+                 data=None,
+                 coordinates=None,
+                 **kwargs):
+
+        self.optimizer = optimizer or Optimizer(**kwargs)
+        self.mask = Mask(**kwargs)
         self.data = data
-        self.model = model
-        self.label = label
-        # Deserialize if needed
-        self.deserialize(info)
+        self.coordinates = coordinates
 
     @property
     def data(self):
         '''Values of the (normalized) data at each pixel'''
-        if type(self._data) is np.ndarray:
-            data = self._data.reshape(self._shape)
-        else:
-            data = self._data
-        return data
+        return self._data
 
     @data.setter
     def data(self, data):
-        if type(data) is np.ndarray:
-            self._shape = data.shape
-            data = data.flatten()
-            if isinstance(self.optimizer, Optimizer):
-                self.optimizer.data = data
+        if data is not None:
+            saturated = (data == np.max(data))
+            nan = np.isnan(data)
+            infinite = np.isinf(data)
+            bad = (saturated | nan | infinite).flatten()
+            self.mask.exclude = np.nonzero(bad)[0]
         self._data = data
 
     @property
+    def coordinates(self):
+        '''Array of pixel coordinates'''
+        return self._coordinates
+
+    @coordinates.setter
+    def coordinates(self, coordinates):
+        self.mask.coordinates = coordinates
+        self._coordinates = coordinates
+
+    @property
     def model(self):
-        '''Model for hologram formation'''
-        return self._model
+        if self._optimizer is None:
+            return None
+        else:
+            return self._optimizer.model
 
     @model.setter
     def model(self, model):
-        '''
-        Sets Feature's model, and if there exists
-        a configuration file for fitting, also create an
-        Optimizer.
-        '''
-        if model is not None:
-            path = os.path.dirname(os.path.abspath(__file__))
-            fn = model.__class__.__name__+'.json'
-            config = os.path.join(path, fn)
-            try:
-                optimizer = Optimizer(model, config=config)
-                optimizer.data = self._data
-                self.optimizer = optimizer
-            except FileNotFoundError:
-                self.optimizer = None
-        self._model = model
-
+        self._optimizer.model = model
+            
     @property
     def optimizer(self):
         '''Optimizer to refine holographic model parameters'''
@@ -108,138 +102,19 @@ class Feature(object):
     def optimizer(self, optimizer):
         self._optimizer = optimizer
 
-    @property
-    def label(self):
-        '''Qualitative properties of a Feature'''
-        return self._label
+    def optimize(self):
+        mask = self.mask.selected
+        opt = self.optimizer
+        opt.data = self.data.flatten()[mask]
+        opt.coordinates = self.coordinates[:,mask]
+        return self.optimizer.optimize()
 
-    @label.setter
-    def label(self, label):
-        if label is not None:
-            self._label = dict(label)
+    def hologram(self):
+        self.optimizer.model.coordinates = self.coordinates
+        return self.model.hologram().reshape(self.data.shape)
 
     def residuals(self):
-        '''Returns difference bewteen data and current model
-
-        Returns
-        -------
-        residuals : numpy.ndarray
-            Difference between model and data at each pixel
-        '''
-        return self.model.hologram().reshape(self._shape) - self.data
-
-    def optimize(self, **kwargs):
-        '''
-        Fit Model to data. See pylorenzmie.fitting.Optimizer
-        for documentation
-        '''
-        return self.optimizer.optimize(**kwargs)
-
-    def serialize(self, filename=None, exclude=[]):
-        '''
-        Serialization: Save state of Feature in dict
-
-        Arguments
-        ---------
-        filename: str
-            If provided, write data to file. filename should
-            end in .json
-        exclude : list of keys
-            A list of keys to exclude from serialization.
-            If no variables are excluded, then by default,
-            data, coordinates, noise, and all instrument +
-            particle properties) are serialized.
-        Returns
-        -------
-        dict: serialized data
-
-        NOTE: For a shallow serialization (i.e. for graphing/plotting),
-              use exclude = ['data', 'coordinates']
-        '''
-        info = {}
-        # Data
-        if self.data is not None:
-            if 'data' not in exclude:
-                info['data'] = self._data.tolist()
-                info['shape'] = self._shape
-            else:
-                info['data'] = None
-                info['shape'] = None
-        # Model type
-        if self.model is not None:
-            model = str(type(self.model)).split('.')[-1][:-2]
-            info['model'] = model
-            # Coordinates
-            if self.model.coordinates is None:
-                shape = None
-                corner = None
-            else:
-                coor = self.model.coordinates
-                shape = (int(coor[0][-1] - coor[0][0])+1,
-                         int(coor[1][-1] - coor[1][0])+1)
-                corner = (int(coor[0][0]), int(coor[1][0]))
-                info['coordinates'] = (shape, corner)
-            keys = self.model.properties.keys()
-            for ex in exclude:
-                if ex in keys:
-                    keys.pop(ex)
-                elif ex in info.keys():
-                    info.pop(ex)
-                else:
-                    print(ex + " not found in Feature's keylist")
-            # Combine dictionaries + finish serialization
-            out = self.model.properties
-            out.update(info)
-        else:
-            out = info
-        # Add reduced chi-squared
-        if self.optimizer is not None:
-            if self.optimizer.result is not None:
-                redchi = self.optimizer.result.redchi
-                info['redchi'] = float(redchi)
-        else:
-            redchi = None
-        # Classification label
-        if self.label is not None:
-            info['label'] = self.label
-        # Exclude things, if provided
-        if filename is not None:
-            with open(filename, 'w') as f:
-                json.dump(out, f)
-        return out
-
-    def deserialize(self, info):
-        '''
-        Restore serialized state of Feature from dict
-
-        Arguments
-        ---------
-        info: dict | str
-            Restore keyword/value pairs from dict.
-            Alternatively restore dict from named file.
-        '''
-        if info is None:
-            return
-        if isinstance(info, str):
-            with open(info, 'rb') as f:
-                info = json.load(f)
-        if 'model' in info.keys():
-            if info['model'] == 'LMHologram':
-                self.model = LMHologram()
-                self.model.properties = {k: info[k] for k in
-                                         self.model.properties.keys()}
-        if 'coordinates' in info.keys():
-            if hasattr(self.model, 'coordinates'):
-                args = info['coordinates']
-                self.model.coordinates = coordinates(*args)
-        if 'data' in info.keys():
-            data = np.array(info['data'])
-            if 'shape' in info.keys():
-                data = data.reshape(info['shape'])
-            self.data = data
-        if 'label' in info.keys():
-            self.label = info['label']
-
+        return self.hologram() - self.data
 
 if __name__ == '__main__': # pragma: no cover
     from pylorenzmie.theory import coordinates

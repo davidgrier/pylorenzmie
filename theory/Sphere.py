@@ -7,7 +7,7 @@ import numpy as np
 try:                         # pragma: no cover
     from numba import njit
 except:                      # pragma: no cover
-    from utilities.numba import njit
+    from pylorenzmie.utilities.numba import njit
 
     
 class Sphere(Particle):
