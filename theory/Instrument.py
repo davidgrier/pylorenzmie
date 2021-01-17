@@ -58,7 +58,8 @@ class Instrument(object):
                  magnification=0.135,
                  n_m=1.335,
                  background=1.,
-                 dark_count=0.):
+                 dark_count=0.,
+                 **kwargs):
         self.wavelength = wavelength
         self.magnification = magnification
         self.n_m = n_m
