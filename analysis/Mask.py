@@ -57,7 +57,7 @@ class Mask(object):
         if coordinates is not None:
             center = np.mean(coordinates, axis=1)
             self._distance = np.linalg.norm(coordinates.T - center, axis=1)
-            self._update()
+        self._update()
         
     @property
     def percentpix(self):
