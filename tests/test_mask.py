@@ -1,6 +1,6 @@
 import unittest
 
-from fitting import Mask
+from analysis import Mask
 from theory import coordinates
 import numpy as np
 

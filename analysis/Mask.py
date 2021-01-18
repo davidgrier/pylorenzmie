@@ -41,11 +41,10 @@ class Mask(object):
                       'donut': self._donut_distribution,
                       'fast': self._fast_distribution}
         
-        self._coordinates = coordinates
         self._percentpix = percentpix
         self._distribution = distribution
         self._exclude = exclude or []
-        self._update()
+        self.coordinates = coordinates
 
     @property
     def coordinates(self):
