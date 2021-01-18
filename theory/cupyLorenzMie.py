@@ -67,7 +67,7 @@ class cupyLorenzMie(LorenzMie):
             br = ab[:, 1].real.astype(self.dtype)
             bi = ab[:, 1].imag.astype(self.dtype)
             ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
-            coordsx, coordsy, coordsz = self.device_coordinates
+            coordsx, coordsy, coordsz = self.gpu_coordinates
             x_p, y_p, z_p = p.r_p.astype(self.dtype)
             phase = self.ctype(np.exp(-1.j * k * z_p))
             self.kernel((self.blockspergrid,), (self.threadsperblock,),
@@ -84,8 +84,7 @@ class cupyLorenzMie(LorenzMie):
         try:
             shape = self.coordinates.shape
             self.result = cp.empty(shape, dtype=self.ctype)
-            self.device_coordinates = cp.asarray(self.coordinates,
-                                                 self.dtype)
+            self.gpu_coordinates = cp.asarray(self.coordinates, self.dtype)
             self.holo = cp.empty(shape[1], dtype=self.dtype)
             self.threadsperblock = 32
             self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
