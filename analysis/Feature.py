@@ -105,7 +105,7 @@ class Feature(object):
     def optimize(self):
         mask = self.mask.selected
         opt = self.optimizer
-        opt.data = self.data.flatten()[mask]
+        opt.data = self.data.ravel()[mask]
         # The following nasty hack is required for cupy because
         # opt.coordinates = self.coordinates[:,mask]
         # yields garbled results on GPU. Memory organization?
