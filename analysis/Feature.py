@@ -106,7 +106,11 @@ class Feature(object):
         mask = self.mask.selected
         opt = self.optimizer
         opt.data = self.data.flatten()[mask]
-        opt.coordinates = self.coordinates[:,mask]
+        # The following nasty hack is required for cupy because
+        # opt.coordinates = self.coordinates[:,mask]
+        # yields garbled results on GPU. Memory organization?
+        ndx = np.nonzero(mask)
+        opt.coordinates = np.take(self.coordinates, ndx, axis=1).squeeze()
         return self.optimizer.optimize()
 
     def hologram(self):
