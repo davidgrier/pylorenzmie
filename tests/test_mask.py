@@ -35,6 +35,10 @@ class TestMask(unittest.TestCase):
         self.assertTrue(np.array_equal(self.coordinates.shape,
                                        self.mask.coordinates.shape))
 
+    def test_update_nocoordinates(self):
+        self.mask.coordinates = None
+        self.assertIs(self.mask.selected, None)
+
 
 if __name__ == '__main__':
     unittest.main()
