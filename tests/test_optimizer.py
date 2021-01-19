@@ -16,9 +16,11 @@ class TestOptimizer(unittest.TestCase):
         img = cv2.imread(TEST_IMAGE)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float)
         img /= np.mean(img)
+        img = img[::3,::3]
         self.shape = img.shape
-        self.data = img.flatten()
-        model = LMHologram(coordinates=coordinates(self.shape))
+        self.data = img.ravel()
+        self.coordinates = 3.*coordinates(self.shape)
+        model = LMHologram(coordinates=self.coordinates)
         model.instrument.wavelength = 0.447
         model.instrument.magnification = 0.048
         model.instrument.n_m = 1.34
@@ -34,6 +36,13 @@ class TestOptimizer(unittest.TestCase):
     def test_data(self):
         self.optimizer.data = self.data
         self.assertEqual(self.optimizer.data.size, self.data.size)
+
+    def test_coordinates(self):
+        self.optimizer.coordinates = None
+        self.assertIs(self.optimizer.coordinates, None)
+        self.optimizer.coordinates = self.coordinates
+        self.assertEqual(self.optimizer.coordinates.shape[1],
+                         self.coordinates.shape[1])
 
     def test_optimize(self, method='lm', robust=False):
         self.optimizer.method = method
