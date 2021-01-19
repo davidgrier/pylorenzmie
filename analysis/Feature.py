@@ -47,16 +47,16 @@ class Feature(object):
     '''
 
     def __init__(self,
-                 optimizer=None,
                  data=None,
                  coordinates=None,
+                 optimizer=None,
                  **kwargs):
 
-        self.optimizer = optimizer or Optimizer(**kwargs)
         self.mask = Mask(**kwargs)
+        self.optimizer = optimizer or Optimizer(**kwargs)
         self.data = data
         self.coordinates = coordinates
-
+        
     @property
     def data(self):
         '''Values of the (normalized) data at each pixel'''
