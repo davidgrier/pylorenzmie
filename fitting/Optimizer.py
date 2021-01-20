@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from pylorenzmie.theory import LMHologram
 import numpy as np
 import json
 
