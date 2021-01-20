@@ -30,7 +30,7 @@ class TestOptimizer(unittest.TestCase):
         self.optimizer = Optimizer(model=model)
 
     def test_report_none(self):
-        r = self.optimizer.report()
+        r = self.optimizer.report
         self.assertIs(r, None)
 
     def test_data(self):
