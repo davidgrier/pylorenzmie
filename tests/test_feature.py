@@ -41,6 +41,8 @@ class TestFeature(unittest.TestCase):
         model = LMHologram()
         self.feature.model = model
         self.assertIs(self.feature.model, model)
+        self.feature.optimizer = None
+        self.assertIs(self.feature.model, None)
 
 
 if __name__ == '__main__':
