@@ -37,6 +37,11 @@ class TestFeature(unittest.TestCase):
         res = self.feature.residuals()
         self.assertEqual(self.data.size, res.size)
 
+    def test_model(self):
+        model = LMHologram()
+        self.feature.model = model
+        self.assertIs(self.feature.model, model)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -6,7 +6,7 @@ import os
 import numpy as np
 from pylorenzmie.fitting import Optimizer
 from pylorenzmie.theory import (LMHologram, coordinates)
-from . import Mask
+from .Mask import Mask
 
 
 class Feature(object):
@@ -121,75 +121,37 @@ class Feature(object):
         return self.hologram() - self.data
 
 if __name__ == '__main__': # pragma: no cover
-    from pylorenzmie.theory import coordinates
-    #from pylorenzmie.theory.cuholo import cucoordinates as coordinates
+    import os
     import cv2
-    import matplotlib.pyplot as plt
     from time import time
 
-    a = Feature(model=LMHologram())
+    THIS_DIR = os.path.dirname(os.path.abspath(__file__))
+    TEST_IMAGE = os.path.join(THIS_DIR, '../docs/tutorials/crop.png')
 
-    # Read example image
-    img = cv2.imread('../tutorials/crop.png')
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img = img / np.mean(img)
-    shape = img.shape
-    a.data = img
+    # Feature with instrumental properties and mask properties
+    a = Feature(wavelength=0.447, magnification=0.048, n_m=1.34,
+                distribution='radial', percentpix=0.1)
 
-    # Instrument configuration
-    a.model.coordinates = coordinates(shape, dtype=np.float32)
-    ins = a.model.instrument
-    ins.wavelength = 0.447
-    ins.magnification = 0.048
-    ins.n_m = 1.34
+    # Normalized image data
+    data = cv2.imread(TEST_IMAGE)
+    data = cv2.cvtColor(data, cv2.COLOR_BGR2GRAY).astype(np.float)
+    data /= np.mean(data)
+    a.data = data
 
+    # Pixel coordinates
+    a.coordinates = coordinates(data.shape)
+    
     # Initial estimates for particle properties
     p = a.model.particle
-    p.r_p = [shape[0]//2, shape[1]//2, 330.]
+    p.r_p = [data.shape[0]//2, data.shape[1]//2, 330.]
     p.a_p = 1.1
     p.n_p = 1.4
-    # add errors to parameters
-    p.r_p += np.random.normal(0., 1, 3)
-    p.z_p += np.random.normal(0., 30, 1)
-    p.a_p += np.random.normal(0., 0.1, 1)
-    p.n_p += np.random.normal(0., 0.04, 1)
-    print("Initial guess:\n{}".format(p))
-    a.model.double_precision = False
+    print('Initial estimates:\n{}'.format(p))
+
     # init dummy hologram for proper speed gauge
-    a.model.hologram()
-    a.optimizer.mask.settings['distribution'] = 'fast'
-    a.optimizer.mask.settings['percentpix'] = .1
-    # a.amoeba_settings.options['maxevals'] = 1
-    # ... and now fit
+    b = a.model.hologram()
     start = time()
-    a.model.coordinates = coordinates(shape, dtype=np.float32)
-    result = a.optimize(method='lm', verbose=False)
-    print("Time to fit: {:03f}".format(time() - start))
-    print(result)
-
-    # classify
-    a.label = {'material': 'silica'}
-
-    # test serialization
-    out = a.serialize()
-    f = Feature()
-    f.deserialize(out)
-    f.model.double_precision = False
-    f.optimizer.mask.settings['distribution'] = 'fast'
-    f.optimizer.mask.settings['percentpix'] = .1
-    start = time()
-    f.model.coordinates = coordinates(shape, dtype=np.float32)
-    f.optimize(method='lm')
-    print("Time to fit (after deserialize): {:03f}".format(time() - start))
-
-    # plot residuals
-    resid = f.residuals().reshape(shape)
-    hol = f.model.hologram().reshape(shape)
-    data = f.data.reshape(shape)
-    plt.imshow(np.hstack([hol, data, resid+1]), cmap='gray')
-    plt.show()
-
-    # plot mask
-    plt.imshow(data, cmap='gray')
-
-    f.optimizer.mask.draw_mask()
+    result = a.optimize()
+    delta = time() - start
+    print('Refined estimates:\n{}'.format(p))
+    print('Time to fit: {:.3f} s'.format(time() - start))
