@@ -186,7 +186,7 @@ class Optimizer(object):
         #        msg = 'Fit included {} potentially bad pixels.'
         #        logger.info(msg.format(nbad))
 
-        return self.report()
+        return self.report
   
     def dumps(self, **kwargs):
         return json.dumps(self.properties, **kwargs)
