@@ -26,7 +26,7 @@ class Optimizer(object):
     model : LMHologram
         Incorporates information about the Particle and the Instrument
         and uses this information to compute a hologram at the
-        specified coordinates.  Keywords for the Model can be
+        specified coordinates.  Keywords for the model can be
         provided at initialization    
     data : numpy.ndarray
         [npts] normalized intensity values
@@ -39,18 +39,24 @@ class Optimizer(object):
         'lm': scipy.least_squares
         'amoeba' : Nelder-Mead optimization from pylorenzmie.fitting
         'amoeba-lm': Nelder-Mead/Levenberg-Marquardt hybrid
+    fixed : list
+        List of properties of the model that should not vary during fitting.
+        Default: ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
+    variables : list
+        List of properties of the model that will be optimized.
+        Default: All model.properties that are not listed in fixed
     properties : dict
         Dictionary of settings for the optimzer
     result : scipy.optimize.OptimizeResult
         Set by optimize()
+    report : pandas.Series
+        Optimized values of the variables, together with numerical
+        uncertainties
 
     Methods
     -------
     optimize() : pandas.Series
         Parameters that optimize model to fit the data.
-
-    report() : pandas.Series
-        Result of last call to optimize()
     '''
 
     def __init__(self,
