@@ -99,6 +99,24 @@ class Optimizer(object):
         return self._result
 
     @property
+    def report(self):
+        '''Parse result into pandas.Series'''
+        if self.result is None:
+            return None
+        a = self.variables
+        b = ['d'+c for c in a]
+        keys = list(sum(zip(a, b), ()))
+        keys.extend(['success', 'npix', 'redchi'])
+
+        values = self.result.x
+        npix = self.data.size
+        redchi, uncertainties = self._statistics()
+        values = list(sum(zip(values, uncertainties), ()))
+        values.extend([self.result.success, npix, redchi])
+
+        return pd.Series(dict(zip(keys, values)))
+
+    @property
     def properties(self):
         p = dict()
         p['method'] = self.method
@@ -163,24 +181,7 @@ class Optimizer(object):
         #        logger.info(msg.format(nbad))
 
         return self.report()
-
-    def report(self):
-        '''Parse result into pandas.Series'''
-        if self.result is None:
-            return None
-        a = self.variables
-        b = ['d'+c for c in a]
-        keys = list(sum(zip(a, b), ()))
-        keys.extend(['success', 'npix', 'redchi'])
-
-        values = self.result.x
-        npix = self.data.size
-        redchi, uncertainties = self._statistics()
-        values = list(sum(zip(values, uncertainties), ()))
-        values.extend([self.result.success, npix, redchi])
-
-        return pd.Series(dict(zip(keys, values)))
-   
+  
     def dumps(self, **kwargs):
         return json.dumps(self.properties, **kwargs)
 

@@ -15,34 +15,32 @@ class Feature(object):
 
     ...
 
-    Attributes
+    Properties
     ----------
     data : numpy.ndarray
         [npts] normalized intensity values
+    coordinates : numpy.ndarray
+        [3, npts] coordinates of pixels in data
     model : [LMHologram, ]
         Incorporates information about the Particle and the Instrument
         and for supported models, uses this information to compute a
         hologram at the specified coordinates.
     optimizer : Optimizer
-        Optimization equipment for fitting holographic models to data.
-        Supported models decide whether or not to initialize
-        optimizers based on config file, which is obtained with
-        Optimizer.dump. See pylorenzmie/analysis/LMHologram.json for example.
+        Computational pipeline for fitting model to data.
+        Properties of optimizer control the fitting procedure.
 
     Methods
     -------
+    optimize() : pandas.Series
+        Optimize adjustable parameters and return a report containing
+        the optimized values and their numerical uncertainties.
+        This report also can be retrieved from optimizer.report
+        Raw fitting results are available from optimizer.results
+    hologram() : numpy.ndarray
+        Intensity value at each coordinate computed with current model.
     residuals() : numpy.ndarray
         Difference between the current model and the data,
         normalized by the noise estimate.
-    optimize() : FitResult
-        Optimize the Model to fit the data. A FitResult is
-        returned and can be printed for a comprehensive report,
-        which is also reflected in updates to the properties of
-        the Model.
-    serialize() : dict
-        Serialize select attributes and properties of Feature to a dict.
-    deserialize(info) : None
-        Restore select attributes and properties to a Feature from a dict.
 
     '''
 
