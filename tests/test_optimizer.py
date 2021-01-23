@@ -5,6 +5,7 @@ from theory import (LMHologram, coordinates)
 import os
 import cv2
 import numpy as np
+import pandas as pd
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_IMAGE = os.path.join(THIS_DIR, 'data/crop.png')
@@ -16,10 +17,10 @@ class TestOptimizer(unittest.TestCase):
         img = cv2.imread(TEST_IMAGE)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float)
         img /= np.mean(img)
-        img = img[::3,::3]
+        img = img[::4,::4]
         self.shape = img.shape
         self.data = img.ravel()
-        self.coordinates = 3.*coordinates(self.shape)
+        self.coordinates = 4.*coordinates(self.shape)
         model = LMHologram(coordinates=self.coordinates)
         model.instrument.wavelength = 0.447
         model.instrument.magnification = 0.048
@@ -67,6 +68,9 @@ class TestOptimizer(unittest.TestCase):
         result = self.optimizer.optimize()
         failure = not result.success or (result.redchi > 100.)
         self.assertTrue(failure)
+
+    def test_metadata(self):
+        self.assertIsInstance(self.optimizer.metadata, pd.Series)
 
     def test_dumps_loads(self):
         s = self.optimizer.dumps()
