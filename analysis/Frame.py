@@ -13,15 +13,20 @@ class Frame(object):
     '''
     Abstraction of an experimental video frame. 
     ...
-    Attributes
+
+    Properties
     ----------
-    features : List of Feature objects
-    bboxes : List of tuples ( {x, y, w, h} )
-        Bounding box of dimensions (w, h) around feature at (x, y). Used for cropping to obtain image stamps
-    
+    features : list
+        List of Feature objects
+    bboxes : list
+        List of tuples ( x, y, w, h )
+        Bounding box of dimensions (w, h) around feature at (x, y). 
+        Used for cropping to obtain image stamps
+        FIXME: is (x,y) the center or the corner? It should be the corner.
     framenumber : int
     path : string
-        path leading to a base directory with data related to this particular experiment.
+        path leading to a base directory with data related to this 
+        particular experiment.
     image_path : string               
         path leading to the .png image file for this particular video frame. 
      ** Note: If the framenumber+path are already given, the image_path can be determined using setDefaultPath(); and vice versa. (See below)
@@ -77,8 +82,13 @@ class Frame(object):
         
     '''
     
-    def __init__(self, features=None, instrument=None, 
-                 framenumber=None, image=None, path=None, info=None):
+    def __init__(self,
+                 features=None,
+                 instrument=None, 
+                 framenumber=None,
+                 image=None,
+                 path=None,
+                 info=None):
         self._instrument = instrument
         self._image = image
         self.framenumber = framenumber

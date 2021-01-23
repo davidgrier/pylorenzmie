@@ -123,6 +123,13 @@ class Optimizer(object):
         return pd.Series(dict(zip(keys, values)))
 
     @property
+    def metadata(self):
+        metadata = {key: self.model.properties[key] for key in self.fixed}
+        lm = 'lm' in self.method
+        metadata['settings'] = self.lm_settings if lm else self.nm_settings
+        return pd.Series(metadata)
+
+    @property
     def properties(self):
         p = dict()
         p['method'] = self.method

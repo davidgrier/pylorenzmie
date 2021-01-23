@@ -36,6 +36,7 @@ class Feature(object):
         the optimized values and their numerical uncertainties.
         This report also can be retrieved from optimizer.report
         Raw fitting results are available from optimizer.results
+        Metadata is available from optimizer.metadata
     hologram() : numpy.ndarray
         Intensity value at each coordinate computed with current model.
     residuals() : numpy.ndarray
