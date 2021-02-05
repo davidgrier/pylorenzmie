@@ -3,7 +3,13 @@
 
 from .Particle import Particle
 import numpy as np
-from pylorenzmie.utilities.numba import njit
+
+import pylorenzmie.utilities.configuration as config
+
+if config.has_numba():
+    from numba import njit
+else:
+    from pylorenzmie.utilities.numba import njit
 
     
 class Sphere(Particle):
