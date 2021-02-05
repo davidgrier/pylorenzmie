@@ -1,23 +1,13 @@
 import pylorenzmie.utilities.configuration as config
 
-import logging
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
-
 from .Particle import Particle
 from .Sphere import Sphere
 
 from .Instrument import (Instrument, coordinates)
 
-try:
-    if not config.use_cupy:
-        raise ImportError('Cupy deselected in {}'.format(config.__file__))
+if config.has_cupy():
     from .cupyLorenzMie import cupyLorenzMie as LorenzMie
-except ImportError as ex:
-    logger.warn('Cannot import cupyLorenzMie:' +
-                '\n\t{}'.format(ex) +
-                '\n\tFalling back to LorenzMie')
+else:
     from .LorenzMie import LorenzMie
 
 from .LMHologram import LMHologram
