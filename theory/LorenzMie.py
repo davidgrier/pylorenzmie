@@ -7,10 +7,10 @@ from .Sphere import Sphere
 from .Instrument import Instrument
 import json
 
-try:                         # pragma: no cover
-    from numba import njit
-except:                      # pragma: no cover
-    from pylorenzmie.utilities.numba import njit
+#try:                         # pragma: no cover
+#    from numba import njit
+#except:                      # pragma: no cover
+from pylorenzmie.utilities.numba import njit
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the

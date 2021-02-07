@@ -5,7 +5,7 @@ import json
 import os
 import numpy as np
 from pylorenzmie.fitting import Optimizer
-from pylorenzmie.theory import (LMHologram, coordinates)
+from pylorenzmie.theory import (Sphere, LMHologram, coordinates)
 from .Mask import Mask
 
 
@@ -48,10 +48,12 @@ class Feature(object):
     def __init__(self,
                  data=None,
                  coordinates=None,
+                 particle=None,
                  optimizer=None,
                  **kwargs):
 
         self.mask = Mask(**kwargs)
+        self.particle = particle or Sphere(**kwargs)
         self.optimizer = optimizer or Optimizer(**kwargs)
         self.data = data
         self.coordinates = coordinates
@@ -82,15 +84,20 @@ class Feature(object):
         self._coordinates = coordinates
 
     @property
+    def particle(self):
+        return self._particle
+
+    @particle.setter
+    def particle(self, particle):
+        self._particle = particle
+
+    @property
     def model(self):
-        if self._optimizer is None:
-            return None
-        else:
-            return self._optimizer.model
+        return self.optimizer.model
 
     @model.setter
     def model(self, model):
-        self._optimizer.model = model
+        self.optimizer.model = model
             
     @property
     def optimizer(self):
@@ -110,10 +117,12 @@ class Feature(object):
         # yields garbled results on GPU. Memory organization?
         ndx = np.nonzero(mask)
         opt.coordinates = np.take(self.coordinates, ndx, axis=1).squeeze()
+        opt.model.particle = self.particle
         return self.optimizer.optimize()
 
     def hologram(self):
-        self.optimizer.model.coordinates = self.coordinates
+        self.model.coordinates = self.coordinates
+        self.model.particle = self.particle
         return self.model.hologram().reshape(self.data.shape)
 
     def residuals(self):
