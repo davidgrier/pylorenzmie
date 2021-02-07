@@ -6,10 +6,10 @@ import json
 import logging
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
-def coordinates(shape, corner=None, dtype=np.float64):
+def coordinates(shape, corner=None, flatten=True, dtype=np.float64):
     '''Return coordinate system for Lorenz-Mie microscopy images'''
     (ny, nx) = shape
     if corner is None:
@@ -18,10 +18,13 @@ def coordinates(shape, corner=None, dtype=np.float64):
         (left, top) = corner
     x = np.arange(left, nx + left, dtype=dtype)
     y = np.arange(top, ny + top, dtype=dtype)
-    xv, yv = np.meshgrid(x, y)
-    xv = xv.flatten()
-    yv = yv.flatten()
-    return np.stack((xv, yv))
+    xy = np.array(np.meshgrid(x, y))
+    if flatten:
+        return xy.reshape((2, -1))
+    return xy
+    #xv = xv.flatten()
+    #yv = yv.flatten()
+    #return np.stack((xv, yv))
 
 
 class Instrument(object):
