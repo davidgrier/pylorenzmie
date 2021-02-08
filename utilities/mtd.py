@@ -22,7 +22,14 @@ import shutil
 def feature_extent(sphere, config, nfringes=20, maxrange=300):
     '''Radius of holographic feature in pixels'''
 
-    h = LMHologram(coordinates=np.arange(maxrange))
+    x = np.arange(0, maxrange)
+    y = np.arange(0, maxrange)
+    xv, yv = np.meshgrid(x, y)
+    xv = xv.flatten()
+    yv = yv.flatten()
+    zv = np.zeros_like(xv)
+    coordinates = np.stack((xv, yv, zv))
+    h = LMHologram(coordinates=coordinates)
     h.instrument.properties = config['instrument']
     h.particle.a_p = sphere.a_p
     h.particle.n_p = sphere.n_p
