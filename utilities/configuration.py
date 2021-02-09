@@ -1,6 +1,6 @@
 # Configuration for optional components of pylorenzmie
-use_numba = False
-use_cupy = False
+use_numba = True
+use_cupy = True
 
 
 # Implement requested configuration
