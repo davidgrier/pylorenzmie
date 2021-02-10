@@ -1,103 +1,114 @@
-'''Routine to localize particle trajectories with circle transform technique.'''
-
-from pylorenzmie.detection.h5video import TagArray
-from pylorenzmie.detection.circletransform import circletransform
+from .circletransform import circletransform
 import trackpy as tp
 import numpy as np
 
 
-def localize(image,
-             locate_params={'diameter': 31,
-                            'minmass': 30.},
-             nfringes=25,
-             maxrange=400.,
-             crop_threshold=None,
-             frame_no=None):
+def localize(image, tp_opts=None, **kwargs):
     '''
-    Wrapper to localize features in image using circletransform
-    and trackpy.locate and return features.
-    
-    Args:
-        image: normalized image with median near 1.
-    Keywords:
-        locate_params: dict of keywords for trackpy.locate
-        nfringes, maxrange: keywords for feature_extent
-        crop_threshold: maximum bounding box
+    Localize features in normalized holographic microscopy images
+
+    Parameters
+    ----------
+    image: array_like
+        image data
+
+    Keyword Parameters
+    ------------------
+    nfringes: int
+        number of fringes to count
+    maxrange: int
+        maximum extent of a feature [pixels]
+    tp_opts: dict
+        options for trackpy.localize
+        Default: {'diameter': 31, 'minmass': 30}
+
+    Returns
+    -------
+    centers: numpy.array
+        (x, y) coordinates of feature centers
+    bboxes: tuple
+        ((x0, y0), w, h) bounding box of feature
+
+    Notes
+    -----
+    Uses circletransform to coalesce ring-like features into
+    blobs that can be identified and localized by trackpy.
+    Counts fringes to determine feature extent
     '''
-    circ = circletransform(image, theory='orientTrans')
-    circ = circ / np.amax(circ)
-    circ = TagArray(circ, frame_no=frame_no)
-    feats = tp.locate(circ,
-                      engine='numba',
-                      **locate_params)
-    feats['w'] = 400.
-    feats['h'] = 400.
-    features = np.array(feats[['x', 'y', 'w', 'h']])
-    for idx, feature in enumerate(features):
-        s = feature_extent(image, (feature[0], feature[1]),
-                           nfringes=nfringes,
-                           maxrange=maxrange)
-        if crop_threshold is not None and s > crop_threshold:
-            s = crop_threshold
-        features[idx][2] = s
-        features[idx][3] = s
-    return features, circ
+
+    a = circletransform(image)
+    a /= np.max(a)
+    tp_opts = tp_opts or dict(diameter=31, minmass=30)
+    features = tp.locate(a, **tp_opts)
+
+    nfeatures = len(features)
+    if nfeatures == 0:
+        return features
+
+    centers = features[['x', 'y']].to_numpy()
+    bboxes = []
+    for center in centers:
+        extent = feature_extent(image, center, **kwargs)
+        r0 = tuple((center - extent/2).astype(int))
+        bboxes.append((r0, extent, extent))
+    return centers, bboxes
 
 
-def feature_extent(norm, center, nfringes=20, maxrange=400.):
+def feature_extent(norm, center,
+                   nfringes=None,
+                   maxrange=None):
     '''
-    Computes a side length for a holograms bounding box
-    by counting fringes, starting from the center of a feature.
-    
-    Args:
-        norm: normalized image
-        center: center of feature of interest
-    Keywords:
-        nfringes: number of fringes to count. This value should be
-                  overestimating due to noise
-        maxrange: default value if we don't count enough fringes
+    Radius of feature based on counting diffraction fringes
+
+    Parameters
+    ----------
+    norm: array_like
+        Normalized image data
+    center: tuple
+        (x_p, y_p) coordinates of feature center
+
+    Keywords
+    --------
+    nfringes: int
+        Number of fringes to count. Default: 20
+    maxrange: int
+        Maximum feature extent. Default: 400
+
+    Returns
+    -------
+    extent: int
+        Extent of feature [pixels]
     '''
-    ravg, rstd = aziavg(norm, center)
-    b = ravg - 1.
-    ndx = np.where(np.diff(np.sign(b)))[0] + 1.
-    if len(ndx) <= nfringes:
-        return maxrange
-    else:
-        s = float(ndx[nfringes])
-        return s
+    nfringes = nfringes or 20
+    maxrange = maxrange or 400
+    b = aziavg(norm, center) - 1.
+    ndx = np.where(np.diff(np.sign(b)))[0] + 1
+    extent = maxrange if len(ndx) <= nfringes else ndx[nfringes]
+    return extent
 
 
 def aziavg(data, center):
+    '''Azimuthal average of data about center
+
+    Parameters
+    ----------
+    data: array_like
+        image data
+    center: tuple
+        (x_p, y_p) center of azimuthal average
+
+    Returns
+    -------
+    avg: array_like
+        One-dimensional azimuthal average of data about center
+    '''
     x_p, y_p = center
-    y, x = np.indices((data.shape))
+    ny, nx = data.shape
+    x = np.arange(nx) - x_p
+    y = np.arange(ny) - y_p
+
     d = data.ravel()
-    r = np.hypot(x - x_p, y - y_p).astype(np.int).ravel()
+    r = np.hypot.outer(y, x).astype(np.int).ravel()
     nr = np.bincount(r)
-    ravg = np.bincount(r, d) / nr
-    avg = ravg[r]
-    rstd = np.sqrt(np.bincount(r, (d - avg)**2) / nr)
-    return ravg, rstd
-
-
-if __name__ == '__main__':
-    import matplotlib.pyplot as plt
-    from matplotlib.patches import Rectangle
-    from pylorenzmie.theory.LMHologram import LMHologram
-    from pylorenzmie.theory.Instrument import coordinates
-    shape = [201, 251]
-    h = LMHologram(coordinates=coordinates(shape))
-    h.particle.r_p = [125, 75, 100]
-    h.particle.a_p = 0.9
-    h.particle.n_p = 1.45
-    h.instrument.wavelength = 0.447
-    data = h.hologram().reshape(shape)
-    features, circ = localize(data, nfringes=30)
-    fig, ax = plt.subplots()
-    ax.imshow(circ, cmap='gray')
-    for feature in features:
-        x, y, w, h = feature
-        rect = Rectangle(xy=(x - w/2, y - h/2), width=w, height=h,
-                         fill=False, linewidth=3, edgecolor='r')
-        ax.add_patch(rect)
-    plt.show()
-    
+    avg = np.bincount(r, d) / nr
+    return avg
