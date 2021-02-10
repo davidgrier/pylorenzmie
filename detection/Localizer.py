@@ -28,7 +28,6 @@ class Localizer(object):
             (x, y) coordinates of feature centers
         bboxes: tuple
             ((x0, y0), w, h) bounding box of feature
-
         '''
         a = self._circletransform(image)
         a /= np.max(a)

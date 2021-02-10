@@ -7,6 +7,7 @@ import pandas as pd
 from .Feature import Feature
 from pylorenzmie.fitting import Optimizer
 from pylorenzmie.theory import coordinates
+from pylorenzmie.detection import (Localizer, Estimator)
 
 
 class Frame(object):
@@ -38,6 +39,8 @@ class Frame(object):
         self._shape = None
         self._coordinates = None
         self.optimizer = Optimizer(**kwargs)
+        self.localizer = Localizer()
+        self.estimator = Estimator()
         self.image = image
         self._features = []
         self.bboxes = bboxes or []
@@ -118,7 +121,22 @@ class Frame(object):
                            fitter=fitter)
             self._features.append(feature)
 
+    def analyze(self, image=None):
+        '''Localize features, estimate parameters, and fit'''
+        if image is not None:
+            self.image = image
+        centers, bboxes = self.localizer.predict(self.data)
+        self.bboxes = bboxes
+        for feature, center in zip(self.features, centers):
+            properties = self.estimator.predict()
+            particle = feature['fitter'].particle
+            particle.x_p = center[0]
+            particle.y_p = center[1]
+            particle.properties = properties
+        return self.optimize()
+
     def optimize(self):
+        '''Optimize adjustable parameters'''
         results = []
         for feature in self.features:
             fitter = feature['fitter']
