@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 import cv2
 import numpy as np
 import pandas as pd
@@ -12,30 +9,46 @@ from pylorenzmie.detection import (Localizer, Estimator)
 
 class Frame(object):
     '''
-    Abstraction of an experimental video frame. 
+    Abstraction of a holographic microscopy video frame. 
     ...
 
     Properties
     ----------
     image : numpy.ndarray
         [w, h] array of image data
-    shape : tuple of int
+    data : numpy.ndarray
+        automatically normalized version of image
+    shape : tuple
         dimensions of image data, updated to reflect most recent image
     coordinates : numpy.ndarray
         [3, w, h] of pixel coordinates for most recent image
+    dark_count : float or numpy.ndarray
+        instrumental dark count of the camera
+    background : float or numpy.ndarray
+        background value or image for hologram normalization
     bboxes : list
-        List of tuples (x, y, w, h)
+        List of tuples ((x, y), w, h)
         Bounding box of dimensions (w, h) around feature at (x, y). 
         Used for cropping to obtain image stamps
-        FIXME: is (x,y) the center or the corner? It should be the corner.
     features : list
         List of Feature objects corresponding to bboxes
+
+    Methods
+    -------
+    normalize(image) :
+        Returns normalized version of image
+    analyze(image) : 
+        Identify features in image that are associated with
+        particles and optimize the parameters of those features.
+        Returns pandas.DataFrame of optimized results.
+    optimize():
+        Optimize the model parameters for each of the features
+        associated with the bboxes in the currently loaded image.
+
     '''
     
-    def __init__(self,
-                 image=None,
-                 bboxes=None,
-                 **kwargs):
+    def __init__(self, image=None, bboxes=None, **kwargs):
+        self._data = None
         self._shape = None
         self._coordinates = None
         self.optimizer = Optimizer(**kwargs)
@@ -88,11 +101,18 @@ class Frame(object):
 
     @image.setter
     def image(self, image):
-        if image is not None:
+        if image is None:
+            self._data = None
+        else:
             if image.shape != self.shape:
                 self.shape = image.shape
-            self.data = self.normalize(image)
+            self._data = self.normalize(image)
         self._image = image
+
+    @property
+    def data(self):
+        '''normalized image data'''
+        return self._data
 
     def normalize(self, image):
         return ((image - self.dark_count) /
@@ -122,7 +142,19 @@ class Frame(object):
             self._features.append(feature)
 
     def analyze(self, image=None):
-        '''Localize features, estimate parameters, and fit'''
+        '''
+        Localize features, estimate parameters, and fit
+
+        Parameters
+        ----------
+        image: numpy.ndarray
+            Holographic microscopy data.
+
+        Returns
+        -------
+        results: pandas.DataFrame
+            Optimized parameters of generative model for each feature
+        '''
         if image is not None:
             self.image = image
         centers, bboxes = self.localizer.predict(self.data)
