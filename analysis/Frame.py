@@ -128,10 +128,10 @@ class Frame(object):
         centers, bboxes = self.localizer.predict(self.data)
         self.bboxes = bboxes
         for feature, center in zip(self.features, centers):
-            properties = self.estimator.predict()
             particle = feature['fitter'].particle
-            particle.x_p = center[0]
-            particle.y_p = center[1]
+            properties = self.estimator.predict()
+            properties['x_p'] = center[0]
+            properties['y_p'] = center[1]
             particle.properties = properties
         return self.optimize()
 
