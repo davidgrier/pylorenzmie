@@ -18,7 +18,8 @@ class Estimator(object):
     def __init__(self,
                  z_p=None,
                  a_p=None,
-                 n_p=None):
+                 n_p=None,
+                 **kwargs):
         self.z_p = z_p or 200.
         self.a_p = a_p or 1.
         self.n_p = n_p or 1.5

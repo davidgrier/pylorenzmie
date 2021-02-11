@@ -27,7 +27,8 @@ class Localizer(object):
     def __init__(self,
                  tp_opts=None,
                  nfringes=None,
-                 maxrange=None):
+                 maxrange=None,
+                 **kwargs):
         self._tp_opts = tp_opts or dict(diameter=31, minmass=30)
         self._nfringes = nfringes or 20
         self._maxrange = maxrange or 400
