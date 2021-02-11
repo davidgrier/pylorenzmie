@@ -4,7 +4,26 @@ import trackpy as tp
 
 
 class Localizer(object):
+    '''Identify and localize features in holograms
 
+    Properties
+    ----------
+    nfringes : int
+        Number of interference fringes used to determine feature extent
+        Default: 20
+    maxrange : int
+        Maximum extent of feature [pixels]
+        Default: 400
+    tp_opts : dict
+        Dictionary of options for trackpy.locate()
+        Default: dict(diameter=31, minmass=30)
+    
+    Methods
+    -------
+    predict(image) :
+        Returns centers and bounding boxes of features
+        detected in image
+    '''
     def __init__(self,
                  tp_opts=None,
                  nfringes=None,
@@ -20,14 +39,14 @@ class Localizer(object):
         
         Parameters
         ----------
-        image: array_like
+        image : array_like
             image data
 
         Returns
         -------
-        centers: numpy.array
+        centers : numpy.array
             (x, y) coordinates of feature centers
-        bboxes: tuple
+        bboxes : tuple
             ((x0, y0), w, h) bounding box of feature
         '''
         a = self._circletransform(image)
@@ -50,7 +69,18 @@ class Localizer(object):
         '''
         Fourier transform of the orientational alignment kernel:
         K(k) = e^(-2 i \theta) / k^3
-        Shift to accommodate FFT pixel ordering
+
+        kernel ordering is shifted to accommodate FFT pixel ordering
+
+        Parameters
+        ----------
+        image : numpy.ndarray
+            image shape used to compute kernel
+
+        Returns
+        -------
+        kernel : numpy.ndarray
+            orientation alignment kernel in Fourier space
         '''
         if image.shape != self._shape:
             self._shape = image.shape
@@ -69,12 +99,12 @@ class Localizer(object):
 
         Parameters
         ----------
-        image: numpy.ndarray
+        image : numpy.ndarray
             grayscale image data
 
         Returns
         -------
-        transform: numpy.ndarray
+        transform : numpy.ndarray
             An array with the same shape as image, transformed
             to emphasize circular features.
 
@@ -109,14 +139,14 @@ class Localizer(object):
 
         Parameters
         ----------
-        norm: array_like
+        norm : array_like
             Normalized image data
-        center: tuple
+        center : tuple
             (x_p, y_p) coordinates of feature center
 
         Returns
         -------
-        extent: int
+        extent : int
             Extent of feature [pixels]
         '''
         b = self._aziavg(norm, center) - 1.
@@ -132,14 +162,14 @@ class Localizer(object):
 
         Parameters
         ----------
-        data: array_like
+        data : array_like
             image data
-        center: tuple
+        center : tuple
             (x_p, y_p) center of azimuthal average
 
         Returns
         -------
-        avg: array_like
+        avg : array_like
             One-dimensional azimuthal average of data about center
         '''
         x_p, y_p = center
