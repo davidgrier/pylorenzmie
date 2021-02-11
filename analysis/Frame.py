@@ -51,9 +51,9 @@ class Frame(object):
         self._data = None
         self._shape = None
         self._coordinates = None
+        self.localizer = Localizer(**kwargs)
+        self.estimator = Estimator(**kwargs)
         self.optimizer = Optimizer(**kwargs)
-        self.localizer = Localizer()
-        self.estimator = Estimator()
         self.image = image
         self._features = []
         self.bboxes = bboxes or []
