@@ -12,6 +12,7 @@ class Localizer(object):
         self._tp_opts = tp_opts or dict(diameter=31, minmass=30)
         self._nfringes = nfringes or 20
         self._maxrange = maxrange or 400
+        self._shape = None
 
     def predict(self, image):
         '''
@@ -45,6 +46,23 @@ class Localizer(object):
             bboxes.append((r0, extent, extent))
         return centers, bboxes
 
+    def _kernel(self, image):
+        '''
+        Fourier transform of the orientational alignment kernel:
+        K(k) = e^(-2 i \theta) / k^3
+        Shift to accommodate FFT pixel ordering
+        '''
+        if image.shape != self._shape:
+            self._shape = image.shape
+            ny, nx = image.shape
+            kx = np.fft.ifftshift(np.linspace(-0.5, 0.5, nx))
+            ky = np.fft.ifftshift(np.linspace(-0.5, 0.5, ny))
+            k = np.hypot.outer(ky, kx) + 0.001
+            kernel = np.subtract.outer(1.j*ky, kx)
+            kernel *= kernel / k**3
+            self.__kernel = kernel
+        return self.__kernel
+
     def _circletransform(self, image):
         """
         Transform image to emphasize circular features
@@ -68,7 +86,7 @@ class Localizer(object):
         The orientation alignment transform,"
         Optics Express 22, 12773-12778 (2014)
         """
-   
+        
         # Orientational order parameter:
         # psi(r) = |\partial_x a + i \partial_y a|^2
         psi = np.empty_like(image, dtype=np.complex)
@@ -76,20 +94,10 @@ class Localizer(object):
         psi.imag = savgol_filter(image, 13, 3, 1, axis=0)
         psi *= psi
 
-        # Fourier transform of the orientational alignment kernel:
-        # K(k) = e^(-2 i \theta) / k^3
-        # Shift to accommodate FFT pixel ordering
-        ny, nx = image.shape
-        kx = np.fft.ifftshift(np.linspace(-0.5, 0.5, nx))
-        ky = np.fft.ifftshift(np.linspace(-0.5, 0.5, ny))
-        k = np.hypot.outer(ky, kx) + 0.001
-        kernel = np.subtract.outer(1.j*ky, kx)
-        kernel *= kernel / k**3
-
         # Convolve psi(r) with K(r) using the
         # Fourier convolution theorem
         psi = np.fft.fft2(psi)
-        psi *= kernel
+        psi *= self._kernel(image)
         psi = np.fft.ifft2(psi)
 
         # Transformed image is the intensity of the convolution
