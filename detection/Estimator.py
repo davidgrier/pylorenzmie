@@ -1,5 +1,20 @@
 class Estimator(object):
+    '''Estimate parameters of a holographic feature
+    
+    Properties
+    ----------
+    z_p : float
+        Axial particle position [pixels]
+    a_p : float
+        Particle radius [um]
+    n_p : float
+        Particle refractive index
 
+    Methods
+    -------
+    predict(frame) :
+        Returns a dictionary of estimated properties
+    '''
     def __init__(self,
                  z_p=None,
                  a_p=None,
