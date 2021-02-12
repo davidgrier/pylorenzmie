@@ -6,8 +6,8 @@ import pandas as pd
 import json
 import os
 from .Frame import Frame
-from CNNLorenzMie.experiments.normalize_image import normalize_video
-from CNNLorenzMie.experiments.running_normal import running_normalize
+from .utilities.normalize_image import normalize_video
+from .utilities.running_normal import running_normalize
 
 
 
