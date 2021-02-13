@@ -94,7 +94,7 @@ class Feature(object):
 
     @property
     def model(self):
-        return self.optimizer.model
+        return None if self.optimizer is None else self.optimizer.model
 
     @model.setter
     def model(self, model):

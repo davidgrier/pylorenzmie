@@ -15,8 +15,7 @@ TEST_IMAGE = os.path.join(THIS_DIR, 'data/crop.png')
 class TestOptimizer(unittest.TestCase):
 
     def setUp(self):
-        img = cv2.imread(TEST_IMAGE)
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY).astype(np.float)
+        img = cv2.imread(TEST_IMAGE, 0).astype(float)
         img /= np.mean(img)
         img = img[::4,::4]
         self.shape = img.shape

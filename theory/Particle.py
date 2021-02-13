@@ -136,7 +136,7 @@ class Particle(object):
         ab : numpy.ndarray
             Mie AB scattering coefficients
         '''
-        return np.asarray([1, 1], dtype=np.complex)
+        return np.asarray([1, 1], dtype=complex)
 
 
 if __name__ == '__main__': # pragma: no cover

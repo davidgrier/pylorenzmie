@@ -16,9 +16,14 @@ class TestLorenzMie(unittest.TestCase):
         self.assertIs(self.method.coordinates, None)
 
     def test_coordinates_point(self):
-        point = np.array([1, 2, 3])
+        point = np.array([1, 2, 3]).reshape((3, 1))
         self.method.coordinates = point
-        self.assertTrue(np.allclose(self.method.coordinates[:,0], point))
+        self.assertTrue(np.allclose(self.method.coordinates, point))
+
+    def test_coordinates_1d(self):
+        c = np.arange(self.shape[0])
+        self.method.coordinates = c
+        self.assertEqual(self.method.coordinates.shape[0], 3)
         
     def test_coordinates_2d(self):
         c = coordinates(self.shape)
