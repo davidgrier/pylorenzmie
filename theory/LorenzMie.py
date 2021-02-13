@@ -102,7 +102,10 @@ class LorenzMie(object):
 
     @property
     def coordinates(self):
-        '''Three-dimensional coordinates at which field is calculated'''
+        '''Three-dimensional coordinates at which field is calculated
+
+        Expected shape is (3, npts)
+        '''
         return self._coordinates
 
     @coordinates.setter
@@ -111,10 +114,13 @@ class LorenzMie(object):
             self._coordinates = None
             return
         c = np.array(coordinates)
-        if (c.ndim == 1):                     # single point
-            c = np.reshape(c, (len(c), 1))
-        if (c.ndim == 2) & (c.shape[0] == 2): # only (x, y) specified
-            c = np.append(c, np.zeros((1, c.shape[1])), axis=0)
+        if c.ndim == 1:          # only x specified
+            c = np.vstack((c, np.zeros((2, c.size))))
+        elif c.shape[0] == 2:    # only (x, y) specified
+            c = np.vstack((c, np.zeros(c.shape[1])))
+        if c.shape[0] != 3:
+            raise ValueError(
+                'coordinates should have shape ({1|2|3}, npts).')
         self._coordinates = c
         self.allocate()
 
