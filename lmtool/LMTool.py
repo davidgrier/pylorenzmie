@@ -12,6 +12,7 @@ import pylorenzmie as pylm
 
 from pylorenzmie.theory import LMHologram, coordinates
 from pylorenzmie.analysis import Feature
+from pylorenzmie.utilities import aziavg
 
 from LMTool_Ui import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot
@@ -19,18 +20,6 @@ from PyQt5 import QtWidgets, QtCore
 
 logger = logging.getLogger('LMTool')
 logger.setLevel(logging.INFO)
-
-
-def aziavg(data, center):
-    x_p, y_p = center
-    y, x = np.indices((data.shape))
-    d = data.ravel()
-    r = np.hypot(x - x_p, y - y_p).astype(np.int).ravel()
-    nr = np.bincount(r)
-    ravg = np.bincount(r, d) / nr
-    avg = ravg[r]
-    rstd = np.sqrt(np.bincount(r, (d - avg)**2) / nr)
-    return ravg, rstd
 
 
 class LMTool(QtWidgets.QMainWindow):
@@ -149,7 +138,7 @@ class LMTool(QtWidgets.QMainWindow):
     def setupTheory(self):
         self.profile_coords = np.arange(self.maxrange)
         self._coordinates = self.profile_coords
-        self.feature = Feature(model=LMHologram())
+        self.feature = Feature()
         self.theory = self.feature.model
         self.theory.coordinates = self.coordinates
         self.theory.instrument.wavelength = self.ui.wavelength.value()
@@ -389,7 +378,7 @@ def main():
     import sys
     import argparse
 
-    fn = '../tutorials/crop.png'
+    fn = '../docs/tutorials/crop.png'
 
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', type=str, default=fn,
