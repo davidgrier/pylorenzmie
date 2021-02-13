@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.signal import savgol_filter
 import trackpy as tp
-from pylorenzmie.utilities.aziavg import aziavg
+from pylorenzmie.utilities import aziavg
 
 
 class Localizer(object):
