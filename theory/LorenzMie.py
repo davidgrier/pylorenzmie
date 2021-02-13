@@ -7,10 +7,12 @@ from .Sphere import Sphere
 from .Instrument import Instrument
 import json
 
-#try:                         # pragma: no cover
-#    from numba import njit
-#except:                      # pragma: no cover
-from pylorenzmie.utilities.numba import njit
+from pylorenzmie.utilities import configuration as config
+
+if config.has_numba():
+    from numba import njit
+else:
+    from pylorenzmie.utilities.numba import njit
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the
@@ -207,7 +209,7 @@ class LorenzMie(object):
         self.result = np.empty(shape, dtype=complex)
 
     @staticmethod
-    #@njit()
+    @njit()
     def compute(ab, krv, mo1n, ne1n, es, ec, cartesian=True, bohren=True):
         '''Returns the field scattered by the particle at each coordinate
 

@@ -12,7 +12,7 @@ import pylorenzmie as pylm
 
 from pylorenzmie.theory import LMHologram, coordinates
 from pylorenzmie.analysis import Feature
-from pylorenzmie.utilities import aziavg
+from pylorenzmie.utilities import azistd
 
 from LMTool_Ui import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot
@@ -311,7 +311,7 @@ class LMTool(QtWidgets.QMainWindow):
     def updateDataProfile(self):
         self.coordinates = self.profile_coords
         center = (self.ui.x_p.value(), self.ui.y_p.value())
-        avg, std = aziavg(self.data, center)
+        avg, std = azistd(self.data, center)
         self.dataProfile.setData(avg)
         self.regionUpper.setData(avg + std)
         self.regionLower.setData(avg - std)
