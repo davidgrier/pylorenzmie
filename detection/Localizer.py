@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.signal import savgol_filter
 import trackpy as tp
+from pylorenzmie.utilities.aziavg import aziavg
 
 
 class Localizer(object):
@@ -150,7 +151,7 @@ class Localizer(object):
         extent : int
             Extent of feature [pixels]
         '''
-        b = self._aziavg(norm, center) - 1.
+        b = aziavg(norm, center) - 1.
         ndx = np.where(np.diff(np.sign(b)))[0] + 1
         if len(ndx) <= self._nfringes:
             extent = self._maxrange
@@ -158,28 +159,4 @@ class Localizer(object):
             extent = ndx[self._nfringes]
         return extent
 
-    def _aziavg(self, data, center):
-        '''Azimuthal average of data about center
 
-        Parameters
-        ----------
-        data : array_like
-            image data
-        center : tuple
-            (x_p, y_p) center of azimuthal average
-
-        Returns
-        -------
-        avg : array_like
-            One-dimensional azimuthal average of data about center
-        '''
-        x_p, y_p = center
-        ny, nx = data.shape
-        x = np.arange(nx) - x_p
-        y = np.arange(ny) - y_p
-
-        d = data.ravel()
-        r = np.hypot.outer(y, x).astype(np.int).ravel()
-        nr = np.bincount(r)
-        avg = np.bincount(r, d) / nr
-        return avg
