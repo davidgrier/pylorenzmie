@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from .Feature import Feature
 from pylorenzmie.fitting import Optimizer
-from pylorenzmie.theory import coordinates
+from pylorenzmie.utilities import coordinates
 from pylorenzmie.detection import (Localizer, Estimator)
 
 

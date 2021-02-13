@@ -1,7 +1,7 @@
 import unittest
 
 from analysis import Mask
-from theory import coordinates
+from utilities import coordinates
 import numpy as np
 
 class TestMask(unittest.TestCase):

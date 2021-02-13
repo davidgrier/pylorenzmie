@@ -1,7 +1,7 @@
 import unittest
 
 from theory.cupyLorenzMie import cupyLorenzMie as LorenzMie
-from theory import coordinates
+from utilities import coordinates
 import numpy as np
 
 

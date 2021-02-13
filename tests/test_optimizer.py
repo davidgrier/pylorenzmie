@@ -1,7 +1,8 @@
 import unittest
 
 from fitting import Optimizer
-from theory import (LMHologram, coordinates)
+from theory import LMHologram
+from utilities import coordinates
 import os
 import cv2
 import numpy as np

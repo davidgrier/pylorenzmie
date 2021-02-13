@@ -59,7 +59,7 @@ class LMHologram(LorenzMie):
 
 if __name__ == '__main__': # pragma: no cover
     import matplotlib.pyplot as plt
-    from Instrument import coordinates
+    from pylorenzmie.utilities import coordinates
     from time import time
 
     shape = [201, 201]

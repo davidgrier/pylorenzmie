@@ -5,7 +5,8 @@ import json
 import os
 import numpy as np
 from pylorenzmie.fitting import Optimizer
-from pylorenzmie.theory import (Sphere, LMHologram, coordinates)
+from pylorenzmie.theory import (Sphere, LMHologram)
+from pylorenzmie.utilities import coordinates
 from .Mask import Mask
 
 

@@ -2,7 +2,7 @@ import unittest
 
 import numpy as np
 from theory.LorenzMie import LorenzMie
-from theory import coordinates
+from utilities import coordinates
 
 
 class TestLorenzMie(unittest.TestCase):

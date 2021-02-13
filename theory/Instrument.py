@@ -9,24 +9,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-def coordinates(shape, corner=None, flatten=True, dtype=np.float64):
-    '''Return coordinate system for Lorenz-Mie microscopy images'''
-    (ny, nx) = shape
-    if corner is None:
-        (left, top) = (0, 0)
-    else:
-        (left, top) = corner
-    x = np.arange(left, nx + left, dtype=dtype)
-    y = np.arange(top, ny + top, dtype=dtype)
-    xy = np.array(np.meshgrid(x, y))
-    if flatten:
-        return xy.reshape((2, -1))
-    return xy
-    #xv = xv.flatten()
-    #yv = yv.flatten()
-    #return np.stack((xv, yv))
-
-
 class Instrument(object):
 
     '''

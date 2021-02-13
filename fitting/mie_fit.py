@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from pylorenzmie.theory.Instrument import coordinates
+from pylorenzmie.utilities import coordinates
 from lmfit import Minimizer, Parameters, report_fit
 import logging
 logger = logging.getLogger()

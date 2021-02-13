@@ -1,7 +1,8 @@
 import unittest
 
 from analysis import Feature
-from theory import (LMHologram, coordinates)
+from theory import LMHologram
+from utilities import coordinates
 
 import os
 import cv2
@@ -14,8 +15,7 @@ TEST_IMAGE = os.path.join(THIS_DIR, 'data/crop.png')
 class TestFeature(unittest.TestCase):
 
     def setUp(self):
-        data = cv2.imread(TEST_IMAGE)
-        data = cv2.cvtColor(data, cv2.COLOR_BGR2GRAY).astype(np.float)
+        data = cv2.imread(TEST_IMAGE, 0).astype(float)
         data /= np.mean(data)
         coords = coordinates(data.shape)
         model = LMHologram(wavelength=0.447, magnification=0.048, n_m=1.34)
