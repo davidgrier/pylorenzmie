@@ -2,8 +2,7 @@ import pylorenzmie.utilities.configuration as config
 
 from .Particle import Particle
 from .Sphere import Sphere
-
-from .Instrument import (Instrument, coordinates)
+from .Instrument import Instrument
 
 if config.has_cupy():
     from .cupyLorenzMie import cupyLorenzMie as LorenzMie
@@ -12,5 +11,4 @@ else:
 
 from .LMHologram import LMHologram
 
-__all__ = [Particle, Sphere, Instrument, coordinates,
-           LorenzMie, LMHologram]
+__all__ = [Particle, Sphere, Instrument, LorenzMie, LMHologram]

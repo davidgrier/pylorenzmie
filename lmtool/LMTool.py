@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from scipy.interpolate import BSpline, splrep
+from scipy.interpolate import (BSpline, splrep)
 import os
 import json
 import cv2
@@ -10,9 +10,9 @@ import numpy as np
 import pyqtgraph as pg
 import pylorenzmie as pylm
 
-from pylorenzmie.theory import LMHologram, coordinates
+from pylorenzmie.theory import LMHologram
 from pylorenzmie.analysis import Feature
-from pylorenzmie.utilities import azistd
+from pylorenzmie.utilities import (coordinates, azistd)
 
 from LMTool_Ui import Ui_MainWindow
 from PyQt5.QtCore import pyqtSlot

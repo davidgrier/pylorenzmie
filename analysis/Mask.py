@@ -142,7 +142,7 @@ class Mask(object):
 
 
 if __name__ == '__main__': # pragma: no cover
-    from pylorenzmie.theory.Instrument import coordinates
+    from pylorenzmie.utilities import coordinates
 
     shape = (201, 201)
     corner = (350, 300)

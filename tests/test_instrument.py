@@ -1,7 +1,8 @@
 import unittest
 
 import numpy as np
-from theory import (Instrument, coordinates)
+from theory import Instrument
+from utilities import coordinates
 
 
 class TestInstrument(unittest.TestCase):
