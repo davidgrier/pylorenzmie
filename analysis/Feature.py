@@ -26,9 +26,6 @@ class Feature(object):
         Incorporates information about the Particle and the Instrument
         and for supported models, uses this information to compute a
         hologram at the specified coordinates.
-    optimizer : Optimizer
-        Computational pipeline for fitting model to data.
-        Properties of optimizer control the fitting procedure.
 
     Methods
     -------
@@ -49,15 +46,13 @@ class Feature(object):
     def __init__(self,
                  data=None,
                  coordinates=None,
-                 particle=None,
-                 optimizer=None,
+                 model=None,
                  **kwargs):
-
         self.mask = Mask(**kwargs)
-        self.particle = particle or Sphere(**kwargs)
-        self.optimizer = optimizer or Optimizer(**kwargs)
         self.data = data
         self.coordinates = coordinates
+        self.model = model or LMHologram(**kwargs)
+        self.optimizer = Optimizer(model=self.model, **kwargs)
         
     @property
     def data(self):
@@ -86,29 +81,20 @@ class Feature(object):
 
     @property
     def particle(self):
-        return self._particle
+        return self.model.particle
 
     @particle.setter
     def particle(self, particle):
-        self._particle = particle
+        self.model.particle = particle
 
     @property
     def model(self):
-        return None if self.optimizer is None else self.optimizer.model
-
+        return self._model
+    
     @model.setter
     def model(self, model):
-        self.optimizer.model = model
+        self._model = model
             
-    @property
-    def optimizer(self):
-        '''Optimizer to refine holographic model parameters'''
-        return self._optimizer
-
-    @optimizer.setter
-    def optimizer(self, optimizer):
-        self._optimizer = optimizer
-
     def optimize(self):
         mask = self.mask.selected
         opt = self.optimizer
@@ -117,13 +103,12 @@ class Feature(object):
         # opt.coordinates = self.coordinates[:,mask]
         # yields garbled results on GPU. Memory organization?
         ndx = np.nonzero(mask)
-        opt.coordinates = np.take(self.coordinates, ndx, axis=1).squeeze()
-        opt.model.particle = self.particle
+        coordinates = np.take(self.coordinates, ndx, axis=1).squeeze()
+        self.model.coordinates = coordinates
         return self.optimizer.optimize()
 
     def hologram(self):
         self.model.coordinates = self.coordinates
-        self.model.particle = self.particle
         return self.model.hologram().reshape(self.data.shape)
 
     def residuals(self):

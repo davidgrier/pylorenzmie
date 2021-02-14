@@ -10,7 +10,6 @@ logger.setLevel(logging.WARNING)
 
 
 class Instrument(object):
-
     '''
     Abstraction of an in-line holographic microscope
 
@@ -19,7 +18,7 @@ class Instrument(object):
 
     ...
 
-    Attributes
+    Properties
     ----------
     wavelength : float
         Vacuum wavelength of light [um]
@@ -31,6 +30,8 @@ class Instrument(object):
         Background image
     dark_count : float
         Dark count of camera
+    properties : dict
+        Adjustable properties of the instrument model
 
     Methods
     -------
@@ -109,9 +110,9 @@ class Instrument(object):
 
     @property
     def properties(self):
-        props = {'n_m': self.n_m,
-                 'wavelength': self.wavelength,
-                 'magnification': self.magnification}
+        props = dict(n_m=self.n_m,
+                     wavelength=self.wavelength,
+                     magnification=self.magnification)
         return props
 
     @properties.setter
