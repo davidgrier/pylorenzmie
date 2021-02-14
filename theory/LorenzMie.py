@@ -73,7 +73,9 @@ class LorenzMie(object):
     coordinates : numpy.ndarray
         [3, npts] array of x, y and z coordinates where field
         is calculated
-    
+    properties : dict
+        Adjustable properties of the light-scattering theory
+
     Methods
     -------
     field(cartesian=True, bohren=True)
@@ -156,10 +158,11 @@ class LorenzMie(object):
 
     @properties.setter
     def properties(self, properties):
+        self.particle.properties = properties
+        self.instrument.properties = properties
         for property, value in properties.items():
-            for subsystem in [self.particle, self.instrument, self]:
-                if hasattr(subsystem, property):
-                    setattr(subsystem, property, value)
+            if hasattr(self, property):
+                setattr(self, property, value)
 
     def dumps(self, **kwargs):
         '''Returns JSON string of adjustable properties

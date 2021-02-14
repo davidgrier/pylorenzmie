@@ -23,7 +23,7 @@ class Particle(object):
     z_p : float
         z coordinate
     properties : dict
-        dictionary of values to get or set simultaneously
+        dictionary of adjustable properties
 
     Methods
     -------
@@ -83,10 +83,10 @@ class Particle(object):
 
     @property
     def properties(self):
-        p = {'x_p': self.x_p,
-             'y_p': self.y_p,
-             'z_p': self.z_p}
-        return p
+        properties = dict(x_p=self.x_p,
+                          y_p=self.y_p,
+                          z_p=self.z_p)
+        return properties
 
     @properties.setter
     def properties(self, properties):

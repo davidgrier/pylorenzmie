@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pylorenzmie.theory import LMHologram
 import numpy as np
 import json
 
@@ -23,15 +22,6 @@ class Optimizer(object):
 
     Properties
     ----------
-    model : LMHologram
-        Incorporates information about the Particle and the Instrument
-        and uses this information to compute a hologram at the
-        specified coordinates.  Keywords for the model can be
-        provided at initialization    
-    data : numpy.ndarray
-        [npts] normalized intensity values
-    coordinates : numpy.ndarray
-        [2, npts] pixel coordinates
     noise : float
         Estimate for the additive noise value at each data pixel
     method : str
@@ -62,43 +52,15 @@ class Optimizer(object):
     def __init__(self,
                  model=None,
                  data=None,
-                 coordinates=None,
                  noise=0.05,
                  method=None,
                  **kwargs):
-        self.model = model or LMHologram(**kwargs)
+        self.model = model
         self.data = data
         self.noise = noise
         self.method = method or 'lm'
         self._result = None
         self._default_settings()
-
-    @property
-    def model(self):
-        '''Generative model for hologram computation'''
-        return self._model
-
-    @model.setter
-    def model(self, model):
-        self._model = model
-        
-    @property
-    def data(self):
-        '''Values of the (normalized) data at each pixel'''
-        return self._data
-
-    @data.setter
-    def data(self, data):
-        self._data = data
-
-    @property
-    def coordinates(self):
-        '''Coordinates of data pixels'''
-        return self.model.coordinates
-
-    @coordinates.setter
-    def coordinates(self, coordinates):
-        self.model.coordinates = coordinates
 
     @property
     def result(self):
@@ -119,7 +81,6 @@ class Optimizer(object):
         redchi, uncertainties = self._statistics()
         values = list(sum(zip(values, uncertainties), ()))
         values.extend([self.result.success, npix, redchi])
-
         return pd.Series(dict(zip(keys, values)))
 
     @property
@@ -131,21 +92,21 @@ class Optimizer(object):
 
     @property
     def properties(self):
-        p = dict()
-        p['method'] = self.method
-        p['lm'] = self.lm_settings
-        p['nm'] = self.nm_settings
-        p['fixed'] = self.fixed
-        p['variables'] = self.variables
-        return p
+        properties = dict(method=self.method,
+                          lm_settings=self.lm_settings,
+                          nm_settings=self.nm_settings,
+                          noise=self.noise,
+                          fixed=self.fixed,
+                          variables=self.variables)
+        properties.update(self.model.properties)
+        return properties
 
     @properties.setter
-    def properties(self, p):
-        self.method = p['method']
-        self.lm_settings = p['lm']
-        self.nm_settings = p['nm']
-        self.fixed = p['fixed']
-        self.variables = p['variables']
+    def properties(self, properties):
+        self.model.properties = properties
+        for property, value in properties.items():
+            if hasattr(self, property):
+                setattr(self, property, value)
         
     #
     # Public methods
@@ -170,7 +131,6 @@ class Optimizer(object):
         result : pandas.Series
             Values, uncertainties and statistics from fit
         '''
-
         p0 = self._initial_estimates()
         if 'amoeba' in self.method:
             objective = self._absolute if robust else self._chisq
@@ -247,7 +207,7 @@ class Optimizer(object):
     def _residuals(self, values):
         '''Updates properties and returns residuals'''
         self.model.properties = dict(zip(self.variables, values))
-        return (self.model.hologram() - self._data) / self.noise
+        return (self.model.hologram() - self.data) / self.noise
 
     def _chisq(self, x):
         delta = self._residuals(x)
