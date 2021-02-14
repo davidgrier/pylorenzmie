@@ -10,8 +10,8 @@ import numpy as np
 import pyqtgraph as pg
 import pylorenzmie as pylm
 
-from pylorenzmie.theory import LMHologram
-from pylorenzmie.analysis import Feature
+from pylorenzmie.theory import (Sphere, Instrument, LMHologram)
+from pylorenzmie.analysis import Frame
 from pylorenzmie.utilities import (coordinates, azistd)
 
 from LMTool_Ui import Ui_MainWindow
@@ -27,15 +27,9 @@ class LMTool(QtWidgets.QMainWindow):
     def __init__(self,
                  filename=None,
                  background=None,
-                 normalization=None,
                  data=None):
         super(LMTool, self).__init__()
-        if background is not None:
-            self.openBackground(background)
-        elif normalization is not None:
-            self.background = normalization
-        else:
-            self.background = 1.
+        
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
         pg.setConfigOption('imageAxisOrder', 'row-major')
@@ -46,7 +40,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.setupImageTab()
         self.setupProfileTab()
         self.setupFitTab()
-        self.setupTheory()
+        self.setupTheory(background)
         if data is None:
             self.openFile(filename)
         else:
@@ -135,18 +129,30 @@ class LMTool(QtWidgets.QMainWindow):
                     prop.fixed = setting['fixed']
         self.ui.bbox.checkbox.hide()
 
-    def setupTheory(self):
-        self.profile_coords = np.arange(self.maxrange)
-        self._coordinates = self.profile_coords
-        self.feature = Feature()
-        self.theory = self.feature.model
-        self.theory.coordinates = self.coordinates
-        self.theory.instrument.wavelength = self.ui.wavelength.value()
-        self.theory.instrument.magnification = self.ui.magnification.value()
-        self.theory.instrument.n_m = self.ui.n_m.value()
-        self.theory.particle.a_p = self.ui.a_p.value()
-        self.theory.particle.n_p = self.ui.n_p.value()
-        self.theory.particle.z_p = self.ui.z_p.value()
+    def setupTheory(self, background):
+        self.particle = Sphere()
+        self.instrument = Instrument()
+        # Theory for radial trace
+        self.theory = LMHologram(particle=self.particle,
+                                 instrument=self.instrument)
+        self.theory.coordinates = np.arange(self.maxrange)
+        # Theory for image
+        self.frame = Frame()
+        self.frame.optimizer.model.particle = self.particle
+        self.frame.optimizer.model.instrument = self.instrument
+        if type(background) is str:
+            self.openBackground(background)
+        elif type(background) is int:
+            self.frame.background = background
+        else:
+            self.frame.background = 1.
+        # Set initial values
+        self.particle.a_p = self.ui.a_p.value()
+        self.particle.n_p = self.ui.n_p.value()
+        self.particle.z_p = self.ui.z_p.value()
+        self.instrument.wavelength = self.ui.wavelength.value()
+        self.instrument.magnification = self.ui.magnification.value()
+        self.instrument.n_m = self.ui.n_m.value()
         self.updateTheoryProfile()
 
     def connectSignals(self):
@@ -184,18 +190,18 @@ class LMTool(QtWidgets.QMainWindow):
 
     @pyqtSlot(float)
     def updateInstrument(self, count):
-        self.theory.instrument.wavelength = self.ui.wavelength.value()
-        self.theory.instrument.magnification = self.ui.magnification.value()
-        self.theory.instrument.n_m = self.ui.n_m.value()
+        self.instrument.wavelength = self.ui.wavelength.value()
+        self.instrument.magnification = self.ui.magnification.value()
+        self.instrument.n_m = self.ui.n_m.value()
         self.updateTheoryProfile()
         if self.ui.tabs.currentIndex() == 2:
             self.updateFit()
 
     @pyqtSlot(float)
     def updateParticle(self, count):
-        self.theory.particle.a_p = self.ui.a_p.value()
-        self.theory.particle.n_p = self.ui.n_p.value()
-        self.theory.particle.z_p = self.ui.z_p.value()
+        self.particle.a_p = self.ui.a_p.value()
+        self.particle.n_p = self.ui.n_p.value()
+        self.particle.z_p = self.ui.z_p.value()
         self.updateTheoryProfile()
         if self.ui.tabs.currentIndex() == 2:
             self.updateFit()
@@ -251,8 +257,8 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.n_p.valueChanged['double'].disconnect(self.updateParticle)
         self.ui.z_p.valueChanged['double'].disconnect(self.updateParticle)
         # Update
-        particle, instrument = (self.theory.particle,
-                                self.theory.instrument)
+        particle, instrument = (self.feature.particle,
+                                self.feature.model.instrument)
         for p in self.feature.optimizer.params:
             if hasattr(self.ui, p):
                 attrUi = getattr(self.ui, p)
@@ -261,7 +267,7 @@ class LMTool(QtWidgets.QMainWindow):
                 elif p in instrument.properties:
                     attrUi.setValue(getattr(instrument, p))
                 else:
-                    attrUi.setValue(getattr(self.theory, p))
+                    attrUi.setValue(getattr(self.feature, p))
         # Reconnect
         self.ui.wavelength.valueChanged['double'].connect(
             self.updateInstrument)
@@ -287,8 +293,7 @@ class LMTool(QtWidgets.QMainWindow):
         if filename is None:
             filename, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self, 'Open Background', '', 'Images (*.png)')
-        self.background = cv2.imread(
-            filename, cv2.IMREAD_GRAYSCALE).astype(float)
+        self.frame.background = cv2.imread(filename, 0).astype(float)
 
     @pyqtSlot()
     def saveParameters(self, filename=None):
@@ -309,19 +314,17 @@ class LMTool(QtWidgets.QMainWindow):
     # Routines to update plots
     #
     def updateDataProfile(self):
-        self.coordinates = self.profile_coords
         center = (self.ui.x_p.value(), self.ui.y_p.value())
-        avg, std = azistd(self.data, center)
+        avg, std = azistd(self.frame.data, center)
         self.dataProfile.setData(avg)
         self.regionUpper.setData(avg + std)
         self.regionLower.setData(avg - std)
 
     def updateTheoryProfile(self):
-        self.coordinates = self.profile_coords
-        self.theory.particle.x_p, self.theory.particle.y_p = (0, 0)
+        self.particle.x_p, self.particle.y_p = (0, 0)
         xsmooth = np.linspace(0, self.maxrange - 1, 300)
         y = self.theory.hologram()
-        t, c, k = splrep(self.coordinates, y)
+        t, c, k = splrep(np.arange(self.maxrange), y)
         spline = BSpline(t, c, k)
         ysmooth = spline(xsmooth)
         self.theoryProfile.setData(xsmooth, ysmooth)
@@ -341,9 +344,10 @@ class LMTool(QtWidgets.QMainWindow):
         ycoords = self.data_coords[1].reshape(self.data.shape)
         ycoords = ycoords[y0:y1, x0:x1].flatten()
         self.coordinates = np.stack((xcoords, ycoords))
-        self.theory.particle.x_p = x_p
-        self.theory.particle.y_p = y_p
-        hol = self.theory.hologram().reshape(img.shape)
+        self.feature.particle.x_p = x_p
+        self.feature.particle.y_p = y_p
+        self.feature.optimize()
+        hol = self.feature.hologram().reshape(img.shape)
         self.feature.data = img
         self.region.setImage(img)
         self.fit.setImage(hol)
@@ -351,27 +355,18 @@ class LMTool(QtWidgets.QMainWindow):
 
     @property
     def data(self):
-        return self._data
+        return self.frame.data
 
     @data.setter
     def data(self, data):
-        self._data = data / self.background
-        self._data /= np.mean(self._data)
-        self.image.setImage(self._data)
-        self.data_coords = coordinates(data.shape)
+        if self.frame.background == 1:
+            data /= np.mean(data)
+        self.frame.image = data
+        self.image.setImage(self.frame.data)
         self.ui.x_p.setRange(0, data.shape[1]-1)
         self.ui.y_p.setRange(0, data.shape[0]-1)
         self.ui.bbox.setRange(0, min(data.shape[0]-1, data.shape[1]-1))
         self.updateDataProfile()
-
-    @property
-    def coordinates(self):
-        return self._coordinates
-
-    @coordinates.setter
-    def coordinates(self, coordinates):
-        self._coordinates = coordinates
-        self.theory.coordinates = coordinates
 
 
 def main():
@@ -383,19 +378,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', type=str, default=fn,
                         nargs='?', action='store')
-    parser.add_argument('-b', '--background', metavar='filename',
-                        dest='background', type=str, default=None,
-                        action='store',
-                        help='name of background image file')
-    parser.add_argument('-n', '--normalization', metavar='value',
-                        dest='normalization', type=float, default=1.,
-                        action='store',
-                        help='Ignored if background is supplied.')
+    parser.add_argument('-b', '--background', dest='background',
+                        default=None, action='store',
+                        help='background value or file name')
     args, unparsed = parser.parse_known_args()
     qt_args = sys.argv[:1] + unparsed
 
+    background = args.background
+    if background is not None and background.isdigit():
+        background = int(background)
+
     app = QtWidgets.QApplication(qt_args)
-    lmtool = LMTool(args.filename, args.background, args.normalization)
+    lmtool = LMTool(args.filename, background)
     lmtool.show()
     sys.exit(app.exec_())
 
