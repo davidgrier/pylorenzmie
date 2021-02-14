@@ -46,7 +46,7 @@ class Optimizer(object):
         List of properties of the model that will be optimized.
         Default: All model.properties that are not listed in fixed
     properties : dict
-        Dictionary of settings for the optimzer
+        Dictionary of settings for the optimizer
     result : scipy.optimize.OptimizeResult
         Set by optimize()
     report : pandas.Series

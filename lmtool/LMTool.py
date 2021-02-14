@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-from scipy.interpolate import (BSpline, splrep)
 import os
 import json
 import cv2
@@ -159,16 +158,12 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.actionOpen.triggered.connect(self.openFile)
         self.ui.actionSave_Parameters.triggered.connect(self.saveParameters)
         self.ui.tabs.currentChanged.connect(self.handleTabChanged)
-        self.ui.wavelength.valueChanged['double'].connect(
-            self.updateInstrument)
-        self.ui.magnification.valueChanged['double'].connect(
-            self.updateInstrument)
-        self.ui.n_m.valueChanged['double'].connect(self.updateInstrument)
-        self.ui.a_p.valueChanged['double'].connect(self.updateParticle)
-        self.ui.n_p.valueChanged['double'].connect(self.updateParticle)
+        for param in ['wavelength', 'magnification', 'n_m',
+                       'a_p', 'n_p', 'z_p']:
+            obj = getattr(self.ui, param)
+            obj.valueChanged['double'].connect(self.updateParameters)
         self.ui.x_p.valueChanged['double'].connect(self.updateRp)
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
-        self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
         self.ui.bbox.valueChanged['double'].connect(self.updateBBox)
         self.ui.optimizeButton.clicked.connect(self.optimize)
 
@@ -185,32 +180,26 @@ class LMTool(QtWidgets.QMainWindow):
         #self.ui.y_p.fixed = (tab != 0)
         if (tab == 1):
             self.updateDataProfile()
-        if (tab == 2):
-            self.updateFit()
+        #if (tab == 2):
+        #    self.updateFit()
 
     @pyqtSlot(float)
-    def updateInstrument(self, count):
+    def updateParameters(self, count):
         self.instrument.wavelength = self.ui.wavelength.value()
         self.instrument.magnification = self.ui.magnification.value()
         self.instrument.n_m = self.ui.n_m.value()
-        self.updateTheoryProfile()
-        if self.ui.tabs.currentIndex() == 2:
-            self.updateFit()
-
-    @pyqtSlot(float)
-    def updateParticle(self, count):
         self.particle.a_p = self.ui.a_p.value()
         self.particle.n_p = self.ui.n_p.value()
         self.particle.z_p = self.ui.z_p.value()
         self.updateTheoryProfile()
-        if self.ui.tabs.currentIndex() == 2:
-            self.updateFit()
+        #if self.ui.tabs.currentIndex() == 2:
+        #    self.updateFit()
 
     @pyqtSlot(float)
     def updateHologram(self, count):
         self.updateTheoryProfile()
-        if self.ui.tabs.currentIndex() == 2:
-            self.updateFit()
+        # if self.ui.tabs.currentIndex() == 2:
+        #    self.updateFit()
 
     @pyqtSlot(float)
     def updateRp(self, r_p=0):
@@ -218,28 +207,30 @@ class LMTool(QtWidgets.QMainWindow):
         y_p = [self.ui.y_p.value()]
         self.overlay.setData(x_p, y_p)
         self.updateDataProfile()
-        if self.ui.tabs.currentIndex() == 2:
-            self.updateFit()
+        #if self.ui.tabs.currentIndex() == 2:
+        #    self.updateFit()
 
     @pyqtSlot(float)
     def updateBBox(self, count):
         self.maxrange = int(self.ui.bbox.value() / 2)
-        self.profile_coords = np.arange(self.maxrange)
         self.ui.profilePlot.setXRange(0., self.maxrange)
         self.updateDataProfile()
         self.updateTheoryProfile()
-        self.updateFit()
+        # self.updateFit()
 
     @pyqtSlot()
     def optimize(self):
         logger.info("Starting optimization...")
         self.updateFit()
-        method = 'lm' if self.ui.LMButton.isChecked() else 'amoeba-lm'
-        for prop in self.feature.optimizer.params:
-            if hasattr(self.ui, prop):
-                propUi = getattr(self.ui, prop)
-                self.feature.optimizer.vary[prop] = not propUi.fixed
-        result = self.feature.optimize(method=method)
+        if self.ui.LMButton.isChecked():
+            self.frame.optimizer.method = 'lm'
+        else:
+            self.frame.optimizer.method = 'amoeba-lm'
+        #for prop in self.feature.optimizer.params:
+        #    if hasattr(self.ui, prop):
+        #        propUi = getattr(self.ui, prop)
+        #        self.feature.optimizer.vary[prop] = not propUi.fixed
+        result = self.frame.optimize()
         self.updateParameterUi()
         self.updateFit()
         self.updateDataProfile()
@@ -247,6 +238,7 @@ class LMTool(QtWidgets.QMainWindow):
         logger.info("Finished!\n{}".format(str(result)))
 
     def updateParameterUi(self):
+        '''Update Ui with parameters from particle and instrument'''
         # Disconnect
         self.ui.wavelength.valueChanged['double'].disconnect(
             self.updateInstrument)
@@ -257,17 +249,16 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.n_p.valueChanged['double'].disconnect(self.updateParticle)
         self.ui.z_p.valueChanged['double'].disconnect(self.updateParticle)
         # Update
-        particle, instrument = (self.feature.particle,
-                                self.feature.model.instrument)
-        for p in self.feature.optimizer.params:
+        particle, instrument = (self.particle, self.instrument)
+        for p in self.frame.optimizer.properties:
             if hasattr(self.ui, p):
                 attrUi = getattr(self.ui, p)
-                if p in particle.properties:
-                    attrUi.setValue(getattr(particle, p))
-                elif p in instrument.properties:
-                    attrUi.setValue(getattr(instrument, p))
+                if p in self.particle.properties:
+                    attrUi.setValue(getattr(self.particle, p))
+                elif p in self.instrument.properties:
+                    attrUi.setValue(getattr(self.instrument, p))
                 else:
-                    attrUi.setValue(getattr(self.feature, p))
+                    attrUi.setValue(getattr(self.frame, p))
         # Reconnect
         self.ui.wavelength.valueChanged['double'].connect(
             self.updateInstrument)
@@ -322,36 +313,30 @@ class LMTool(QtWidgets.QMainWindow):
 
     def updateTheoryProfile(self):
         self.particle.x_p, self.particle.y_p = (0, 0)
-        xsmooth = np.linspace(0, self.maxrange - 1, 300)
+        x = np.arange(self.maxrange)
+        self.theory.coordinates = x
         y = self.theory.hologram()
-        t, c, k = splrep(np.arange(self.maxrange), y)
-        spline = BSpline(t, c, k)
-        ysmooth = spline(xsmooth)
-        self.theoryProfile.setData(xsmooth, ysmooth)
+        self.theoryProfile.setData(x, y)
 
     def updateFit(self):
         dim = self.maxrange
         x_p = self.ui.x_p.value()
         y_p = self.ui.y_p.value()
-        h, w = self.data.shape
+        self.particle.x_p = x_p
+        self.particle.y_p = y_p
+        h, w = self.frame.data.shape
         x0 = int(np.clip(x_p - dim, 0, w - 2))
         y0 = int(np.clip(y_p - dim, 0, h - 2))
         x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
         y1 = int(np.clip(y_p + dim, y0 + 1, h - 1))
-        img = self.data[y0:y1, x0:x1]
-        xcoords = self.data_coords[0].reshape(self.data.shape)
-        xcoords = xcoords[y0:y1, x0:x1].flatten()
-        ycoords = self.data_coords[1].reshape(self.data.shape)
-        ycoords = ycoords[y0:y1, x0:x1].flatten()
-        self.coordinates = np.stack((xcoords, ycoords))
-        self.feature.particle.x_p = x_p
-        self.feature.particle.y_p = y_p
-        self.feature.optimize()
-        hol = self.feature.hologram().reshape(img.shape)
-        self.feature.data = img
-        self.region.setImage(img)
-        self.fit.setImage(hol)
-        self.residuals.setImage(self.feature.residuals())
+        bbox = ((x0, y0), x1-x0, y1-y0)
+        self.frame.bboxes = [bbox]
+        self.frame.optimize()
+        feature = self.frame.features[0]['fitter']
+        print(dim, x0, x1, feature.data.shape)
+        self.region.setImage(feature.data)
+        self.fit.setImage(feature.hologram())
+        self.residuals.setImage(feature.residuals())
 
     @property
     def data(self):
