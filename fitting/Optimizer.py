@@ -54,14 +54,32 @@ class Optimizer(object):
                  data=None,
                  noise=0.05,
                  method=None,
+                 fixed=None,
                  **kwargs):
         self.model = model
         self.data = data
         self.noise = noise
         self.method = method or 'lm'
+        defaults = ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
+        self.fixed = fixed or defaults
         self._result = None
         self._default_settings()
 
+    @property
+    def fixed(self):
+        '''list of fixed properties'''
+        return self._fixed
+
+    @fixed.setter
+    def fixed(self, fixed):
+        self._fixed = fixed
+        properties = self.model.properties
+        self._variables = [p for p in properties if p not in self.fixed]
+
+    @property
+    def variables(self):
+        return self._variables
+        
     @property
     def result(self):
         return self._result
@@ -196,9 +214,7 @@ class Optimizer(object):
                     'options': options}
         self.nm_settings = settings
 
-        properties = self.model.properties
-        self.fixed = ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
-        self.variables = [p for p in properties if p not in self.fixed]
+        
 
     def _initial_estimates(self):
         p0 = [self.model.properties[p] for p in self.variables]
