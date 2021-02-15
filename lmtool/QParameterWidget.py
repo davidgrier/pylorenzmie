@@ -106,6 +106,7 @@ class QParameterWidget(QtWidgets.QFrame):
         self.maximum = self.spinbox.maximum
         self.decimals = self.spinbox.decimals
         self.setDecimals = self.spinbox.setDecimals
+        self.setSuffix = self.spinbox.setSuffix
         self.value = self.spinbox.value
 
         # Slots
@@ -128,6 +129,9 @@ class QParameterWidget(QtWidgets.QFrame):
     def fixed(self, state):
         self.checkbox.setChecked(state)
 
+    def setFixed(self, state):
+        self.fixed = bool(state)
+
     def setMinimum(self, min):
         '''Set minimum end of value range
 
@@ -148,18 +152,18 @@ class QParameterWidget(QtWidgets.QFrame):
         self.spinbox.setMaximum(max)
         self.slider.setMaximum(max)
 
-    def setRange(self, min, max):
+    def setRange(self, range):
         '''Set range of values
 
         Parameters
         ----------
-        min : float
-        max : float
+        range : tuple
+            (min, max)
         '''
-        self.spinbox.setRange(min, max)
-        self.slider.setRange(min, max)
+        self.spinbox.setRange(*range)
+        self.slider.setRange(*range)
 
-    def setSingleStep(self, value):
+    def setStep(self, value):
         '''Set value change associated with single step
 
         Parameters
@@ -177,6 +181,6 @@ if __name__ == '__main__':
     param.setRange(0.3, 10)
     param.setValue(0.75)
     param.setDecimals(3)
-    param.spinbox.setSuffix(' μm')
+    param.setSuffix(' μm')
     param.show()
     sys.exit(app.exec_())

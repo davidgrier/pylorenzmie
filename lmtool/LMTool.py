@@ -7,7 +7,6 @@ import json
 import cv2
 import numpy as np
 import pyqtgraph as pg
-import pylorenzmie as pylm
 
 from pylorenzmie.theory import (Sphere, Instrument, LMHologram)
 from pylorenzmie.analysis import Frame
@@ -42,32 +41,18 @@ class LMTool(QtWidgets.QMainWindow):
         self.updateRp()
 
     def setupParameters(self):
-        folder = os.path.dirname(pylm.__file__)
-        folder += str('/lmtool')
-        with open(folder+'/LMTool.json', 'r') as file:
+        self.parameters = ['wavelength', 'magnification', 'n_m',
+                           'a_p', 'n_p', 'k_p',
+                           'x_p', 'y_p', 'z_p', 'bbox']
+        dir = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(dir, 'LMTool.json'), 'r') as file:
             settings = json.load(file)
-        names = ['wavelength', 'magnification', 'n_m',
-                 'a_p', 'n_p', 'k_p', 'x_p', 'y_p', 'z_p',
-                 'bbox']
-        for name in names:
-            if hasattr(self.ui, name):
-                prop = getattr(self.ui, name)
-                setting = settings[name]
-                if 'text' in setting:
-                    prop.setText(setting['text'])
-                if 'suffix' in setting:
-                    prop.spinbox.setSuffix(setting['suffix'])
-                if 'range' in setting:
-                    range = setting['range']
-                    prop.setRange(range[0], range[1])
-                if 'decimals' in setting:
-                    prop.setDecimals(setting['decimals'])
-                if 'step' in setting:
-                    prop.setSingleStep(setting['step'])
-                if 'value' in setting:
-                    prop.setValue(setting['value'])
-                if 'fixed' in setting:
-                    prop.fixed = setting['fixed']
+        for parameter in self.parameters:
+            widget = getattr(self.ui, parameter)
+            for setting, value in settings[parameter].items():
+                setter_name = 'set{}'.format(setting.capitalize())
+                setter = getattr(widget, setter_name)
+                setter(value)
         self.ui.bbox.checkbox.hide()
         self.maxrange = self.ui.bbox.value() // 2
 
@@ -138,8 +123,6 @@ class LMTool(QtWidgets.QMainWindow):
         self.theory.coordinates = np.arange(self.maxrange)
         # Theory for image
         self.frame = Frame()
-        self.frame.optimizer.model.particle = self.particle
-        self.frame.optimizer.model.instrument = self.instrument
 
     def setupData(self, data, background):
         if type(data) is str:
@@ -178,17 +161,15 @@ class LMTool(QtWidgets.QMainWindow):
 
     @data.setter
     def data(self, data):
-        if self.autonormalize:
-            self.frame.background = np.mean(data)
-        self.frame.image = data
+        self.frame.data = data / np.mean(data)
         self.image.setImage(self.frame.data)
-        self.ui.x_p.setRange(0, data.shape[1]-1)
-        self.ui.y_p.setRange(0, data.shape[0]-1)
-        self.ui.bbox.setRange(0, min(data.shape[0]-1, data.shape[1]-1))
+        self.ui.x_p.setRange((0, data.shape[1]-1))
+        self.ui.y_p.setRange((0, data.shape[0]-1))
+        self.ui.bbox.setRange((0, min(data.shape[0]-1, data.shape[1]-1)))
         self.updateDataProfile()
 
     #
-    # Signals and Slots for handling user interaction
+    # Slots for handling user interaction
     #
     def connectSignals(self):
         self.ui.actionOpen.triggered.connect(self.openHologram)
@@ -241,7 +222,8 @@ class LMTool(QtWidgets.QMainWindow):
     def updatePlots(self):
         self.updateTheoryProfile()
         self.updateDataProfile()
-        self.updateFit()
+        if self.ui.tabs.currentIndex() == 2:
+            self.updateFit()
 
     def updateDataProfile(self):
         center = (self.ui.x_p.value(), self.ui.y_p.value())
@@ -258,15 +240,15 @@ class LMTool(QtWidgets.QMainWindow):
         self.theoryProfile.setData(x, y)
 
     def updateFit(self):
-        print('updating fit')
         self.particle.x_p = self.ui.x_p.value()
         self.particle.y_p = self.ui.y_p.value()
         self.updateROI()
         feature = self.frame.features[0]
-        print(self.frame.shape, feature.data)
+        feature.particle = self.particle
+        feature.instrument = self.instrument
         self.region.setImage(feature.data)
-        #self.fit.setImage(feature.hologram())
-        #self.residuals.setImage(feature.residuals())
+        self.fit.setImage(feature.hologram())
+        self.residuals.setImage(feature.residuals())
 
     def updateROI(self):
         dim = self.maxrange
@@ -286,15 +268,15 @@ class LMTool(QtWidgets.QMainWindow):
     @pyqtSlot()
     def optimize(self):
         logger.info('Starting optimization...')
-        
+        self.particle.x_p = self.ui.x_p.value()
+        self.particle.y_p = self.ui.y_p.value()
+        feature = self.frame.features[0]
         if self.ui.LMButton.isChecked():
-            self.frame.optimizer.method = 'lm'
+            feature.optimizer.method = 'lm'
         else:
-            self.frame.optimizer.method = 'amoeba-lm'
-        #for prop in self.feature.optimizer.params:
-        #    if hasattr(self.ui, prop):
-        #        propUi = getattr(self.ui, prop)
-        #        self.feature.optimizer.vary[prop] = not propUi.fixed
+            feature.optimizer.method = 'amoeba-lm'
+        fixed = [p for p in self.parameters if getattr(self.ui, p).fixed]
+        self.frame.optimizer.fixed = fixed
         result = self.frame.optimize()
         self.updateParameterUi()
         self.updatePlots()
@@ -302,42 +284,15 @@ class LMTool(QtWidgets.QMainWindow):
 
     def updateParameterUi(self):
         '''Update Ui with parameters from particle and instrument'''
-        # Disconnect
-        params = ['wavelength', 'magnification', 'n_m', 'a_p', 'n_p', 'z_p']
-        for param in params:
-            getattr(self.ui, param).blockSignals(True)
-        #self.ui.wavelength.valueChanged['double'].disconnect(
-        #    self.updateInstrument)
-        #self.ui.magnification.valueChanged['double'].disconnect(
-        #    self.updateInstrument)
-        #self.ui.n_m.valueChanged['double'].disconnect(self.updateInstrument)
-        #self.ui.a_p.valueChanged['double'].disconnect(self.updateParticle)
-        #self.ui.n_p.valueChanged['double'].disconnect(self.updateParticle)
-        #self.ui.z_p.valueChanged['double'].disconnect(self.updateParticle)
-        # Update
-        particle, instrument = (self.particle, self.instrument)
-        for p in self.frame.optimizer.properties:
-            if hasattr(self.ui, p):
-                attrUi = getattr(self.ui, p)
-                if p in self.particle.properties:
-                    attrUi.setValue(getattr(self.particle, p))
-                elif p in self.instrument.properties:
-                    attrUi.setValue(getattr(self.instrument, p))
-                else:
-                    attrUi.setValue(getattr(self.frame, p))
-        # Reconnect
-        for param in params:
-            getattr(self.ui, param).blockSignals(False)
-        #self.ui.wavelength.valueChanged['double'].connect(
-        #    self.updateInstrument)
-        #self.ui.magnification.valueChanged['double'].connect(
-        #    self.updateInstrument)
-        #self.ui.n_m.valueChanged['double'].connect(self.updateInstrument)
-        #self.ui.a_p.valueChanged['double'].connect(self.updateParticle)
-        #self.ui.n_p.valueChanged['double'].connect(self.updateParticle)
-        #self.ui.z_p.valueChanged['double'].connect(self.updateParticle)
+        for parameter in self.parameters:
+            widget = getattr(self.ui, parameter)
+            widget.blockSignals(True)
+            if parameter in self.particle.properties:
+                widget.setValue(getattr(self.particle, property))
+            elif parameter in self.instrument.properties:
+                widget.setValue(getattr(self.instrument, property))
+            widget.blockSignals(False)
 
-   
     @pyqtSlot()
     def saveParameters(self, filename=None):
         if filename is None:
