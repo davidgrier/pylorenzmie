@@ -44,8 +44,8 @@ class LMTool(QtWidgets.QMainWindow):
         self.parameters = ['wavelength', 'magnification', 'n_m',
                            'a_p', 'n_p', 'k_p',
                            'x_p', 'y_p', 'z_p', 'bbox']
-        dir = os.path.dirname(os.path.abspath(__file__))
-        with open(os.path.join(dir, 'LMTool.json'), 'r') as file:
+        basedir = os.path.dirname(os.path.abspath(__file__))
+        with open(os.path.join(basedir, 'LMTool.json'), 'r') as file:
             settings = json.load(file)
         for parameter in self.parameters:
             widget = getattr(self.ui, parameter)
@@ -271,13 +271,16 @@ class LMTool(QtWidgets.QMainWindow):
         self.particle.x_p = self.ui.x_p.value()
         self.particle.y_p = self.ui.y_p.value()
         feature = self.frame.features[0]
+        feature.particle = self.particle
         if self.ui.LMButton.isChecked():
             feature.optimizer.method = 'lm'
         else:
             feature.optimizer.method = 'amoeba-lm'
         fixed = [p for p in self.parameters if getattr(self.ui, p).fixed]
-        self.frame.optimizer.fixed = fixed
-        result = self.frame.optimize()
+        feature.optimizer.fixed = fixed
+        print('Before: ', self.particle)
+        result = feature.optimize()
+        print('After: ', self.particle)
         self.updateParameterUi()
         self.updatePlots()
         logger.info("Finished!\n{}".format(str(result)))
@@ -288,9 +291,9 @@ class LMTool(QtWidgets.QMainWindow):
             widget = getattr(self.ui, parameter)
             widget.blockSignals(True)
             if parameter in self.particle.properties:
-                widget.setValue(getattr(self.particle, property))
+                widget.setValue(getattr(self.particle, parameter))
             elif parameter in self.instrument.properties:
-                widget.setValue(getattr(self.instrument, property))
+                widget.setValue(getattr(self.instrument, parameter))
             widget.blockSignals(False)
 
     @pyqtSlot()
@@ -314,7 +317,8 @@ def main():
     import sys
     import argparse
 
-    fn = '../docs/tutorials/crop.png'
+    basedir = os.path.dirname(os.path.abspath(__file__))
+    fn = os.path.join(basedir, '..', 'docs', 'tutorials', 'crop.png')
 
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', type=str, default=fn,
