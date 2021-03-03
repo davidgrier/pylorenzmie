@@ -67,14 +67,13 @@ class LMTool(QtWidgets.QMainWindow):
     def setupImageTab(self):
         self.ui.imageTab.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.image = pg.ImageItem(border=pg.mkPen('k'))
-        self.overlay = pg.ScatterPlotItem(symbol='+', pen=pg.mkPen('y'))
         options = {'enableMenu': False,
                    'enableMouse': False,
                    'invertY': False,
                    'lockAspect': True}
         viewbox = self.ui.imageTab.addViewBox(**options)
         viewbox.addItem(self.image)
-        viewbox.addItem(self.overlay)
+        self.roi = pg.ROI([100,100], [100,100], parent=self.image)
 
     def setupProfileTab(self):
         plot = self.ui.profilePlot
@@ -183,6 +182,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.y_p.valueChanged['double'].connect(self.updateRp)
         self.ui.bbox.valueChanged['double'].connect(self.updateBBox)
         self.ui.optimizeButton.clicked.connect(self.optimize)
+        self.roi.sigRegionChanged.connect(self.handleROIChanged)
         
     @pyqtSlot(int)
     def handleTabChanged(self, tab):
@@ -190,6 +190,14 @@ class LMTool(QtWidgets.QMainWindow):
             self.updateDataProfile()
         if (tab == 2):
             self.updateFit()
+
+    @pyqtSlot(object)
+    def handleROIChanged(self, roi):
+        x0, y0 = roi.pos()
+        w, h = roi.size()
+        self.ui.bbox.setValue(w)
+        self.ui.x_p.setValue(x0 + w/2)
+        self.ui.y_p.setValue(y0 + w/2)
 
     @pyqtSlot(float)
     def updateParameters(self, count):
@@ -203,9 +211,6 @@ class LMTool(QtWidgets.QMainWindow):
 
     @pyqtSlot(float)
     def updateRp(self, r_p=0):
-        x_p = [self.ui.x_p.value()]
-        y_p = [self.ui.y_p.value()]
-        self.overlay.setData(x_p, y_p)
         self.updateROI()
         self.updatePlots()
 
@@ -260,6 +265,8 @@ class LMTool(QtWidgets.QMainWindow):
         x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
         y1 = int(np.clip(y_p + dim, y0 + 1, h - 1))
         bbox = ((x0, y0), x1-x0, y1-y0)
+        self.roi.setSize((2*dim+1, 2*dim+1), (0.5, 0.5), update=False)
+        self.roi.setPos(x0, y0, update=False)
         self.frame.bboxes = [bbox]
         
     #
