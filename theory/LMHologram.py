@@ -22,9 +22,11 @@ class LMHologram(LorenzMie):
         Computed hologram of sphere
     '''
 
-    def __init__(self, *args, alpha=1., **kwargs):
+    def __init__(self, *args,
+                 alpha=None,
+                 **kwargs):
         super(LMHologram, self).__init__(*args, **kwargs)
-        self.alpha = alpha
+        self.alpha = alpha or 1.
 
     @property
     def alpha(self):
