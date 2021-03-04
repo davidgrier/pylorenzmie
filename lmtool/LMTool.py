@@ -124,7 +124,8 @@ class LMTool(QtWidgets.QMainWindow):
                                  instrument=self.instrument)
         self.theory.coordinates = np.arange(self.maxrange)
         # Theory for image
-        self.frame = Frame()
+        self.frame = Frame(particle=self.particle,
+                           instrument=self.instrument)
 
     def setupData(self, data, background):
         if type(data) is str:
@@ -234,8 +235,7 @@ class LMTool(QtWidgets.QMainWindow):
             self.updateFit()
 
     def updateDataProfile(self):
-        center = (self.ui.x_p.value(), self.ui.y_p.value())
-        avg, std = azistd(self.frame.data, center)
+        avg, std = azistd(self.frame.data, self.particle.r_p[0:2])
         self.dataProfile.setData(avg)
         self.regionUpper.setData(avg + std)
         self.regionLower.setData(avg - std)
@@ -243,6 +243,7 @@ class LMTool(QtWidgets.QMainWindow):
     def updateTheoryProfile(self):
         x = np.arange(self.maxrange)
         self.theory.coordinates = x + self.particle.x_p
+        print(self.particle)
         y = self.theory.hologram()
         self.theoryProfile.setData(x, y)
 
@@ -261,6 +262,8 @@ class LMTool(QtWidgets.QMainWindow):
         dim = self.maxrange
         x_p = self.ui.x_p.value()
         y_p = self.ui.y_p.value()
+        self.particle.x_p = x_p
+        self.particle.y_p = y_p
         h, w = self.frame.shape
         x0 = int(np.clip(x_p - dim, 0, w - 2))
         y0 = int(np.clip(y_p - dim, 0, h - 2))
@@ -277,8 +280,6 @@ class LMTool(QtWidgets.QMainWindow):
     @pyqtSlot()
     def optimize(self):
         logger.info('Starting optimization...')
-        self.particle.x_p = self.ui.x_p.value()
-        self.particle.y_p = self.ui.y_p.value()
         feature = self.frame.features[0]
         feature.particle = self.particle
         if self.ui.LMButton.isChecked():
