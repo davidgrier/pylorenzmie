@@ -73,7 +73,10 @@ class LMTool(QtWidgets.QMainWindow):
                    'lockAspect': True}
         viewbox = self.ui.imageTab.addViewBox(**options)
         viewbox.addItem(self.image)
-        self.roi = pg.ROI([100,100], [100,100], parent=self.image)
+        pen = pg.mkPen('w', width=3)
+        hoverPen = pg.mkPen('y', width=3)
+        self.roi = pg.ROI([100,100], [100,100], parent=self.image,
+                          pen=pen, hoverPen=hoverPen)
 
     def setupProfileTab(self):
         plot = self.ui.profilePlot
@@ -238,9 +241,8 @@ class LMTool(QtWidgets.QMainWindow):
         self.regionLower.setData(avg - std)
 
     def updateTheoryProfile(self):
-        self.particle.x_p, self.particle.y_p = (0, 0)
         x = np.arange(self.maxrange)
-        self.theory.coordinates = x
+        self.theory.coordinates = x + self.particle.x_p
         y = self.theory.hologram()
         self.theoryProfile.setData(x, y)
 
