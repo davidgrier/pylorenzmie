@@ -120,7 +120,8 @@ if __name__ == '__main__': # pragma: no cover
     from time import time
 
     THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-    TEST_IMAGE = os.path.join(THIS_DIR, '../docs/tutorials/crop.png')
+    path = (THIS_DIR, '..', 'docs', 'tutorials', 'crop.png')
+    TEST_IMAGE = os.path.join(path)
 
     # Feature with instrumental properties and mask properties
     a = Feature(wavelength=0.447, magnification=0.048, n_m=1.34,
