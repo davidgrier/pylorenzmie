@@ -24,7 +24,8 @@ class LMTool(QtWidgets.QMainWindow):
 
     def __init__(self,
                  data=None,
-                 background=None):
+                 background=None,
+                 percentpix=0.3):
         super(LMTool, self).__init__()
 
         self.setupPyQtGraph()
@@ -32,7 +33,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.setupUi(self)
         self.ui.bbox.checkbox.hide()
         self.setupTabs()
-        self.setupTheory()
+        self.setupTheory(percentpix)
         self.autonormalize = True         # FIXME: should be a UI option
         self.setupData(data, background)
         self.connectSignals()
@@ -110,7 +111,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.fitTab.addViewBox(**options).addItem(self.fit)
         self.ui.fitTab.addViewBox(**options).addItem(self.residuals)
     
-    def setupTheory(self):
+    def setupTheory(self, percentpix):
         # Profile and Frame use the same particle and instrument
         self.particle = Sphere()
         self.instrument = Instrument()
@@ -120,7 +121,8 @@ class LMTool(QtWidgets.QMainWindow):
         self.theory.coordinates = np.arange(self.maxrange)
         # Theory for image
         self.frame = Frame(particle=self.particle,
-                           instrument=self.instrument)
+                           instrument=self.instrument,
+                           percentpix=percentpix)
 
     #
     # Routines for loading data
