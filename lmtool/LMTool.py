@@ -74,8 +74,10 @@ class LMTool(QtWidgets.QMainWindow):
         self.ui.imageTab.addViewBox(**options).addItem(self.image)
         pen = pg.mkPen('w', width=3)
         hoverPen = pg.mkPen('y', width=3)
-        self.roi = pg.ROI([100,100], [100,100], parent=self.image,
-                          pen=pen, hoverPen=hoverPen)
+        self.roi = pg.CircleROI([100,100], radius=100., parent=self.image)
+        self.roi.setPen(pen)
+        self.roi.hoverPen = hoverPen
+        self.roi.removeHandle(0)
 
     def setupProfileTab(self):
         plot = self.ui.profilePlot
@@ -203,10 +205,10 @@ class LMTool(QtWidgets.QMainWindow):
     @pyqtSlot(object)
     def handleROIChanged(self, roi):
         x0, y0 = roi.pos()
-        w, h = roi.size()
-        self.ui.bbox.setValue(w)
-        self.ui.x_p.setValue(x0 + w/2)
-        self.ui.y_p.setValue(y0 + w/2)
+        dim, _ = roi.size()
+        self.ui.bbox.setValue(dim)
+        self.ui.x_p.setValue(x0 + dim/2)
+        self.ui.y_p.setValue(y0 + dim/2)
 
     @pyqtSlot(float)
     def updateParameter(self, value):
