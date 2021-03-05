@@ -14,6 +14,10 @@ if config.has_numba():
 else:
     from pylorenzmie.utilities.numba import njit
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
+
 '''
 This object uses generalized Lorenz-Mie theory to compute the
 electric field scattered by a particle with specified Lorenz-Mie
@@ -135,6 +139,7 @@ class LorenzMie(object):
 
     @particle.setter
     def particle(self, particle):
+        logger.debug('Setting particle')
         p = np.atleast_1d(particle)
         if isinstance(p[0], Particle):
             self._particle = particle
@@ -146,6 +151,7 @@ class LorenzMie(object):
 
     @instrument.setter
     def instrument(self, instrument):
+        logger.debug('Setting instrument')
         if isinstance(instrument, Instrument):
             self._instrument = instrument
 
