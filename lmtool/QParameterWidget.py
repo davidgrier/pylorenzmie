@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from PyQt5 import QtCore, QtWidgets
+from PyQt5 import (QtCore, QtWidgets)
 from QDoubleSlider import QDoubleSlider
 
 
@@ -120,7 +120,7 @@ class QParameterWidget(QtWidgets.QFrame):
         self.spinbox.setDisabled(state)
         self.slider.setDisabled(state)
 
-    @property
+    @QtCore.pyqtProperty(bool)
     def fixed(self):
         '''Parameter cannot be changed if True'''
         return self.checkbox.isChecked()
