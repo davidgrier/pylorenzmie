@@ -145,17 +145,20 @@ class LMTool(QtWidgets.QMainWindow):
         if filename is None:
             filename, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self, 'Open Hologram', '', 'Images (*.png)')
-        data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+        data = cv2.imread(filename, 0).astype(float)
         if data is None:
             return
-        self.data = data.astype(float)
+        self.data = data
         
     @pyqtSlot()
     def openBackground(self, filename=None):
         if filename is None:
             filename, _ = QtWidgets.QFileDialog.getOpenFileName(
                 self, 'Open Background', '', 'Images (*.png)')
-        self.frame.background = cv2.imread(filename, 0).astype(float)
+        background = cv2.imread(filename, 0).astype(float)
+        if background is None:
+            return
+        self.frame.background = background
 
     @pyqtProperty(object)
     def data(self):
@@ -302,10 +305,8 @@ class LMTool(QtWidgets.QMainWindow):
         if filename is None:
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Parameters', '', 'JSON (*.json)')
-        names = ['x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p',
-                 'magnification', 'wavelength', 'n_m']
         parameters = {name: getattr(self.ui, name).value()
-                      for name in names}
+                      for name in self.parameters}
         try:
             with open(filename, 'w') as file:
                 json.dump(parameters, file, indent=4, sort_keys=True)
@@ -313,7 +314,6 @@ class LMTool(QtWidgets.QMainWindow):
             print('error')
 
  
-
 def main():
     import sys
     import argparse
