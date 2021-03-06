@@ -7,6 +7,7 @@ import json
 import cv2
 import numpy as np
 import pyqtgraph as pg
+from matplotlib import cm
 
 from pylorenzmie.theory import (Sphere, Instrument, LMHologram)
 from pylorenzmie.analysis import Frame
@@ -106,12 +107,17 @@ class LMTool(QtWidgets.QMainWindow):
 
     def setupFitTab(self, options):
         self.ui.fitTab.ci.layout.setContentsMargins(0, 0, 0, 0)
-        self.region = pg.ImageItem(pen=pg.mkPen('k'))
-        self.fit = pg.ImageItem(pen=pg.mkPen('k'))
-        self.residuals = pg.ImageItem(pen=pg.mkPen('k'))
+        pen = pg.mkPen('k')
+        self.region = pg.ImageItem(pen=pen)
+        self.fit = pg.ImageItem(pen=pen)
+        self.residuals = pg.ImageItem(pen=pen)
         self.ui.fitTab.addViewBox(**options).addItem(self.region)
         self.ui.fitTab.addViewBox(**options).addItem(self.fit)
         self.ui.fitTab.addViewBox(**options).addItem(self.residuals)
+        map = cm.get_cmap('bwr')
+        map._init()
+        lut = (map._lut * 255).view(np.ndarray)
+        self.residuals.setLookupTable(lut)
     
     def setupTheory(self, percentpix):
         # Profile and Frame use the same particle and instrument
