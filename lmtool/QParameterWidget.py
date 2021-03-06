@@ -94,6 +94,11 @@ class QParameterWidget(QtWidgets.QFrame):
         self.slider.valueChanged['double'].connect(self.spinbox.setValue)
         self.checkbox.stateChanged.connect(self.fixValue)
 
+    def setObjectName(self, name):
+        super().setObjectName(name)
+        for child in self.children():
+            child.setObjectName(name)
+
     @QtCore.pyqtSlot()
     def updateValues(self):
         self.slider.setValue(self.spinbox.value())

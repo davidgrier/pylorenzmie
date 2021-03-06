@@ -221,7 +221,7 @@ class LMTool(QtWidgets.QMainWindow):
 
     @pyqtSlot(float)
     def updateParameter(self, value):
-        parameter = self.sender().parent().objectName()
+        parameter = self.sender().objectName()
         if parameter == 'bbox':
             self.ui.profilePlot.setXRange(0., self.maxrange)
         elif hasattr(self.instrument, parameter):
