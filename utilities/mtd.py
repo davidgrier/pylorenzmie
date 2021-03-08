@@ -2,16 +2,9 @@
 # -*- coding: utf-8 -*-
 
 '''Make Training Data'''
-import sys
-sys.path.append('/home/lea336/pylorenzmie/')
-sys.path.append('/home/lea336/')
 import json
-try:
-    from pylorenzmie.theory.CudaLMHologram import CudaLMHologram as LMHologram
-except ImportError:
-    from pylorenzmie.theory.LMHologram import LMHologram
-from pylorenzmie.theory.Instrument import coordinates
-from pylorenzmie.theory.Sphere import Sphere
+from pylorenzmie.theory import (LMHologram, Sphere)
+from pylorenzmie.utilities import coordinates
 import numpy as np
 
 import cv2
