@@ -31,14 +31,15 @@ class Particle(object):
         Returns the Mie scattering coefficients
     '''
 
-    def __init__(self, r_p=[0, 0, 100], **kwargs):
+    def __init__(self, r_p=None, **kwargs):
         '''
         Parameters
         ----------
         r_p : list or numpy.ndarray
             [x, y, z] coordinates of the center of the particle.
         '''
-        self.r_p = r_p
+        self.r_p = r_p or [0., 0., 100.]
+
 
     def __str__(self):
         str = '{}(r_p={})'
