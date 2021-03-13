@@ -114,8 +114,7 @@ class Optimizer(object):
                           lm_settings=self.lm_settings,
                           nm_settings=self.nm_settings,
                           noise=self.noise,
-                          fixed=self.fixed,
-                          variables=self.variables)
+                          fixed=self.fixed)
         properties.update(self.model.properties)
         return properties
 
