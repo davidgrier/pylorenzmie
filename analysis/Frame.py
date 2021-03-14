@@ -4,7 +4,7 @@ import pandas as pd
 from .Feature import Feature
 from pylorenzmie.utilities import (coordinates, configuration)
 
-if configuration.has_catch:
+if configuration.has_catch():
     from CATCH import (Localizer)
 else:
     from pylorenzmie.detection import Localizer
