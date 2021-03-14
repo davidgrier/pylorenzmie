@@ -1,6 +1,7 @@
 # Configuration for optional components of pylorenzmie
 use_numba = True
 use_cupy = True
+use_catch = True
 
 
 # Implement requested configuration
@@ -45,3 +46,24 @@ def has_cupy():
     if not ok:
         logger.warn(' Falling back to standard implementation')
     return ok
+
+
+'''
+try:
+    import CATCH
+    import_catch = True
+except ImportError as ex:
+    catch_ex = ex
+    import_catch = False
+
+
+def has_catch():
+    if not use_catch:
+        logger.warn(' CATCH deselected in {}'.format(__file__))
+    elif not import_catch:
+        logger.warn(' Cannot import CATCH:\n\t{}'.format(catch_ex))
+    ok = use_catch and import_catch
+    if not ok:
+        logger.warn(' Falling back to standard implementation')
+    return ok
+'''
