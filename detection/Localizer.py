@@ -21,7 +21,7 @@ class Localizer(object):
     
     Methods
     -------
-    predict(image) :
+    detect(image) : list of dict
         Returns centers and bounding boxes of features
         detected in image
     '''
@@ -35,7 +35,7 @@ class Localizer(object):
         self._maxrange = maxrange or 400
         self._shape = None
 
-    def predict(self, image):
+    def detect(self, image):
         '''
         Localize features in normalized holographic microscopy images
         
@@ -59,13 +59,15 @@ class Localizer(object):
         if nfeatures == 0:
             return None, None
 
-        centers = features[['x', 'y']].to_numpy()
-        bboxes = []
-        for center in centers:
-            extent = self._extent(image, center)
-            r0 = tuple((center - extent/2).astype(int))
-            bboxes.append((r0, extent, extent))
-        return centers, bboxes
+        predictions = []
+        for n, feature in features.iterrows():
+            r_p = feature[['x', 'y']]
+            extent = self._extent(image, r_p)
+            r0 = tuple((r_p - extent/2).astype(int))
+            bbox = (r0, extent, extent)
+            prediction = dict(r_p=r_p, bbox=bbox)
+            predictions.append(prediction)
+        return predictions
 
     def _kernel(self, image):
         '''

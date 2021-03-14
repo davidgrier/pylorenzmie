@@ -19,12 +19,12 @@ class Frame(object):
         dimensions of image data, updated to reflect most recent image
     coordinates : numpy.ndarray
         [3, w, h] of pixel coordinates for most recent image
-    bboxes : list
-        List of tuples ((x, y), w, h)
-        Bounding box of dimensions (w, h) around feature at (x, y). 
-        Used for cropping to obtain image stamps
+    discoveries : list of dict
+        Each dict should countain
+        {'r_p': (x_p, y_p),
+         'bbox': ((x0, y0), w, h)}
     features : list
-        List of Feature objects corresponding to bboxes
+        List of Feature objects corresponding to discoveries
 
     Methods
     -------
@@ -86,20 +86,23 @@ class Frame(object):
         return self._features
     
     @property
-    def bboxes(self):
-        return self._bboxes
+    def discoveries(self):
+        return self._discoveries
 
-    @bboxes.setter
-    def bboxes(self, bboxes):
-        self._bboxes = bboxes
+    @discoveries.setter
+    def discoveries(self, discoveries):
+        self._discoveries = discoveries
         self._features = []
-        for bbox in bboxes:
-            ((x0, y0), w, h) = bbox
+        for discovery in discoveries:
+            ((x0, y0), w, h) = discovery['bbox']            
             data = self.data[y0:y0+h, x0:x0+w]
             coordinates = self.coordinates[:, y0:y0+h, x0:x0+w]
             feature = Feature(data=data,
                               coordinates=coordinates.reshape((2,-1)),
                               **self.kwargs)
+            x_p, y_p = discovery['r_p']
+            feature.particle.x_p = x_p
+            feature.particle.y_p = y_p
             self._features.append(feature)
 
     def analyze(self, data=None):
@@ -118,14 +121,9 @@ class Frame(object):
         '''
         if data is not None:
             self.data = data
-        centers, bboxes = self.localizer.predict(self.data)
-        self.bboxes = bboxes
-        for feature, center in zip(self.features, centers):
-            particle = feature.particle
-            properties = self.estimator.predict()
-            properties['x_p'] = center[0]
-            properties['y_p'] = center[1]
-            particle.properties = properties
+        self.discoveries = self.localizer.detect(self.data)
+        for feature in self.features:
+            feature.particle.properties = self.estimator.predict()
         return self.optimize()
 
     def optimize(self):
