@@ -7,7 +7,7 @@ from importlib import import_module
 import logging
 logging.basicConfig()
 logger = logging.getLogger('configuration')
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.INFO)
 
 
 def has_(module):
@@ -21,10 +21,10 @@ def has_(module):
         except ImportError as ex:
             logger.warn(' Cannot import {}:\n\t{}'.format(module, ex))
     else:
-        logger.warn(' {} deselected in {}'.format(module, __file__))
+        logger.info(' {} deselected in {}'.format(module, __file__))
     ok = flag and can_import
     if not ok:
-        logger.warn(' Falling back to standard implementation')
+        logger.info(' Falling back to standard implementation')
     return ok
 
 has_numba = lambda: has_('numba')
