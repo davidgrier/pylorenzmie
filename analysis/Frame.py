@@ -2,13 +2,8 @@ import cv2
 import numpy as np
 import pandas as pd
 from .Feature import Feature
-from pylorenzmie.utilities import (coordinates, configuration)
-
-if configuration.has_catch():
-    from CATCH import (Localizer)
-else:
-    from pylorenzmie.detection import Localizer
-from pylorenzmie.detection import Estimator
+from pylorenzmie.utilities import coordinates as make_coordinates
+from pylorenzmie.detection import (Localizer, Estimator)
 
 
 class Frame(object):
@@ -65,7 +60,7 @@ class Frame(object):
         if shape is None:
             self._coordinates = None
         else:
-            self._coordinates = coordinates(shape, flatten=False)
+            self._coordinates = make_coordinates(shape, flatten=False)
         self._shape = shape
 
     @property
@@ -96,11 +91,10 @@ class Frame(object):
 
     @discoveries.setter
     def discoveries(self, discoveries):
-        print(discoveries)
         self._discoveries = discoveries
         self._features = []
         for discovery in discoveries:
-            ((x0, y0), w, h) = discovery['bbox']            
+            (x0, y0, w, h) = discovery['bbox']            
             data = self.data[y0:y0+h, x0:x0+w]
             coordinates = self.coordinates[:, y0:y0+h, x0:x0+w]
             feature = Feature(data=data,
