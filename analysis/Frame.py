@@ -2,8 +2,13 @@ import cv2
 import numpy as np
 import pandas as pd
 from .Feature import Feature
-from pylorenzmie.utilities import coordinates
-from pylorenzmie.detection import (Localizer, Estimator)
+from pylorenzmie.utilities import (coordinates, configuration)
+
+if configuration.has_catch:
+    from CATCH import (Localizer)
+else:
+    from pylorenzmie.detection import Localizer
+from pylorenzmie.detection import Estimator
 
 
 class Frame(object):
@@ -91,6 +96,7 @@ class Frame(object):
 
     @discoveries.setter
     def discoveries(self, discoveries):
+        print(discoveries)
         self._discoveries = discoveries
         self._features = []
         for discovery in discoveries:
