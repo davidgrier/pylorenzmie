@@ -100,9 +100,8 @@ class Frame(object):
             feature = Feature(data=data,
                               coordinates=coordinates.reshape((2,-1)),
                               **self.kwargs)
-            x_p, y_p = discovery['r_p']
-            feature.particle.x_p = x_p
-            feature.particle.y_p = y_p
+            feature.particle.x_p = discovery['x_p']
+            feature.particle.y_p = discovery['y_p']
             self._features.append(feature)
 
     def analyze(self, data=None):
