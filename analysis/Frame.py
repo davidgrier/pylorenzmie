@@ -37,15 +37,15 @@ class Frame(object):
         associated with the bboxes in the currently loaded image.
 
     '''
-    def __init__(self, image=None, bboxes=None, **kwargs):
+    def __init__(self, image=None, **kwargs):
         self._data = None
         self._shape = None
         self._coordinates = None
         self.localizer = Localizer(**kwargs)
         self.estimator = Estimator(**kwargs)
         self.image = image
+        self._discoveries = []
         self._features = []
-        self.bboxes = bboxes or []
         self.kwargs = kwargs
         
     @property
@@ -84,6 +84,10 @@ class Frame(object):
     @property
     def features(self):
         return self._features
+
+    @property
+    def bboxes(self):
+        return [discovery['bbox'] for discovery in self.discoveries]
     
     @property
     def discoveries(self):
