@@ -94,7 +94,7 @@ class Frame(object):
         self._discoveries = discoveries
         self._features = []
         for discovery in discoveries:
-            (x0, y0, w, h) = discovery['bbox']            
+            ((x0, y0), w, h) = discovery['bbox']            
             data = self.data[y0:y0+h, x0:x0+w]
             coordinates = self.coordinates[:, y0:y0+h, x0:x0+w]
             feature = Feature(data=data,
