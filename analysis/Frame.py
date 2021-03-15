@@ -98,9 +98,10 @@ class Frame(object):
         self._discoveries = discoveries
         self._features = []
         for discovery in discoveries:
-            ((x0, y0), w, h) = discovery['bbox']            
-            data = self.data[y0:y0+h, x0:x0+w]
-            coordinates = self.coordinates[:, y0:y0+h, x0:x0+w]
+            ((x0, y0), w, h) = discovery['bbox']
+            dim = min(w, h)
+            data = self.data[y0:y0+dim, x0:x0+dim]
+            coordinates = self.coordinates[:, y0:y0+dim, x0:x0+dim]
             feature = Feature(data=data,
                               coordinates=coordinates.reshape((2,-1)),
                               **self.kwargs)
@@ -126,7 +127,7 @@ class Frame(object):
             self.data = data
         self.discoveries = self.localizer.detect(self.data)
         for feature in self.features:
-            feature.particle.properties = self.estimator.predict()
+            feature.particle.properties = self.estimator.predict(feature.data)
         return self.optimize()
 
     def optimize(self):
