@@ -64,7 +64,7 @@ class Localizer(object):
             r_p = feature[['x', 'y']]
             extent = self._extent(image, r_p)
             r0 = tuple((r_p - extent/2).astype(int))
-            bbox = (*r0, extent, extent)
+            bbox = (r0, extent, extent)
             prediction = dict(x_p=r_p[0], y_p=r_p[1], bbox=bbox)
             predictions.append(prediction)
         return predictions
