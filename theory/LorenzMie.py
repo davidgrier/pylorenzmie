@@ -11,7 +11,7 @@ from pylorenzmie.utilities import configuration as config
 
 if config.has_numba():
     from numba import njit
-else:
+else: # pragma: no cover
     from pylorenzmie.utilities.numba import njit
 
 import logging
@@ -126,7 +126,7 @@ class LorenzMie(object):
             c = np.vstack((c, np.zeros((2, c.size))))
         elif c.shape[0] == 2:    # only (x, y) specified
             c = np.vstack((c, np.zeros(c.shape[1])))
-        if c.shape[0] != 3:
+        if c.shape[0] != 3:      # pragma: no cover
             raise ValueError(
                 'coordinates should have shape ({1|2|3}, npts).')
         self._coordinates = c
