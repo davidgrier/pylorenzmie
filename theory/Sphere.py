@@ -8,7 +8,7 @@ import pylorenzmie.utilities.configuration as config
 
 if config.has_numba():
     from numba import njit
-else:
+else: # pragma: no cover
     from pylorenzmie.utilities.numba import njit
 
     

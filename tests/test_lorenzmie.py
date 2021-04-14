@@ -2,12 +2,15 @@ import unittest
 
 import numpy as np
 from theory.LorenzMie import LorenzMie
-from utilities import coordinates
+from pylorenzmie.utilities import coordinates
 
 
 class TestLorenzMie(unittest.TestCase):
 
     def setUp(self):
+        # import pylorenzmie.utilities.configuration as config
+        # config.use_cupy = False
+        # from pylorenzmie.theory.LorenzMie import LorenzMie
         self.method = LorenzMie()
         self.shape = [256, 256]
 

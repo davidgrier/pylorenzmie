@@ -5,43 +5,27 @@ Author: Mark Hannel
 import numpy as np
 import h5py
 
-class TagArray(np.ndarray):
-
-    def __new__(cls, input_array, frame_no=None):
-        # Input array is an already formed ndarray instance
-        # We first cast to be our class type
-        obj = np.asarray(input_array).view(cls)
-        # add the new attribute to the created instance
-        obj.frame_no = frame_no
-        # Finally, we must return the newly created object:
-        return obj
-
-    def __array_finalize__(self, obj):
-        # see InfoArray.__array_finalize__ for comments
-        if obj is None: return
-        self.frame_no = getattr(obj, 'frame_no', None)
 
 class h5video(object):
-    def __init__(self, filename, mode='r'):
+    def __init__(self, filename):
         self.filename = filename
-        self.mode = mode
         self.image = None
         self.index = None
-        self.dim = None
+        self.shape = None
         self.nframes = None
         self.eof = False
 
     def __enter__(self):
-        self.f = h5py.File(self.filename, self.mode)
-        self.keys = self.f['images/'].keys()
-        self.frames = self.f['images/'].values()
+        self.h5file = h5py.File(self.filename, 'r')
+        self.keys = self.h5file['images/'].keys()
+        self.frames = self.h5file['images/'].values()
         self.nframes = len(self.frames)
         self.image = self.rewind()
-        self.dim = self.f['images/' + self.keys[0]].shape
+        self.shape = self.h5file['images/' + self.keys[0]].shape
         return self
 
     def __exit__(self, *args):
-        self.f.close()
+        self.h5file.close()
 
     def get_image(self):
         try:
@@ -93,7 +77,7 @@ def example():
         plt.show()
         
         print('Example timestamp: {}'.format(vid.get_time()))
-        print('Dimension of image: {}'.format(vid.dim))
+        print('Dimension of image: {}'.format(vid.shape))
         print('Number of frames: {}'.format(vid.nframes))
     
 if __name__ == '__main__':
