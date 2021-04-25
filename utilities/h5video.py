@@ -1,12 +1,14 @@
-"""
-Author: Mark Hannel
-"""
-
-import numpy as np
 import h5py
+import numpy as np
+
+import logging
+logging.basicConfig()
+logger = logging.getLogger('configuration')
+logger.setLevel(logging.INFO)
 
 
 class h5video(object):
+    '''Class for reading HDF5 videos created by pyfab'''
     def __init__(self, filename):
         self.filename = filename
         self.image = None
@@ -32,7 +34,8 @@ class h5video(object):
             self.image = self.frames[self.index]
             return self.image
         except IndexError:
-            print("Index is out of range.")
+            msg = 'Index {} is out of range ({})'
+            logger.warn(msg.format(self.index, self.nframes))
             raise IndexError
             
     def get_time(self):
@@ -53,11 +56,11 @@ class h5video(object):
 
     def goto(self, index):
         self.index = index
+        
 
 def example():
     import matplotlib.pyplot as plt
 
-    # Grab h5 file.
     filename = 'example.h5'
     bg = np.load('example_bg.npy')
 
