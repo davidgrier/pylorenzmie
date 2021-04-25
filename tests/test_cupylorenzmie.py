@@ -1,6 +1,6 @@
 import unittest
 
-from theory.cupyLorenzMie import cupyLorenzMie as LorenzMie
+from theory.cupyLorenzMie import cupyLorenzMie
 from utilities import coordinates
 import numpy as np
 
@@ -8,7 +8,7 @@ import numpy as np
 class TestCupyLorenzMie(unittest.TestCase):
 
     def setUp(self):
-        self.method = LorenzMie()
+        self.method = cupyLorenzMie()
         if self.method.method != 'cupy':
             self.skipTest('Not using cupy acceleration')
 
