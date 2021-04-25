@@ -4,10 +4,12 @@ from .Particle import Particle
 from .Sphere import Sphere
 from .Instrument import Instrument
 
+from .LorenzMie import LorenzMie as numpyLorenzMie
 if config.has_cupy():
-    from .cupyLorenzMie import cupyLorenzMie as LorenzMie
+    from .cupyLorenzMie import cupyLorenzMie as cupyLorenzMie
+    LorenzMie = cupyLorenzMie
 else:
-    from .LorenzMie import LorenzMie
+    LorenzMie = numpyLorenzMie
 
 from .LMHologram import LMHologram
 

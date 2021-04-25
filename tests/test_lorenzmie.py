@@ -1,17 +1,14 @@
 import unittest
-
 import numpy as np
-from theory.LorenzMie import LorenzMie
-from pylorenzmie.utilities import coordinates
+
+from theory import numpyLorenzMie
+from utilities import coordinates
 
 
 class TestLorenzMie(unittest.TestCase):
 
-    def setUp(self):
-        # import pylorenzmie.utilities.configuration as config
-        # config.use_cupy = False
-        # from pylorenzmie.theory.LorenzMie import LorenzMie
-        self.method = LorenzMie()
+    def setUp(self):       
+        self.method = numpyLorenzMie()
         self.shape = [256, 256]
 
     def test_coordinates_None(self):
@@ -81,6 +78,5 @@ class TestLorenzMie(unittest.TestCase):
         self.test_field(bohren=True, cartesian=True)
         
 
-        
 if __name__ == '__main__':
     unittest.main()
