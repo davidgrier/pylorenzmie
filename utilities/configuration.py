@@ -1,5 +1,5 @@
 use_numba = True
-use_cupy = False
+use_cupy = True
 use_catch = True
 
 from importlib import import_module
