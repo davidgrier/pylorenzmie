@@ -26,4 +26,4 @@ def azimedian(data, center):
    maxrange = np.max(r)
    med = [np.median(d[np.where(r == n)]) for n in np.arange(np.max(r))]
 
-   return med
+   return np.array(med)
