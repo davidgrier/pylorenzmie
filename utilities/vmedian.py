@@ -16,7 +16,7 @@ class vmedian(object):
         :rtype:
 
         """
-        self.child = None
+        self.children = []
         self.shape = shape
         self.order = order
         self.index = 0
@@ -33,29 +33,27 @@ class vmedian(object):
 
         """
         data = np.median(self.buffer, axis=0).astype(np.uint8)
-        if reshape:
-            data = np.reshape(data, self.shape)
-        return data
+        return np.reshape(data, self.shape) if reshape else data
 
     def add(self, data):
-        """include a new image in the median calculation
+        '''include a new image in the median calculation
 
         :param data: image data
         :returns:
         :rtype:
 
-        """
+        '''
         if data.shape != self.shape:
             self.shape = data.shape
-        if isinstance(self.child, vmedian):
-            self.child.add(data)
-            if (self.child.index == 0):
-                self.buffer[self.index, :] = self.child.get(reshape=False)
-                self.index = self.index + 1
-        else:
+        if self.order == 0:
             self.buffer[self.index, :] = np.ravel(data)
-            self.index = self.index + 1
-
+            self.index += 1
+        else:
+            child = self.children[self.index]
+            child.add(data)
+            if (child.index == 0):
+                self.buffer[self.index, :] = child.get(reshape=False)
+                self.index += 1
         if self.index == 3:
             self.index = 0
             self.initialized = True
@@ -72,13 +70,14 @@ class vmedian(object):
     @shape.setter
     def shape(self, shape):
         self._shape = shape
-        if shape is not None:
-            self.npts = np.product(shape)
-            self.buffer = np.zeros((3, self.npts), dtype=np.uint8)
-            self.index = 0
-            self.initialized = False
-            if isinstance(self.child, vmedian):
-                self.child.shape = shape
+        if shape is None:
+            return
+        self.npts = np.product(shape)
+        self.buffer = np.zeros((3, self.npts), dtype=np.uint8)
+        self.index = 0
+        self.initialized = False
+        for child in self.children:
+            child.shape = shape
 
     @property
     def order(self):
@@ -86,13 +85,11 @@ class vmedian(object):
 
     @order.setter
     def order(self, order):
-        self._order = np.clip(order, 0, 10)
+        self._order = np.clip(order, 0, 3)
         if (self._order == 0):
-            self.child = None
+            self.children = None
         else:
-            if isinstance(self.child, vmedian):
-                self.child.order = self._order - 1
-            else:
-                self.child = vmedian(order=self._order - 1,
+            self.children = [vmedian(order=self._order-1,
                                      shape=self.shape)
+                             for _ in range(3)]
         self.initialized = False
