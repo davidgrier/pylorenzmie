@@ -1,72 +1,85 @@
+# -*- coding: utf-8 -*-
+
+"""Efficient approximation to a running median filter."""
+
 import numpy as np
 
 
 class vmedian(object):
 
-    def __init__(self, order=0, dimensions=None):
+    def __init__(self, order=0, shape=None):
         """Compute running median of a video stream
 
         :param order: depth of median filter: 3^(order + 1) images
         :param dimensions: (width, height) of images
-        :returns: 
-        :rtype: 
+        :returns:
+        :rtype:
 
         """
         self.child = None
-        self.dimensions = dimensions
+        self.shape = shape
         self.order = order
-        self.initialized = False
         self.index = 0
 
     def filter(self, data):
         self.add(data)
         return self.get()
-    
-    def get(self):
+
+    def get(self, reshape=True):
         """Return current median image
 
         :returns: median image
         :rtype: numpy.ndarray
 
         """
-        return np.median(self.buffer, axis=0)
-    
+        data = np.median(self.buffer, axis=0).astype(np.uint8)
+        if reshape:
+            data = np.reshape(data, self.shape)
+        return data
+
     def add(self, data):
         """include a new image in the median calculation
 
         :param data: image data
-        :returns: 
-        :rtype: 
+        :returns:
+        :rtype:
 
         """
+        if data.shape != self.shape:
+            self.shape = data.shape
         if isinstance(self.child, vmedian):
             self.child.add(data)
             if (self.child.index == 0):
-                self.buffer[self.index, :, :] = self.child.get()
+                self.buffer[self.index, :] = self.child.get(reshape=False)
                 self.index = self.index + 1
         else:
-            self.buffer[self.index, :, :] = data
+            self.buffer[self.index, :] = np.ravel(data)
             self.index = self.index + 1
-            
+
         if self.index == 3:
             self.index = 0
             self.initialized = True
-            
-    @property
-    def dimensions(self):
-        return self._dimensions
 
-    @dimensions.setter
-    def dimensions(self, dimensions):
-        if dimensions is not None:
-            self.buffer = np.zeros((3, dimensions[0], dimensions[1]),
-                                   dtype=np.uint8)
+    def reset(self):
+        self.initialized = False
+        if isinstance(self.child, vmedian):
+            self.child.reset()
+
+    @property
+    def shape(self):
+        return self._shape
+
+    @shape.setter
+    def shape(self, shape):
+        self._shape = shape
+        if shape is not None:
+            self.npts = np.product(shape)
+            self.buffer = np.zeros((3, self.npts), dtype=np.uint8)
             self.index = 0
-            self._dimensions = dimensions
             self.initialized = False
             if isinstance(self.child, vmedian):
-                self.child.dimensions = dimensions
-            
+                self.child.shape = shape
+
     @property
     def order(self):
         return self._order
@@ -81,5 +94,5 @@ class vmedian(object):
                 self.child.order = self._order - 1
             else:
                 self.child = vmedian(order=self._order - 1,
-                                     dimensions=self.dimensions)
+                                     shape=self.shape)
         self.initialized = False
