@@ -14,7 +14,7 @@ class h5video(object):
         self.image = None
         self.index = None
         self.shape = None
-        self.nframes = None
+        self.nframes = 0
         self.eof = False
 
     def __enter__(self):
