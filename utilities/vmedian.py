@@ -25,16 +25,15 @@ class vmedian(object):
 
     def filter(self, data):
         self.add(data)
-        return self.get()
+        return self.get() # if self.initialized else data
 
     def get(self, reshape=True):
-        """Return current median image
+        '''Return current median image
 
         :returns: median image
         :rtype: numpy.ndarray
-
-        """
-        return np.reshape(self._data, self.shape) if reshape else self._data
+        '''
+        return self._data.reshape(self.shape) if reshape else self._data
 
     def add(self, data):
         '''include a new image in the median calculation
@@ -42,12 +41,12 @@ class vmedian(object):
         :param data: image data
         :returns:
         :rtype:
-
         '''
         if data.shape != self.shape:
+            self._data = data.astype(np.uint8).ravel()
             self.shape = data.shape
         if self.order == 0:
-            self.buffer[self.index, :] = np.ravel(data.astype(np.uint8))
+            self.buffer[self.index, :] = data.astype(np.uint8).ravel()
             self.index += 1
         else:
             child = self.child
