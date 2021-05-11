@@ -218,8 +218,9 @@ class LorenzMie(object):
         self.result = np.empty(shape, dtype=complex)
 
     @staticmethod
-    @njit()
-    def compute(ab, krv, mo1n, ne1n, es, ec, cartesian=True, bohren=True):
+    @njit() # unittest does not cover jitted methods
+    def compute(ab, krv, mo1n, ne1n, es, ec,
+                cartesian=True, bohren=True): # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
 
         Arguments

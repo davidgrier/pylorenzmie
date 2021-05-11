@@ -1,14 +1,20 @@
 import unittest
 import numpy as np
+import sys
 
-from theory import numpyLorenzMie
+mods = ['cupy', 'LorenzMie']
+for mod in mods:
+    if mod in sys.modules:
+        sys.modules.pop(mod)
+
+from theory.LorenzMie import LorenzMie
 from utilities import coordinates
 
 
 class TestLorenzMie(unittest.TestCase):
 
     def setUp(self):       
-        self.method = numpyLorenzMie()
+        self.method = LorenzMie()
         self.shape = [256, 256]
 
     def test_coordinates_None(self):
