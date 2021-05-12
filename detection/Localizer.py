@@ -135,7 +135,7 @@ class Localizer(object):
         psi = np.fft.ifft2(psi)
 
         # Transformed image is the intensity of the convolution
-        return psi.real**2 + psi.imag**2
+        return (psi * np.conjugate(psi)).real
 
     def _extent(self, norm, center):
         '''
