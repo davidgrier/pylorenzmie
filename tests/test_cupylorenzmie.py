@@ -1,5 +1,9 @@
 import unittest
+import sys
 
+if 'LorenzMie' in sys.modules:
+    sys.modules.pop('LorenzMie')
+    
 import cupy
 from theory import LorenzMie
 from utilities import coordinates
