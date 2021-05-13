@@ -17,6 +17,9 @@ class TestLorenzMie(unittest.TestCase):
         self.method = LorenzMie()
         self.shape = [256, 256]
 
+    def test_method(self):
+        self.assertEqual(self.method.method, 'numpy')
+        
     def test_coordinates_None(self):
         self.method.coordinates = None
         self.assertIs(self.method.coordinates, None)

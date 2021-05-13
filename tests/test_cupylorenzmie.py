@@ -17,6 +17,9 @@ class TestCupyLorenzMie(unittest.TestCase):
         if self.method.method != 'cupy':
             self.skipTest('Not using cupy acceleration')
 
+    def test_method(self):
+        self.assertEqual(self.method.method, 'cupy')
+            
     def test_doubleprecision(self):
         self.method.double_precision = False
         self.assertFalse(self.method.double_precision)
