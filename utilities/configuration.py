@@ -1,5 +1,4 @@
 use_numba = True
-use_cupy = True
 use_catch = True
 
 from importlib import import_module
@@ -28,5 +27,4 @@ def has_(module):
     return ok
 
 has_numba = lambda: has_('numba')
-has_cupy = lambda: has_('cupy')
 has_catch = lambda: has_('CATCH')
