@@ -3,9 +3,10 @@ import sys
 
 if 'LorenzMie' in sys.modules:
     sys.modules.pop('LorenzMie')
-    
-import cupy
-from theory import LorenzMie
+
+from theory.LorenzMie import LorenzMie as numpyLorenzMie
+from theory.cupyLorenzMie import cupyLorenzMie
+
 from utilities import coordinates
 import numpy as np
 
@@ -13,12 +14,14 @@ import numpy as np
 class TestCupyLorenzMie(unittest.TestCase):
 
     def setUp(self):
-        self.method = LorenzMie()
+        self.method = cupyLorenzMie()
+        self.n_method = numpyLorenzMie()
         if self.method.method != 'cupy':
             self.skipTest('Not using cupy acceleration')
 
     def test_method(self):
         self.assertEqual(self.method.method, 'cupy')
+        self.assertEqual(self.n_method.method, 'numpy')
             
     def test_doubleprecision(self):
         self.method.double_precision = False
@@ -49,6 +52,25 @@ class TestCupyLorenzMie(unittest.TestCase):
 
     def test_field_both(self):
         self.test_field(bohren=True, cartesian=True)
+
+    def test_compare_methods(self, bohren=False, cartesian=True):
+        p = self.method.particle
+        p.a_p = 1.
+        p.n_p = 1.4
+        p.r_p = [64, 64, 100]
+        c = coordinates([128, 128])
+        self.method.coordinates = c
+        field = self.method.field(bohren=bohren, cartesian=cartesian)/20.
+
+        self.n_method.particle = p
+        self.n_method.coordinates = c
+        n_field = self.n_method.field(bohren=bohren, cartesian=cartesian)
+
+        print(np.median(np.abs(field-n_field)),
+              np.median(np.abs(field)),
+              np.median(np.abs(n_field)))
+        
+        self.assertTrue(True)
         
 
         

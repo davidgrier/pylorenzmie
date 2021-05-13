@@ -1,5 +1,10 @@
 import unittest
 
+try:
+    import cupy
+except ImportError:
+    print('Cannot import cupy')
+
 from theory import LMHologram
 from utilities import coordinates
 import numpy as np
