@@ -23,7 +23,7 @@ class TestFrame(unittest.TestCase):
         self.assertEqual(self.data.size, self.frame.coordinates.size/2)
 
     def test_detect(self):
-        # self.frame.data = self.data
+        self.frame.data = self.data
         nfeatures = self.frame.detect()
         self.assertEqual(nfeatures, 2)
         
