@@ -37,13 +37,12 @@ class Frame(object):
         associated with the bboxes in the currently loaded image.
 
     '''
-    def __init__(self, image=None, **kwargs):
+    def __init__(self, **kwargs):
         self._data = None
         self._shape = None
         self._coordinates = None
         self.localizer = Localizer(**kwargs)
         self.estimator = Estimator(**kwargs)
-        self.image = image
         self._discoveries = []
         self._features = []
         self.kwargs = kwargs
@@ -74,9 +73,7 @@ class Frame(object):
 
     @data.setter
     def data(self, data):
-        if data is None:
-            self._data = None
-        else:
+        if data is not None:
             if data.shape != self.shape:
                 self.shape = data.shape
         self._data = data
@@ -109,6 +106,15 @@ class Frame(object):
             feature.particle.y_p = discovery['y_p']
             self._features.append(feature)
 
+    def detect(self):
+        '''
+        Detect and localize features in data
+        '''
+        if self.data is None:
+            self.discoveries = []
+        self.discoveries = self.localizer.detect(self.data)
+        return len(self.discoveries)
+
     def analyze(self, data=None):
         '''
         Localize features, estimate parameters, and fit
@@ -126,8 +132,9 @@ class Frame(object):
         if data is not None:
             self.data = data
         self.discoveries = self.localizer.detect(self.data)
+        predict = self.estimator.predict
         for feature in self.features:
-            feature.particle.properties = self.estimator.predict(feature.data)
+            feature.particle.properties = predict(feature.data)
         return self.optimize()
 
     def optimize(self):
