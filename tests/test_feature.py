@@ -1,7 +1,7 @@
 import unittest
 
 from analysis import Feature
-from theory import LMHologram
+from theory import (LMHologram, Sphere)
 from utilities import coordinates
 
 import os
@@ -41,6 +41,13 @@ class TestFeature(unittest.TestCase):
         model = LMHologram()
         self.feature.model = model
         self.assertIs(self.feature.model, model)
+
+    def test_getsetparticle(self):
+        z_p = 200.
+        p = self.feature.particle
+        p.z_p = z_p
+        self.feature.particle = p
+        self.assertEqual(self.feature.particle.z_p, z_p)
 
 
 if __name__ == '__main__':
