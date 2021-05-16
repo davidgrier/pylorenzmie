@@ -34,7 +34,7 @@ Mark D. Hannel, Michael O'Brien, Jackie Sustiel
 1. M. I. Mishchenko, L. D. Travis and A. A. Lacis, Scattering
    Absorption and Emission of Light by Small Particles (Cambridge
    University Press, 2002).
-1. G. Gouesbet and G. Grehan, Generalized Lorenz-Mie Theories
+1. G. Gouesbet and G. Gréhan, Generalized Lorenz-Mie Theories
    (Springer, 2011).
 
 ### Computational methods
