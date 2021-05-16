@@ -116,9 +116,24 @@ class Frame(object):
             self.discoveries = self.localizer.detect(self.data)
         return len(self.discoveries)
 
+    def estimate(self):
+        '''
+        Estimate parameters for current discoveries
+        '''
+        predict = self.estimator.predict
+        for feature in self.features:
+            feature.particle.properties = predict(feature.data)
+
+    def optimize(self):
+        '''
+        Optimize adjustable parameters
+        '''
+        results = [feature.optimize() for feature in self.features]
+        return pd.DataFrame(results)
+
     def analyze(self, data=None):
         '''
-        Localize features, estimate parameters, and fit
+        Detect features, estimate parameters, and fit
 
         Parameters
         ----------
@@ -130,16 +145,9 @@ class Frame(object):
         results: pandas.DataFrame
             Optimized parameters of generative model for each feature
         '''
-        if data is not None:
-            self.data = data
-        self.discoveries = self.localizer.detect(self.data)
-        predict = self.estimator.predict
-        for feature in self.features:
-            feature.particle.properties = predict(feature.data)
+        self.detect()
+        self.estimate()
         return self.optimize()
 
-    def optimize(self):
-        '''Optimize adjustable parameters'''
-        results = [feature.optimize() for feature in self.features]
-        return pd.DataFrame(results)
+    
         
