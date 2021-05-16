@@ -4,7 +4,7 @@ uname_s := $(shell uname -s)
 
 ROOT_DIR := $(shell dirname $(realpath $(lastword $(MAKEFILE_LIST))))
 
-COVERAGE = coverage-3.7
+COVERAGE = coverage
 COVERAGE_TEST = $(COVERAGE) run -m unittest discover
 COVERAGE_REPORT = $(COVERAGE) report -m --include="$(ROOT_DIR)/*"
 
