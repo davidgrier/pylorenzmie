@@ -145,6 +145,8 @@ class Frame(object):
         results: pandas.DataFrame
             Optimized parameters of generative model for each feature
         '''
+        if data is not None:
+            self.data = data
         self.detect()
         self.estimate()
         return self.optimize()
