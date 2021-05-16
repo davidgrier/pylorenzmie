@@ -5,6 +5,7 @@ from analysis import Frame
 import os
 import cv2
 import numpy as np
+import pandas as pd
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_IMAGE = os.path.join(THIS_DIR, 'data/image0010.png')
@@ -23,10 +24,37 @@ class TestFrame(unittest.TestCase):
         self.assertEqual(self.data.size, self.frame.coordinates.size/2)
 
     def test_detect(self):
+        self.frame.data = None
+        nfeatures = self.frame.detect()
+        self.assertEqual(nfeatures, 0)
         self.frame.data = self.data
         nfeatures = self.frame.detect()
-        self.assertEqual(nfeatures, 2)
-        
+        features = self.frame.features
+        bboxes = self.frame.bboxes
+        self.assertEqual(nfeatures, len(features))
+        self.assertEqual(nfeatures, len(bboxes))
+
+    def test_optimze(self):
+        self.frame.data = self.data
+        self.frame.detect()
+        particle = self.frame.features[0].particle
+        a_p = particle.a_p
+        self.frame.estimate()
+        self.frame.optimize()
+        self.assertNotEqual(particle.a_p, a_p)
+
+    def test_analyze(self):
+        results = self.frame.analyze(self.data)
+        self.assertIsInstance(results, pd.DataFrame)
+
+    def test_shape(self):
+        shape = [640, 480]
+        self.frame.shape = None
+        self.frame.shape = shape
+        self.frame.shape = None
+        self.frame.shape = shape
+        self.frame.shape = shape
+        self.assertListEqual(self.frame.shape, shape)
 
 if __name__ == '__main__':
     unittest.main()
