@@ -112,7 +112,8 @@ class Frame(object):
         '''
         if self.data is None:
             self.discoveries = []
-        self.discoveries = self.localizer.detect(self.data)
+        else:
+            self.discoveries = self.localizer.detect(self.data)
         return len(self.discoveries)
 
     def analyze(self, data=None):
