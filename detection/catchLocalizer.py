@@ -7,5 +7,6 @@ class catchLocalizer(Localizer):
         super(catchLocalizer, self).__init__(**kwargs)
 
     def detect(self, image):
-        d = Localizer.detect(self, [100*image])
-        return d[0]
+        if image is None:
+            return []
+        return Localizer.detect(self, [100*image])[0]

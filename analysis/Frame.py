@@ -43,8 +43,9 @@ class Frame(object):
         self._coordinates = None
         self.localizer = Localizer(**kwargs)
         self.estimator = Estimator(**kwargs)
-        self._discoveries = []
         self._features = []
+        self._bboxes = []
+        self._results = None
         self.kwargs = kwargs
         
     @property
@@ -84,15 +85,18 @@ class Frame(object):
 
     @property
     def bboxes(self):
-        return [discovery['bbox'] for discovery in self.discoveries]
-    
-    @property
-    def discoveries(self):
-        return self._discoveries
+        return self._bboxes
 
-    @discoveries.setter
-    def discoveries(self, discoveries):
-        self._discoveries = discoveries
+    @property
+    def results(self):
+        return self._results
+
+    def detect(self):
+        '''
+        Detect and localize features in data
+        '''
+        discoveries = self.localizer.detect(self.data)
+        self._bboxes = [discovery['bbox'] for discovery in discoveries]
         self._features = []
         for discovery in discoveries:
             ((x0, y0), w, h) = discovery['bbox']
@@ -105,20 +109,11 @@ class Frame(object):
             feature.particle.x_p = discovery['x_p']
             feature.particle.y_p = discovery['y_p']
             self._features.append(feature)
-
-    def detect(self):
-        '''
-        Detect and localize features in data
-        '''
-        if self.data is None:
-            self.discoveries = []
-        else:
-            self.discoveries = self.localizer.detect(self.data)
-        return len(self.discoveries)
+        return len(discoveries)
 
     def estimate(self):
         '''
-        Estimate parameters for current discoveries
+        Estimate parameters for current features
         '''
         predict = self.estimator.predict
         for feature in self.features:
@@ -129,7 +124,8 @@ class Frame(object):
         Optimize adjustable parameters
         '''
         results = [feature.optimize() for feature in self.features]
-        return pd.DataFrame(results)
+        self._results = pd.DataFrame(results)
+        return self._results
 
     def analyze(self, data=None):
         '''
@@ -145,8 +141,7 @@ class Frame(object):
         results: pandas.DataFrame
             Optimized parameters of generative model for each feature
         '''
-        if data is not None:
-            self.data = data
+        self.data = data
         self.detect()
         self.estimate()
         return self.optimize()
