@@ -133,10 +133,11 @@ class Sphere(Particle):
         ab : numpy.ndarray
             Mie AB scattering coefficients
         '''
-        return mie_coefficients(self.a_p, self.n_p, self.k_p, n_m, wavelength)
+        return mie_coefficients(self.a_p, self.n_p, self.k_p,
+                                n_m, wavelength)
 
-    
-@njit(parallel=True, cache=True)
+
+@njit(cache=True, parallel=True)
 def wiscombe_yang(x, m):
     '''Return the number of terms to keep in partial wave expansion
 
@@ -172,7 +173,7 @@ def wiscombe_yang(x, m):
     nstop = max(ns, xm.max(), xm_1.max())
     return int(nstop)
 
-@njit(parallel=True, cache=True)
+@njit(cache=True, parallel=True)
 def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     '''Returns the Mie scattering coefficients for a sphere
 

@@ -6,6 +6,7 @@ import os
 import cv2
 import numpy as np
 import pandas as pd
+    
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 TEST_IMAGE = os.path.join(THIS_DIR, 'data/image0010.png')
@@ -46,6 +47,12 @@ class TestFrame(unittest.TestCase):
     def test_analyze(self):
         results = self.frame.analyze(self.data)
         self.assertIsInstance(results, pd.DataFrame)
+
+    def test_results(self):
+        self.frame.analyze(None)
+        self.assertEqual(len(self.frame.results), 0)
+        self.frame.analyze(self.data)
+        self.assertEqual(len(self.frame.results), 2)
 
     def test_shape(self):
         shape = [640, 480]
