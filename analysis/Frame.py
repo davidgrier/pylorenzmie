@@ -19,23 +19,52 @@ class Frame(object):
         dimensions of image data, updated to reflect most recent image
     coordinates : numpy.ndarray
         [3, w, h] of pixel coordinates for most recent image
-    discoveries : list of dict
-        Each dict should countain
-        {'r_p': (x_p, y_p),
-         'bbox': ((x0, y0), w, h)}
     features : list
-        List of Feature objects corresponding to discoveries
-
+        List of Feature objects identified in data by detect()
+        or analyze()
+    bboxes : list
+        List of bounding boxes: [(x0, y0), w, h] for each feature
+        identified by detect() or analyze()
+    results : pandas.DataFrame
+        Summary of tracking and characterization data obtained by estimate(),
+        optimize() or analyze()
+ 
     Methods
     -------
-    analyze(image) : 
+    detect() : int
+        Detect and localize features in data. Sets features and bboxes
+
+        Returns
+        -------
+        nfeatures : int
+            Number of features detected
+
+    estimate() :
+        Estimate particle position and characteristics for each feature
+
+    optimize() :
+        Refine estimates for particle positions and characteristics
+
+        Returns
+        -------
+        results: pandas.DataFrame
+            Summary of tracking and characterization results from data
+
+    analyze([image]) :
         Identify features in image that are associated with
         particles and optimize the parameters of those features.
-        Returns pandas.DataFrame of optimized results.
-    optimize():
-        Optimize the model parameters for each of the features
-        associated with the bboxes in the currently loaded image.
+        Results are obtained by running detect(), estimate() and optimize()
+    
+        Arguments
+        ---------
+        image : [optional] numpy.ndarray
+            Image data to analyze. Sets self.data if provided.
+            Default: self.data
 
+        Returns
+        -------
+        results: pandas.DataFrame
+            Summary of tracking and characterization results from data
     '''
     def __init__(self, **kwargs):
         self._data = None
@@ -65,6 +94,7 @@ class Frame(object):
 
     @property
     def coordinates(self):
+        '''Coordinates of pixels in image data'''
         return self._coordinates
     
     @property
@@ -81,14 +111,17 @@ class Frame(object):
 
     @property
     def features(self):
+        '''List of objects of type Feature'''
         return self._features
 
     @property
     def bboxes(self):
+        '''List of bounding boxes'''
         return self._bboxes
 
     @property
     def results(self):
+        '''DataFrame containing tracking and characterization results'''
         return self._results
 
     def detect(self):
@@ -144,7 +177,4 @@ class Frame(object):
         self.data = data
         self.detect()
         self.estimate()
-        return self.optimize()
-
-    
-        
+        return self.optimize()     
