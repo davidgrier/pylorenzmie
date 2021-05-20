@@ -35,7 +35,7 @@ class TestFrame(unittest.TestCase):
         self.assertEqual(nfeatures, len(features))
         self.assertEqual(nfeatures, len(bboxes))
 
-    def test_optimze(self):
+    def test_optimize(self):
         self.frame.data = self.data
         self.frame.detect()
         particle = self.frame.features[0].particle
