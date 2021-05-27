@@ -260,14 +260,14 @@ class LorenzMie(object):
         # Accounting for this by flipping the axial coordinate
         # is equivalent to using a mirrored (left-handed)
         # coordinate system.
-        shape = krv.shape
         kx = krv[0, :]
         ky = krv[1, :]
         kz = -krv[2, :]
+        shape = kx.shape
 
         # 2. geometric factors
-        krho = np.sqrt(kx**2 + ky**2)
-        kr = np.sqrt(krho**2 + kz**2)
+        krho = np.hypot(kx, ky) 
+        kr = np.hypot(krho, kz) 
 
         phi = np.arctan2(ky, kx)
         cosphi = np.cos(phi)
@@ -288,19 +288,16 @@ class LorenzMie(object):
         # for $h_n^{(2)}(kr)$, and have z < 0. We can select the
         # appropriate case by applying the correct sign of the imaginary
         # part of the starting functions...
-        if bohren:
-            factor = 1.j * np.sign(kz)
-        else:
-            factor = -1.j * np.sign(kz)
+        factor = 1.j * np.sign(kz) if bohren else -1.j * np.sign(kz)
 
         xi_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
         xi_nm1 = sinkr - factor * coskr  # \xi_0(kr)
 
         # 2. Angular functions (4.47), page 95
         # \pi_0(\cos\theta)
-        pi_nm1 = np.zeros(shape=costheta.shape)
+        pi_nm1 = np.zeros(shape)
         # \pi_1(\cos\theta)
-        pi_n = np.ones(shape=costheta.shape)
+        pi_n = np.ones(shape)
 
         # 3. Vector spherical harmonics: [r,theta,phi]
         mo1n[0, :] = 0.j                 # no radial component

@@ -213,8 +213,6 @@ class Optimizer(object):
                     'options': options}
         self.nm_settings = settings
 
-        
-
     def _initial_estimates(self):
         p0 = [self.model.properties[p] for p in self.variables]
         return np.array(p0)
