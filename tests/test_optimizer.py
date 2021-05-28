@@ -45,25 +45,15 @@ class TestOptimizer(unittest.TestCase):
         self.assertEqual(self.optimizer.coordinates.shape[1],
                          self.coordinates.shape[1])
 
-    def test_optimize(self, method='lm', robust=False):
+    def test_optimize(self, method='lm'):
         self.optimizer.method = method
         self.optimizer.data = self.data
-        result = self.optimizer.optimize(robust=robust)
+        result = self.optimizer.optimize()
         if not result.success:
             print(result)
         self.assertTrue(result.success)
 
-    def test_optimize_amoeba(self):
-        self.test_optimize(method='amoeba')
-
-    def test_optimize_amoeba_robust(self):
-        self.test_optimize(method='amoeba', robust=True)
-
-    def test_optimize_lm_amoeba(self):
-        self.test_optimize(method='amoeba-lm')
-
     def test_optimize_failure(self):
-        self.optimizer.method = 'lm'
         self.optimizer.data = self.data + 100.
         result = self.optimizer.optimize()
         failure = not result.success or (result.redchi > 100.)
@@ -71,11 +61,6 @@ class TestOptimizer(unittest.TestCase):
 
     def test_metadata(self):
         self.assertIsInstance(self.optimizer.metadata, pd.Series)
-
-    def test_dumps_loads(self):
-        s = self.optimizer.dumps()
-        self.optimizer.loads(s)
-        self.assertIsInstance(s, str)
 
 
 if __name__ == '__main__':
