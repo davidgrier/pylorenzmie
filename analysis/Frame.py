@@ -22,8 +22,8 @@ class Frame(object):
     features : list
         List of Feature objects identified in data by detect()
         or analyze()
-    bboxes : list
-        List of bounding boxes: [(x0, y0), w, h] for each feature
+    bboxes : tuple or list of tuples
+        List of bounding boxes: ((x0, y0), w, h) for each feature
         identified by detect() or analyze()
     results : pandas.DataFrame
         Summary of tracking and characterization data obtained by estimate(),
@@ -119,6 +119,22 @@ class Frame(object):
         '''List of bounding boxes'''
         return self._bboxes
 
+    @bboxes.setter
+    def bboxes(self, bboxes):
+        if isinstance(bboxes, tuple): # only one bbox
+            bboxes = [bboxes]
+        self._bboxes = bboxes
+        self._features = []
+        for bbox in bboxes:
+            ((x0, y0), w, h) = bbox
+            dim = min(w, h)
+            data = self.data[y0:y0+dim, x0:x0+dim]
+            coordinates = self.coordinates[:, y0:y0+dim, x0:x0+dim]
+            feature = Feature(data=data,
+                              coordinates=coordinates.reshape((2, -1)),
+                              **self.kwargs)
+            self._features.append(feature)
+
     @property
     def results(self):
         '''DataFrame containing tracking and characterization results'''
@@ -129,19 +145,10 @@ class Frame(object):
         Detect and localize features in data
         '''
         discoveries = self.localizer.detect(self.data)
-        self._bboxes = [discovery['bbox'] for discovery in discoveries]
-        self._features = []
-        for discovery in discoveries:
-            ((x0, y0), w, h) = discovery['bbox']
-            dim = min(w, h)
-            data = self.data[y0:y0+dim, x0:x0+dim]
-            coordinates = self.coordinates[:, y0:y0+dim, x0:x0+dim]
-            feature = Feature(data=data,
-                              coordinates=coordinates.reshape((2,-1)),
-                              **self.kwargs)
+        self.bboxes = [discovery['bbox'] for discovery in discoveries]
+        for feature, discovery in zip(self.features, discoveries):
             feature.particle.x_p = discovery['x_p']
             feature.particle.y_p = discovery['y_p']
-            self._features.append(feature)
         return len(discoveries)
 
     def estimate(self):
