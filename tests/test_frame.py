@@ -24,6 +24,11 @@ class TestFrame(unittest.TestCase):
         self.frame.data = self.data
         self.assertEqual(self.data.size, self.frame.coordinates.size/2)
 
+    def test_bboxes(self):
+        self.frame.data = self.data
+        self.frame.bboxes = ((100, 200), 300, 400)
+        self.assertEqual(len(self.frame.features), 1)
+
     def test_detect(self):
         self.frame.data = None
         nfeatures = self.frame.detect()

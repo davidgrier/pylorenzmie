@@ -62,6 +62,11 @@ class TestOptimizer(unittest.TestCase):
     def test_metadata(self):
         self.assertIsInstance(self.optimizer.metadata, pd.Series)
 
+    def test_properties(self):
+        properties = self.optimizer.properties
+        self.optimizer.properties = properties
+        self.assertTrue('settings' in properties)
 
+        
 if __name__ == '__main__':
     unittest.main()
