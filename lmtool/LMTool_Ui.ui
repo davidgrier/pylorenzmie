@@ -280,12 +280,12 @@
           </widget>
          </item>
          <item>
-          <widget class="QRadioButton" name="NMButton">
+          <widget class="QRadioButton" name="RCButton">
            <property name="statusTip">
             <string>Use Nelder-Mead --&gt; Levenberg-Marquardt hybrid optimization</string>
            </property>
            <property name="text">
-            <string>Amoeba -&gt; Levenberg-Marquardt</string>
+            <string> Robust (Cauchy)</string>
            </property>
           </widget>
          </item>
@@ -302,7 +302,7 @@
      <x>0</x>
      <y>0</y>
      <width>1161</width>
-     <height>20</height>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">

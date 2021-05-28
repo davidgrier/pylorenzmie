@@ -55,7 +55,6 @@ class LMTool(QtWidgets.QMainWindow):
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
         pg.setConfigOption('imageAxisOrder', 'row-major')
-
     
     #
     # Set up widgets
@@ -131,7 +130,6 @@ class LMTool(QtWidgets.QMainWindow):
         self.frame = Frame(particle=self.particle,
                            instrument=self.instrument,
                            percentpix=percentpix)
-
     #
     # Routines for loading data
     #
@@ -190,7 +188,6 @@ class LMTool(QtWidgets.QMainWindow):
                 setter_name = 'set{}'.format(setting.capitalize())
                 setter = getattr(widget, setter_name)
                 setter(value)
-
     #
     # Slots for handling user interaction
     #
@@ -283,9 +280,11 @@ class LMTool(QtWidgets.QMainWindow):
         feature = self.frame.features[0]
         feature.particle = self.particle
         if self.ui.LMButton.isChecked():
-            feature.optimizer.method = 'lm'
+            feature.optimizer.settings['method'] = 'lm'
+            feature.optimizer.settings['loss'] = 'linear'
         else:
-            feature.optimizer.method = 'amoeba-lm'
+            feature.optimizer.settings['method'] = 'dogbox'
+            feature.optimizer.settings['loss'] = 'cauchy'
         fixed = [p for p in self.parameters if getattr(self.ui, p).fixed]
         feature.optimizer.fixed = fixed
         print('Before: ', self.particle)
