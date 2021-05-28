@@ -18,16 +18,24 @@ class Optimizer(object):
 
     Properties
     ----------
+    model : LMHologram
+        Computational model for calculating holograms
+    data : numpy.ndarray
+        Target for optimization with model
     noise : float
         Estimate for the additive noise value at each data pixel
+    robust : bool
+        If True, use robust optimization (absolute deviations)
+        otherwise use least-squares optimization
+        Default: False (least-squares)
+    fixed : list of str
+        Names of properties of the model that should not vary during fitting.
+        Default: ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
+    variables : list of str
+        Names of properties of the model that will be optimized.
+        Default: All model.properties that are not fixed
     settings : dict
         Dictionary of settings for the optimization method
-    fixed : list
-        List of properties of the model that should not vary during fitting.
-        Default: ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
-    variables : list
-        List of properties of the model that will be optimized.
-        Default: All model.properties that are not fixed
     properties : dict
         Dictionary of settings for the optimizer as a whole
     result : scipy.optimize.OptimizeResult
@@ -46,13 +54,15 @@ class Optimizer(object):
                  model=None,
                  data=None,
                  noise=0.05,
-                 settings=None,
+                 robust=False,
                  fixed=None,
+                 settings=None,                                 
                  **kwargs):
         self.model = model
         self.data = data
         self.noise = noise
         self.settings = settings
+        self.robust = robust
         defaults = ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
         self.fixed = fixed or defaults      
         self._result = None
@@ -91,6 +101,19 @@ class Optimizer(object):
                         'diff_step': 1e-5, # default: machine epsilon
                         'x_scale': 'jac'}  # (c)
         self._settings = settings
+
+    @property
+    def robust(self):
+        return self.settings['loss'] in ['soft_l1', 'huber', 'cauchy']
+
+    @robust.setter
+    def robust(self, robust):
+        if robust:
+            self.settings['method'] = 'dogbox'
+            self.settings['loss'] = 'cauchy'
+        else:
+            self.settings['method'] = 'lm'
+            self.settings['loss'] = 'linear'
 
     @property
     def fixed(self):
