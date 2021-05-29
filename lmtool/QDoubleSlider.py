@@ -33,6 +33,9 @@ class QDoubleSlider(QSlider):
     setValue(float) :
         Overloaded slot for setting current value
     '''
+
+    __pyqtSignals__ = ('valueChanged(float)',)
+    
     valueChanged = pyqtSignal(float)
 
     def __init__(self, *args, **kwargs):

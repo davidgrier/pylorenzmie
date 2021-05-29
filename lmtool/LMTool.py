@@ -32,8 +32,8 @@ class LMTool(QtWidgets.QMainWindow):
         self.setupPyQtGraph()
         self.ui = Ui_MainWindow()
         self.ui.setupUi(self)
-        self.ui.bbox.checkbox.hide()
         self.setupTabs()
+        self.setupControls()
         self.setupTheory(percentpix)
         self.autonormalize = True         # FIXME: should be a UI option
         self.setupData(data, background)
@@ -67,6 +67,12 @@ class LMTool(QtWidgets.QMainWindow):
         self.setupImageTab(options)
         self.setupProfileTab()
         self.setupFitTab(options)
+
+    def setupControls(self):
+        self.ui.bbox.checkbox.hide()
+        self.ui.x_p.setStep(1.)
+        self.ui.y_p.setStep(1.)
+        self.ui.z_p.setStep(1.)
         
     def setupImageTab(self, options):
         self.ui.imageTab.ci.layout.setContentsMargins(0, 0, 0, 0)
