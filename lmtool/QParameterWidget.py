@@ -3,6 +3,7 @@
 
 from PyQt5 import (QtCore, QtWidgets)
 from QDoubleSlider import QDoubleSlider
+from SpinBox import SpinBox
 
 
 class QParameterWidget(QtWidgets.QFrame):
@@ -77,7 +78,8 @@ class QParameterWidget(QtWidgets.QFrame):
 
     def setupUI(self):
         self.label = QtWidgets.QLabel(self)
-        self.spinbox = QtWidgets.QDoubleSpinBox(self)
+        #self.spinbox = QtWidgets.QDoubleSpinBox(self)
+        self.spinbox = SpinBox(self)
         self.checkbox = QtWidgets.QCheckBox(self)
         self.slider = QDoubleSlider(self)
         self.slider.setOrientation(QtCore.Qt.Horizontal)
@@ -91,6 +93,7 @@ class QParameterWidget(QtWidgets.QFrame):
         self.layout.addWidget(self.slider, 1, 0, 1, 3)
         self.layout.addWidget(self.checkbox, 0, 2)
         self.spinbox.editingFinished.connect(self.updateValues)
+        self.spinbox.arrowClicked.connect(self.updateValues)
         self.slider.valueChanged['double'].connect(self.spinbox.setValue)
         self.checkbox.stateChanged.connect(self.fixValue)
 
@@ -183,7 +186,7 @@ if __name__ == '__main__':
     import sys
     app = QtWidgets.QApplication(sys.argv)
     param = QParameterWidget(text='a<sub>p</sub>')
-    param.setRange(0.3, 10)
+    param.setRange((0.3, 10))
     param.setValue(0.75)
     param.setDecimals(3)
     param.setSuffix(' μm')
