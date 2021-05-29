@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def aziavg(data, center):
     '''Azimuthal average of data about center
     

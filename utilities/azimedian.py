@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def azimedian(data, center):
    '''Azimuthal median of data about center
     

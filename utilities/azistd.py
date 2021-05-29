@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def azistd(data, center):
     '''Azimuthal average and standard deviation of data about center
     
