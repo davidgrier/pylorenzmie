@@ -157,7 +157,7 @@ class Frame(object):
         '''
         predict = self.estimator.predict
         for feature in self.features:
-            feature.particle.properties = predict(feature.data)
+            feature.particle.properties = predict(feature)
 
     def optimize(self):
         '''
