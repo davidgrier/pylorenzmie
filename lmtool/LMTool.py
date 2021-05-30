@@ -9,13 +9,16 @@ import numpy as np
 import pyqtgraph as pg
 from matplotlib import cm
 
+try:
+    import cupy
+except ImportError:
+    pass
 from pylorenzmie.theory import (Sphere, Instrument, LMHologram)
 from pylorenzmie.analysis import Frame
 from pylorenzmie.utilities import (coordinates, azistd)
 
-from LMTool_Ui import Ui_MainWindow
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
-from PyQt5 import (QtWidgets, QtCore)
+from PyQt5 import (QtWidgets, QtCore, uic)
 
 logger = logging.getLogger('LMTool')
 logger.setLevel(logging.INFO)
@@ -30,10 +33,9 @@ class LMTool(QtWidgets.QMainWindow):
         super(LMTool, self).__init__()
 
         self.setupPyQtGraph()
-        self.ui = Ui_MainWindow()
-        self.ui.setupUi(self)
-        self.setupTabs()
+        uic.loadUi('LMTool_Ui.ui', self)
         self.setupControls()
+        self.setupTabs()
         self.setupTheory(percentpix)
         self.autonormalize = True         # FIXME: should be a UI option
         self.setupData(data, background)
@@ -42,7 +44,7 @@ class LMTool(QtWidgets.QMainWindow):
 
     @pyqtProperty(int)
     def maxrange(self):
-        return self.ui.bbox.value() // 2
+        return self.bbox.value() // 2
 
     @pyqtProperty(list)
     def parameters(self):
@@ -59,6 +61,13 @@ class LMTool(QtWidgets.QMainWindow):
     #
     # Set up widgets
     #
+
+    def setupControls(self):
+        self.bbox.checkbox.hide()
+        self.x_p.setStep(1.)
+        self.y_p.setStep(1.)
+        self.z_p.setStep(1.)
+        
     def setupTabs(self):
         options = dict(enableMenu=False,
                        enableMouse=False,
@@ -67,17 +76,11 @@ class LMTool(QtWidgets.QMainWindow):
         self.setupImageTab(options)
         self.setupProfileTab()
         self.setupFitTab(options)
-
-    def setupControls(self):
-        self.ui.bbox.checkbox.hide()
-        self.ui.x_p.setStep(1.)
-        self.ui.y_p.setStep(1.)
-        self.ui.z_p.setStep(1.)
         
-    def setupImageTab(self, options):
-        self.ui.imageTab.ci.layout.setContentsMargins(0, 0, 0, 0)
+    def setupImageTab(self, options):   
+        self.imageTab.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.image = pg.ImageItem(border=pg.mkPen('k'))
-        self.ui.imageTab.addViewBox(**options).addItem(self.image)
+        self.imageTab.addViewBox(**options).addItem(self.image)
         pen = pg.mkPen('w', width=3)
         hoverPen = pg.mkPen('y', width=3)
         self.roi = pg.CircleROI([100,100], radius=100., parent=self.image)
@@ -86,7 +89,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.roi.removeHandle(0)
 
     def setupProfileTab(self):
-        plot = self.ui.profilePlot
+        plot = self.profilePlot
         plot.setXRange(0., self.maxrange)
         plot.showGrid(True, True, 0.2)
         plot.setLabel('bottom', 'r [pixel]')
@@ -111,14 +114,14 @@ class LMTool(QtWidgets.QMainWindow):
         plot.addItem(self.dataRegion)
 
     def setupFitTab(self, options):
-        self.ui.fitTab.ci.layout.setContentsMargins(0, 0, 0, 0)
+        self.fitTab.ci.layout.setContentsMargins(0, 0, 0, 0)
         pen = pg.mkPen('k')
         self.region = pg.ImageItem(pen=pen)
         self.fit = pg.ImageItem(pen=pen)
         self.residuals = pg.ImageItem(pen=pen)
-        self.ui.fitTab.addViewBox(**options).addItem(self.region)
-        self.ui.fitTab.addViewBox(**options).addItem(self.fit)
-        self.ui.fitTab.addViewBox(**options).addItem(self.residuals)
+        self.fitTab.addViewBox(**options).addItem(self.region)
+        self.fitTab.addViewBox(**options).addItem(self.fit)
+        self.fitTab.addViewBox(**options).addItem(self.residuals)
         map = cm.get_cmap('bwr')
         map._init()
         lut = (map._lut * 255).view(np.ndarray)
@@ -178,9 +181,9 @@ class LMTool(QtWidgets.QMainWindow):
     def data(self, data):
         self.frame.data = data / np.mean(data)
         self.image.setImage(self.frame.data)
-        self.ui.x_p.setRange((0, data.shape[1]-1))
-        self.ui.y_p.setRange((0, data.shape[0]-1))
-        self.ui.bbox.setRange((0, min(data.shape[0]-1, data.shape[1]-1)))
+        self.x_p.setRange((0, data.shape[1]-1))
+        self.y_p.setRange((0, data.shape[0]-1))
+        self.bbox.setRange((0, min(data.shape[0]-1, data.shape[1]-1)))
         self.updateDataProfile()
 
     def loadDefaults(self):
@@ -188,7 +191,7 @@ class LMTool(QtWidgets.QMainWindow):
         with open(os.path.join(basedir, 'LMTool.json'), 'r') as file:
             settings = json.load(file)
         for parameter in self.parameters:
-            widget = getattr(self.ui, parameter)
+            widget = getattr(self, parameter)
             for setting, value in settings[parameter].items():
                 logger.debug('{}: {}: {}'.format(parameter, setting, value))
                 setter_name = 'set{}'.format(setting.capitalize())
@@ -198,13 +201,13 @@ class LMTool(QtWidgets.QMainWindow):
     # Slots for handling user interaction
     #
     def connectSignals(self):
-        self.ui.actionOpen.triggered.connect(self.openHologram)
-        self.ui.actionSave_Parameters.triggered.connect(self.saveParameters)
-        self.ui.tabs.currentChanged.connect(self.handleTabChanged)
+        self.actionOpen.triggered.connect(self.openHologram)
+        self.actionSave_Parameters.triggered.connect(self.saveParameters)
+        self.tabs.currentChanged.connect(self.handleTabChanged)
         for parameter in self.parameters:
-            widget = getattr(self.ui, parameter)
+            widget = getattr(self, parameter)
             widget.valueChanged['double'].connect(self.updateParameter)
-        self.ui.optimizeButton.clicked.connect(self.optimize)
+        self.optimizeButton.clicked.connect(self.optimize)
         self.roi.sigRegionChanged.connect(self.handleROIChanged)
         
     @pyqtSlot(int)
@@ -218,15 +221,15 @@ class LMTool(QtWidgets.QMainWindow):
     def handleROIChanged(self, roi):
         x0, y0 = roi.pos()
         dim, _ = roi.size()
-        self.ui.bbox.setValue(dim)
-        self.ui.x_p.setValue(x0 + dim/2)
-        self.ui.y_p.setValue(y0 + dim/2)
+        self.bbox.setValue(dim)
+        self.x_p.setValue(x0 + dim/2)
+        self.y_p.setValue(y0 + dim/2)
 
     @pyqtSlot(float)
     def updateParameter(self, value):
         parameter = self.sender().objectName()
         if parameter == 'bbox':
-            self.ui.profilePlot.setXRange(0., self.maxrange)
+            self.profilePlot.setXRange(0., self.maxrange)
         elif hasattr(self.instrument, parameter):
             setattr(self.instrument, parameter, value)
         elif hasattr(self.particle, parameter):
@@ -241,7 +244,7 @@ class LMTool(QtWidgets.QMainWindow):
     def updatePlots(self):
         self.updateTheoryProfile()
         self.updateDataProfile()
-        if self.ui.tabs.currentIndex() == 2:
+        if self.tabs.currentIndex() == 2:
             self.updateFit()
 
     def updateDataProfile(self):
@@ -282,28 +285,28 @@ class LMTool(QtWidgets.QMainWindow):
     #
     @pyqtSlot()
     def optimize(self):
+        self.statusBar().showMessage('Optimizing parameters...')
         logger.info('Starting optimization...')
         feature = self.frame.features[0]
         feature.particle = self.particle
-        if self.ui.LMButton.isChecked():
+        if self.LMButton.isChecked():
             feature.optimizer.settings['method'] = 'lm'
             feature.optimizer.settings['loss'] = 'linear'
         else:
             feature.optimizer.settings['method'] = 'dogbox'
             feature.optimizer.settings['loss'] = 'cauchy'
-        fixed = [p for p in self.parameters if getattr(self.ui, p).fixed]
+        fixed = [p for p in self.parameters if getattr(self, p).fixed]
         feature.optimizer.fixed = fixed
-        print('Before: ', self.particle)
         result = feature.optimize()
-        print('After: ', self.particle)
         self.updateUiValues()
         self.updatePlots()
-        logger.info("Finished!\n{}".format(str(result)))
+        logger.info('Finished!\n{}'.format(str(result)))
+        self.statusBar().showMessage('Optimization complete')
 
     def updateUiValues(self):
         '''Update Ui with parameters from particle and instrument'''
         for parameter in self.parameters:
-            widget = getattr(self.ui, parameter)
+            widget = getattr(self, parameter)
             widget.blockSignals(True)
             if hasattr(self.particle, parameter):
                 widget.setValue(getattr(self.particle, parameter))
@@ -316,7 +319,7 @@ class LMTool(QtWidgets.QMainWindow):
         if filename is None:
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Parameters', '', 'JSON (*.json)')
-        parameters = {name: getattr(self.ui, name).value()
+        parameters = {name: getattr(self, name).value()
                       for name in self.parameters}
         try:
             with open(filename, 'w') as file:
