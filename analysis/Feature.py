@@ -38,8 +38,7 @@ class Feature(object):
     hologram() : numpy.ndarray
         Intensity value at each coordinate computed with current model.
     residuals() : numpy.ndarray
-        Difference between the current model and the data,
-        normalized by the noise estimate.
+        Difference between the current model and the data.
 
     '''
 
