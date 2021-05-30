@@ -32,6 +32,12 @@ class Estimator(object):
         self.n_p = n_p or 1.5
 
     def _initialize(self, feature):
+        '''Prepare for estimation
+
+        self.k: wavenumber in the medium [pixels^{-1}]
+        self.noise: noise estimate from instrument
+        self.profile: aximuthal average of data
+        '''
         ins = feature.model.instrument
         self.k = (2.*np.pi * ins.n_m / ins.wavelength) * ins.magnification
         self.noise = ins.noise  
@@ -40,6 +46,11 @@ class Estimator(object):
         self._initialized = True
         
     def estimate_z(self, feature):
+        '''Estimate axial position of particle
+
+        Particle is assumed to be at the center of curvature
+        of spherical waves interfering with a plane wave.
+        '''
         if not self._initialized:
             self._initialize(feature)
         a = self.profile

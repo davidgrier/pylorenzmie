@@ -2,7 +2,8 @@ from PyQt5.QtWidgets import QDoubleSpinBox
 from PyQt5.QtCore import pyqtSignal
 
 
-class SpinBox(QDoubleSpinBox):
+class DoubleSpinBox(QDoubleSpinBox):
+    '''QDoubleSpinBox with buttonClicked signal'''
 
     buttonClicked = pyqtSignal()
 
