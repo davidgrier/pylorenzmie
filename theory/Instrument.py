@@ -28,6 +28,8 @@ class Instrument(object):
         Refractive index of medium
     background : float or numpy.ndarray
         Background image
+    noise : float
+        Estimated noise as a percentage of the mean value
     dark_count : float
         Dark count of camera
     properties : dict
@@ -44,11 +46,13 @@ class Instrument(object):
                  magnification=0.135,
                  n_m=1.335,
                  background=1.,
+                 noise=0.05,
                  dark_count=0.,
                  **kwargs):
         self.wavelength = wavelength
         self.magnification = magnification
         self.n_m = n_m
+        self.noise = noise
         self.dark_count = dark_count
         self.background = background
 

@@ -53,14 +53,12 @@ class Optimizer(object):
     def __init__(self,
                  model=None,
                  data=None,
-                 noise=0.05,
                  robust=False,
                  fixed=None,
                  settings=None,                                 
                  **kwargs):
         self.model = model
         self.data = data
-        self.noise = noise
         self.settings = settings
         self.robust = robust
         defaults = ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
@@ -160,7 +158,6 @@ class Optimizer(object):
     @property
     def properties(self):
         properties = dict(settings=self.settings,
-                          noise=self.noise,
                           fixed=self.fixed)
         properties.update(self.model.properties)
         return properties
@@ -202,19 +199,27 @@ class Optimizer(object):
     def _residuals(self, values):
         '''Updates properties and returns residuals'''
         self.model.properties = dict(zip(self.variables, values))
-        return (self.model.hologram() - self.data) / self.noise
+        noise = self.model.instrument.noise
+        return (self.model.hologram() - self.data) / noise
 
     def _statistics(self):
-        '''return standard uncertainties in fit parameters'''
+        '''return reduced chi-squared and standard uncertainties
+
+        Uncertainties are the square roots of the diagonal
+        elements of the covariance matrix. The covariance matrix
+        is obtained from the Jacobian of the fit by singular
+        value decomposition, using the Moore-Penrose inverse
+        after discarding small singular values.
+        '''
         res = self.result
         ndeg = self.data.size - res.x.size  # number of degrees of freedom
-        redchi = 2.*res.cost / ndeg # reduced chi-squared
-        # covariance matrix
-        # Moore-Penrose inverse discarding zero singular values.
+        redchi = 2.*res.cost / ndeg         # reduced chi-squared
+
         _, s, VT = svd(res.jac, full_matrices=False)
         threshold = np.finfo(float).eps * max(res.jac.shape) * s[0]
         s = s[s > threshold]
         VT = VT[:s.size]
         pcov = np.dot(VT.T / s**2, VT)
         uncertainty = np.sqrt(redchi * np.diag(pcov))
+        
         return redchi, uncertainty
