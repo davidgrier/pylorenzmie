@@ -2,16 +2,16 @@
 # -*- coding: utf-8 -*-
 
 from PyQt5 import (QtCore, QtWidgets)
-from QDoubleSlider import QDoubleSlider
-from SpinBox import SpinBox
+from DoubleSlider import DoubleSlider
+from DoubleSpinBox import DoubleSpinBox
 
 
 class QParameterWidget(QtWidgets.QFrame):
 
     '''Widget for adjusting a floating-point parameter
 
-    QParameterWidget combines a QDoubleSpinBox with
-    a custom QDoubleSlider to set and adjust the value
+    QParameterWidget combines a custom DoubleSpinBox with
+    a custom DoubleSlider to set and adjust the value
     of a parameter.  The name of the parameter is displayed
     with a QLabel.  The parameter can be fixed with a
     QCheckBox, which also disables the controls.
@@ -20,9 +20,9 @@ class QParameterWidget(QtWidgets.QFrame):
 
     Attributes
     ----------
-    spinbox : QDoubleSpinBox
+    spinbox : DoubleSpinBox
         Widget that displays and controls the parameter
-    slider : QDoubleSlider
+    slider : DoubleSlider
         Widget for continuously adjusting the parameter
     checkbox : QCheckBox
         Checkbox for fixing the parameter
@@ -69,6 +69,7 @@ class QParameterWidget(QtWidgets.QFrame):
                  **kwargs):
         super(QParameterWidget, self).__init__(parent, **kwargs)
         self.setupUI()
+        self.connectSignals()
         self.setupAPI()
         self.setText(text)
         self.setMinimum(minimum)
@@ -78,10 +79,9 @@ class QParameterWidget(QtWidgets.QFrame):
 
     def setupUI(self):
         self.label = QtWidgets.QLabel(self)
-        #self.spinbox = QtWidgets.QDoubleSpinBox(self)
-        self.spinbox = SpinBox(self)
+        self.spinbox = DoubleSpinBox(self)
         self.checkbox = QtWidgets.QCheckBox(self)
-        self.slider = QDoubleSlider(self)
+        self.slider = DoubleSlider(self)
         self.slider.setOrientation(QtCore.Qt.Horizontal)
 
         self.layout = QtWidgets.QGridLayout(self)
@@ -92,8 +92,10 @@ class QParameterWidget(QtWidgets.QFrame):
         self.layout.addWidget(self.spinbox, 0, 1)
         self.layout.addWidget(self.slider, 1, 0, 1, 3)
         self.layout.addWidget(self.checkbox, 0, 2)
+
+    def connectSignals(self):
         self.spinbox.editingFinished.connect(self.updateValues)
-        self.spinbox.arrowClicked.connect(self.updateValues)
+        self.spinbox.buttonClicked.connect(self.updateValues)
         self.slider.valueChanged['double'].connect(self.spinbox.setValue)
         self.checkbox.stateChanged.connect(self.fixValue)
 
