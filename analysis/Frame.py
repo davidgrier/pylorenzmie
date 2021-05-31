@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from .Feature import Feature
 from pylorenzmie.utilities import coordinates as make_coordinates
-from pylorenzmie.detection import (Localizer, Estimator)
+from pylorenzmie.fitting import (Localizer, Estimator)
 
 
 class Frame(object):
