@@ -70,7 +70,7 @@ class DoubleSlider(QSlider):
 
         Returns
         -------
-        value : float
+        value : floateditingFinished
         '''
         ivalue = float(super(DoubleSlider, self).value())
         return self._convert_i2f(ivalue)
@@ -126,3 +126,7 @@ class DoubleSlider(QSlider):
         '''
         ivalue = self._convert_f2i(value)
         super(DoubleSlider, self).setSingleStep(ivalue)
+
+    @pyqtSlot(int)
+    def setDisabled(self, state):
+        super(DoubleSlider, self).setDisabled(bool(state))

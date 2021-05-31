@@ -18,6 +18,21 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="spacing">
+     <number>2</number>
+    </property>
+    <property name="leftMargin">
+     <number>5</number>
+    </property>
+    <property name="topMargin">
+     <number>2</number>
+    </property>
+    <property name="rightMargin">
+     <number>5</number>
+    </property>
+    <property name="bottomMargin">
+     <number>2</number>
+    </property>
     <item>
      <widget class="QTabWidget" name="tabs">
       <property name="sizePolicy">
@@ -73,23 +88,13 @@
        <property name="spacing">
         <number>1</number>
        </property>
-       <item row="1" column="0">
-        <widget class="QParameterWidget" name="a_p">
+       <item row="0" column="0">
+        <widget class="ParameterWidget" name="wavelength">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
          <property name="statusTip">
-          <string>Radius of particle [micrometers]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="QParameterWidget" name="k_p">
-         <property name="statusTip">
-          <string>Absorption coefficient of particle</string>
+          <string>Wavelength of illumination [micrometers]</string>
          </property>
          <property name="frameShape">
           <enum>QFrame::Panel</enum>
@@ -100,7 +105,10 @@
         </widget>
        </item>
        <item row="0" column="1">
-        <widget class="QParameterWidget" name="magnification">
+        <widget class="ParameterWidget" name="magnification">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
          <property name="statusTip">
           <string>Magnification [micrometers/pixel]</string>
          </property>
@@ -113,7 +121,10 @@
         </widget>
        </item>
        <item row="0" column="2">
-        <widget class="QParameterWidget" name="n_m">
+        <widget class="ParameterWidget" name="n_m">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
          <property name="statusTip">
           <string>Refractive index of medium</string>
          </property>
@@ -125,8 +136,27 @@
          </property>
         </widget>
        </item>
+       <item row="1" column="0">
+        <widget class="ParameterWidget" name="a_p">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>Radius of particle [micrometers]</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
        <item row="1" column="1">
-        <widget class="QParameterWidget" name="n_p">
+        <widget class="ParameterWidget" name="n_p">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
          <property name="statusTip">
           <string>Refractive index of particle</string>
          </property>
@@ -138,23 +168,13 @@
          </property>
         </widget>
        </item>
-       <item row="2" column="2">
-        <widget class="QParameterWidget" name="z_p">
+       <item row="1" column="2">
+        <widget class="ParameterWidget" name="k_p">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
          <property name="statusTip">
-          <string>Axial position of particle [pixel]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="QParameterWidget" name="y_p">
-         <property name="statusTip">
-          <string>y coordinate [pixel]</string>
+          <string>Absorption coefficient of particle</string>
          </property>
          <property name="frameShape">
           <enum>QFrame::Panel</enum>
@@ -165,7 +185,10 @@
         </widget>
        </item>
        <item row="2" column="0">
-        <widget class="QParameterWidget" name="x_p">
+        <widget class="ParameterWidget" name="x_p">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
          <property name="statusTip">
           <string>x coordinate [pixel]</string>
          </property>
@@ -177,10 +200,13 @@
          </property>
         </widget>
        </item>
-       <item row="0" column="0">
-        <widget class="QParameterWidget" name="wavelength">
+       <item row="2" column="1">
+        <widget class="ParameterWidget" name="y_p">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
          <property name="statusTip">
-          <string>Wavelength of illumination [micrometers]</string>
+          <string>y coordinate [pixel]</string>
          </property>
          <property name="frameShape">
           <enum>QFrame::Panel</enum>
@@ -190,59 +216,50 @@
          </property>
         </widget>
        </item>
-      </layout>
-     </widget>
-    </item>
-    <item>
-     <widget class="QFrame" name="optimizerFrame">
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
-      </property>
-      <layout class="QHBoxLayout" name="optimizerLayout">
-       <property name="spacing">
-        <number>5</number>
-       </property>
-       <property name="sizeConstraint">
-        <enum>QLayout::SetDefaultConstraint</enum>
-       </property>
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>0</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
-       <item>
-        <layout class="QVBoxLayout" name="tuningLayout">
-         <item>
-          <widget class="QParameterWidget" name="bbox">
-           <property name="statusTip">
-            <string>Bounding box size [pixels]</string>
-           </property>
-           <property name="frameShape">
-            <enum>QFrame::Panel</enum>
-           </property>
-           <property name="frameShadow">
-            <enum>QFrame::Sunken</enum>
-           </property>
-          </widget>
-         </item>
-        </layout>
+       <item row="2" column="2">
+        <widget class="ParameterWidget" name="z_p">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>Axial position of particle [pixel]</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
        </item>
-       <item>
+       <item row="3" column="0">
+        <widget class="ParameterWidget" name="bbox">
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>Bounding box size [pixels]</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
         <widget class="QPushButton" name="optimizeButton">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
          <property name="minimumSize">
           <size>
            <width>0</width>
-           <height>61</height>
+           <height>30</height>
           </size>
          </property>
          <property name="font">
@@ -261,35 +278,67 @@
          </property>
         </widget>
        </item>
-       <item>
-        <layout class="QVBoxLayout" name="methodLayout" stretch="0,0">
-         <property name="sizeConstraint">
-          <enum>QLayout::SetDefaultConstraint</enum>
-         </property>
-         <item>
-          <widget class="QRadioButton" name="LMButton">
-           <property name="statusTip">
-            <string>Use Levenberg-Marquardt optimization</string>
-           </property>
-           <property name="text">
-            <string>Levenberg-Marquardt</string>
-           </property>
-           <property name="checked">
-            <bool>true</bool>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QRadioButton" name="RCButton">
-           <property name="statusTip">
-            <string>Use Nelder-Mead --&gt; Levenberg-Marquardt hybrid optimization</string>
-           </property>
-           <property name="text">
-            <string> Robust (Cauchy)</string>
-           </property>
-          </widget>
-         </item>
-        </layout>
+       <item row="3" column="2">
+        <widget class="QWidget" name="methodWidget" native="true">
+         <layout class="QVBoxLayout" name="methodLayout">
+          <property name="spacing">
+           <number>2</number>
+          </property>
+          <property name="leftMargin">
+           <number>5</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QRadioButton" name="LMButton">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="statusTip">
+             <string>Levenberg-Marquardt optimization</string>
+            </property>
+            <property name="text">
+             <string>Levenberg-Marquardt</string>
+            </property>
+            <property name="checked">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QRadioButton" name="RCButton">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="focusPolicy">
+             <enum>Qt::NoFocus</enum>
+            </property>
+            <property name="statusTip">
+             <string>Robust optimization (Cauchy loss)</string>
+            </property>
+            <property name="text">
+             <string> Robust (Cauchy)</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
        </item>
       </layout>
      </widget>
@@ -352,12 +401,26 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QParameterWidget</class>
+   <class>ParameterWidget</class>
    <extends>QFrame</extends>
-   <header>QParameterWidget</header>
+   <header>ParameterWidget</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
+ <tabstops>
+  <tabstop>tabs</tabstop>
+  <tabstop>wavelength</tabstop>
+  <tabstop>magnification</tabstop>
+  <tabstop>n_m</tabstop>
+  <tabstop>a_p</tabstop>
+  <tabstop>n_p</tabstop>
+  <tabstop>k_p</tabstop>
+  <tabstop>x_p</tabstop>
+  <tabstop>y_p</tabstop>
+  <tabstop>z_p</tabstop>
+  <tabstop>bbox</tabstop>
+  <tabstop>optimizeButton</tabstop>
+ </tabstops>
  <resources/>
  <connections>
   <connection>
