@@ -33,7 +33,7 @@ class LMTool(QtWidgets.QMainWindow):
         super(LMTool, self).__init__()
 
         self.setupPyQtGraph()
-        uic.loadUi('LMTool_Ui.ui', self)
+        uic.loadUi('LMTool.ui', self)
         self.setupControls()
         self.setupTabs()
         self.setupTheory(percentpix)
