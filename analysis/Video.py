@@ -10,7 +10,6 @@ from .utilities.normalize_image import normalize_video
 from .utilities.running_normal import running_normalize
 
 
-
 class Video(object):
 
     '''

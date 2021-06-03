@@ -63,6 +63,9 @@ class Instrument(object):
                           self.magnification,
                           self.n_m)
 
+    def __repr__(self):
+        return self.__str__()
+
     @property
     def wavelength(self):
         '''Wavelength of light in vacuum [um]'''
