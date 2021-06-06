@@ -47,10 +47,11 @@ class Feature(object):
                  coordinates=None,
                  model=None,
                  **kwargs):
+        self._coordinates = None
         self.mask = Mask(**kwargs)
+        self.model = model or LMHologram(**kwargs)
         self.data = data
         self.coordinates = coordinates
-        self.model = model or LMHologram(**kwargs)
         self.optimizer = Optimizer(model=self.model, **kwargs)
         
     @property
@@ -76,6 +77,7 @@ class Feature(object):
     @coordinates.setter
     def coordinates(self, coordinates):
         self.mask.coordinates = coordinates
+        self.model.coordinates = coordinates
         self._coordinates = coordinates
 
     @property
@@ -93,6 +95,7 @@ class Feature(object):
     @model.setter
     def model(self, model):
         self._model = model
+        self.model.coordinates = self.coordinates
             
     def optimize(self):
         mask = self.mask.selected
