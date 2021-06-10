@@ -24,6 +24,15 @@ class Aberrations(object):
         c[6] : x coma
         c[7] : y coma
         c[8] : spherical aberration
+    piston : float
+    xtilt : float
+    ytilt : float
+    defocus : float
+    xastigmatism : float
+    yastigmatism : float
+    xcoma : float
+    ycoma : float
+    spherical : float
 
     Methods
     -------
@@ -37,9 +46,20 @@ class Aberrations(object):
                  coordinates=None,
                  pupil=None,
                  coefficients=None):
-        self.coordinates = coordinates
         self.pupil = pupil
+        self.coordinates = coordinates
         self.coefficients = coefficients or np.zeros(9)
+        self.aberrations = [lambda : 1.,
+                            lambda : self._x,
+                            lambda : self._y,
+                            lambda : 2.*self._rhosq - 1.,
+                            lambda : (self._x - self._y)*(self._x + self._y),
+                            lambda : 2.*self._x * self._y,
+                            lambda : (3.*self._rhosq - 2.)*self._x,
+                            lambda : (3.*self._rhosq - 2.)*self._y,
+                            lambda : 6.*self._rhosq*(self._rhosq - 1.) + 1.]
+
+        self._update = True
 
     @property
     def coordinates(self):
@@ -48,6 +68,14 @@ class Aberrations(object):
     @coordinates.setter
     def coordinates(self, coordinates):
         self._coordinates = coordinates
+        if self.pupil is None:
+            self.pupil = np.max(self._coordinates)
+        x = self._coordinates[0, :] / self.pupil
+        y = self._coordinates[1, :] / self.pupil
+        self._rhosq = x*x + y*y
+        self._x = x
+        self._y = y
+        self._update = True
 
     @property
     def pupil(self):
@@ -55,7 +83,8 @@ class Aberrations(object):
 
     @pupil.setter
     def pupil(self, pupil):
-        self._pupil = pupil or 1.
+        self._pupil = pupil
+        self._update = True
 
     @property
     def coefficients(self):
@@ -64,6 +93,7 @@ class Aberrations(object):
     @coefficients.setter
     def coefficients(self, coefficients):
         self._coefficients = coefficients
+        self._update = True
 
     @property
     def piston(self):
@@ -72,6 +102,7 @@ class Aberrations(object):
     @piston.setter
     def piston(self, value):
         self.coefficients[0] = value
+        self._update = True
 
     @property
     def xtilt(self):
@@ -80,6 +111,7 @@ class Aberrations(object):
     @xtilt.setter
     def xtilt(self, value):
         self.coefficients[1] = value
+        self._update = True
 
     @property
     def ytilt(self):
@@ -88,6 +120,7 @@ class Aberrations(object):
     @ytilt.setter
     def ytilt(self, value):
         self.coefficients[2] = value
+        self._update = True
 
     @property
     def defocus(self):
@@ -96,6 +129,7 @@ class Aberrations(object):
     @defocus.setter
     def defocus(self, value):
         self.coefficients[3] = value
+        self._update = True
 
     @property
     def xastigmatism(self):
@@ -104,6 +138,7 @@ class Aberrations(object):
     @xastigmatism.setter
     def xastigmatism(self, value):
         self.coefficients[4] = value
+        self._update = True
 
     @property
     def yastigmatism(self):
@@ -112,6 +147,7 @@ class Aberrations(object):
     @yastigmatism.setter
     def yastigmatism(self, value):
         self.coefficients[5] = value
+        self._update = True
 
     @property
     def xcoma(self):
@@ -120,6 +156,7 @@ class Aberrations(object):
     @xcoma.setter
     def xcoma(self, value):
         self.coefficients[6] = value
+        self._update = True
 
     @property
     def ycoma(self):
@@ -128,6 +165,7 @@ class Aberrations(object):
     @ycoma.setter
     def ycoma(self, value):
         self.coefficients[7] = value
+        self._update = True
 
     @property
     def spherical(self):
@@ -136,20 +174,17 @@ class Aberrations(object):
     @spherical.setter
     def spherical(self, value):
         self.coefficients[8] = value
+        self._update = True
 
     def phase(self):
-        a = self.coefficients
-        x = self.coordinates[0,:] / self.pupil
-        y = self.coordinates[1,:] / self.pupil
-        rhosq = x * x + y * y
-        phase =  a[1] * x
-        phase += a[2] * y
-        phase += a[3] * (2. * rhosq - 1.)
-        phase += a[4] * (x - y) * (x + y)
-        phase += a[5] * 2. * x * y
-        phase += a[6] * (3.*rhosq - 2.) * x
-        phase += a[7] * (3.*rhosq - 2.) * y
-        phase += a[8] * (6.*rhosq * (rhosq - 1.) + 1.)
+        if not self._update:
+            return self._phase
+        phase = 0.
+        for a_n, phase_n in zip(self.coefficients, self.aberrations):
+            if a_n != 0:
+                phase += a_n * phase_n()
+        self._phase = phase
+        self._update = False
         return phase
 
     def field(self):
