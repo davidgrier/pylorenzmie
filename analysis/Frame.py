@@ -71,7 +71,6 @@ class Frame(object):
         self._shape = None
         self._coordinates = None
         self.localizer = Localizer(**kwargs)
-        self.estimator = Estimator(**kwargs)
         self._features = []
         self._bboxes = []
         self._results = None
@@ -155,9 +154,8 @@ class Frame(object):
         '''
         Estimate parameters for current features
         '''
-        predict = self.estimator.predict
         for feature in self.features:
-            feature.particle.properties = predict(feature)
+            feature.estimate()
 
     def optimize(self):
         '''

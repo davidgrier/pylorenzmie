@@ -4,7 +4,7 @@
 import json
 import os
 import numpy as np
-from pylorenzmie.fitting import Optimizer
+from pylorenzmie.fitting import (Estimator, Optimizer)
 from pylorenzmie.theory import (Sphere, LMHologram)
 from pylorenzmie.utilities import coordinates
 from .Mask import Mask
@@ -52,6 +52,7 @@ class Feature(object):
         self.model = model or LMHologram(**kwargs)
         self.data = data
         self.coordinates = coordinates
+        self.estimator = Estimator(feature=self, **kwargs)
         self.optimizer = Optimizer(model=self.model, **kwargs)
         
     @property
@@ -96,6 +97,9 @@ class Feature(object):
     def model(self, model):
         self._model = model
         self.model.coordinates = self.coordinates
+
+    def estimate(self):
+        self.particle.properties = self.estimator.predict()
             
     def optimize(self):
         mask = self.mask.selected
