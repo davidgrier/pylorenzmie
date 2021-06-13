@@ -45,21 +45,12 @@ class Aberrations(object):
     def __init__(self,
                  coordinates=None,
                  pupil=None,
-                 coefficients=None):
-        self.pupil = pupil
+                 coefficients=None,
+                 **kwargs):
+        self._phase = 0.
         self.coordinates = coordinates
+        self.pupil = pupil
         self.coefficients = coefficients or np.zeros(9)
-        self.aberrations = [lambda : 1.,
-                            lambda : self._x,
-                            lambda : self._y,
-                            lambda : 2.*self._rhosq - 1.,
-                            lambda : (self._x - self._y)*(self._x + self._y),
-                            lambda : 2.*self._x * self._y,
-                            lambda : (3.*self._rhosq - 2.)*self._x,
-                            lambda : (3.*self._rhosq - 2.)*self._y,
-                            lambda : 6.*self._rhosq*(self._rhosq - 1.) + 1.]
-
-        self._update = True
 
     @property
     def coordinates(self):
@@ -68,6 +59,8 @@ class Aberrations(object):
     @coordinates.setter
     def coordinates(self, coordinates):
         self._coordinates = coordinates
+        if coordinates is None:
+            return
         if self.pupil is None:
             self.pupil = np.max(self._coordinates)
         x = self._coordinates[0, :] / self.pupil
@@ -75,6 +68,7 @@ class Aberrations(object):
         self._rhosq = x*x + y*y
         self._x = x
         self._y = y
+        self.update_zernike()
         self._update = True
 
     @property
@@ -84,7 +78,22 @@ class Aberrations(object):
     @pupil.setter
     def pupil(self, pupil):
         self._pupil = pupil
+        self.update_zernike()
         self._update = True
+
+    def update_zernike(self):
+        if (self.coordinates is None or self.pupil is None):
+            self.zernike = np.zeros(9)
+        else:
+            self.zernike = [1.,
+                            self._x,
+                            self._y,
+                            2.*self._rhosq - 1.,
+                            (self._x - self._y) * (self._x + self._y),
+                            2.*self._x * self._y,
+                            (3.*self._rhosq - 2.) * self._x,
+                            (3.*self._rhosq - 2.) * self._y,
+                            6.*self._rhosq * (self._rhosq - 1.) + 1.]
 
     @property
     def coefficients(self):
@@ -180,7 +189,7 @@ class Aberrations(object):
         if not self._update:
             return self._phase
         phase = 0.
-        for a_n, phase_n in zip(self.coefficients, self.aberrations):
+        for a_n, phase_n in zip(self.coefficients, self.zernike):
             if a_n != 0:
                 phase += a_n * phase_n()
         self._phase = phase
