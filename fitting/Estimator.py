@@ -49,8 +49,8 @@ class Estimator(object):
         ins = self.feature.model.instrument
         self.k = (2.*np.pi * ins.n_m / ins.wavelength) * ins.magnification
         self.noise = ins.noise
-        self.center = np.array(self.feature.data.shape) // 2
-        self.profile = aziavg(self.feature.data, self.center) - 1.
+        center = np.array(self.feature.data.shape) // 2
+        self.profile = aziavg(self.feature.data, center) - 1.
         self._initialized = True
 
     def _estimate_z(self):
@@ -95,7 +95,8 @@ class Estimator(object):
         if feature is not None:
             self._initialize(feature)
         z_p = self._estimate_z()
-        r_p = [self.center[0], self.center[1], z_p]
+        center = np.mean(self.feature.coordinates, axis=1)
+        r_p = [center[0], center[1], z_p]
         a_p = self._estimate_a(z_p)
         n_p = self.n_p
         return dict(r_p=r_p, a_p=a_p, n_p=n_p)

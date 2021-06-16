@@ -22,7 +22,7 @@ class Feature(object):
         [npts] normalized intensity values
     coordinates : numpy.ndarray
         [3, npts] coordinates of pixels in data
-    model : [LMHologram, ]
+    model : LMHologram
         Incorporates information about the Particle and the Instrument
         and for supported models, uses this information to compute a
         hologram at the specified coordinates.
@@ -46,6 +46,7 @@ class Feature(object):
                  data=None,
                  coordinates=None,
                  model=None,
+                 fixed=None,
                  **kwargs):
         self._coordinates = None
         self.mask = Mask(**kwargs)
@@ -54,6 +55,8 @@ class Feature(object):
         self.coordinates = coordinates
         self.estimator = Estimator(feature=self, **kwargs)
         self.optimizer = Optimizer(model=self.model, **kwargs)
+        self.optimizer.fixed = fixed or [*self.optimizer.fixed,
+                                         *self.model.aberrations.properties]
         
     @property
     def data(self):
@@ -78,7 +81,6 @@ class Feature(object):
     @coordinates.setter
     def coordinates(self, coordinates):
         self.mask.coordinates = coordinates
-        self.model.coordinates = coordinates
         self._coordinates = coordinates
 
     @property
@@ -96,7 +98,6 @@ class Feature(object):
     @model.setter
     def model(self, model):
         self._model = model
-        self.model.coordinates = self.coordinates
 
     def estimate(self):
         properties = self.estimator.predict(self)
