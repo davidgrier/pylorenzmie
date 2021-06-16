@@ -27,7 +27,7 @@ class LMHologram(LorenzMie):
                  alpha=1.,
                  **kwargs):
         self.aberrations = Aberrations(**kwargs)
-        super(ALMHologram, self).__init__(*args, **kwargs)
+        super(LMHologram, self).__init__(*args, **kwargs)
         self.coefficients = self.aberrations.coefficients
         self.alpha = alpha
 
@@ -48,6 +48,7 @@ class LMHologram(LorenzMie):
     def properties(self):
         p = LorenzMie.properties.fget(self)
         p['alpha'] = self.alpha
+        p.update(self.aberrations.properties)
         return p
 
     def hologram(self):

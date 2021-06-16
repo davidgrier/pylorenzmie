@@ -106,6 +106,7 @@ class Aberrations(object):
                  xcoma=self.xcoma,
                  ycoma=self.ycoma,
                  spherical=self.spherical)
+        return p
 
     @properties.setter
     def properties(self, properties):
