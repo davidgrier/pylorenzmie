@@ -47,9 +47,11 @@ class Aberrations(object):
                  pupil=None,
                  coefficients=None,
                  **kwargs):
+        self._pupil = None
+        self._coordinates = None
         self._phase = 0.
-        self.coordinates = coordinates
         self.pupil = pupil
+        self.coordinates = coordinates
         self.coefficients = coefficients or np.zeros(9)
 
     @property
@@ -59,17 +61,9 @@ class Aberrations(object):
     @coordinates.setter
     def coordinates(self, coordinates):
         self._coordinates = coordinates
-        if coordinates is None:
-            return
-        if self.pupil is None:
-            self.pupil = np.max(self._coordinates)
-        x = self._coordinates[0, :] / self.pupil
-        y = self._coordinates[1, :] / self.pupil
-        self._rhosq = x*x + y*y
-        self._x = x
-        self._y = y
-        self.update_zernike()
-        self._update = True
+        if (self._pupil is None) and not (coordinates is None):
+            self._pupil = np.max(coordinates)
+        self.update_polynomials()
 
     @property
     def pupil(self):
@@ -78,22 +72,21 @@ class Aberrations(object):
     @pupil.setter
     def pupil(self, pupil):
         self._pupil = pupil
-        self.update_zernike()
-        self._update = True
+        self.update_polynomials()
 
-    def update_zernike(self):
-        if (self.coordinates is None or self.pupil is None):
-            self.zernike = np.zeros(9)
-        else:
-            self.zernike = [1.,
-                            self._x,
-                            self._y,
-                            2.*self._rhosq - 1.,
-                            (self._x - self._y) * (self._x + self._y),
-                            2.*self._x * self._y,
-                            (3.*self._rhosq - 2.) * self._x,
-                            (3.*self._rhosq - 2.) * self._y,
-                            6.*self._rhosq * (self._rhosq - 1.) + 1.]
+    def update_polynomials(self):
+        self._update = True
+        if (self.coordinates is None) or (self.pupil is None):
+            return
+        x = self.coordinates[0, :] / self.pupil
+        y = self.coordinates[1, :] / self.pupil
+        rhosq = x*x + y*y
+        self.zernike = [1.,
+                        x, y,
+                        2.*rhosq - 1.,
+                        (x - y)*(x + y), 2.*x*y,
+                        (3.*rhosq - 2.) * x, (3.*rhosq - 2.) * y,
+                        6.*rhosq * (rhosq - 1.) + 1.]
 
     @property
     def properties(self):

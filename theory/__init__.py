@@ -11,6 +11,7 @@ else:
     from .LorenzMie import LorenzMie
     numpyLorenzMie = LorenzMie
 
+from .Aberrations import Aberrations
 from .LMHologram import LMHologram
 
-__all__ = [Particle, Sphere, Instrument, LorenzMie, LMHologram]
+__all__ = [Particle, Sphere, Instrument, LorenzMie, Aberrations, LMHologram]

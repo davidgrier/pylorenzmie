@@ -1,9 +1,8 @@
-from . import LorenzMie
-from .Aberrations import Aberrations
+from . import (Aberrations, LorenzMie)
 import numpy as np
 
 
-class LMHologram(LorenzMie):
+class LMHologram(object):
     '''
     Compute in-line hologram of a sphere
 
@@ -11,11 +10,9 @@ class LMHologram(LorenzMie):
 
     Properties
     ----------
-    alpha : float, optional
-        weight of scattered field in superposition
-    coefficients : numpy.ndarray
-        coefficients of the first 8 Zernike polynomials
-        describing geometric aberrations
+    aberrations : Aberrations
+    lorenzmie : LorenzMie
+    coordinates : numpy.ndarray
 
     Methods
     -------
@@ -23,13 +20,16 @@ class LMHologram(LorenzMie):
         Computed hologram of sphere
     '''
 
-    def __init__(self, *args,
+    def __init__(self,
                  alpha=1.,
+                 coordinates=None,
                  **kwargs):
-        self.aberrations = Aberrations(**kwargs)
-        super(LMHologram, self).__init__(*args, **kwargs)
-        self.coefficients = self.aberrations.coefficients
         self.alpha = alpha
+        self.aberrations = Aberrations(**kwargs)
+        self.lorenzmie = LorenzMie(**kwargs)
+        self.coordinates = coordinates
+        self.particle = self.lorenzmie.particle
+        self.instrument = self.lorenzmie.instrument
 
     @property
     def alpha(self):
@@ -37,19 +37,27 @@ class LMHologram(LorenzMie):
 
     @alpha.setter
     def alpha(self, alpha):
-        self._alpha = float(alpha)
+        self._alpha = alpha
 
-    @LorenzMie.coordinates.setter
+    @property
+    def coordinates(self):
+        return self.lorenzmie.coordinates
+    
+    @coordinates.setter
     def coordinates(self, coordinates):
-        LorenzMie.coordinates.fset(self, coordinates)
         self.aberrations.coordinates = coordinates
-        
-    @LorenzMie.properties.getter
+        self.lorenzmie.coordinates = coordinates
+
+    @property
     def properties(self):
-        p = LorenzMie.properties.fget(self)
-        p['alpha'] = self.alpha
+        p = self.lorenzmie.properties
         p.update(self.aberrations.properties)
         return p
+
+    @properties.setter
+    def properties(self, properties):
+        self.lorenzmie.properties = properties
+        self.aberrations.properties = properties
 
     def hologram(self):
         '''Return hologram of sphere
@@ -60,7 +68,7 @@ class LMHologram(LorenzMie):
             Computed hologram.
         '''
         try:
-            field = self.alpha * self.field()
+            field = self.alpha * self.lorenzmie.field()
         except TypeError:
             return None
         field[0, :] += self.aberrations.field()

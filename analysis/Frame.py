@@ -106,7 +106,7 @@ class Frame(object):
         if data is not None:
             if data.shape != self.shape:
                 self.shape = data.shape
-        self._data = data
+            self._data = data
 
     @property
     def features(self):
