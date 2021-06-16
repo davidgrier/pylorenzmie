@@ -96,6 +96,24 @@ class Aberrations(object):
                             6.*self._rhosq * (self._rhosq - 1.) + 1.]
 
     @property
+    def properties(self):
+        p = dict(piston=self.piston,
+                 xtilt=self.xtilt,
+                 ytilt=self.ytilt,
+                 defocus=self.defocus,
+                 xastigmatism=self.xastigmatism,
+                 yastigmatism=self.yastigmatism,
+                 xcoma=self.xcoma,
+                 ycoma=self.ycoma,
+                 spherical=self.spherical)
+
+    @properties.setter
+    def properties(self, properties):
+        for name, value in properties.items():
+            if hasattr(self, name):
+                setattr(self, name, value)
+                 
+    @property
     def coefficients(self):
         return self._coefficients
 
