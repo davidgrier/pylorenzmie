@@ -40,16 +40,19 @@ class Estimator(object):
         self.noise: noise estimate from instrument
         self.profile: aximuthal average of data
         '''
-        if feature is None:
-            self._initialized = False
+        self._initialized = False
         self.feature = feature
+        if feature is None:
+            return
+        if feature.data is None:
+            return
         ins = self.feature.model.instrument
         self.k = (2.*np.pi * ins.n_m / ins.wavelength) * ins.magnification
-        self.noise = ins.noise  
-        center = np.array(self.feature.data.shape) // 2
-        self.profile = aziavg(self.feature.data, center) - 1.
+        self.noise = ins.noise
+        self.center = np.array(self.feature.data.shape) // 2
+        self.profile = aziavg(self.feature.data, self.center) - 1.
         self._initialized = True
-        
+
     def _estimate_z(self):
         '''Estimate axial position of particle
 
@@ -92,6 +95,7 @@ class Estimator(object):
         if feature is not None:
             self._initialize(feature)
         z_p = self._estimate_z()
+        r_p = [self.center[0], self.center[1], z_p]
         a_p = self._estimate_a(z_p)
         n_p = self.n_p
-        return dict(z_p=z_p, a_p=a_p, n_p=n_p)
+        return dict(r_p=r_p, a_p=a_p, n_p=n_p)
