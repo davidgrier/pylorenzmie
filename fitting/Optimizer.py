@@ -176,10 +176,6 @@ class Optimizer(object):
         '''
         Fit Model to data
 
-        Keywords
-        --------- 
-        See arguments for scipy.optimize.least_squares()
-
         Returns
         -------
         result : pandas.Series

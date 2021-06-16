@@ -99,7 +99,9 @@ class Feature(object):
         self.model.coordinates = self.coordinates
 
     def estimate(self):
-        self.particle.properties = self.estimator.predict()
+        properties = self.estimator.predict(self)
+        self.particle.properties = properties
+        return properties
             
     def optimize(self):
         mask = self.mask.selected

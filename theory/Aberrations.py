@@ -191,7 +191,7 @@ class Aberrations(object):
         phase = 0.
         for a_n, phase_n in zip(self.coefficients, self.zernike):
             if a_n != 0:
-                phase += a_n * phase_n()
+                phase += a_n * phase_n
         self._phase = phase
         self._update = False
         return phase
