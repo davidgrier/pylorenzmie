@@ -51,6 +51,7 @@ class LMHologram(object):
     @property
     def properties(self):
         p = self.lorenzmie.properties
+        p['alpha'] = self.alpha
         p.update(self.aberrations.properties)
         return p
 
