@@ -30,6 +30,7 @@ class LMHologram(object):
         self.coordinates = coordinates
         self.particle = self.lorenzmie.particle
         self.instrument = self.lorenzmie.instrument
+        self.method = self.lorenzmie.method
 
     @property
     def alpha(self):
