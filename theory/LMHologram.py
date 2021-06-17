@@ -57,6 +57,9 @@ class LMHologram(object):
 
     @properties.setter
     def properties(self, properties):
+        for name, value in properties.items():
+            if hasattr(self, name):
+                setattr(self, name, value)
         self.lorenzmie.properties = properties
         self.aberrations.properties = properties
 
