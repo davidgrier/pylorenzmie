@@ -10,6 +10,10 @@ class TestInstrument(unittest.TestCase):
     def setUp(self):
         self.instrument = Instrument()
 
+    def test_repr(self):
+        r = repr(self.instrument)
+        self.assertIsInstance(r, str)
+
     def test_coordinates(self, corner=None):
         shape = [128, 128]
         c = coordinates(shape, corner=corner)

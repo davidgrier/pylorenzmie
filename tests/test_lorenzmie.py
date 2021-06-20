@@ -17,6 +17,10 @@ class TestLorenzMie(unittest.TestCase):
         self.method = LorenzMie()
         self.shape = [256, 256]
 
+    def test_repr(self):
+        r = repr(self.method)
+        self.assertIsInstance(r, str)
+
     def test_method(self):
         self.assertEqual(self.method.method, 'numpy')
         
@@ -48,8 +52,7 @@ class TestLorenzMie(unittest.TestCase):
     def test_properties(self):
         '''Get properties, change one, and set properties'''
         value = -42
-        p = self.method.properties
-        p['x_p'] = value
+        p = dict(x_p = value)
         self.method.properties = p        
         self.assertEqual(self.method.particle.x_p, value)
 
