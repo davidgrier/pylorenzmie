@@ -108,6 +108,16 @@ class LorenzMie(object):
         self.particle = particle or Sphere(**kwargs)
         self.instrument = instrument or Instrument(**kwargs)
 
+    def __str__(self):
+        fmt = '<{}(particle=part, instrument=inst)>\n\t'
+        fmt += 'part = {}\n\tinst = {}'
+        return fmt.format(self.__class__.__name__,
+                          str(self.particle),
+                          str(self.instrument))
+
+    def __repr__(self):
+        return self.__str__()
+    
     @property
     def coordinates(self):
         '''Three-dimensional coordinates at which field is calculated
@@ -164,9 +174,11 @@ class LorenzMie(object):
 
     @properties.setter
     def properties(self, properties):
+        # Set properties of components
         self.particle.properties = properties
         self.instrument.properties = properties
-        for property, value in properties.items():
+        # Set own properties: useful for subclassing
+        for property, value in properties.items(): # pragma: no cover
             if hasattr(self, property):
                 setattr(self, property, value)
 
