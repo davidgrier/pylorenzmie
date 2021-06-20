@@ -57,8 +57,8 @@ class Instrument(object):
         self.background = background
 
     def __str__(self):
-        str = '{}(wavelength={}, magnification={}, n_m={})'
-        return str.format(self.__class__.__name__,
+        fmt = '<{}(wavelength={}, magnification={}, n_m={})>'
+        return fmt.format(self.__class__.__name__,
                           self.wavelength,
                           self.magnification,
                           self.n_m)
