@@ -32,6 +32,13 @@ class LMHologram(object):
         self.instrument = self.lorenzmie.instrument
         self.method = self.lorenzmie.method
 
+    def __str__(self):
+        fmt = '<{}(alpha={})>'
+        return fmt.format(self.__class__.__name__, self.alpha)
+
+    def __repr__(self):
+        return str(self)
+
     @property
     def alpha(self):
         return self._alpha

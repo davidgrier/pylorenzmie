@@ -16,6 +16,10 @@ class TestLorenzMie(unittest.TestCase):
         self.method = LMHologram()
         self.shape = [256, 256]
 
+    def test_repr(self):
+        r = repr(self.method)
+        self.assertIsInstance(r, str)
+        
     def test_alpha(self):
         value = 2.
         alpha = self.method.alpha
@@ -28,6 +32,11 @@ class TestLorenzMie(unittest.TestCase):
         self.method.alpha = value
         p = self.method.properties
         self.assertEqual(p['alpha'], value)
+
+    def test_coordinates(self):
+        c = coordinates(self.shape)
+        self.method.coordinates = c
+        self.assertEqual(self.method.coordinates.shape[1], c.shape[1])
 
     def test_hologram_nocoordinates(self):
         self.method.coordinates = None
