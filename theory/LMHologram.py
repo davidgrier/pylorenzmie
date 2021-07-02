@@ -10,9 +10,16 @@ class LMHologram(object):
 
     Properties
     ----------
+    alpha : float
+        Relative amplitude of scattered field.
+        Default: 1
     aberrations : Aberrations
     lorenzmie : LorenzMie
-    coordinates : numpy.ndarray
+    properties : dict
+        Properties that can be accessed and set
+
+    NOTE: Properties of aberrations and lorenzmie can
+    be accessed directly for convenience
 
     Methods
     -------
@@ -24,13 +31,9 @@ class LMHologram(object):
                  alpha=1.,
                  coordinates=None,
                  **kwargs):
-        self.alpha = alpha
-        self.aberrations = Aberrations(**kwargs)
-        self.lorenzmie = LorenzMie(**kwargs)
-        self.coordinates = coordinates
-        self.particle = self.lorenzmie.particle
-        self.instrument = self.lorenzmie.instrument
-        self.method = self.lorenzmie.method
+        super().__setattr__('alpha', alpha)
+        super().__setattr__('aberrations', Aberrations(**kwargs))
+        super().__setattr__('lorenzmie', LorenzMie(**kwargs))
 
     def __str__(self):
         fmt = '<{}(alpha={})>'
@@ -39,22 +42,18 @@ class LMHologram(object):
     def __repr__(self):
         return str(self)
 
-    @property
-    def alpha(self):
-        return self._alpha
+    def __getattr__(self, key):
+        if hasattr(self.lorenzmie, key):
+            return getattr(self.lorenzmie, key)
+        elif hasattr(self.aberrations, key):
+            return getattr(self.aberrations, key)
 
-    @alpha.setter
-    def alpha(self, alpha):
-        self._alpha = alpha
-
-    @property
-    def coordinates(self):
-        return self.lorenzmie.coordinates
-    
-    @coordinates.setter
-    def coordinates(self, coordinates):
-        self.aberrations.coordinates = coordinates
-        self.lorenzmie.coordinates = coordinates
+    def __setattr__(self, key, value):
+        if hasattr(self, key):
+            super().__setattr__(key, value)
+        for component in [self.lorenzmie, self.aberrations]:
+            if hasattr(component, key):
+                setattr(component, key, value)
 
     @property
     def properties(self):
