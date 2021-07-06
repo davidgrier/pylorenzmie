@@ -29,7 +29,6 @@ class LMHologram(object):
 
     def __init__(self,
                  alpha=1.,
-                 coordinates=None,
                  **kwargs):
         super().__setattr__('alpha', alpha)
         super().__setattr__('aberrations', Aberrations(**kwargs))
