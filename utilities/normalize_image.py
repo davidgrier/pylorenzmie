@@ -31,7 +31,7 @@ def normalize_video(bg_path, vid_path, save_folder = './norm_images/', order = 2
 
     print('Opening and computing background')
     #instantiate vmedian object
-    v = vmedian(order=order, dimensions=img0.shape)
+    v = vmedian(order=order, shape=img0.shape)
     v.add(img0)
     while success:
         success, image = vidObj.read()
