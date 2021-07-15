@@ -1,12 +1,13 @@
+from .Field import Field
 import numpy as np
 
 
-class Aberrations(object):
+class Aberrations(Field):
     '''
     Abstraction of geometric aberrations
 
     ...
-    
+
     Properties
     ----------
     coordinates : numpy.ndarray
@@ -47,22 +48,19 @@ class Aberrations(object):
                  pupil=None,
                  coefficients=None,
                  **kwargs):
-        self._pupil = None
-        self._coordinates = None
+        super().__init__(**kwargs)
         self._phase = 0.
         self.pupil = pupil
         self.coordinates = coordinates
         self.coefficients = coefficients or np.zeros(9)
 
-    @property
-    def coordinates(self):
-        return self._coordinates
-
-    @coordinates.setter
+    @Field.coordinates.setter
     def coordinates(self, coordinates):
-        self._coordinates = coordinates
-        if (self._pupil is None) and not (coordinates is None):
-            self._pupil = np.max(coordinates)
+        Field.coordinates.fset(self, coordinates)
+        if coordinates is None:
+            return
+        if not hasattr(self, '_pupil'):
+            self.pupil = np.max(np.abs(coordinates))
         self.update_polynomials()
 
     @property
@@ -75,11 +73,13 @@ class Aberrations(object):
         self.update_polynomials()
 
     def update_polynomials(self):
-        self._update = True
-        if (self.coordinates is None) or (self.pupil is None):
+        try:
+            x = self.coordinates[0, :] / self.pupil
+            y = self.coordinates[1, :] / self.pupil
+            self._update = True
+        except (AttributeError, TypeError):
+            self._update = False
             return
-        x = self.coordinates[0, :] / self.pupil
-        y = self.coordinates[1, :] / self.pupil
         rhosq = x*x + y*y
         self.zernike = [1.,
                         x, y,
@@ -106,7 +106,7 @@ class Aberrations(object):
         for name, value in properties.items():
             if hasattr(self, name):
                 setattr(self, name, value)
-                 
+
     @property
     def coefficients(self):
         return self._coefficients
@@ -210,5 +210,3 @@ class Aberrations(object):
 
     def field(self):
         return np.exp(1.j * self.phase())
-        
-        
