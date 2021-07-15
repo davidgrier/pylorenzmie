@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1161</width>
-    <height>767</height>
+    <width>1185</width>
+    <height>886</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,21 +18,6 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
-    <property name="spacing">
-     <number>2</number>
-    </property>
-    <property name="leftMargin">
-     <number>5</number>
-    </property>
-    <property name="topMargin">
-     <number>2</number>
-    </property>
-    <property name="rightMargin">
-     <number>5</number>
-    </property>
-    <property name="bottomMargin">
-     <number>2</number>
-    </property>
     <item>
      <widget class="QTabWidget" name="tabs">
       <property name="sizePolicy">
@@ -73,23 +58,14 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QGridLayout" name="gridLayout">
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>0</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
-       <property name="spacing">
-        <number>1</number>
-       </property>
        <item row="0" column="0">
         <widget class="ParameterWidget" name="wavelength">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -106,6 +82,12 @@
        </item>
        <item row="0" column="1">
         <widget class="ParameterWidget" name="magnification">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -122,6 +104,12 @@
        </item>
        <item row="0" column="2">
         <widget class="ParameterWidget" name="n_m">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -138,6 +126,12 @@
        </item>
        <item row="1" column="0">
         <widget class="ParameterWidget" name="a_p">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -154,6 +148,12 @@
        </item>
        <item row="1" column="1">
         <widget class="ParameterWidget" name="n_p">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -170,6 +170,12 @@
        </item>
        <item row="1" column="2">
         <widget class="ParameterWidget" name="k_p">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -186,6 +192,12 @@
        </item>
        <item row="2" column="0">
         <widget class="ParameterWidget" name="x_p">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -202,6 +214,12 @@
        </item>
        <item row="2" column="1">
         <widget class="ParameterWidget" name="y_p">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -218,6 +236,12 @@
        </item>
        <item row="2" column="2">
         <widget class="ParameterWidget" name="z_p">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -232,8 +256,236 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="0">
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QFrame" name="aberrationFrame">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="0" column="0">
+        <widget class="ParameterWidget" name="piston">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>piston</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="1">
+        <widget class="ParameterWidget" name="xtilt">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>x tilt</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="2">
+        <widget class="ParameterWidget" name="ytilt">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>y tilt</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="0">
+        <widget class="ParameterWidget" name="defocus">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>defocus</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="1">
+        <widget class="ParameterWidget" name="xastigmatism">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>0 degree astigmatism</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="1" column="2">
+        <widget class="ParameterWidget" name="yastigmatism">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>45 degree astigmatism</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="ParameterWidget" name="xcoma">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>x coma</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="ParameterWidget" name="ycoma">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>y coma</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="2">
+        <widget class="ParameterWidget" name="spherical">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
+         <property name="focusPolicy">
+          <enum>Qt::TabFocus</enum>
+         </property>
+         <property name="statusTip">
+          <string>spherical aberration</string>
+         </property>
+         <property name="frameShape">
+          <enum>QFrame::Panel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Sunken</enum>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
+    <item>
+     <widget class="QFrame" name="fitFrame">
+      <property name="frameShape">
+       <enum>QFrame::StyledPanel</enum>
+      </property>
+      <property name="frameShadow">
+       <enum>QFrame::Raised</enum>
+      </property>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <item row="0" column="0">
         <widget class="ParameterWidget" name="bbox">
+         <property name="minimumSize">
+          <size>
+           <width>165</width>
+           <height>53</height>
+          </size>
+         </property>
          <property name="focusPolicy">
           <enum>Qt::TabFocus</enum>
          </property>
@@ -248,7 +500,7 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="0" column="1">
         <widget class="QPushButton" name="optimizeButton">
          <property name="sizePolicy">
           <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
@@ -278,7 +530,7 @@
          </property>
         </widget>
        </item>
-       <item row="3" column="2">
+       <item row="0" column="2">
         <widget class="QWidget" name="methodWidget" native="true">
          <layout class="QVBoxLayout" name="methodLayout">
           <property name="spacing">
@@ -350,7 +602,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1161</width>
+     <width>1185</width>
      <height>22</height>
     </rect>
    </property>
@@ -418,6 +670,15 @@
   <tabstop>x_p</tabstop>
   <tabstop>y_p</tabstop>
   <tabstop>z_p</tabstop>
+  <tabstop>piston</tabstop>
+  <tabstop>xtilt</tabstop>
+  <tabstop>ytilt</tabstop>
+  <tabstop>defocus</tabstop>
+  <tabstop>xastigmatism</tabstop>
+  <tabstop>yastigmatism</tabstop>
+  <tabstop>xcoma</tabstop>
+  <tabstop>ycoma</tabstop>
+  <tabstop>spherical</tabstop>
   <tabstop>bbox</tabstop>
   <tabstop>optimizeButton</tabstop>
  </tabstops>

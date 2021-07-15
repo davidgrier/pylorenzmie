@@ -3,7 +3,7 @@
 
 import logging
 import os
-import json
+import pandas as pd
 import cv2
 import numpy as np
 import pyqtgraph as pg
@@ -21,7 +21,7 @@ from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
 from PyQt5 import (QtWidgets, QtCore, uic)
 
 logger = logging.getLogger('LMTool')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 class LMTool(QtWidgets.QMainWindow):
@@ -50,14 +50,18 @@ class LMTool(QtWidgets.QMainWindow):
     def parameters(self):
         p = ['wavelength', 'magnification', 'n_m',
              'a_p', 'n_p', 'k_p',
-             'x_p', 'y_p', 'z_p', 'bbox']
+             'x_p', 'y_p', 'z_p',
+             'bbox',
+             'piston', 'xtilt', 'ytilt',
+             'defocus', 'xastigmatism', 'yastigmatism',
+             'xcoma', 'ycoma', 'spherical']
         return p
-    
+
     def setupPyQtGraph(self):
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
         pg.setConfigOption('imageAxisOrder', 'row-major')
-    
+
     #
     # Set up widgets
     #
@@ -67,7 +71,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.x_p.setStep(1.)
         self.y_p.setStep(1.)
         self.z_p.setStep(1.)
-        
+
     def setupTabs(self):
         options = dict(enableMenu=False,
                        enableMouse=False,
@@ -76,14 +80,14 @@ class LMTool(QtWidgets.QMainWindow):
         self.setupImageTab(options)
         self.setupProfileTab()
         self.setupFitTab(options)
-        
-    def setupImageTab(self, options):   
+
+    def setupImageTab(self, options):
         self.imageTab.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.image = pg.ImageItem(border=pg.mkPen('k'))
         self.imageTab.addViewBox(**options).addItem(self.image)
         pen = pg.mkPen('w', width=3)
         hoverPen = pg.mkPen('y', width=3)
-        self.roi = pg.CircleROI([100,100], radius=100., parent=self.image)
+        self.roi = pg.CircleROI([100, 100], radius=100., parent=self.image)
         self.roi.setPen(pen)
         self.roi.hoverPen = hoverPen
         self.roi.removeHandle(0)
@@ -126,7 +130,7 @@ class LMTool(QtWidgets.QMainWindow):
         map._init()
         lut = (map._lut * 255).view(np.ndarray)
         self.residuals.setLookupTable(lut)
-    
+
     def setupTheory(self, percentpix):
         # Profile and Frame use the same particle and instrument
         self.particle = Sphere()
@@ -142,6 +146,7 @@ class LMTool(QtWidgets.QMainWindow):
     #
     # Routines for loading data
     #
+
     def setupData(self, data, background):
         if type(data) is str:
             self.openHologram(data)
@@ -162,7 +167,7 @@ class LMTool(QtWidgets.QMainWindow):
         if data is None:
             return
         self.data = data
-        
+
     @pyqtSlot()
     def openBackground(self, filename=None):
         if filename is None:
@@ -188,11 +193,12 @@ class LMTool(QtWidgets.QMainWindow):
 
     def loadDefaults(self):
         basedir = os.path.dirname(os.path.abspath(__file__))
-        with open(os.path.join(basedir, 'LMTool.json'), 'r') as file:
-            settings = json.load(file)
+        settings = pd.read_json(os.path.join(basedir, 'LMTool.json'))
         for parameter in self.parameters:
             widget = getattr(self, parameter)
             for setting, value in settings[parameter].items():
+                if (value is np.nan):
+                    continue
                 logger.debug('{}: {}: {}'.format(parameter, setting, value))
                 setter_name = 'set{}'.format(setting.capitalize())
                 setter = getattr(widget, setter_name)
@@ -200,6 +206,7 @@ class LMTool(QtWidgets.QMainWindow):
     #
     # Slots for handling user interaction
     #
+
     def connectSignals(self):
         self.actionOpen.triggered.connect(self.openHologram)
         self.actionSave_Parameters.triggered.connect(self.saveParameters)
@@ -209,7 +216,7 @@ class LMTool(QtWidgets.QMainWindow):
             widget.valueChanged['double'].connect(self.updateParameter)
         self.optimizeButton.clicked.connect(self.optimize)
         self.roi.sigRegionChanged.connect(self.handleROIChanged)
-        
+
     @pyqtSlot(int)
     def handleTabChanged(self, tab):
         if (tab == 1):
@@ -279,7 +286,7 @@ class LMTool(QtWidgets.QMainWindow):
         self.roi.setSize((2*dim+1, 2*dim+1), (0.5, 0.5), update=False)
         self.roi.setPos(x0, y0, update=False)
         self.frame.bboxes = [((x0, y0), x1-x0, y1-y0)]
-        
+
     #
     # Routines associated with fitting
     #
@@ -327,7 +334,7 @@ class LMTool(QtWidgets.QMainWindow):
         except IOError:
             print('error')
 
- 
+
 def main():
     import sys
     import argparse
