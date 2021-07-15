@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from .Field import Field
 from .Particle import Particle
 from .Sphere import Sphere
 from .Instrument import Instrument
@@ -11,7 +12,7 @@ from pylorenzmie.utilities import configuration as config
 
 if config.has_numba():
     from numba import njit
-else: # pragma: no cover
+else:  # pragma: no cover
     from pylorenzmie.utilities.numba import njit
 
 import logging
@@ -62,7 +63,7 @@ Copyright (c) 2018 David G. Grier
 np.seterr(all='raise')
 
 
-class LorenzMie(object):
+class LorenzMie(Field):
     '''
     Compute scattered light field with Generalized Lorenz-Mie theory
 
@@ -87,7 +88,7 @@ class LorenzMie(object):
     '''
 
     method = 'numpy'
-    
+
     def __init__(self,
                  coordinates=None,
                  particle=None,
@@ -104,6 +105,7 @@ class LorenzMie(object):
         instrument : Instrument
            Object resprenting the light-scattering instrument
         '''
+        super().__init__(**kwargs)
         self.coordinates = coordinates
         self.particle = particle or Sphere(**kwargs)
         self.instrument = instrument or Instrument(**kwargs)
@@ -117,29 +119,10 @@ class LorenzMie(object):
 
     def __repr__(self):
         return self.__str__()
-    
-    @property
-    def coordinates(self):
-        '''Three-dimensional coordinates at which field is calculated
 
-        Expected shape is (3, npts)
-        '''
-        return self._coordinates
-
-    @coordinates.setter
+    @Field.coordinates.setter
     def coordinates(self, coordinates):
-        if coordinates is None:
-            self._coordinates = None
-            return
-        c = np.array(coordinates)
-        if c.ndim == 1:          # only x specified
-            c = np.vstack((c, np.zeros((2, c.size))))
-        elif c.shape[0] == 2:    # only (x, y) specified
-            c = np.vstack((c, np.zeros(c.shape[1])))
-        if c.shape[0] != 3:      # pragma: no cover
-            raise ValueError(
-                'coordinates should have shape ({1|2|3}, npts).')
-        self._coordinates = c
+        Field.coordinates.fset(self, coordinates)
         self.allocate()
 
     @property
@@ -178,7 +161,7 @@ class LorenzMie(object):
         self.particle.properties = properties
         self.instrument.properties = properties
         # Set own properties: useful for subclassing
-        for property, value in properties.items(): # pragma: no cover
+        for property, value in properties.items():  # pragma: no cover
             if hasattr(self, property):
                 setattr(self, property, value)
 
@@ -230,9 +213,9 @@ class LorenzMie(object):
         self.result = np.empty(shape, dtype=complex)
 
     @staticmethod
-    @njit() # unittest does not cover jitted methods
+    @njit()  # unittest does not cover jitted methods
     def compute(ab, krv, mo1n, ne1n, es, ec,
-                cartesian=True, bohren=True): # pragma: no cover
+                cartesian=True, bohren=True):  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
 
         Arguments
@@ -278,8 +261,8 @@ class LorenzMie(object):
         shape = kx.shape
 
         # 2. geometric factors
-        krho = np.hypot(kx, ky) 
-        kr = np.hypot(krho, kz) 
+        krho = np.hypot(kx, ky)
+        kr = np.hypot(krho, kz)
 
         phi = np.arctan2(ky, kx)
         cosphi = np.cos(phi)
@@ -388,7 +371,7 @@ class LorenzMie(object):
             return es
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     from Sphere import Sphere
     import matplotlib.pyplot as plt
     from time import time
