@@ -1,7 +1,6 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
 import os
 import pandas as pd
 import cv2
@@ -20,6 +19,7 @@ from pylorenzmie.utilities import (coordinates, azistd)
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
 from PyQt5 import (QtWidgets, QtCore, uic)
 
+import logging
 logger = logging.getLogger('LMTool')
 logger.setLevel(logging.DEBUG)
 
