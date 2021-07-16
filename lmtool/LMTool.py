@@ -21,7 +21,7 @@ from PyQt5 import (QtWidgets, QtCore, uic)
 
 import logging
 logger = logging.getLogger('LMTool')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class LMTool(QtWidgets.QMainWindow):

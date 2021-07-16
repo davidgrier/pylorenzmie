@@ -4,7 +4,7 @@ import numpy as np
 
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
 class Field(object):
@@ -25,13 +25,17 @@ class Field(object):
 
     @coordinates.setter
     def coordinates(self, coordinates):
+        logger.debug('Setting coordinates...')
         if coordinates is None:
+            logger.debug('Setting coordinates to None')
             self._coordinates = None
             return
         c = np.array(coordinates)
         if c.ndim == 1:          # only x specified
+            logger.debug('Setting 1D coordinates')
             c = np.vstack((c, np.zeros((2, c.size))))
         elif c.shape[0] == 2:    # only (x, y) specified
+            logger.debug('Setting 2D coordinates')
             c = np.vstack((c, np.zeros(c.shape[1])))
         if c.shape[0] != 3:      # pragma: no cover
             raise ValueError(
