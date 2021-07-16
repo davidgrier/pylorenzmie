@@ -326,13 +326,12 @@ class LMTool(QtWidgets.QMainWindow):
         if filename is None:
             filename, _ = QtWidgets.QFileDialog.getSaveFileName(
                 self, 'Save Parameters', '', 'JSON (*.json)')
-        parameters = {name: getattr(self, name).value()
-                      for name in self.parameters}
+        parameters = pd.DataFrame({name: getattr(self, name).value()
+                                   for name in self.parameters})
         try:
-            with open(filename, 'w') as file:
-                json.dump(parameters, file, indent=4, sort_keys=True)
-        except IOError:
-            print('error')
+            parameters.to_json(filename, orient='index', indent=4)
+        except IOError as ex:
+            logger.debug('Could not save settings: {}'.format(ex))
 
 
 def main():
