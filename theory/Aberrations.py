@@ -60,11 +60,13 @@ class Aberrations(Field):
 
     @Field.coordinates.setter
     def coordinates(self, coordinates):
+        logger.debug('Setting coordinates...')
         Field.coordinates.fset(self, coordinates)
         if coordinates is None:
             return
-        if not hasattr(self, '_pupil'):
-            self.pupil = np.max(np.abs(coordinates))
+        if self.pupil is None:
+            self._pupil = np.max(np.abs(coordinates))
+            logger.debug('    Set pupil: {}'.format(self._pupil))
         self.update_polynomials()
 
     @property
@@ -73,11 +75,11 @@ class Aberrations(Field):
 
     @pupil.setter
     def pupil(self, pupil):
+        logger.debug('Setting pupil: {}'.format(pupil))
         self._pupil = pupil
         self.update_polynomials()
 
     def update_polynomials(self):
-        self._update = True
         try:
             x = self.coordinates[0, :] / self.pupil
             y = self.coordinates[1, :] / self.pupil
@@ -91,6 +93,7 @@ class Aberrations(Field):
                         (x - y)*(x + y), 2.*x*y,
                         (3.*rhosq - 2.) * x, (3.*rhosq - 2.) * y,
                         6.*rhosq * (rhosq - 1.) + 1.]
+        self._update = True
 
     @property
     def properties(self):
