@@ -28,13 +28,14 @@ class LMTool(QtWidgets.QMainWindow):
 
     def __init__(self,
                  data=None,
+                 aberrations=False,
                  background=None,
                  percentpix=0.3):
         super(LMTool, self).__init__()
 
         self.setupPyQtGraph()
         uic.loadUi('LMTool.ui', self)
-        self.setupControls()
+        self.setupControls(aberrations)
         self.setupTabs()
         self.setupTheory(percentpix)
         self.autonormalize = True         # FIXME: should be a UI option
@@ -66,11 +67,13 @@ class LMTool(QtWidgets.QMainWindow):
     # Set up widgets
     #
 
-    def setupControls(self):
+    def setupControls(self, aberrations):
         self.bbox.checkbox.hide()
         self.x_p.setStep(1.)
         self.y_p.setStep(1.)
         self.z_p.setStep(1.)
+        if not aberrations:
+            self.aberrationFrame.hide()
 
     def setupTabs(self):
         options = dict(enableMenu=False,
@@ -344,6 +347,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('filename', type=str, default=fn,
                         nargs='?', action='store')
+    parser.add_argument('-a', '--aberrations', dest='aberrations',
+                        action='store_true',
+                        help='adjust aberration values')
+    parser.set_defaults(aberration=False)
     parser.add_argument('-b', '--background', dest='background',
                         default=None, action='store',
                         help='background value or file name')
@@ -355,7 +362,7 @@ def main():
         background = int(background)
 
     app = QtWidgets.QApplication(qt_args)
-    lmtool = LMTool(args.filename, background)
+    lmtool = LMTool(args.filename, args.aberrations, background)
     lmtool.show()
     sys.exit(app.exec_())
 
