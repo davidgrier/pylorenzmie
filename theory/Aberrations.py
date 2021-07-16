@@ -1,6 +1,10 @@
 from .Field import Field
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 class Aberrations(Field):
     '''
@@ -73,12 +77,12 @@ class Aberrations(Field):
         self.update_polynomials()
 
     def update_polynomials(self):
+        self._update = True
         try:
             x = self.coordinates[0, :] / self.pupil
             y = self.coordinates[1, :] / self.pupil
-            self._update = True
-        except (AttributeError, TypeError):
-            self._update = False
+        except (AttributeError, TypeError) as ex:
+            logger.debug('Could not update: {}'.format(ex))
             return
         rhosq = x*x + y*y
         self.zernike = [1.,
