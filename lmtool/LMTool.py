@@ -15,11 +15,10 @@ try:
     import cupy
 except ImportError:
     pass
-from pylorenzmie.theory import (Sphere, Instrument, LMHologram)
+from pylorenzmie.theory import (Sphere, Instrument, ZernikeCoefficients,
+                                LMHologram)
 from pylorenzmie.analysis import Frame
 from pylorenzmie.utilities import (coordinates, azistd)
-
-
 
 import logging
 logger = logging.getLogger('LMTool')
@@ -137,17 +136,22 @@ class LMTool(QtWidgets.QMainWindow):
         self.residuals.setLookupTable(lut)
 
     def setupTheory(self, percentpix):
-        # Profile and Frame use the same particle and instrument
+        # Profile and Frame use the same particle, instrument and
+        # Zernike coefficients
         self.particle = Sphere()
         self.instrument = Instrument()
+        self.coefficients = ZernikeCoefficients()
         # Theory for radial profile
         self.theory = LMHologram(particle=self.particle,
-                                 instrument=self.instrument)
+                                 instrument=self.instrument,
+                                 coefficients=self.coefficients)
         self.theory.coordinates = np.arange(self.maxrange)
         # Theory for image
         self.frame = Frame(particle=self.particle,
                            instrument=self.instrument,
+                           coefficients=self.coefficients,
                            percentpix=percentpix)
+        self.coeffients = self.theory.coefficients
     #
     # Routines for loading data
     #
@@ -242,10 +246,10 @@ class LMTool(QtWidgets.QMainWindow):
         parameter = self.sender().objectName()
         if parameter == 'bbox':
             self.profilePlot.setXRange(0., self.maxrange)
-        elif hasattr(self.instrument, parameter):
-            setattr(self.instrument, parameter, value)
-        elif hasattr(self.particle, parameter):
-            setattr(self.particle, parameter, value)
+        for subsys in [self.instrument, self.particle, self.coefficients]:
+            if hasattr(subsys, parameter):
+                setattr(subsys, parameter, value)
+                break
         if parameter in ['x_p', 'y_p', 'bbox']:
             self.updateROI()
         self.updatePlots()
