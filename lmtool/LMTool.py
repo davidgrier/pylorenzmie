@@ -1,12 +1,15 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
+from PyQt5 import (QtWidgets, QtCore, uic)
+import pyqtgraph as pg
+from matplotlib import cm
+
 import os
 import pandas as pd
 import cv2
 import numpy as np
-import pyqtgraph as pg
-from matplotlib import cm
 
 try:
     import cupy
@@ -16,8 +19,7 @@ from pylorenzmie.theory import (Sphere, Instrument, LMHologram)
 from pylorenzmie.analysis import Frame
 from pylorenzmie.utilities import (coordinates, azistd)
 
-from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
-from PyQt5 import (QtWidgets, QtCore, uic)
+
 
 import logging
 logger = logging.getLogger('LMTool')
@@ -53,7 +55,7 @@ class LMTool(QtWidgets.QMainWindow):
              'a_p', 'n_p', 'k_p',
              'x_p', 'y_p', 'z_p',
              'bbox',
-             'piston', 'xtilt', 'ytilt',
+             'pupil', 'xtilt', 'ytilt',
              'defocus', 'xastigmatism', 'yastigmatism',
              'xcoma', 'ycoma', 'spherical']
         return p

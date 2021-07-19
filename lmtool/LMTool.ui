@@ -18,6 +18,21 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
+    <property name="spacing">
+     <number>1</number>
+    </property>
+    <property name="leftMargin">
+     <number>2</number>
+    </property>
+    <property name="topMargin">
+     <number>1</number>
+    </property>
+    <property name="rightMargin">
+     <number>2</number>
+    </property>
+    <property name="bottomMargin">
+     <number>1</number>
+    </property>
     <item>
      <widget class="QTabWidget" name="tabs">
       <property name="sizePolicy">
@@ -58,6 +73,21 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QGridLayout" name="gridLayout">
+       <property name="leftMargin">
+        <number>2</number>
+       </property>
+       <property name="topMargin">
+        <number>1</number>
+       </property>
+       <property name="rightMargin">
+        <number>2</number>
+       </property>
+       <property name="bottomMargin">
+        <number>1</number>
+       </property>
+       <property name="spacing">
+        <number>1</number>
+       </property>
        <item row="0" column="0">
         <widget class="ParameterWidget" name="wavelength">
          <property name="minimumSize">
@@ -268,8 +298,23 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">
+       <property name="leftMargin">
+        <number>2</number>
+       </property>
+       <property name="topMargin">
+        <number>1</number>
+       </property>
+       <property name="rightMargin">
+        <number>2</number>
+       </property>
+       <property name="bottomMargin">
+        <number>1</number>
+       </property>
+       <property name="spacing">
+        <number>1</number>
+       </property>
        <item row="0" column="0">
-        <widget class="ParameterWidget" name="piston">
+        <widget class="ParameterWidget" name="pupil">
          <property name="minimumSize">
           <size>
            <width>165</width>
@@ -280,7 +325,7 @@
           <enum>Qt::TabFocus</enum>
          </property>
          <property name="statusTip">
-          <string>piston</string>
+          <string>pupil</string>
          </property>
          <property name="frameShape">
           <enum>QFrame::Panel</enum>
@@ -670,7 +715,7 @@
   <tabstop>x_p</tabstop>
   <tabstop>y_p</tabstop>
   <tabstop>z_p</tabstop>
-  <tabstop>piston</tabstop>
+  <tabstop>pupil</tabstop>
   <tabstop>xtilt</tabstop>
   <tabstop>ytilt</tabstop>
   <tabstop>defocus</tabstop>
