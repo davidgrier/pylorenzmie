@@ -6,6 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
+
 @dataclass
 class ZernikeCoefficients:
     pupil: int = 0
@@ -65,8 +66,8 @@ class Aberrations(Field):
                  **kwargs):
         super().__init__(**kwargs)
         self._phase = 0.
-        self.pupil = pupil
         self.coefficients = coefficients or ZernikeCoefficients()
+        self.pupil = pupil
         self.coordinates = coordinates
 
     @Field.coordinates.setter
@@ -81,8 +82,9 @@ class Aberrations(Field):
 
     @pupil.setter
     def pupil(self, pupil):
-        self.coefficients.pupil = pupil
-        self._coordinates_changed = True
+        if pupil > 0:
+            self.coefficients.pupil = pupil
+            self._coordinates_changed = True
 
     @property
     def properties(self):
@@ -96,7 +98,7 @@ class Aberrations(Field):
         try:
             x = self.coordinates[0, :] / self.coefficients.pupil
             y = self.coordinates[1, :] / self.coefficients.pupil
-        except (AttributeError, TypeError) as ex:
+        except Exception as ex:
             logger.debug('Could not compute: {}'.format(ex))
             return
         rhosq = x*x + y*y
