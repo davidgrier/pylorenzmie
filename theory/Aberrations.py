@@ -1,9 +1,41 @@
 from .Field import Field
 import numpy as np
+from dataclasses import dataclass
 
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
+
+@dataclass
+class ZernikeCoefficients:
+    pupil: int = 0
+    piston: float = 0.
+    xtilt: float = 0.
+    ytilt: float = 0.
+    defocus: float = 0.
+    xastigmatism: float = 0.
+    yastigmatism: float = 0.
+    xcoma: float = 0.
+    ycoma: float = 0.
+    spherical: float = 0.
+    changed: bool = True
+
+    def __setattr__(self, key, value):
+        if key != 'changed':
+            setattr(self, 'changed', True)
+        super().__setattr__(key, value)
+
+    @property
+    def properties(self):
+        p = self.__dict__.copy()
+        p.pop('changed')
+        return p
+
+    @properties.setter
+    def properties(self, properties):
+        for key, value in properties.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
 
 
 class Aberrations(Field):
@@ -16,28 +48,7 @@ class Aberrations(Field):
     ----------
     coordinates : numpy.ndarray
         [2, npts] array of x and y coordinates
-    pupil : float
-        radius of the imaging system's pupil [pixels]
-    coefficients : numpy.ndarray
-        9-element array containing coefficients of Zernike polynomials
-        c[0] : piston
-        c[1] : x tilt
-        c[2] : y tilt
-        c[3] : defocus
-        c[4] : 0 degree astigmatism
-        c[5] : 45 degree astigmatism
-        c[6] : x coma
-        c[7] : y coma
-        c[8] : spherical aberration
-    piston : float
-    xtilt : float
-    ytilt : float
-    defocus : float
-    xastigmatism : float
-    yastigmatism : float
-    xcoma : float
-    ycoma : float
-    spherical : float
+    coefficients : ZernikeCoefficients
 
     Methods
     -------
@@ -48,172 +59,71 @@ class Aberrations(Field):
     '''
 
     def __init__(self,
-                 coordinates=None,
-                 pupil=None,
+                 pupil=0,
                  coefficients=None,
+                 coordinates=None,
                  **kwargs):
         super().__init__(**kwargs)
         self._phase = 0.
         self.pupil = pupil
+        self.coefficients = coefficients or ZernikeCoefficients()
         self.coordinates = coordinates
-        self.coefficients = coefficients or np.zeros(9)
 
     @Field.coordinates.setter
     def coordinates(self, coordinates):
         logger.debug('Setting coordinates...')
         Field.coordinates.fset(self, coordinates)
-        if coordinates is None:
-            return
-        if self.pupil is None:
-            self._pupil = np.max(np.abs(coordinates))
-            logger.debug('    Set pupil: {}'.format(self._pupil))
-        self.update_polynomials()
+        self._coordinates_changed = True
 
     @property
     def pupil(self):
-        return self._pupil
+        return self.coefficients.pupil
 
     @pupil.setter
     def pupil(self, pupil):
-        logger.debug('Setting pupil: {}'.format(pupil))
-        self._pupil = pupil
-        self.update_polynomials()
-
-    def update_polynomials(self):
-        try:
-            x = self.coordinates[0, :] / self.pupil
-            y = self.coordinates[1, :] / self.pupil
-        except (AttributeError, TypeError) as ex:
-            logger.debug('Could not update: {}'.format(ex))
-            return
-        rhosq = x*x + y*y
-        self.zernike = [1.,
-                        x, y,
-                        2.*rhosq - 1.,
-                        (x - y)*(x + y), 2.*x*y,
-                        (3.*rhosq - 2.) * x, (3.*rhosq - 2.) * y,
-                        6.*rhosq * (rhosq - 1.) + 1.]
-        self._update = True
+        self.coefficients.pupil = pupil
+        self._coordinates_changed = True
 
     @property
     def properties(self):
-        p = dict(piston=self.piston,
-                 xtilt=self.xtilt,
-                 ytilt=self.ytilt,
-                 defocus=self.defocus,
-                 xastigmatism=self.xastigmatism,
-                 yastigmatism=self.yastigmatism,
-                 xcoma=self.xcoma,
-                 ycoma=self.ycoma,
-                 spherical=self.spherical)
-        return p
+        return self.coefficients.properties
 
     @properties.setter
     def properties(self, properties):
-        for name, value in properties.items():
-            if hasattr(self, name):
-                setattr(self, name, value)
+        self.coefficients.properties = properties
 
-    @property
-    def coefficients(self):
-        return self._coefficients
+    def _compute_polynomials(self):
+        try:
+            x = self.coordinates[0, :] / self.coefficients.pupil
+            y = self.coordinates[1, :] / self.coefficients.pupil
+        except (AttributeError, TypeError) as ex:
+            logger.debug('Could not compute: {}'.format(ex))
+            return
+        rhosq = x*x + y*y
+        self.polynomials = [1.,
+                            x, y,
+                            2.*rhosq - 1.,
+                            (x - y)*(x + y), 2.*x*y,
+                            (3.*rhosq - 2.) * x, (3.*rhosq - 2.) * y,
+                            6.*rhosq * (rhosq - 1.) + 1.]
+        self._coordinates_changed = False
 
-    @coefficients.setter
-    def coefficients(self, coefficients):
-        self._coefficients = coefficients
-        self._update = True
-
-    @property
-    def piston(self):
-        return self.coefficients[0]
-
-    @piston.setter
-    def piston(self, value):
-        self.coefficients[0] = value
-        self._update = True
-
-    @property
-    def xtilt(self):
-        return self.coefficients[1]
-
-    @xtilt.setter
-    def xtilt(self, value):
-        self.coefficients[1] = value
-        self._update = True
-
-    @property
-    def ytilt(self):
-        return self.coefficients[2]
-
-    @ytilt.setter
-    def ytilt(self, value):
-        self.coefficients[2] = value
-        self._update = True
-
-    @property
-    def defocus(self):
-        return self.coefficients[3]
-
-    @defocus.setter
-    def defocus(self, value):
-        self.coefficients[3] = value
-        self._update = True
-
-    @property
-    def xastigmatism(self):
-        return self.coefficients[4]
-
-    @xastigmatism.setter
-    def xastigmatism(self, value):
-        self.coefficients[4] = value
-        self._update = True
-
-    @property
-    def yastigmatism(self):
-        return self.coefficients[5]
-
-    @yastigmatism.setter
-    def yastigmatism(self, value):
-        self.coefficients[5] = value
-        self._update = True
-
-    @property
-    def xcoma(self):
-        return self.coefficients[6]
-
-    @xcoma.setter
-    def xcoma(self, value):
-        self.coefficients[6] = value
-        self._update = True
-
-    @property
-    def ycoma(self):
-        return self.coefficients[7]
-
-    @ycoma.setter
-    def ycoma(self, value):
-        self.coefficients[7] = value
-        self._update = True
-
-    @property
-    def spherical(self):
-        return self.coefficients[8]
-
-    @spherical.setter
-    def spherical(self, value):
-        self.coefficients[8] = value
-        self._update = True
-
-    def phase(self):
-        if not self._update:
-            return self._phase
+    def _compute_phase(self):
         phase = 0.
-        for a_n, phase_n in zip(self.coefficients, self.zernike):
+        coefficients = self.coefficients.properties.values()
+        for a_n, phase_n in zip(coefficients, self.polynomials):
             if a_n != 0:
                 phase += a_n * phase_n
         self._phase = phase
-        self._update = False
-        return phase
+        self.coefficients.changed = False
+
+    def phase(self):
+        if self._coordinates_changed:
+            self._compute_polynomials()
+            self._compute_phase()
+        if self.coefficients.changed:
+            self._compute_phase()
+        return self._phase
 
     def field(self):
         return np.exp(1.j * self.phase())
