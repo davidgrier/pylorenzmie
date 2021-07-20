@@ -100,6 +100,7 @@ class Aberrations(Field):
             y = self.coordinates[1, :] / self.coefficients.pupil
         except Exception as ex:
             logger.debug('Could not compute: {}'.format(ex))
+            self.polynomials = np.zeros(9)
             return
         rhosq = x*x + y*y
         self.polynomials = [1.,
@@ -112,10 +113,13 @@ class Aberrations(Field):
 
     def _compute_phase(self):
         phase = 0.
-        coefficients = self.coefficients.properties.values()
-        for a_n, phase_n in zip(coefficients, self.polynomials):
-            if a_n != 0:
-                phase += a_n * phase_n
+        try:
+            coefficients = self.coefficients.properties.values()
+            for a_n, phase_n in zip(coefficients, self.polynomials):
+                if a_n != 0:
+                    phase += a_n * phase_n
+        except Exception as ex:
+            logger.debug('Could not compute: {}'.format(ex))
         self._phase = phase
         self.coefficients.changed = False
 
