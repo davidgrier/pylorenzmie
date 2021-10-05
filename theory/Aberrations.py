@@ -1,4 +1,4 @@
-from .Field import Field
+from pylorenzmie.theory.Field import Field
 import numpy as np
 from dataclasses import dataclass
 
