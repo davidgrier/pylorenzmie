@@ -1,17 +1,17 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .Particle import Particle
+from pylorenzmie.theory.Particle import Particle
 import numpy as np
 
 import pylorenzmie.utilities.configuration as config
 
 if config.has_numba():
     from numba import njit
-else: # pragma: no cover
+else:  # pragma: no cover
     from pylorenzmie.utilities.numba import njit
 
-    
+
 class Sphere(Particle):
 
     '''
@@ -35,7 +35,7 @@ class Sphere(Particle):
     -------
     ab(n_m, wavelength) : numpy.ndarray
         returns the Mie scattering coefficients for the sphere
-        
+
     References
     ----------
     1. Adapted from Chapter 8 in
@@ -173,6 +173,7 @@ def wiscombe_yang(x, m):
     nstop = max(ns, xm.max(), xm_1.max())
     return int(nstop)
 
+
 @njit(cache=True, parallel=True)
 def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     '''Returns the Mie scattering coefficients for a sphere
@@ -291,7 +292,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     for n in range(1, nmax+1):
         psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])              # Eq. (20b)
         zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])            # Eq. (21b)
-        psizeta *= (n/z1 - d1_z1[n-1]) * (n/z1 - d3_z1[n-1]) # Eq. (18c)
+        psizeta *= (n/z1 - d1_z1[n-1]) * (n/z1 - d3_z1[n-1])  # Eq. (18c)
         d3_z1[n] = d1_z1[n] + 1.j/psizeta                    # Eq. (18d)
 
     # Scattering coefficients
@@ -307,7 +308,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     return ab
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     from time import time
     s = Sphere(a_p=0.75, n_p=1.5)
     print(s.a_p, s.n_p)
