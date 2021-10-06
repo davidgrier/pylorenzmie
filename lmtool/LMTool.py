@@ -1,15 +1,16 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
-from PyQt5 import (QtWidgets, QtCore, uic)
+from PyQt5.QtCore import (pyqtProperty, pyqtSlot, Qt)
+from PyQt5.QtWidgets import (QMainWindow, QFileDialog, QApplication)
+from PyQt5 import uic
 import pyqtgraph as pg
 from matplotlib import cm
-
 import os
 import pandas as pd
 import cv2
 import numpy as np
+import logging
 
 try:
     import cupy
@@ -18,14 +19,14 @@ except ImportError:
 from pylorenzmie.theory import (Sphere, Instrument, ZernikeCoefficients,
                                 LMHologram)
 from pylorenzmie.analysis import Frame
-from pylorenzmie.utilities import (coordinates, azistd)
+from pylorenzmie.utilities import azistd
 
-import logging
+
 logger = logging.getLogger('LMTool')
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
-class LMTool(QtWidgets.QMainWindow):
+class LMTool(QMainWindow):
 
     def __init__(self,
                  data=None,
@@ -102,7 +103,7 @@ class LMTool(QtWidgets.QMainWindow):
         plot.showGrid(True, True, 0.2)
         plot.setLabel('bottom', 'r [pixel]')
         plot.setLabel('left', 'b(r)')
-        pen = pg.mkPen('k', width=3, style=QtCore.Qt.DashLine)
+        pen = pg.mkPen('k', width=3, style=Qt.DashLine)
         plot.addLine(y=1., pen=pen)
         pen = pg.mkPen('k', width=3)
         plot.getAxis('bottom').setPen(pen)
@@ -113,7 +114,7 @@ class LMTool(QtWidgets.QMainWindow):
         pen = pg.mkPen('k', width=3)
         self.dataProfile = pg.PlotCurveItem(pen=pen)
         plot.addItem(self.dataProfile)
-        pen = pg.mkPen('k', width=1, style=QtCore.Qt.DashLine)
+        pen = pg.mkPen('k', width=1, style=Qt.DashLine)
         self.regionUpper = pg.PlotCurveItem(pen=pen)
         self.regionLower = pg.PlotCurveItem(pen=pen)
         self.dataRegion = pg.FillBetweenItem(
@@ -136,22 +137,20 @@ class LMTool(QtWidgets.QMainWindow):
         self.residuals.setLookupTable(lut)
 
     def setupTheory(self, percentpix):
-        # Profile and Frame use the same particle, instrument and
-        # Zernike coefficients
+        # Profile and Frame share components
         self.particle = Sphere()
         self.instrument = Instrument()
         self.coefficients = ZernikeCoefficients()
+        components = dict(particle=self.particle,
+                          instrument=self.instrument,
+                          coefficients=self.coefficients)
         # Theory for radial profile
-        self.theory = LMHologram(particle=self.particle,
-                                 instrument=self.instrument,
-                                 coefficients=self.coefficients)
+        self.theory = LMHologram(**components)
         self.theory.coordinates = np.arange(self.maxrange)
         # Theory for image
-        self.frame = Frame(particle=self.particle,
-                           instrument=self.instrument,
-                           coefficients=self.coefficients,
-                           percentpix=percentpix)
+        self.frame = Frame(**components, percentpix=percentpix)
         self.coeffients = self.theory.coefficients
+
     #
     # Routines for loading data
     #
@@ -170,8 +169,8 @@ class LMTool(QtWidgets.QMainWindow):
     @pyqtSlot()
     def openHologram(self, filename=None):
         if filename is None:
-            filename, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self, 'Open Hologram', '', 'Images (*.png)')
+            get = QFileDialog.getOpenFileName
+            filename, _ = get(self, 'Open Hologram', '', 'Images (*.png)')
         data = cv2.imread(filename, 0).astype(float)
         if data is None:
             return
@@ -180,14 +179,14 @@ class LMTool(QtWidgets.QMainWindow):
     @pyqtSlot()
     def openBackground(self, filename=None):
         if filename is None:
-            filename, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self, 'Open Background', '', 'Images (*.png)')
+            get = QFileDialog.getOpenFileName
+            filename, _ = get(self, 'Open Background', '', 'Images (*.png)')
         background = cv2.imread(filename, 0).astype(float)
         if background is None:
             return
         self.frame.background = background
 
-    @pyqtProperty(object)
+    @pyqtProperty(np.ndarray)
     def data(self):
         return self.frame.data
 
@@ -208,8 +207,8 @@ class LMTool(QtWidgets.QMainWindow):
             for setting, value in settings[parameter].items():
                 if (value is np.nan):
                     continue
-                logger.debug('{}: {}: {}'.format(parameter, setting, value))
-                setter_name = 'set{}'.format(setting.capitalize())
+                logger.debug(f'{parameter}: {setting}: {value}')
+                setter_name = f'set{setting.capitalize()}'
                 setter = getattr(widget, setter_name)
                 setter(value)
     #
@@ -316,7 +315,7 @@ class LMTool(QtWidgets.QMainWindow):
         result = feature.optimize()
         self.updateUiValues()
         self.updatePlots()
-        logger.info('Finished!\n{}'.format(str(result)))
+        logger.info(f'Finished!\n{str(result)}')
         self.statusBar().showMessage('Optimization complete')
 
     def updateUiValues(self):
@@ -328,19 +327,21 @@ class LMTool(QtWidgets.QMainWindow):
                 widget.setValue(getattr(self.particle, parameter))
             elif hasattr(self.instrument, parameter):
                 widget.setValue(getattr(self.instrument, parameter))
+            elif hasattr(self.coefficients, parameter):
+                widget.setValue(getattr(self.coefficients, parameter))
             widget.blockSignals(False)
 
     @pyqtSlot()
     def saveParameters(self, filename=None):
         if filename is None:
-            filename, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Parameters', '', 'JSON (*.json)')
-        parameters = pd.DataFrame({name: getattr(self, name).value()
-                                   for name in self.parameters})
+            get = QFileDialog.getSaveFileName
+            filename, _ = get(self, 'Save Parameters', '', 'JSON (*.json)')
+        params = {p: getattr(self, p).value() for p in self.parameters}
+        parameters = pd.DataFrame(params)
         try:
             parameters.to_json(filename, orient='index', indent=4)
         except IOError as ex:
-            logger.debug('Could not save settings: {}'.format(ex))
+            logger.debug(f'Could not save settings: {ex}')
 
 
 def main():
@@ -367,7 +368,7 @@ def main():
     if background is not None and background.isdigit():
         background = int(background)
 
-    app = QtWidgets.QApplication(qt_args)
+    app = QApplication(qt_args)
     lmtool = LMTool(args.filename, args.aberrations, background)
     lmtool.show()
     sys.exit(app.exec_())

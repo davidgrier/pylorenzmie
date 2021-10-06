@@ -1,9 +1,10 @@
+from importlib import import_module
+import logging
+
+
 use_numba = True
 use_catch = True
 
-from importlib import import_module
-
-import logging
 logging.basicConfig()
 logger = logging.getLogger('configuration')
 logger.setLevel(logging.INFO)
@@ -15,7 +16,7 @@ def has_(module):
     can_import = False
     if flag:
         try:
-            mod = import_module(module)
+            import_module(module)
             can_import = True
         except ImportError as ex:
             logger.warn(' Cannot import {}:\n\t{}'.format(module, ex))
@@ -25,6 +26,7 @@ def has_(module):
     if not ok:
         logger.info(' Falling back to standard implementation')
     return ok
+
 
 has_numba = lambda: has_('numba')
 has_catch = lambda: has_('CATCH')
