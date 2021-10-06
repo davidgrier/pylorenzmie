@@ -3,7 +3,7 @@
 
 import numpy as np
 import cupy as cp
-from pylorenzme.theory.LorenzMie import LorenzMie
+from pylorenzmie.theory.LorenzMie import LorenzMie
 
 
 class cupyLorenzMie(LorenzMie):
@@ -34,7 +34,7 @@ class cupyLorenzMie(LorenzMie):
     def __init__(self, *args, double_precision=True, **kwargs):
         super(cupyLorenzMie, self).__init__(*args, **kwargs)
         self.double_precision = double_precision
-        
+
     @property
     def double_precision(self):
         '''Toggles between single and double precision for CUDA'''
@@ -255,7 +255,7 @@ void field(double *coordsx, double *coordsy, double *coordsz,
     }
 }
 ''', 'field')
-    
+
     def cufieldf(self):
         return cp.RawKernel(r'''
 #include <cuComplex.h>
@@ -420,8 +420,8 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 }
 ''', 'field')
 
-        
-if __name__ == '__main__': # pragma: no cover
+
+if __name__ == '__main__':  # pragma: no cover
     from pylorenzmie.theory.FastSphere import FastSphere
     from pylorenzmie.theory.Instrument import Instrument
     import matplotlib.pyplot as plt
