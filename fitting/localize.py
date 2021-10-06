@@ -1,4 +1,4 @@
-from .circletransform import circletransform
+from pylorenzmie.fitting.circletransform import circletransform
 import trackpy as tp
 import numpy as np
 

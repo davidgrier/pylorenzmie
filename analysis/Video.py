@@ -5,9 +5,9 @@ import trackpy as tp
 import pandas as pd
 import json
 import os
-from .Frame import Frame
-from .utilities.normalize_image import normalize_video
-from .utilities.running_normal import running_normalize
+from pylorenzmie.analysis.Frame import Frame
+from pylorenzmie.utilities.normalize_image import normalize_video
+from pylorenzmie.utilities.running_normal import running_normalize
 
 
 class Video(object):
