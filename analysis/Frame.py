@@ -2,6 +2,12 @@ import pandas as pd
 from pylorenzmie.analysis.Feature import Feature
 from pylorenzmie.utilities import coordinates as make_coordinates
 from pylorenzmie.fitting.Localizer import Localizer
+import logging
+
+
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
 
 
 class Frame(object):
@@ -73,7 +79,7 @@ class Frame(object):
         self._bboxes = []
         self._results = None
         self.kwargs = kwargs
-        
+
     @property
     def shape(self):
         '''image shape'''
@@ -107,9 +113,9 @@ class Frame(object):
             self._data = data
 
     @property
-    def features(self):
-        '''List of objects of type Feature'''
-        return self._features
+    def results(self):
+        '''DataFrame containing tracking and characterization results'''
+        return self._results
 
     @property
     def bboxes(self):
@@ -121,8 +127,16 @@ class Frame(object):
         if isinstance(bboxes, tuple):  # only one bbox
             bboxes = [bboxes]
         self._bboxes = bboxes
+        self.set_features()
+
+    @property
+    def features(self):
+        '''List of objects of type Feature'''
+        return self._features
+
+     def set_features(self):
         self._features = []
-        for bbox in bboxes:
+        for bbox in self.bboxes:
             ((x0, y0), w, h) = bbox
             dim = min(w, h)
             data = self.data[y0:y0+dim, x0:x0+dim]
@@ -131,11 +145,6 @@ class Frame(object):
                               coordinates=coordinates.reshape((2, -1)),
                               **self.kwargs)
             self._features.append(feature)
-
-    @property
-    def results(self):
-        '''DataFrame containing tracking and characterization results'''
-        return self._results
 
     def detect(self):
         '''
@@ -180,4 +189,6 @@ class Frame(object):
         self.data = data
         self.detect()
         self.estimate()
-        return self.optimize() 
+        return self.optimize()
+
+    
