@@ -23,7 +23,7 @@ from pylorenzmie.utilities import azistd
 
 
 logger = logging.getLogger('LMTool')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class LMTool(QMainWindow):
@@ -149,7 +149,6 @@ class LMTool(QMainWindow):
         self.theory.coordinates = np.arange(self.maxrange)
         # Theory for image
         self.frame = Frame(**components, percentpix=percentpix)
-        self.coeffients = self.theory.coefficients
 
     #
     # Routines for loading data
@@ -157,34 +156,31 @@ class LMTool(QMainWindow):
 
     def setupData(self, data, background):
         if type(data) is str:
-            self.openHologram(data)
+            self.data = self.readData(data)
         else:
             self.data = data.astype(float)
-        if not self.autonormalize:
-            if type(background) is str:
-                self.openBackground(background)
-            elif type(background) is int:
-                self.frame.background = background
+        if self.autonormalize:
+            return
+        if type(background) is str:
+            self.background = self.readData(background)
+        elif type(background) is int:
+            self.background = background
 
-    @pyqtSlot()
-    def openHologram(self, filename=None):
+    def readData(self, filename=None):
         if filename is None:
             get = QFileDialog.getOpenFileName
             filename, _ = get(self, 'Open Hologram', '', 'Images (*.png)')
-        data = cv2.imread(filename, 0).astype(float)
-        if data is None:
-            return
-        self.data = data
+        if filename is None:
+            return None
+        return cv2.imread(filename, 0).astype(float)
 
     @pyqtSlot()
-    def openBackground(self, filename=None):
-        if filename is None:
-            get = QFileDialog.getOpenFileName
-            filename, _ = get(self, 'Open Background', '', 'Images (*.png)')
-        background = cv2.imread(filename, 0).astype(float)
-        if background is None:
-            return
-        self.frame.background = background
+    def openHologram(self):
+        self.data = self.readData()
+
+    @pyqtSlot()
+    def openBackground(self):
+        self.background = self.readData()
 
     @pyqtProperty(np.ndarray)
     def data(self):
@@ -192,7 +188,12 @@ class LMTool(QMainWindow):
 
     @data.setter
     def data(self, data):
-        self.frame.data = data / np.mean(data)
+        if data is None:
+            return
+        if self.autonormalize:
+            self.frame.data = data / np.median(data)
+        else:
+            self.frame.data = data / self.background
         self.image.setImage(self.frame.data)
         self.x_p.setRange((0, data.shape[1]-1))
         self.y_p.setRange((0, data.shape[0]-1))
@@ -236,9 +237,9 @@ class LMTool(QMainWindow):
     def handleROIChanged(self, roi):
         x0, y0 = roi.pos()
         dim, _ = roi.size()
-        self.bbox.setValue(dim)
         self.x_p.setValue(x0 + dim/2)
         self.y_p.setValue(y0 + dim/2)
+        self.bbox.setValue(dim)
 
     @pyqtSlot(float)
     def updateParameter(self, value):

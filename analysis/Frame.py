@@ -1,7 +1,7 @@
 import pandas as pd
-from pylorenzmie.analysis.Feature import Feature
+from pylorenzmie.analysis import Feature
 from pylorenzmie.utilities import coordinates as make_coordinates
-from pylorenzmie.fitting.Localizer import Localizer
+from pylorenzmie.fitting import Localizer
 import logging
 
 
