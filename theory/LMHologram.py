@@ -1,4 +1,5 @@
-from . import (Aberrations, LorenzMie)
+from pylorenzmie.theory.Aberrations import Aberrations
+from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
 
 
@@ -35,8 +36,7 @@ class LMHologram(object):
         super().__setattr__('lorenzmie', LorenzMie(**kwargs))
 
     def __str__(self):
-        fmt = '<{}(alpha={})>'
-        return fmt.format(self.__class__.__name__, self.alpha)
+        return f'<{self.__class__.__name__}(alpha={self.alpha})>'
 
     def __repr__(self):
         return str(self)

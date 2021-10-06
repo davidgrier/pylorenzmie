@@ -26,5 +26,3 @@ class DoubleSpinBox(QDoubleSpinBox):
     @pyqtSlot()
     def _reemitEditingFinished(self):
         self.editingFinished[float].emit(self.value())
-
-    

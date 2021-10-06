@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from .Field import Field
-from .Particle import Particle
-from .Sphere import Sphere
-from .Instrument import Instrument
+from pylorenzmie.theory.Field import Field
+from pylorenzmie.theory.Particle import Particle
+from pylorenzmie.theory.Sphere import Sphere
+from pylorenzmie.theory.Instrument import Instrument
 import json
 
 from pylorenzmie.utilities import configuration as config

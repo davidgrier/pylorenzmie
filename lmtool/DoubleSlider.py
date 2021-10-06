@@ -35,7 +35,7 @@ class DoubleSlider(QSlider):
     '''
 
     __pyqtSignals__ = ('valueChanged(float)',)
-    
+
     valueChanged = pyqtSignal(float)
 
     def __init__(self, *args, **kwargs):

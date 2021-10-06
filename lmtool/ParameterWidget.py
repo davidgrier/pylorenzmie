@@ -26,7 +26,7 @@ class ParameterWidget(QtWidgets.QFrame):
         super().setObjectName(name)
         for child in self.children():
             child.setObjectName(name)
-            
+
     def setupAPI(self):
         self.text = self.label.text
         self.setText = self.label.setText
@@ -108,6 +108,7 @@ def main():
     param.setSuffix(' μm')
     param.show()
     sys.exit(app.exec_())
+
 
 if __name__ == '__main__':
     main()
