@@ -3,7 +3,7 @@
 
 import numpy as np
 import cupy as cp
-from pylorenzme.theory.LorenzMie import LorenzMie
+from pylorenzmie.theory.LorenzMie import LorenzMie
 
 
 class cupyLorenzMie(LorenzMie):
