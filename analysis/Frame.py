@@ -1,14 +1,12 @@
-import cv2
-import numpy as np
 import pandas as pd
-from .Feature import Feature
+from pylorenzmie.analysis.Feature import Feature
 from pylorenzmie.utilities import coordinates as make_coordinates
-from pylorenzmie.fitting import (Localizer, Estimator)
+from pylorenzmie.fitting.Localizer import Localizer
 
 
 class Frame(object):
     '''
-    Abstraction of a holographic microscopy video frame. 
+    Abstraction of a holographic microscopy video frame.
     ...
 
     Properties
@@ -54,7 +52,7 @@ class Frame(object):
         Identify features in image that are associated with
         particles and optimize the parameters of those features.
         Results are obtained by running detect(), estimate() and optimize()
-    
+
         Arguments
         ---------
         image : [optional] numpy.ndarray
@@ -95,7 +93,7 @@ class Frame(object):
     def coordinates(self):
         '''Coordinates of pixels in image data'''
         return self._coordinates
-    
+
     @property
     def data(self):
         '''image data'''
@@ -120,7 +118,7 @@ class Frame(object):
 
     @bboxes.setter
     def bboxes(self, bboxes):
-        if isinstance(bboxes, tuple): # only one bbox
+        if isinstance(bboxes, tuple):  # only one bbox
             bboxes = [bboxes]
         self._bboxes = bboxes
         self._features = []
@@ -182,4 +180,4 @@ class Frame(object):
         self.data = data
         self.detect()
         self.estimate()
-        return self.optimize()     
+        return self.optimize() 

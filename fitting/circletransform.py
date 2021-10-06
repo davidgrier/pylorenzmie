@@ -42,7 +42,7 @@ def circletransform(image,
 
     extent = extent or 13
     order = order or 3
-   
+
     # Orientational order parameter:
     # psi(r) = |\partial_x a + i \partial_y a|^2
     psi = np.empty_like(image, dtype=np.complex)
@@ -68,7 +68,4 @@ def circletransform(image,
 
     # Transformed image is the intensity of the convolution
     intensity = psi.real*psi.real + psi.imag*psi.imag
-    if phase:
-       return intensity, np.angle(psi)
-    else:
-       return intensity
+    return intensity, np.angle(psi) if phase else intensity

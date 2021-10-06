@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
-from .Feature import Feature
+from pylorenzmie.analysis.Feature import Feature
 
 
 class Trajectory(object):
@@ -40,7 +40,7 @@ class Trajectory(object):
 
     def add(self, features, framenumbers):
         if len(features) != len(framenumbers):
-            msg = "features and framenumbers must be same length."
+            msg = 'features and framenumbers must be same length.'
             raise(ValueError(msg))
         for idx, feature in enumerate(features):
             if self.instrument is not None:

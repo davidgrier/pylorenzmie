@@ -1,7 +1,7 @@
-from .Mask import Mask
-from .Feature import Feature
-from .Frame import Frame
-from .Trajectory import Trajectory
+from pylorenzmie.analysis.Mask import Mask
+from pylorenzmie.analysis.Feature import Feature
+from pylorenzmie.analysis.Frame import Frame
+from pylorenzmie.analysis.Trajectory import Trajectory
 # from .Video import Video
 
 __all__ = [Mask, Feature, Frame, Trajectory]

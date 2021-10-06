@@ -18,7 +18,7 @@ class Localizer(object):
     tp_opts : dict
         Dictionary of options for trackpy.locate()
         Default: dict(diameter=31, minmass=30)
-    
+
     Methods
     -------
     detect(image) : list of dict
@@ -38,7 +38,7 @@ class Localizer(object):
     def detect(self, image):
         '''
         Localize features in normalized holographic microscopy images
-        
+
         Parameters
         ----------
         image : array_like
@@ -120,7 +120,7 @@ class Localizer(object):
         The orientation alignment transform,"
         Optics Express 22, 12773-12778 (2014)
         """
-        
+
         # Orientational order parameter:
         # psi(r) = |\partial_x a + i \partial_y a|^2
         psi = np.empty_like(image, dtype=np.complex)
@@ -160,5 +160,3 @@ class Localizer(object):
         else:
             extent = ndx[self._nfringes]
         return extent
-
-

@@ -3,6 +3,7 @@
 
 import numpy as np
 
+
 def gaussian(x, mu, sig):
     '''Gaussian function for radial distribution'''
     return np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
@@ -26,21 +27,21 @@ class Mask(object):
     exclude : numpy.ndarray
         indexes of pixels to exclude from mask
     mask : numpy.ndarray
- 
+
     '''
-    
+
     def __init__(self,
                  coordinates=None,
                  percentpix=0.1,
                  distribution='fast',
                  exclude=None,
                  **kwargs):
-        
+
         self.d_map = {'uniform': self._uniform_distribution,
                       'radial': self._radial_distribution,
                       'donut': self._donut_distribution,
                       'fast': self._fast_distribution}
-        
+
         self._percentpix = percentpix
         self._distribution = distribution
         self._exclude = exclude or []
@@ -50,7 +51,7 @@ class Mask(object):
     def coordinates(self):
         '''Distance of each pixel from center of feature'''
         return self._coordinates
-    
+
     @coordinates.setter
     def coordinates(self, coordinates):
         self._coordinates = coordinates
@@ -141,7 +142,7 @@ class Mask(object):
         self._selected[index] = True
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     from pylorenzmie.utilities import coordinates
 
     shape = (201, 201)
