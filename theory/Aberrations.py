@@ -109,7 +109,6 @@ class Aberrations(Field):
                             (x - y)*(x + y), 2.*x*y,
                             (3.*rhosq - 2.) * x, (3.*rhosq - 2.) * y,
                             6.*rhosq * (rhosq - 1.) + 1.]
-        self._coordinates_changed = False
 
     def _compute_phase(self):
         phase = 0.
@@ -119,17 +118,19 @@ class Aberrations(Field):
                 if a_n != 0:
                     phase += a_n * phase_n
         except Exception as ex:
-            logger.debug('Could not compute: {}'.format(ex))
+            logger.debug(f'Could not compute: {ex}')
         self._phase = phase
-        self.coefficients.changed = False
 
     def phase(self):
         if self._coordinates_changed:
             self._compute_polynomials()
+        if self._coordinates_changed or self.coefficients.changed:
             self._compute_phase()
-        if self.coefficients.changed:
-            self._compute_phase()
+        self._coordinates_changed = False
+        self.coefficients.changed = False
         return self._phase
 
     def field(self):
-        return np.exp(1.j * self.phase())
+        if self._coordinates_changed or self.coefficients.changed:
+            self._field = np.exp(1.j * self.phase())
+        return self._field
