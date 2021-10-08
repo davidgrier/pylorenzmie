@@ -2,20 +2,21 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from pylorenzmie.utilities import configuration as config
 from pylorenzmie.theory.Field import Field
 from pylorenzmie.theory.Particle import Particle
 from pylorenzmie.theory.Sphere import Sphere
 from pylorenzmie.theory.Instrument import Instrument
 import json
+import logging
 
-from pylorenzmie.utilities import configuration as config
 
 if config.has_numba():
     from numba import njit
 else:  # pragma: no cover
     from pylorenzmie.utilities.numba import njit
 
-import logging
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
@@ -119,11 +120,6 @@ class LorenzMie(Field):
 
     def __repr__(self):
         return self.__str__()
-
-    @Field.coordinates.setter
-    def coordinates(self, coordinates):
-        Field.coordinates.fset(self, coordinates)
-        self.allocate()
 
     @property
     def particle(self):

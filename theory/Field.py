@@ -41,3 +41,7 @@ class Field(object):
             raise ValueError(
                 'coordinates should have shape ({1|2|3}, npts).')
         self._coordinates = c
+        self.allocate()
+
+    def allocate(self):
+        pass
