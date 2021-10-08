@@ -1,7 +1,7 @@
 import pandas as pd
-from pylorenzmie.analysis.Feature import Feature
+from pylorenzmie.analysis import Feature
 from pylorenzmie.utilities import coordinates as make_coordinates
-from pylorenzmie.fitting.Localizer import Localizer
+from pylorenzmie.fitting import Localizer
 import logging
 
 
@@ -32,7 +32,7 @@ class Frame(object):
     results : pandas.DataFrame
         Summary of tracking and characterization data obtained by estimate(),
         optimize() or analyze()
- 
+
     Methods
     -------
     detect() : int
@@ -70,6 +70,7 @@ class Frame(object):
         results: pandas.DataFrame
             Summary of tracking and characterization results from data
     '''
+
     def __init__(self, **kwargs):
         self._data = None
         self._shape = None
@@ -133,7 +134,7 @@ class Frame(object):
         '''List of objects of type Feature'''
         return self._features
 
-     def set_features(self):
+    def set_features(self):
         self._features = []
         for bbox in self.bboxes:
             ((x0, y0), w, h) = bbox
@@ -189,5 +190,3 @@ class Frame(object):
         self.detect()
         self.estimate()
         return self.optimize()
-
-    
