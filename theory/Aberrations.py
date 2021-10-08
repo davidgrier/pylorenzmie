@@ -72,7 +72,7 @@ class Aberrations(Field):
 
     @Field.coordinates.setter
     def coordinates(self, coordinates):
-        logger.debug('Setting coordinates...')
+        logger.debug('Setting coordinates')
         Field.coordinates.fset(self, coordinates)
         self._coordinates_changed = True
 
@@ -99,26 +99,28 @@ class Aberrations(Field):
             x = self.coordinates[0, :] / self.coefficients.pupil
             y = self.coordinates[1, :] / self.coefficients.pupil
         except Exception as ex:
-            logger.debug('Could not compute: {}'.format(ex))
+            logger.debug(f'Could not compute: {ex}')
             self.polynomials = np.zeros(9)
             return
         rhosq = x*x + y*y
-        self.polynomials = [1.,
-                            x, y,
-                            2.*rhosq - 1.,
-                            (x - y)*(x + y), 2.*x*y,
-                            (3.*rhosq - 2.) * x, (3.*rhosq - 2.) * y,
-                            6.*rhosq * (rhosq - 1.) + 1.]
+        self.polynomials = \
+            dict(pupil=0.,
+                 piston=1.,
+                 xtilt=x,
+                 ytilt=y,
+                 defocus=(2.*rhosq - 1.),
+                 xastigmatism=(x - y)*(x + y),
+                 yastigmatism=0.5*x*y,
+                 xcoma=(3.*rhosq - 2.)*x,
+                 ycoma=(3.*rhosq - 2.)*y,
+                 spherical=6.*rhosq*(rhosq - 1.) + 1.)
 
     def _compute_phase(self):
         phase = 0.
-        try:
-            coefficients = self.coefficients.properties.values()
-            for a_n, phase_n in zip(coefficients, self.polynomials):
-                if a_n != 0:
-                    phase += a_n * phase_n
-        except Exception as ex:
-            logger.debug(f'Could not compute: {ex}')
+        for term in self.coefficients.properties.keys():
+            a_n = getattr(self.coefficients, term)
+            if a_n != 0:
+                phase += a_n * self.polynomials[term]
         self._phase = phase
 
     def phase(self):
