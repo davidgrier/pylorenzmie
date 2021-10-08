@@ -76,9 +76,9 @@ class Frame(object):
         self._shape = None
         self._coordinates = None
         self.localizer = Localizer(**kwargs)
-        self._features = []
-        self._bboxes = []
-        self._results = None
+        self._features = list()
+        self._bboxes = list()
+        self._results = pd.DataFrame()
         self.kwargs = kwargs
 
     @property
@@ -109,8 +109,7 @@ class Frame(object):
     @data.setter
     def data(self, data):
         if data is not None:
-            if data.shape != self.shape:
-                self.shape = data.shape
+            self.shape = data.shape
             self._data = data
 
     @property
