@@ -65,12 +65,9 @@
      </widget>
     </item>
     <item>
-     <widget class="QFrame" name="parameterFrame">
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
+     <widget class="QGroupBox" name="parameterGroupBox">
+      <property name="title">
+       <string>Lorenz-Mie Parameters</string>
       </property>
       <layout class="QGridLayout" name="gridLayout">
        <property name="leftMargin">
@@ -185,12 +182,9 @@
      </widget>
     </item>
     <item>
-     <widget class="QFrame" name="aberrationFrame">
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
+     <widget class="QGroupBox" name="aberrationGroupBox">
+      <property name="title">
+       <string>Aberrations</string>
       </property>
       <layout class="QGridLayout" name="gridLayout_2">
        <property name="leftMargin">
@@ -315,12 +309,15 @@
      </widget>
     </item>
     <item>
-     <widget class="QFrame" name="fitFrame">
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
+     <widget class="QGroupBox" name="fitGroupBox">
+      <property name="title">
+       <string>Optimization</string>
       </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
+      <property name="flat">
+       <bool>false</bool>
+      </property>
+      <property name="checkable">
+       <bool>false</bool>
       </property>
       <layout class="QGridLayout" name="gridLayout_3">
        <property name="leftMargin">

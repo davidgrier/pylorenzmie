@@ -75,7 +75,7 @@ class LMTool(QMainWindow):
         self.y_p.setStep(1.)
         self.z_p.setStep(1.)
         if not aberrations:
-            self.aberrationFrame.hide()
+            self.aberrationGroupBox.hide()
 
     def setupTabs(self):
         options = dict(enableMenu=False,
