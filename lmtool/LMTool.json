@@ -105,6 +105,14 @@
 	"fixed": true,
 	"decimals": 0
     },
+    "piston": {
+	"text": "piston",
+	"range": [-10., 10.],
+	"step": 0.1,
+	"value": 0.,
+	"fixed": true,
+	"decimals": 1
+    },
     "xtilt": {
 	"text": "x tilt",
 	"range": [-10., 10.],
