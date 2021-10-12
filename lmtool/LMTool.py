@@ -55,7 +55,7 @@ class LMTool(QMainWindow):
              'a_p', 'n_p', 'k_p',
              'x_p', 'y_p', 'z_p',
              'bbox',
-             'pupil', 'xtilt', 'ytilt',
+             'pupil', 'piston', 'xtilt', 'ytilt',
              'defocus', 'xastigmatism', 'yastigmatism',
              'xcoma', 'ycoma', 'spherical']
         return p

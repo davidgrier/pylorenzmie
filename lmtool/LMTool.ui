@@ -85,204 +85,99 @@
        <property name="bottomMargin">
         <number>1</number>
        </property>
-       <property name="spacing">
+       <property name="horizontalSpacing">
+        <number>2</number>
+       </property>
+       <property name="verticalSpacing">
         <number>1</number>
        </property>
        <item row="0" column="0">
         <widget class="ParameterWidget" name="wavelength">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Wavelength of illumination [micrometers]</string>
-         </property>
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="0" column="1">
         <widget class="ParameterWidget" name="magnification">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Magnification [micrometers/pixel]</string>
-         </property>
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="ParameterWidget" name="n_m">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Refractive index of medium</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="1" column="0">
         <widget class="ParameterWidget" name="a_p">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Radius of particle [micrometers]</string>
-         </property>
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="1" column="1">
         <widget class="ParameterWidget" name="n_p">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Refractive index of particle</string>
-         </property>
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
-       <item row="1" column="2">
+       <item row="1" column="3">
         <widget class="ParameterWidget" name="k_p">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Absorption coefficient of particle</string>
-         </property>
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="2" column="0">
         <widget class="ParameterWidget" name="x_p">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>x coordinate [pixel]</string>
-         </property>
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="3">
+        <widget class="ParameterWidget" name="z_p">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="0" column="3">
+        <widget class="ParameterWidget" name="n_m">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="2" column="1">
         <widget class="ParameterWidget" name="y_p">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>y coordinate [pixel]</string>
-         </property>
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="2">
-        <widget class="ParameterWidget" name="z_p">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Axial position of particle [pixel]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
@@ -310,204 +205,109 @@
        <property name="bottomMargin">
         <number>1</number>
        </property>
-       <property name="spacing">
+       <property name="horizontalSpacing">
+        <number>2</number>
+       </property>
+       <property name="verticalSpacing">
         <number>1</number>
        </property>
        <item row="0" column="0">
         <widget class="ParameterWidget" name="pupil">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>pupil</string>
-         </property>
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="ParameterWidget" name="xtilt">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>x tilt</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="ParameterWidget" name="ytilt">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>y tilt</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="1" column="0">
-        <widget class="ParameterWidget" name="defocus">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>defocus</string>
-         </property>
+        <widget class="ParameterWidget" name="piston">
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="1" column="1">
-        <widget class="ParameterWidget" name="xastigmatism">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>0 degree astigmatism</string>
-         </property>
+        <widget class="ParameterWidget" name="xtilt">
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="1" column="2">
-        <widget class="ParameterWidget" name="yastigmatism">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>45 degree astigmatism</string>
-         </property>
+        <widget class="ParameterWidget" name="ytilt">
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="2" column="0">
-        <widget class="ParameterWidget" name="xcoma">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>x coma</string>
-         </property>
+        <widget class="ParameterWidget" name="defocus">
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="2" column="1">
-        <widget class="ParameterWidget" name="ycoma">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>y coma</string>
-         </property>
+        <widget class="ParameterWidget" name="xastigmatism">
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
        <item row="2" column="2">
-        <widget class="ParameterWidget" name="spherical">
-         <property name="minimumSize">
-          <size>
-           <width>165</width>
-           <height>53</height>
-          </size>
-         </property>
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>spherical aberration</string>
-         </property>
+        <widget class="ParameterWidget" name="yastigmatism">
          <property name="frameShape">
-          <enum>QFrame::Panel</enum>
+          <enum>QFrame::StyledPanel</enum>
          </property>
          <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
+          <enum>QFrame::Raised</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="ParameterWidget" name="xcoma">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="ParameterWidget" name="ycoma">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="2">
+        <widget class="ParameterWidget" name="spherical">
+         <property name="frameShape">
+          <enum>QFrame::StyledPanel</enum>
+         </property>
+         <property name="frameShadow">
+          <enum>QFrame::Raised</enum>
          </property>
         </widget>
        </item>
@@ -523,6 +323,24 @@
        <enum>QFrame::Raised</enum>
       </property>
       <layout class="QGridLayout" name="gridLayout_3">
+       <property name="leftMargin">
+        <number>2</number>
+       </property>
+       <property name="topMargin">
+        <number>1</number>
+       </property>
+       <property name="rightMargin">
+        <number>2</number>
+       </property>
+       <property name="bottomMargin">
+        <number>1</number>
+       </property>
+       <property name="horizontalSpacing">
+        <number>2</number>
+       </property>
+       <property name="verticalSpacing">
+        <number>1</number>
+       </property>
        <item row="0" column="0">
         <widget class="ParameterWidget" name="bbox">
          <property name="minimumSize">
@@ -706,24 +524,6 @@
  </customwidgets>
  <tabstops>
   <tabstop>tabs</tabstop>
-  <tabstop>wavelength</tabstop>
-  <tabstop>magnification</tabstop>
-  <tabstop>n_m</tabstop>
-  <tabstop>a_p</tabstop>
-  <tabstop>n_p</tabstop>
-  <tabstop>k_p</tabstop>
-  <tabstop>x_p</tabstop>
-  <tabstop>y_p</tabstop>
-  <tabstop>z_p</tabstop>
-  <tabstop>pupil</tabstop>
-  <tabstop>xtilt</tabstop>
-  <tabstop>ytilt</tabstop>
-  <tabstop>defocus</tabstop>
-  <tabstop>xastigmatism</tabstop>
-  <tabstop>yastigmatism</tabstop>
-  <tabstop>xcoma</tabstop>
-  <tabstop>ycoma</tabstop>
-  <tabstop>spherical</tabstop>
   <tabstop>bbox</tabstop>
   <tabstop>optimizeButton</tabstop>
  </tabstops>
