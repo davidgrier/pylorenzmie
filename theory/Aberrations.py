@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import logging
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.DEBUG)
 
 
 @dataclass
@@ -100,7 +100,8 @@ class Aberrations(Field):
             y = self.coordinates[1, :] / self.coefficients.pupil
         except Exception as ex:
             logger.debug(f'Could not compute: {ex}')
-            self.polynomials = np.zeros(9)
+            self.polynomials = {k: 0 for k,
+                                v in self.coefficients.properties.items()}
             return
         rhosq = x*x + y*y
         self.polynomials = \
