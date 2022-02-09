@@ -100,8 +100,8 @@ class Aberrations(Field):
             y = self.coordinates[1, :] / self.coefficients.pupil
         except Exception as ex:
             logger.debug(f'Could not compute: {ex}')
-            self.polynomials = {k: 0 for k,
-                                v in self.coefficients.properties.items()}
+            self.polynomials = {
+                k: 0. for k in self.coefficients.properties.keys()}
             return
         rhosq = x*x + y*y
         self.polynomials = \
