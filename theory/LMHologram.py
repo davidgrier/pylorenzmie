@@ -1,5 +1,5 @@
 from pylorenzmie.theory.Aberrations import Aberrations
-from pylorenzmie.theory.LorenzMie import LorenzMie
+from pylorenzmie.theory import LorenzMie
 import numpy as np
 
 
