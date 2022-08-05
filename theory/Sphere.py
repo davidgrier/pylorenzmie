@@ -59,14 +59,15 @@ class Sphere(Particle):
     '''
 
     def __init__(self,
-                 a_p=1.,   # radius of sphere [um]
-                 n_p=1.5,  # refractive index of sphere
-                 k_p=0.,   # absorption coefficient
+                 a_p=None,  # radius of sphere [um]
+                 d_p=None,  # diameter of sphere [um]
+                 n_p=None,  # refractive index of sphere
+                 k_p=None,  # absorption coefficient
                  **kwargs):
         super(Sphere, self).__init__(**kwargs)
-        self.a_p = a_p
-        self.n_p = n_p
-        self.k_p = k_p
+        self.a_p = a_p or 1.
+        self.n_p = n_p or 1.5
+        self.k_p = k_p or 0.
 
     def __str__(self):
         name = self.__class__.__name__
@@ -85,6 +86,15 @@ class Sphere(Particle):
     @a_p.setter
     def a_p(self, a_p):
         self._a_p = np.asarray(a_p, dtype=float)
+
+    @property
+    def d_p(self):
+        '''Diameter of sphere [um]'''
+        return 2.*self.a_p
+
+    @d_p.setter
+    def d_p(self, d_p):
+        self.a_p = d_p/2.
 
     @property
     def n_p(self):
