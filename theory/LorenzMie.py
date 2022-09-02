@@ -2,16 +2,14 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from .Particle import Particle
-from .Sphere import Sphere
-from .Instrument import Instrument
+from pylorenzmie.theory import (Particle, Sphere, Instrument)
 import json
 
 from pylorenzmie.utilities import configuration as config
 
 if config.has_numba():
     from numba import njit
-else: # pragma: no cover
+else:  # pragma: no cover
     from pylorenzmie.utilities.numba import njit
 
 import logging
@@ -87,12 +85,12 @@ class LorenzMie(object):
     '''
 
     method = 'numpy'
-    
+
     def __init__(self,
-                 coordinates=None,
-                 particle=None,
-                 instrument=None,
-                 **kwargs):
+                 coordinates: np.ndarray = None,
+                 particle: Particle = None,
+                 instrument: Instrument = None,
+                 **kwargs) -> None:
         '''
         Keywords
         ----------
@@ -108,18 +106,18 @@ class LorenzMie(object):
         self.particle = particle or Sphere(**kwargs)
         self.instrument = instrument or Instrument(**kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         fmt = '<{}(particle=part, instrument=inst)>\n\t'
         fmt += 'part = {}\n\tinst = {}'
         return fmt.format(self.__class__.__name__,
                           str(self.particle),
                           str(self.instrument))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.__str__()
-    
+
     @property
-    def coordinates(self):
+    def coordinates(self) -> np.ndarray:
         '''Three-dimensional coordinates at which field is calculated
 
         Expected shape is (3, npts)
@@ -127,7 +125,7 @@ class LorenzMie(object):
         return self._coordinates
 
     @coordinates.setter
-    def coordinates(self, coordinates):
+    def coordinates(self, coordinates: np.ndarray) -> None:
         if coordinates is None:
             self._coordinates = None
             return
@@ -143,42 +141,42 @@ class LorenzMie(object):
         self.allocate()
 
     @property
-    def particle(self):
+    def particle(self) -> Particle:
         '''Particle responsible for light scattering'''
         return self._particle
 
     @particle.setter
-    def particle(self, particle):
+    def particle(self, particle: Particle) -> None:
         logger.debug('Setting particle')
         p = np.atleast_1d(particle)
         if isinstance(p[0], Particle):
             self._particle = particle
 
     @property
-    def instrument(self):
+    def instrument(self) -> Instrument:
         '''Imaging instrument'''
         return self._instrument
 
     @instrument.setter
-    def instrument(self, instrument):
+    def instrument(self, instrument: Instrument) -> None:
         logger.debug('Setting instrument')
         if isinstance(instrument, Instrument):
             self._instrument = instrument
 
     @property
-    def properties(self):
+    def properties(self) -> dict:
         p = dict()
         p.update(self.particle.properties)
         p.update(self.instrument.properties)
         return p
 
     @properties.setter
-    def properties(self, properties):
+    def properties(self, properties: dict) -> None:
         # Set properties of components
         self.particle.properties = properties
         self.instrument.properties = properties
         # Set own properties: useful for subclassing
-        for property, value in properties.items(): # pragma: no cover
+        for property, value in properties.items():  # pragma: no cover
             if hasattr(self, property):
                 setattr(self, property, value)
 
@@ -196,7 +194,7 @@ class LorenzMie(object):
         '''
         return json.dumps(self.properties, **kwargs)
 
-    def loads(self, s):
+    def loads(self, s: str) -> None:
         '''Loads JSON string of adjustable properties
 
         Parameters
@@ -206,7 +204,7 @@ class LorenzMie(object):
         '''
         self.properties = json.loads(s)
 
-    def field(self, cartesian=True, bohren=True):
+    def field(self, cartesian: bool = True, bohren: bool = True) -> np.ndarray:
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
@@ -222,7 +220,7 @@ class LorenzMie(object):
             self.result += this
         return self.result
 
-    def allocate(self):
+    def allocate(self) -> None:
         '''Allocate ndarrays for calculation'''
         shape = self.coordinates.shape
         self.krv = np.empty(shape, dtype=float)
@@ -230,9 +228,15 @@ class LorenzMie(object):
         self.result = np.empty(shape, dtype=complex)
 
     @staticmethod
-    @njit() # unittest does not cover jitted methods
-    def compute(ab, krv, mo1n, ne1n, es, ec,
-                cartesian=True, bohren=True): # pragma: no cover
+    @njit()  # unittest does not cover jitted methods
+    def compute(ab: np.ndarray,
+                krv: np.ndarray,
+                mo1n: np.ndarray,
+                ne1n: np.ndarray,
+                es: np.ndarray,
+                ec: np.ndarray,
+                cartesian: bool = True,
+                bohren: bool = True) -> np.ndarray:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
 
         Arguments
@@ -278,8 +282,8 @@ class LorenzMie(object):
         shape = kx.shape
 
         # 2. geometric factors
-        krho = np.hypot(kx, ky) 
-        kr = np.hypot(krho, kz) 
+        krho = np.hypot(kx, ky)
+        kr = np.hypot(krho, kz)
 
         phi = np.arctan2(ky, kx)
         cosphi = np.cos(phi)
@@ -388,8 +392,7 @@ class LorenzMie(object):
             return es
 
 
-if __name__ == '__main__': # pragma: no cover
-    from Sphere import Sphere
+if __name__ == '__main__':  # pragma: no cover
     import matplotlib.pyplot as plt
     from time import time
 
