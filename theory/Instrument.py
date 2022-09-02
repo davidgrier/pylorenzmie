@@ -1,6 +1,7 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from dataclasses import dataclass
 import numpy as np
 import json
 import logging
@@ -8,7 +9,7 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
-
+@dataclass
 class Instrument(object):
     '''
     Abstraction of an in-line holographic microscope
@@ -41,6 +42,14 @@ class Instrument(object):
         Wavenumber of light
     '''
 
+    wavelength: float = 0.532
+    magnification: float = 0.135
+    n_m: float = 1.335
+    background: float =  1.  # Should also allow np.ndarray?
+    noise: float = 0.05
+    darkcount: float = 0.    
+
+    """
     def __init__(self,
                  wavelength=0.532,
                  magnification=0.135,
@@ -55,7 +64,7 @@ class Instrument(object):
         self.noise = noise
         self.dark_count = dark_count
         self.background = background
-
+    """ 
     def __str__(self):
         fmt = '<{}(wavelength={}, magnification={}, n_m={})>'
         return fmt.format(self.__class__.__name__,
@@ -66,6 +75,7 @@ class Instrument(object):
     def __repr__(self):
         return self.__str__()
 
+    """
     @property
     def wavelength(self):
         '''Wavelength of light in vacuum [um]'''
@@ -115,6 +125,8 @@ class Instrument(object):
         assert dark_count >= 0, 'dark count is non-negative'
         self._dark_count = dark_count
 
+    """
+    
     @property
     def properties(self):
         props = dict(n_m=self.n_m,
