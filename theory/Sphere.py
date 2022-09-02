@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from dataclasses import dataclass
-from pylorenzmie.theory.Particle import Particle
+from pylorenzmie.theory import Particle
 import numpy as np
 
 import pylorenzmie.utilities.configuration as config
