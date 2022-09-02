@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from dataclasses import dataclass
 import numpy as np
 import json
 
 
+@dataclass
 class Particle(object):
 
     '''
@@ -31,56 +33,18 @@ class Particle(object):
         Returns the Mie scattering coefficients
     '''
 
-    def __init__(self, r_p=None, **kwargs):
-        '''
-        Parameters
-        ----------
-        r_p : list or numpy.ndarray
-            [x, y, z] coordinates of the center of the particle.
-        '''
-        self.r_p = r_p or [0., 0., 100.]
-
-
-    def __str__(self):
-        fmt = '<{}(r_p={})>'
-        r_p = ['{:.2f}'.format(c) for c in self.r_p]
-        return fmt.format(self.__class__.__name__, r_p)
-
-    def __repr__(self):
-        return self.__str__()
+    x_p: float = 0.
+    y_p: float = 0.
+    z_p: float = 100.
 
     @property
     def r_p(self):
         '''Three-dimensional coordinates of particle's center'''
-        return self._r_p
+        return np.asarray([self.x_p, self.y_p, self.z_p])
 
     @r_p.setter
     def r_p(self, r_p):
-        self._r_p = np.asarray(r_p, dtype=float)
-
-    @property
-    def x_p(self):
-        return self._r_p[0]
-
-    @x_p.setter
-    def x_p(self, x_p):
-        self._r_p[0] = float(x_p)
-
-    @property
-    def y_p(self):
-        return self._r_p[1]
-
-    @y_p.setter
-    def y_p(self, y_p):
-        self._r_p[1] = float(y_p)
-
-    @property
-    def z_p(self):
-        return self._r_p[2]
-
-    @z_p.setter
-    def z_p(self, z_p):
-        self._r_p[2] = float(z_p)
+        self.x_p, self.y_p, self.z_p = r_p
 
     @property
     def properties(self):
@@ -140,7 +104,7 @@ class Particle(object):
         return np.asarray([1, 1], dtype=complex)
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     p = Particle()
     print(p.r_p)
     p.x_p = 100.
