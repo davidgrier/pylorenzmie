@@ -1,17 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from .Particle import Particle
+from dataclasses import dataclass
+from pylorenzmie.theory.Particle import Particle
 import numpy as np
 
 import pylorenzmie.utilities.configuration as config
 
 if config.has_numba():
     from numba import njit
-else: # pragma: no cover
+else:  # pragma: no cover
     from pylorenzmie.utilities.numba import njit
 
-    
+
+@dataclass
 class Sphere(Particle):
 
     '''
@@ -21,21 +23,18 @@ class Sphere(Particle):
 
     Properties
     ----------
-    a_p : float or numpy.ndarray
+    a_p : float
         radius of particle [um]
-        or array containing radii of concentric shells
-    n_p : float or numpy.ndarray
+    n_p : float
         refractive index of particle
-        or array containing refractive indexes of shells
-    k_p : float or numpy.ndarray
+    k_p : float
         absorption coefficient of particle
-        or array containing absorption coefficients of shells
 
     Methods
     -------
     ab(n_m, wavelength) : numpy.ndarray
         returns the Mie scattering coefficients for the sphere
-        
+
     References
     ----------
     1. Adapted from Chapter 8 in
@@ -58,77 +57,28 @@ class Sphere(Particle):
        Optics Letters 37, 2481-2420 (2012).
     '''
 
-    def __init__(self,
-                 a_p=None,  # radius of sphere [um]
-                 d_p=None,  # diameter of sphere [um]
-                 n_p=None,  # refractive index of sphere
-                 k_p=None,  # absorption coefficient
-                 **kwargs):
-        super(Sphere, self).__init__(**kwargs)
-        self.a_p = a_p or 1.
-        self.n_p = n_p or 1.5
-        self.k_p = k_p or 0.
-
-    def __str__(self):
-        name = self.__class__.__name__
-        fmt = '<{}(a_p={:.3f}, n_p={:.3f}, k_p={:.3f}, r_p={})>'
-        return fmt.format(name, self.a_p, self.n_p, self.k_p,
-                          np.round(self.r_p, 2).tolist())
+    a_p: float = 1.
+    n_p: float = 1.5
+    k_p: float = 0.
 
     @property
-    def a_p(self):
-        '''Radius of sphere [um]'''
-        if self._a_p.size == 1:
-            return self._a_p.item()
-        else:
-            return self._a_p
-
-    @a_p.setter
-    def a_p(self, a_p):
-        self._a_p = np.asarray(a_p, dtype=float)
-
-    @property
-    def d_p(self):
+    def d_p(self) -> float:
         '''Diameter of sphere [um]'''
         return 2.*self.a_p
 
     @d_p.setter
-    def d_p(self, d_p):
+    def d_p(self, d_p: float) -> None:
         self.a_p = d_p/2.
 
-    @property
-    def n_p(self):
-        '''Refractive index of sphere'''
-        if self._n_p.size == 1:
-            return self._n_p.item()
-        else:
-            return self._n_p
-
-    @n_p.setter
-    def n_p(self, n_p):
-        self._n_p = np.asarray(n_p, dtype=float)
-
-    @property
-    def k_p(self):
-        '''Absorption coefficient of sphere'''
-        if self._k_p.size == 1:
-            return self._k_p.item()
-        else:
-            return self._k_p
-
-    @k_p.setter
-    def k_p(self, k_p):
-        self._k_p = np.asarray(k_p, dtype=float)
-
     @Particle.properties.getter
-    def properties(self):
+    def properties(self) -> dict:
         p = Particle.properties.fget(self)
         p['a_p'] = self.a_p
         p['n_p'] = self.n_p
         p['k_p'] = self.k_p
         return p
 
-    def ab(self, n_m, wavelength):
+    def ab(self, n_m: complex, wavelength: float):
         '''Returns the Mie scattering coefficients
 
         Arguments
@@ -148,7 +98,7 @@ class Sphere(Particle):
 
 
 @njit(cache=True, parallel=True)
-def wiscombe_yang(x, m):
+def wiscombe_yang(x: float, m: complex) -> int:
     '''Return the number of terms to keep in partial wave expansion
 
     Equation numbers refer to Wiscombe (1980) and Yang (2003).
@@ -157,10 +107,10 @@ def wiscombe_yang(x, m):
 
     Arguments
     ---------
-    x : complex or numpy.ndarray
-        size parameters for each layer
-    m : complex or numpy.ndarray
-        relative refractive indexes of the layers
+    x : complex
+        size parameters for sphere
+    m : complex
+        relative refractive index of sphere
 
     Returns
     -------
@@ -169,7 +119,7 @@ def wiscombe_yang(x, m):
     '''
 
     # Wiscombe (1980)
-    xl = np.abs(x[-1])
+    xl = np.abs(x)
     if xl <= 8.:
         ns = np.floor(xl + 4. * xl**(1. / 3.) + 1.)
     elif xl <= 4200.:
@@ -183,23 +133,28 @@ def wiscombe_yang(x, m):
     nstop = max(ns, xm.max(), xm_1.max())
     return int(nstop)
 
+
 @njit(cache=True, parallel=True)
-def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
+def mie_coefficients(a_p: float,
+                     n_p: float,
+                     k_p: float,
+                     n_m: complex,
+                     wavelength: float) -> np.ndarray:
     '''Returns the Mie scattering coefficients for a sphere
 
-    This works for a (multilayered) sphere illuminated by
-    a coherent plane wave that is linearly polarized in the
-    x direction.
+    This works for an isotropic homogeneous sphere illuminated by
+    a coherent plane wave propagating along z and linearly polarized
+    along x.
 
     ...
 
     Arguments
     ---------
-    a_p : float or numpy.ndarray
-        radii of the layers in the sphere [um]
-    n_p : float or numpy.ndarray
-        Refractive indexes of sphere's layers
-    k_p : float or numpy.ndarray
+    a_p : float
+        radius of the sphere [um]
+    n_p : float
+        Refractive index of the sphere
+    k_p : float
         Absorption coefficient of sphere's layers
     n_m : complex
         (complex) refractive index of medium
@@ -211,11 +166,6 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     ab : numpy.ndarray
         Mie AB coefficients
     '''
-
-    a_p = np.atleast_1d(np.asarray(a_p))
-    n_p = np.atleast_1d(np.asarray(n_p))
-    k_p = np.atleast_1d(np.asarray(k_p))
-    nlayers = a_p.size
 
     # size parameters for layers
     k = 2.*np.pi/wavelength    # wave number in vacuum [um^-1]
@@ -234,82 +184,42 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     d3_z2 = np.empty(nmax+1, np.complex128)
     psi = np.empty(nmax+1, np.complex128)
     zeta = np.empty(nmax+1, np.complex128)
-    q = np.empty(nmax+1, np.complex128)
 
     # initialization
-    d1_z1[nmax] = 0.                                         # Eq. (16a)
+    d1_z1[nmax] = 0.                                          # Eq. (16a)
     d1_z2[nmax] = 0.
-    d3_z1[0] = 1.j                                           # Eq. (18b)
+    d3_z1[0] = 1.j                                            # Eq. (18b)
     d3_z2[0] = 1.j
 
     # iterate outward from the sphere's core
-    z1 = x[0] * m[0]
+    z1 = x * m
     for n in range(nmax, 0, -1):
-        d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)             # Eq. (16b)
-    ha = d1_z1.copy()                                        # Eq. (7a)
-    hb = d1_z1.copy()                                        # Eq. (8a)
-
-    # iterate outward from layer 2 to layer L
-    # account for 0-based python indexing (ii = l-1)
-    for ii in range(1, nlayers):
-        z1 = m[ii] * x[ii]
-        z2 = m[ii] * x[ii-1]
-
-        # downward recurrence for D1 (D1[nmax] = 0)
-        for n in range(nmax, 0, -1):
-            d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)         # Eq. (16b)
-            d1_z2[n-1] = n/z2 - 1./(d1_z2[n] + n/z2)
-
-        # upward recurrence for PsiZeta, D3, Q
-        a1, b1 = np.real(z1), np.imag(z1)
-        a2, b2 = np.real(z2), np.imag(z2)
-        psizeta_z1 = 0.5*(1.-np.exp(2.j*a1)*np.exp(-2.*b1))  # Eq. (18a)
-        psizeta_z2 = 0.5*(1.-np.exp(2.j*a2)*np.exp(-2.*b2))  # Eq. (18a)
-        q[0] = ((np.exp(-2.j*a1) - np.exp(-2.*b1)) /
-                (np.exp(-2.j*a2) - np.exp(-2.*b2))) * \
-            np.exp(-2.*(b2 - b1))                            # Eq. (19a)
-        for n in range(1, nmax+1):
-            psizeta_z1 *= (n/z1 - d1_z1[n-1]) * \
-                          (n/z1 - d3_z1[n-1])                # Eq. (18c)
-            psizeta_z2 *= (n/z2 - d1_z2[n-1]) * \
-                          (n/z2 - d3_z2[n-1])
-            d3_z1[n] = d1_z1[n] + 1.j/psizeta_z1             # Eq. (18d)
-            d3_z2[n] = d1_z2[n] + 1.j/psizeta_z2
-            q[n] = q[n-1] * (x[ii-1]/x[ii])**2 * \
-                (z2 * d1_z2[n] + n)/(z1 * d1_z1[n] + n) * \
-                (n - z2 * d3_z2[n-1])/(n - z1 * d3_z1[n-1])  # Eq. (19b)
-        # update Ha and Hb
-        g1 = m[ii] * ha - m[ii-1] * d1_z2                    # Eq. (12)
-        g2 = m[ii] * ha - m[ii-1] * d3_z2                    # Eq. (13)
-        ha = (g2 * d1_z1 - q * g1 * d3_z1) / (g2 - q * g1)   # Eq. (7b)
-
-        g1 = m[ii-1] * hb - m[ii] * d1_z2                    # Eq. (14)
-        g2 = m[ii-1] * hb - m[ii] * d3_z2                    # Eq. (15)
-        hb = (g2 * d1_z1 - q * g1 * d3_z1) / (g2 - q * g1)   # Eq. (8b)
-    # ii (layers)
+        d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)              # Eq. (16b)
+    ha = d1_z1.copy()                                         # Eq. (7a)
+    hb = d1_z1.copy()                                         # Eq. (8a)
 
     # iterate into medium (m = 1.)
-    z1 = x[-1]
+    z1 = x
     # downward recurrence for D1 (D1[nmax] = 0)
     for n in range(nmax, 0, -1):
-        d1_z1[n-1] = n/z1 - (1./(d1_z1[n] + n/z1))           # Eq. (16b)
+        d1_z1[n-1] = n/z1 - (1./(d1_z1[n] + n/z1))            # Eq. (16b)
 
     # upward recurrence for Psi, Zeta, PsiZeta and D3
-    psi[0] = np.sin(z1)                                      # Eq. (20a)
-    zeta[0] = -1.j * np.exp(1.j * z1)                        # Eq. (21a)
-    psizeta = 0.5 * (1. - np.exp(2.j * z1))                  # Eq. (18a)
+    psi[0] = np.sin(z1)                                       # Eq. (20a)
+    zeta[0] = -1.j * np.exp(1.j * z1)                         # Eq. (21a)
+    psizeta = 0.5 * (1. - np.exp(2.j * z1))                   # Eq. (18a)
     for n in range(1, nmax+1):
-        psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])              # Eq. (20b)
-        zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])            # Eq. (21b)
-        psizeta *= (n/z1 - d1_z1[n-1]) * (n/z1 - d3_z1[n-1]) # Eq. (18c)
-        d3_z1[n] = d1_z1[n] + 1.j/psizeta                    # Eq. (18d)
+        psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])               # Eq. (20b)
+        zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])             # Eq. (21b)
+        psizeta *= (n/z1 - d1_z1[n-1]) * (n/z1 - d3_z1[n-1])  # Eq. (18c)
+        d3_z1[n] = d1_z1[n] + 1.j/psizeta                     # Eq. (18d)
 
     # Scattering coefficients
     n = np.arange(nmax+1)
-    fac = ha/m[-1] + n/x[-1]
+    fac = ha/m + n/x
     ab[:, 0] = (fac * psi - np.roll(psi, 1)) / \
         (fac * zeta - np.roll(zeta, 1))                 # Eq. (5)
-    fac = hb*m[-1] + n/x[-1]
+    fac = hb*m + n/x
     ab[:, 1] = (fac * psi - np.roll(psi, 1)) / \
         (fac * zeta - np.roll(zeta, 1))                 # Eq. (6)
     ab[0, :] = complex(0., 0.)
@@ -317,7 +227,7 @@ def mie_coefficients(a_p, n_p, k_p, n_m, wavelength):
     return ab
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     from time import time
     s = Sphere(a_p=0.75, n_p=1.5)
     print(s.a_p, s.n_p)
