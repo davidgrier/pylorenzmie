@@ -48,10 +48,7 @@ class Particle(object):
 
     @property
     def properties(self) -> dict:
-        properties = dict(x_p=self.x_p,
-                          y_p=self.y_p,
-                          z_p=self.z_p)
-        return properties
+        return dict(x_p=self.x_p, y_p=self.y_p, z_p=self.z_p)
 
     @properties.setter
     def properties(self, properties: dict) -> None:
@@ -83,7 +80,9 @@ class Particle(object):
         '''
         self.properties = json.loads(jproperties)
 
-    def ab(self, n_m: complex = 1.+0.j, wavelength: float = 0.) -> np.ndarray:
+    def ab(self,
+           n_m: complex = 1.+0.j,
+           wavelength: float = 0.) -> np.ndarray:
         '''Returns the Mie scattering coefficients
 
         Subclasses of Particle should override this
