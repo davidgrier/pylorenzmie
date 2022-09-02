@@ -38,28 +38,28 @@ class Particle(object):
     z_p: float = 100.
 
     @property
-    def r_p(self):
+    def r_p(self) -> np.ndarray:
         '''Three-dimensional coordinates of particle's center'''
         return np.asarray([self.x_p, self.y_p, self.z_p])
 
     @r_p.setter
-    def r_p(self, r_p):
+    def r_p(self, r_p: np.ndarray) -> None:
         self.x_p, self.y_p, self.z_p = r_p
 
     @property
-    def properties(self):
+    def properties(self) -> dict:
         properties = dict(x_p=self.x_p,
                           y_p=self.y_p,
                           z_p=self.z_p)
         return properties
 
     @properties.setter
-    def properties(self, properties):
+    def properties(self, properties: dict) -> None:
         for name, value in properties.items():
             if hasattr(self, name):
                 setattr(self, name, value)
 
-    def dumps(self, **kwargs):
+    def dumps(self, **kwargs) -> str:
         '''Returns JSON string of adjustable properties
 
         Parameters
@@ -73,17 +73,17 @@ class Particle(object):
         '''
         return json.dumps(self.properties, **kwargs)
 
-    def loads(self, str):
-        '''Loads JSON strong of adjustable properties
+    def loads(self, jproperties: str) -> None:
+        '''Loads JSON string of adjustable properties
 
         Parameters
         ----------
-        str : string
+        jproperties : str
             JSON-encoded string of properties
         '''
-        self.properties = json.loads(str)
+        self.properties = json.loads(jproperties)
 
-    def ab(self, n_m=1.+0.j, wavelength=0.):
+    def ab(self, n_m: complex = 1.+0.j, wavelength: float = 0.) -> np.ndarray:
         '''Returns the Mie scattering coefficients
 
         Subclasses of Particle should override this
