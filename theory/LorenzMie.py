@@ -416,16 +416,16 @@ if __name__ == '__main__':  # pragma: no cover
     particle = [pa, pb]
     # Form image with default instrument
     instrument = Instrument()
-    instrument.magnification = 0.135
+    instrument.magnification = 0.048
     instrument.wavelength = 0.447
-    instrument.n_m = 1.335
+    instrument.n_m = 1.340
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
     kernel = LorenzMie(coordinates, particle, instrument)
     kernel.field()
     start = time()
     field = kernel.field()
-    print("Time to calculate: {}".format(time() - start))
+    print(f'Time to calculate: {time()-start} s')
     # Compute hologram from field and show it
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
