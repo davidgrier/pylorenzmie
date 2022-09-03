@@ -228,10 +228,11 @@ def mie_coefficients(a_p: float,
 
 
 if __name__ == '__main__':  # pragma: no cover
-    from time import time
+    from time import perf_counter
+    
     s = Sphere(a_p=0.75, n_p=1.5)
     print(s.a_p, s.n_p)
     print(s.ab(1.339, 0.447).shape)
-    start = time()
+    start = perf_counter()
     s.ab(1.339, .447)
-    print(time() - start)
+    print(perf_counter() - start)
