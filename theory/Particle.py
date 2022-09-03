@@ -4,6 +4,7 @@
 from dataclasses import dataclass
 import numpy as np
 import json
+from typing import Optional, Any
 
 
 @dataclass
@@ -56,7 +57,7 @@ class Particle(object):
             if hasattr(self, name):
                 setattr(self, name, value)
 
-    def dumps(self, **kwargs) -> str:
+    def dumps(self, **kwargs: Optional[Any]) -> str:
         '''Returns JSON string of adjustable properties
 
         Parameters
@@ -70,15 +71,15 @@ class Particle(object):
         '''
         return json.dumps(self.properties, **kwargs)
 
-    def loads(self, jproperties: str) -> None:
+    def loads(self, s: str) -> None:
         '''Loads JSON string of adjustable properties
 
         Parameters
         ----------
-        jproperties : str
+        s : str
             JSON-encoded string of properties
         '''
-        self.properties = json.loads(jproperties)
+        self.properties = json.loads(s)
 
     def ab(self,
            n_m: complex = 1.+0.j,
