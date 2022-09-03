@@ -4,6 +4,7 @@
 import numpy as np
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 import json
+from typing import Optional, Any
 
 from pylorenzmie.utilities import configuration as config
 
@@ -90,7 +91,7 @@ class LorenzMie(object):
                  coordinates: np.ndarray = None,
                  particle: Particle = None,
                  instrument: Instrument = None,
-                 **kwargs) -> None:
+                 **kwargs: Optional[Any]) -> None:
         '''
         Keywords
         ----------
@@ -180,7 +181,7 @@ class LorenzMie(object):
             if hasattr(self, property):
                 setattr(self, property, value)
 
-    def dumps(self, **kwargs):
+    def dumps(self, **kwargs: Optional[Any]):
         '''Returns JSON string of adjustable properties
 
         Parameters
@@ -394,7 +395,7 @@ class LorenzMie(object):
 
 if __name__ == '__main__':  # pragma: no cover
     import matplotlib.pyplot as plt
-    from time import time
+    from time import perf_counter
 
     # Create coordinate grid for image
     x = np.arange(0, 201)
@@ -423,9 +424,9 @@ if __name__ == '__main__':  # pragma: no cover
     # Use Generalized Lorenz-Mie theory to compute field
     kernel = LorenzMie(coordinates, particle, instrument)
     kernel.field()
-    start = time()
+    start = perf_counter()
     field = kernel.field()
-    print(f'Time to calculate: {time()-start} s')
+    print(f'Time to calculate: {perf_counter()-start} s')
     # Compute hologram from field and show it
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
