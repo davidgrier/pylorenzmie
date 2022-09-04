@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
-import json
 from typing import Optional, Any
 
 from pylorenzmie.utilities import configuration as config
@@ -61,7 +61,7 @@ Copyright (c) 2018 David G. Grier
 np.seterr(all='raise')
 
 
-class LorenzMie(object):
+class LorenzMie(LMObject):
     '''
     Compute scattered light field with Generalized Lorenz-Mie theory
 
@@ -76,8 +76,6 @@ class LorenzMie(object):
     coordinates : numpy.ndarray
         [3, npts] array of x, y and z coordinates where field
         is calculated
-    properties : dict
-        Adjustable properties of the light-scattering theory
 
     Methods
     -------
@@ -180,30 +178,6 @@ class LorenzMie(object):
         for property, value in properties.items():  # pragma: no cover
             if hasattr(self, property):
                 setattr(self, property, value)
-
-    def dumps(self, **kwargs: Optional[Any]):
-        '''Returns JSON string of adjustable properties
-
-        Parameters
-        ----------
-        Accepts all keywords of json.dumps()
-
-        Returns
-        -------
-        s : string
-            JSON-encoded string of properties
-        '''
-        return json.dumps(self.properties, **kwargs)
-
-    def loads(self, s: str) -> None:
-        '''Loads JSON string of adjustable properties
-
-        Parameters
-        ----------
-        s : string
-            JSON-encoded string of properties
-        '''
-        self.properties = json.loads(s)
 
     def field(self, cartesian: bool = True, bohren: bool = True) -> np.ndarray:
         '''Return field scattered by particles in the system'''
