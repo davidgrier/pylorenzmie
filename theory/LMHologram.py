@@ -1,8 +1,8 @@
-from . import (Aberrations, LorenzMie)
+from pylorenzmie.theory import LorenzMie
 import numpy as np
 
 
-class LMHologram(object):
+class LMHologram(LorenzMie):
     '''
     Compute in-line hologram of a sphere
 
@@ -13,13 +13,6 @@ class LMHologram(object):
     alpha : float
         Relative amplitude of scattered field.
         Default: 1
-    aberrations : Aberrations
-    lorenzmie : LorenzMie
-    properties : dict
-        Properties that can be accessed and set
-
-    NOTE: Properties of aberrations and lorenzmie can
-    be accessed directly for convenience
 
     Methods
     -------
@@ -30,9 +23,8 @@ class LMHologram(object):
     def __init__(self,
                  alpha=1.,
                  **kwargs):
-        super().__setattr__('alpha', alpha)
-        super().__setattr__('aberrations', Aberrations(**kwargs))
-        super().__setattr__('lorenzmie', LorenzMie(**kwargs))
+        super().__init__(**kwargs)
+        self.alpha = alpha or 1.
 
     def __str__(self):
         fmt = '<{}(alpha={})>'
@@ -41,18 +33,13 @@ class LMHologram(object):
     def __repr__(self):
         return str(self)
 
-    def __getattr__(self, key):
-        if hasattr(self.lorenzmie, key):
-            return getattr(self.lorenzmie, key)
-        elif hasattr(self.aberrations, key):
-            return getattr(self.aberrations, key)
+    @property
+    def alpha(self):
+        return self._alpha
 
-    def __setattr__(self, key, value):
-        if hasattr(self, key):
-            super().__setattr__(key, value)
-        for component in [self.lorenzmie, self.aberrations]:
-            if hasattr(component, key):
-                setattr(component, key, value)
+    @alpha.setter
+    def alpha(self, value):
+        self._alpha = value
 
     @property
     def properties(self):
