@@ -1,9 +1,10 @@
+from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import LorenzMie
 from typing import Optional, Any
 import numpy as np
 
 
-class LMHologram(LorenzMie):
+class LMHologram(LMObject):
     '''
     Compute in-line hologram of a sphere
 
@@ -15,15 +16,21 @@ class LMHologram(LorenzMie):
         Relative amplitude of scattered field.
         Default: 1
 
+    kernel : LorenzMie
+        Kernel for calculating scattered fields
+
     Methods
     -------
     hologram() : numpy.ndarray
         Computed hologram of sphere
     '''
 
-    def __init__(self, alpha: float = 1., **kwargs: Optional[Any]) -> None:
-        super().__init__(**kwargs)
+    def __init__(self,
+                 alpha: Optional[float] = None,
+                 kernel: Optional[LorenzMie] = None,
+                 **kwargs: Optional[Any]) -> None:
         self.alpha = alpha or 1.
+        self.kernel = kernel or LorenzMie(**kwargs)
 
     def __str__(self) -> str:
         fmt = '<{}(alpha={})>'
@@ -40,11 +47,18 @@ class LMHologram(LorenzMie):
     def alpha(self, value: float) -> None:
         self._alpha = value
 
-    @LorenzMie.properties.getter
+    @property
     def properties(self) -> dict:
-        p = LorenzMie.properties.fget(self)
+        p = self.kernel.properties
         p['alpha'] = self.alpha
         return p
+
+    @properties.setter
+    def properties(self, p: dict) -> None:
+        self.kernel.properties = p
+        for key, value in p.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
 
     def hologram(self) -> np.ndarray:
         '''Return hologram of sphere
@@ -54,7 +68,7 @@ class LMHologram(LorenzMie):
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        field = self.alpha * self.field()
+        field = self.alpha * self.kernel.field()
         field[0, :] += 1.
         hologram = np.sum(np.real(field * np.conj(field)), axis=0)
         return hologram
