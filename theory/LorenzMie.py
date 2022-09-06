@@ -129,11 +129,12 @@ class LorenzMie(LMObject):
             self._coordinates = None
             return
         c = np.array(coordinates)
-        if c.ndim == 1:          # only x specified
+        if c.ndim == 1:            # only x specified
             c = np.vstack((c, np.zeros((2, c.size))))
-        elif c.shape[0] == 2:    # only (x, y) specified
-            c = np.vstack((c, np.zeros(c.shape[1])))
-        if c.shape[0] != 3:      # pragma: no cover
+        elif c.shape[0] == 2:      # only (x, y) specified
+            z = np.zeros_like(c[0])
+            c = np.vstack((c, z))
+        elif c.shape[0] != 3:      # pragma: no cover
             raise ValueError(
                 'coordinates should have shape ({1|2|3}, npts).')
         self._coordinates = c
@@ -369,16 +370,11 @@ class LorenzMie(LMObject):
 
 if __name__ == '__main__':  # pragma: no cover
     import matplotlib.pyplot as plt
+    from pylorenzmie.utilities import coordinates
     from time import perf_counter
 
     # Create coordinate grid for image
-    x = np.arange(0, 201)
-    y = np.arange(0, 201)
-    xv, yv = np.meshgrid(x, y)
-    xv = xv.flatten()
-    yv = yv.flatten()
-    zv = np.zeros_like(xv)
-    coordinates = np.stack((xv, yv, zv))
+    coords = coordinates((201, 201))
     # Place two spheres in the field of view, above the focal plane
     pa = Sphere()
     pa.r_p = [150, 150, 200]
@@ -396,7 +392,7 @@ if __name__ == '__main__':  # pragma: no cover
     instrument.n_m = 1.340
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
-    kernel = LorenzMie(coordinates, particle, instrument)
+    kernel = LorenzMie(coords, particle, instrument)
     kernel.field()
     start = perf_counter()
     field = kernel.field()

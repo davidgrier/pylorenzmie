@@ -1,4 +1,5 @@
 from pylorenzmie.theory import LorenzMie
+from typing import Optional, Any
 import numpy as np
 
 
@@ -20,43 +21,32 @@ class LMHologram(LorenzMie):
         Computed hologram of sphere
     '''
 
-    def __init__(self,
-                 alpha=1.,
-                 **kwargs):
+    def __init__(self, alpha: float = 1., **kwargs: Optional[Any]) -> None:
         super().__init__(**kwargs)
         self.alpha = alpha or 1.
 
-    def __str__(self):
+    def __str__(self) -> str:
         fmt = '<{}(alpha={})>'
         return fmt.format(self.__class__.__name__, self.alpha)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
 
     @property
-    def alpha(self):
+    def alpha(self) -> float:
         return self._alpha
 
     @alpha.setter
-    def alpha(self, value):
+    def alpha(self, value: float) -> None:
         self._alpha = value
 
-    @property
-    def properties(self):
-        p = self.lorenzmie.properties
+    @LorenzMie.properties.getter
+    def properties(self) -> dict:
+        p = LorenzMie.properties.fget(self)
         p['alpha'] = self.alpha
-        p.update(self.aberrations.properties)
         return p
 
-    @properties.setter
-    def properties(self, properties):
-        for name, value in properties.items():
-            if hasattr(self, name):
-                setattr(self, name, value)
-        self.lorenzmie.properties = properties
-        self.aberrations.properties = properties
-
-    def hologram(self):
+    def hologram(self) -> np.ndarray:
         '''Return hologram of sphere
 
         Returns
@@ -71,3 +61,8 @@ class LMHologram(LorenzMie):
         field[0, :] += self.aberrations.field()
         hologram = np.sum(np.real(field * np.conj(field)), axis=0)
         return hologram
+
+
+def main():
+    a = LMHologram()
+    print(a)
