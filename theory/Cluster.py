@@ -15,6 +15,15 @@ class Cluster(LMObject):
         self.z_p = z_p or 100.
         self.particles = list()
 
+    def __iter__(self):
+        return iter(self.particles)
+
+    def __len__(self):
+        return len(self.particles)
+
+    def __getitem__(self, index):
+        return self.particles[index]
+
     @property
     def x_p(self) -> float:
         return self._x_p
