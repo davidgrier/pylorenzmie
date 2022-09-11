@@ -1,70 +1,29 @@
-from pylorenzmie.lib import LMObject
-from typing import Optional
-import numpy as np
+from pylorenzmie.theory import Particle
+from dataclasses import dataclass, field
+from typing import Any
 
 
-class Cluster(LMObject):
+@dataclass
+class Cluster(Particle):
 
-    def __init__(self,
-                 x_p: Optional[float] = None,
-                 y_p: Optional[float] = None,
-                 z_p: Optional[float] = None) -> None:
-        self._block = False
-        self.x_p = x_p or 0.
-        self.y_p = y_p or 0.
-        self.z_p = z_p or 100.
-        self.particles = list()
+    particles: list = field(repr=False, default_factory=list)
 
-    def __iter__(self):
+    def __setattr__(self, key: str, value: Any) -> None:
+        super().__setattr__(key, value)
+        self._update()
+
+    def __iter__(self) -> iter:
         return iter(self.particles)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.particles)
 
-    def __getitem__(self, index):
+    def __getitem__(self, index: int) -> Particle:
         return self.particles[index]
 
-    @property
-    def x_p(self) -> float:
-        return self._x_p
-
-    @x_p.setter
-    def x_p(self, x_p: float) -> None:
-        self._x_p = x_p
-        self._update()
-
-    @property
-    def y_p(self) -> float:
-        return self._y_p
-
-    @y_p.setter
-    def y_p(self, y_p: float) -> None:
-        self._y_p = y_p
-        self._update()
-
-    @property
-    def z_p(self) -> float:
-        return self._z_p
-
-    @z_p.setter
-    def z_p(self, z_p: float) -> None:
-        self._z_p = z_p
-        self._update()
-
-    @property
-    def r_p(self) -> np.array:
-        return np.array([self.x_p, self.y_p, self.z_p])
-
-    @r_p.setter
-    def r_p(self, r_p: np.array) -> None:
-        self._block = True
-        self.x_p, self.y_p, self.z_p = r_p
-        self._block = False
-        self._update()
-
     def _update(self) -> None:
-        if self._block:
-            return
-        for particle in self.particles:
-            particle.r_0 = self.r_p
-
+        try:
+            for particle in self.particles:
+                particle.r_0 = self.r_p
+        except AttributeError:
+            pass
