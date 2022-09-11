@@ -4,7 +4,7 @@
 import numpy as np
 from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
-from typing import Optional, Any
+from typing import Union, Optional, Any
 
 from pylorenzmie.utilities import configuration as config
 
@@ -146,7 +146,7 @@ class LorenzMie(LMObject):
         return self._particle
 
     @particle.setter
-    def particle(self, particle: Particle) -> None:
+    def particle(self, particle: Union[Particle, list]) -> None:
         logger.debug('Setting particle')
         p = np.atleast_1d(particle)
         if isinstance(p[0], Particle):
@@ -191,7 +191,7 @@ class LorenzMie(LMObject):
         wavelength = self.instrument.wavelength
         self.result.fill(0.+0.j)
         for p in np.atleast_1d(self.particle):
-            dr = self.coordinates - p.r_p[:, None]
+            dr = self.coordinates - p.r_p[:, None] + p.r_0[:, None]
             self.krv[...] = np.asarray(k * dr)
             ab = p.ab(n_m, wavelength)
             this = self.compute(ab, self.krv, *self.buffers,

@@ -24,6 +24,14 @@ class Particle(LMObject):
         y coordinate
     z_p : float
         z coordinate
+    r_0: numpy.ndarray
+        3-dimensional origin of coordinate system
+    x_0 : float
+        x coordinate of origin
+    y_0 : float
+        y coordinate of origin
+    z_0 : float
+        z coordinate of origin
 
     Methods
     -------
@@ -34,6 +42,9 @@ class Particle(LMObject):
     x_p: float = 0.
     y_p: float = 0.
     z_p: float = 100.
+    x_0: float = 0.
+    y_0: float = 0.
+    z_0: float = 0.
 
     @property
     def r_p(self) -> np.ndarray:
@@ -43,6 +54,15 @@ class Particle(LMObject):
     @r_p.setter
     def r_p(self, r_p: np.ndarray) -> None:
         self.x_p, self.y_p, self.z_p = r_p
+
+    @property
+    def r_0(self) -> np.ndarray:
+        '''Three-dimensional coordinates of origin'''
+        return np.asarray([self.x_0, self.y_0, self.z_0])
+
+    @r_0.setter
+    def r_0(self, r_0: np.ndarray) -> None:
+        self.x_0, self.y_0, self.z_0 = r_0
 
     @property
     def properties(self) -> dict:
