@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 from pylorenzmie.lib import LMObject
 
@@ -42,9 +42,9 @@ class Particle(LMObject):
     x_p: float = 0.
     y_p: float = 0.
     z_p: float = 100.
-    x_0: float = 0.
-    y_0: float = 0.
-    z_0: float = 0.
+    x_0: float = field(repr=False, default=0.)
+    y_0: float = field(repr=False, default=0.)
+    z_0: float = field(repr=False, default=0.)
 
     @property
     def r_p(self) -> np.ndarray:
