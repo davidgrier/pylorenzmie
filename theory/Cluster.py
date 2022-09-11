@@ -10,7 +10,8 @@ class Cluster(Particle):
 
     def __setattr__(self, key: str, value: Any) -> None:
         super().__setattr__(key, value)
-        self._update()
+        if key in ['x_p', 'y_p', 'z_p', 'particles']:
+            self._update()
 
     def __iter__(self) -> iter:
         return iter(self.particles)
