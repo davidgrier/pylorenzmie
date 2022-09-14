@@ -32,6 +32,10 @@ class AberratedLorenzMie(LorenzMie):
                                 cartesian=cartesian, bohren=bohren)
             # aberrations
             psi = self.aberration(dr)
+            # NOTE: this.shape = (3, npts)
+            #       psi.shape = (npts)
+            #       How should I multiply this * psi so that
+            #       each dimension of this is multiplied by psi?
             this[0] *= psi
             this[1] *= psi
             this[2] *= psi
@@ -44,7 +48,7 @@ class AberratedLorenzMie(LorenzMie):
     def aberration(self, dr: np.ndarray) -> np.ndarray:
         rhosq = (dr[0]**2 + dr[1]**2) / self.pupil**2
         phi = 6.*rhosq * (rhosq - 1.) + 1.
-        phi *= self.spherical  # any dependence on z_p goes here.
+        phi *= self.spherical  # any dependence on z_p (dr[2]) goes here.
         return np.exp(-1j * phi)
 
 
