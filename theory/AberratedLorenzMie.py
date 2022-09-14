@@ -37,9 +37,7 @@ class AberratedLorenzMie(LorenzMie):
             #       psi.shape = (npts)
             #       How should I multiply this * psi so that
             #       each dimension of this is multiplied by psi?
-            this[0] *= psi
-            this[1] *= psi
-            this[2] *= psi
+            this *= psi
             
             # overall phase
             this *= np.exp(-1j * k * p.z_p)
