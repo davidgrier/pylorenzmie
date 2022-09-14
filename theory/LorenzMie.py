@@ -191,7 +191,7 @@ class LorenzMie(LMObject):
         wavelength = self.instrument.wavelength
         self.result.fill(0.+0.j)
         for p in np.atleast_1d(self.particle):
-            dr = self.coordinates - p.r_p[:, None] + p.r_0[:, None]
+            dr = self.coordinates - p.r_p[:, None] - p.r_0[:, None]
             self.krv[...] = np.asarray(k * dr)
             ab = p.ab(n_m, wavelength)
             this = self.compute(ab, self.krv, *self.buffers,
