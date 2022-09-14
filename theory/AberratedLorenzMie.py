@@ -31,19 +31,21 @@ class AberratedLorenzMie(LorenzMie):
             this = self.compute(ab, self.krv, *self.buffers,
                                 cartesian=cartesian, bohren=bohren)
             # aberrations
-            rhosq = dr[0]**2 + dr[1]**2
-            rhosq /= self.pupil**2
-            phi = 6.*rhosq * (rhosq - 1.) + 1.
-            phi *= self.spherical
-            phase = np.exp(-1j * phi)
-            this[0] *= phase
-            this[1] *= phase
-            this[2] *= phase
+            psi = self.aberration(dr)
+            this[0] *= psi
+            this[1] *= psi
+            this[2] *= psi
 
             # overall phase
             this *= np.exp(-1j * k * p.z_p)
             self.result += this
         return self.result
+
+    def aberration(self, dr: np.ndarray) -> np.ndarray:
+        rhosq = (dr[0]**2 + dr[1]**2) / self.pupil**2
+        phi = 6.*rhosq * (rhosq - 1.) + 1.
+        phi *= self.spherical  # any dependence on z_p goes here.
+        return np.exp(-1j * phi)
 
 
 def main():
@@ -69,7 +71,7 @@ def main():
     instrument.magnification = 0.048
     instrument.wavelength = 0.447
     instrument.n_m = 1.340
-    # Use Generalized Lorenz-Mie theory to compute field
+    # Use generalized Lorenz-Mie theory to compute field
     kernel = AberratedLorenzMie(coords, particle, instrument)
     kernel.spherical = 10.*np.pi
     kernel.field()
