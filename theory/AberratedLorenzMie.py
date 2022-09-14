@@ -31,6 +31,7 @@ class AberratedLorenzMie(LorenzMie):
             this = self.compute(ab, self.krv, *self.buffers,
                                 cartesian=cartesian, bohren=bohren)
             # aberrations
+
             psi = self.aberration(dr)
             # NOTE: this.shape = (3, npts)
             #       psi.shape = (npts)
@@ -39,7 +40,7 @@ class AberratedLorenzMie(LorenzMie):
             this[0] *= psi
             this[1] *= psi
             this[2] *= psi
-
+            
             # overall phase
             this *= np.exp(-1j * k * p.z_p)
             self.result += this
@@ -77,7 +78,7 @@ def main():
     instrument.n_m = 1.340
     # Use generalized Lorenz-Mie theory to compute field
     kernel = AberratedLorenzMie(coords, particle, instrument)
-    kernel.spherical = 10.*np.pi
+    kernel.spherical = 0.*np.pi
     kernel.field()
     start = perf_counter()
     field = kernel.field()
