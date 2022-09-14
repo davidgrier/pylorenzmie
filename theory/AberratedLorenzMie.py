@@ -31,14 +31,9 @@ class AberratedLorenzMie(LorenzMie):
             this = self.compute(ab, self.krv, *self.buffers,
                                 cartesian=cartesian, bohren=bohren)
             # aberrations
-
             psi = self.aberration(dr)
-            # NOTE: this.shape = (3, npts)
-            #       psi.shape = (npts)
-            #       How should I multiply this * psi so that
-            #       each dimension of this is multiplied by psi?
             this *= psi
-            
+
             # overall phase
             this *= np.exp(-1j * k * p.z_p)
             self.result += this

@@ -47,7 +47,7 @@ class Instrument(object):
     wavelength: float = 0.532
     magnification: float = 0.135
     n_m: float = 1.335
-    background: Union[float, np.ndarray] =  1.  # Should also allow np.ndarray?
+    background: Union[float, np.ndarray] =  1.
     noise: float = 0.05
     darkcount: float = 0.    
 
