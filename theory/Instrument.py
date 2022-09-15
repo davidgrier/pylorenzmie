@@ -1,9 +1,9 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from pylorenzmie.lib import LMObject
 import numpy as np
-import json
 import logging
 from typing import Union
 
@@ -11,8 +11,9 @@ logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
+
 @dataclass
-class Instrument(object):
+class Instrument(LMObject):
     '''
     Abstraction of an in-line holographic microscope
 
@@ -47,19 +48,9 @@ class Instrument(object):
     wavelength: float = 0.532
     magnification: float = 0.135
     n_m: float = 1.335
-    background: Union[float, np.ndarray] =  1.
-    noise: float = 0.05
-    darkcount: float = 0.    
-
-    def __str__(self):
-        fmt = '<{}(wavelength={}, magnification={}, n_m={})>'
-        return fmt.format(self.__class__.__name__,
-                          self.wavelength,
-                          self.magnification,
-                          self.n_m)
-
-    def __repr__(self):
-        return self.__str__()
+    background: Union[float, np.ndarray] = field(repr=False, default=1.)
+    noise: float = field(repr=False, default=0.05)
+    darkcount: float = field(repr=False, default=0.)
 
     @property
     def properties(self) -> dict:
@@ -68,37 +59,9 @@ class Instrument(object):
                      magnification=self.magnification)
         return props
 
-    @properties.setter
-    def properties(self, properties: dict) -> None:
-        for property, value in properties.items():
-            if hasattr(self, property):
-                setattr(self, property, value)
-
-    def dumps(self, **kwargs) -> str:
-        '''Returns JSON string of adjustable properties
-
-        Parameters
-        ----------
-        Accepts all keywords of json.dumps()
-
-        Returns
-        -------
-        str : string
-            JSON-encoded string of properties
-        '''
-        return json.dumps(self.properties, **kwargs)
-
-    def loads(self, jproperties: str) -> None:
-        '''Loads JSON string of adjustable properties
-
-        Parameters
-        ----------
-        jproperties : string
-            JSON-encoded string of properties
-        '''
-        self.properties = json.loads(jproperties)
-
-    def wavenumber(self, in_medium: bool = True, magnified: bool = True) -> float:
+    def wavenumber(self,
+                   in_medium: bool = True,
+                   magnified: bool = True) -> float:
         '''Return the wave number of light
 
         Parameters
@@ -123,6 +86,6 @@ class Instrument(object):
         return k
 
 
-if __name__ == '__main__': # pragma: no cover
+if __name__ == '__main__':  # pragma: no cover
     a = Instrument()
     print(a.wavelength, a.magnification)
