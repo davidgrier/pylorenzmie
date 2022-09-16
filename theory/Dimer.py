@@ -1,33 +1,31 @@
 from pylorenzmie.theory import Cluster, Sphere
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import numpy as np
+from typing import Any
 
 
 @dataclass
 class Dimer(Cluster):
 
-    particles: list = field(default_factory=lambda: [Sphere(), Sphere()])
-    a_p: float = 1.
-    n_p: float = 1.5
+    a_p: float = 0.75
+    n_p: float = 1.45
     k_p: float = 0.
-    theta: float = 0.
+    theta: float = np.pi/4.
     phi: float = 0.
     magnification: float = 0.048
 
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         super().__setattr__(key, value)
-        self.update_particles(key, value)
-        if key in ['a_p', 'theta', 'phi']:
+        if key in ['a_p', 'n_p', 'k_p']:
+            for p in self:
+                setattr(p, key, value)
+        if key in ['a_p', 'theta', 'phi', 'magnification']:
             self.update_positions()
 
-    def _initialized(self):
-        return hasattr(self, 'particles') and (len(self) == 2)
-
-    def update_particles(self, key, value):
-        if hasattr(self, 'particles'):
-            for p in self.particles:
-                if hasattr(p, key):
-                    setattr(p, key, value)
+    def __post_init__(self):
+        p = {'a_p': self.a_p, 'n_p': self.n_p, 'k_p': self.k_p}
+        self.particles = [Sphere(**p), Sphere(**p)]
+        self.update_positions()
 
     def update_positions(self):
         if len(self) != 2:
@@ -52,9 +50,9 @@ def main():
     instrument.wavelength = 0.447
     instrument.n_m = 1.340
     dimer = Dimer(magnification=instrument.magnification)
-    dimer.r_p = [100., 100., 100.]
-    for p in dimer:
-        print(p)
+    dimer.a_p = 0.75
+    dimer.n_p = 1.42
+    dimer.r_p = [100., 100., 75.]
 
     a = LMHologram(coordinates=coords,
                    particle=dimer,

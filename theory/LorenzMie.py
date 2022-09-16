@@ -196,7 +196,7 @@ class LorenzMie(LMObject):
             ab = p.ab(n_m, wavelength)
             this = self.compute(ab, self.krv, *self.buffers,
                                 cartesian=cartesian, bohren=bohren)
-            this *= np.exp(-1j * k * p.z_p)
+            this *= np.exp(-1j * k * (p.z_p + p.z_0))
             self.result += this
         return self.result
 
