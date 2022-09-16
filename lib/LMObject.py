@@ -17,11 +17,11 @@ class LMObject(ABC):
 
     Methods
     -------
-    dumps(**kwargs): str
+    to_json(**kwargs): str
         Returns JSON string of object properties and values
         Accepts keywords for json.dumps
 
-    loads(s: str): None
+    from_json(s: str): None
         Load JSON string of properties
 
     '''
@@ -37,7 +37,7 @@ class LMObject(ABC):
             if hasattr(self, name):
                 setattr(self, name, value)
 
-    def dumps(self, **kwargs: Optional[Any]) -> str:
+    def to_json(self, **kwargs: Optional[Any]) -> str:
         '''Returns JSON string of adjustable properties
 
         Parameters
@@ -51,7 +51,7 @@ class LMObject(ABC):
         '''
         return json.dumps(self.properties, **kwargs)
 
-    def loads(self, s: str) -> None:
+    def from_json(self, s: str) -> None:
         '''Loads JSON string of adjustable properties
 
         Parameters
