@@ -14,8 +14,8 @@ class Cluster(Particle):
     def __setattr__(self, key: str, value: Any) -> None:
         super().__setattr__(key, value)
         if key in ['x_p', 'y_p', 'z_p', 'particles']:
-            print(key, value)
             self._update()
+            return
 
     def __iter__(self) -> iter:
         return iter(self.particles)
