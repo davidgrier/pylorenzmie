@@ -43,16 +43,18 @@ def main():
     from pylorenzmie.theory import Instrument, LMHologram
     import matplotlib.pyplot as plt
 
-    shape = (201, 201)
+    shape = (301, 301)
     coords = coordinates(shape)
     instrument = Instrument()
     instrument.magnification = 0.048
     instrument.wavelength = 0.447
     instrument.n_m = 1.340
     dimer = Dimer(magnification=instrument.magnification)
-    dimer.a_p = 0.75
+    dimer.a_p = 0.5
     dimer.n_p = 1.42
-    dimer.r_p = [100., 100., 75.]
+    dimer.r_p = [150., 150., 250.]
+    dimer.theta = 0.
+    dimer.phi = np.pi/4.
 
     a = LMHologram(coordinates=coords,
                    particle=dimer,

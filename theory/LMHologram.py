@@ -1,5 +1,5 @@
 from pylorenzmie.lib import LMObject
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory import AberratedLorenzMie as LorenzMie
 from typing import Optional, Any
 import numpy as np
 
