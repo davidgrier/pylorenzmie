@@ -186,31 +186,39 @@ class LorenzMie(LMObject):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
+        logger.debug('Computing field')
         k = self.instrument.wavenumber()
         n_m = self.instrument.n_m
         wavelength = self.instrument.wavelength
         self.result.fill(0.+0.j)
         for p in np.atleast_1d(self.particle):
-            dr = self.coordinates - p.r_p[:, None] - p.r_0[:, None]
-            self.krv[...] = np.asarray(k * dr)
+            logger.debug(p)
+            r_p = p.r_p + p.r_0
+            dr = self.coordinates - r_p[:, None]
+            self.kdr[...] = np.asarray(k * dr)
             ab = p.ab(n_m, wavelength)
-            this = self.compute(ab, self.krv, *self.buffers,
+            this = self.compute(ab, self.kdr, *self.buffers,
                                 cartesian=cartesian, bohren=bohren)
-            this *= np.exp(-1j * k * (p.z_p + p.z_0))
+            this *= np.exp(-1j * k * r_p[2])
+            this *= self.correction(dr)
             self.result += this
         return self.result
+
+    def correction(self, dr: np.ndarray):
+        '''Correction should be overriden by subclass'''
+        return 1.
 
     def allocate(self) -> None:
         '''Allocate ndarrays for calculation'''
         shape = self.coordinates.shape
-        self.krv = np.empty(shape, dtype=float)
+        self.kdr = np.empty(shape, dtype=float)
         self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
         self.result = np.empty(shape, dtype=complex)
 
     @staticmethod
     @njit()  # unittest does not cover jitted methods
     def compute(ab: np.ndarray,
-                krv: np.ndarray,
+                kdr: np.ndarray,
                 mo1n: np.ndarray,
                 ne1n: np.ndarray,
                 es: np.ndarray,
@@ -223,7 +231,7 @@ class LorenzMie(LMObject):
         ----------
         ab : numpy.ndarray
             [2, norders] Mie scattering coefficients
-        krv : numpy.ndarray
+        kdr : numpy.ndarray
             [3, npts] Coordinates at which field is evaluated
             relative to the center of the scatterer. Coordinates
             are assumed to be multiplied by the wavenumber of
@@ -256,9 +264,9 @@ class LorenzMie(LMObject):
         # Accounting for this by flipping the axial coordinate
         # is equivalent to using a mirrored (left-handed)
         # coordinate system.
-        kx = krv[0, :]
-        ky = krv[1, :]
-        kz = -krv[2, :]
+        kx = kdr[0, :]
+        ky = kdr[1, :]
+        kz = -kdr[2, :]
         shape = kx.shape
 
         # 2. geometric factors
@@ -385,8 +393,8 @@ if __name__ == '__main__':  # pragma: no cover
     pa.a_p = 0.5
     pa.n_p = 1.45
     pb = Sphere()
-    pb.r_p = [100, 10, 250]
-    pb.a_p = 1.
+    pb.r_p = [100, 10, 75]
+    pb.a_p = 0.75
     pb.n_p = 1.45
     particle = [pa, pb]
     # Form image with default instrument

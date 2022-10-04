@@ -1,5 +1,5 @@
 from typing import Optional
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
 
 
@@ -13,33 +13,7 @@ class AberratedLorenzMie(LorenzMie):
         self.pupil = pupil or 1000.
         self.spherical = spherical or 0.
 
-    def field(self,
-              cartesian: bool = True,
-              bohren: bool = True) -> np.ndarray:
-        '''Return field scattered by particles in the system'''
-        if (self.coordinates is None or self.particle is None):
-            return None
-        k = self.instrument.wavenumber()
-        n_m = self.instrument.n_m
-        wavelength = self.instrument.wavelength
-        self.result.fill(0.+0.j)
-        for p in np.atleast_1d(self.particle):
-            dr = self.coordinates - p.r_p[:, None] - p.r_0[:, None]
-            # scattered field
-            self.krv[...] = np.asarray(k * dr)
-            ab = p.ab(n_m, wavelength)
-            this = self.compute(ab, self.krv, *self.buffers,
-                                cartesian=cartesian, bohren=bohren)
-            # aberrations
-            psi = self.aberration(dr)
-            this *= psi
-
-            # overall phase
-            this *= np.exp(-1j * k * p.z_p)
-            self.result += this
-        return self.result
-
-    def aberration(self, dr: np.ndarray) -> np.ndarray:
+    def correction(self, dr: np.ndarray) -> np.ndarray:
         rhosq = (dr[0]**2 + dr[1]**2) / self.pupil**2
         phi = 6.*rhosq * (rhosq - 1.) + 1.
         phi *= self.spherical  # any dependence on z_p (dr[2]) goes here.
@@ -53,7 +27,8 @@ def main():
     from time import perf_counter
 
     # Create coordinate grid for image
-    coords = coordinates((201, 201))
+    shape = (201, 201)
+    coords = coordinates(shape)
     # Place two spheres in the field of view, above the focal plane
     pa = Sphere()
     pa.r_p = [150, 150, 200]
@@ -79,7 +54,7 @@ def main():
     # Compute hologram from field and show it
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
-    plt.imshow(hologram.reshape(201, 201), cmap='gray')
+    plt.imshow(hologram.reshape(shape), cmap='gray')
     plt.show()
 
 

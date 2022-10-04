@@ -4,6 +4,7 @@ from .Particle import Particle
 from .Sphere import Sphere
 from .Cluster import Cluster
 from .Instrument import Instrument
+from .AberratedLorenzMie import AberratedLorenzMie
 
 if 'cupy' in sys.modules:
     from .LorenzMie import LorenzMie as numpyLorenzMie
@@ -15,4 +16,5 @@ else:
 from .LMHologram import LMHologram
 
 __all__ = ['Particle', 'Sphere', 'Cluster',
-           'Instrument', 'LorenzMie', 'LMHologram']
+           'Instrument', 'LorenzMie', 'LMHologram',
+           'AberratedLorenzMie']
