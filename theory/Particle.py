@@ -64,9 +64,11 @@ class Particle(LMObject):
     def r_0(self, r_0: np.ndarray) -> None:
         self.x_0, self.y_0, self.z_0 = r_0
 
-    @property
+    @LMObject.properties.getter
     def properties(self) -> dict:
-        return dict(x_p=self.x_p, y_p=self.y_p, z_p=self.z_p)
+        return {'x_p': self.x_p,
+                'y_p': self.y_p,
+                'z_p': self.z_p}
 
     def ab(self,
            n_m: complex = 1.+0.j,
