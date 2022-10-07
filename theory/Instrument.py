@@ -52,12 +52,11 @@ class Instrument(LMObject):
     noise: float = field(repr=False, default=0.05)
     darkcount: float = field(repr=False, default=0.)
 
-    @property
+    @LMObject.properties.getter
     def properties(self) -> dict:
-        props = dict(n_m=self.n_m,
-                     wavelength=self.wavelength,
-                     magnification=self.magnification)
-        return props
+        return {'n_m': self.n_m,
+                'wavelength': self.wavelength,
+                'magnification': self.magnification}
 
     def wavenumber(self,
                    in_medium: bool = True,

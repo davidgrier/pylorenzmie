@@ -34,7 +34,7 @@ class cupyLorenzMie(LorenzMie):
     def __init__(self, *args, double_precision=True, **kwargs):
         super(cupyLorenzMie, self).__init__(*args, **kwargs)
         self.double_precision = double_precision
-        
+
     @property
     def double_precision(self):
         '''Toggles between single and double precision for CUDA'''
@@ -89,7 +89,7 @@ class cupyLorenzMie(LorenzMie):
             self.threadsperblock = 32
             self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
                                   self.threadsperblock)
-        except:
+        except Exception:
             pass
 
     def cufield(self):
@@ -105,8 +105,10 @@ void field(double *coordsx, double *coordsy, double *coordsz,
            int norders, int length,
            bool bohren, bool cartesian,
            cuDoubleComplex *e1, cuDoubleComplex *e2, cuDoubleComplex *e3) {
-        
-    for (int idx = threadIdx.x + blockDim.x * blockIdx.x; idx < length;          idx += blockDim.x * gridDim.x) {
+
+    for (int idx = threadIdx.x + blockDim.x * blockIdx.x;
+         idx < length;
+         idx += blockDim.x * gridDim.x) {
 
         double kx, ky, kz, krho, kr, phi, theta;
         double cosphi, costheta, coskr, sinphi, sintheta, sinkr;
@@ -193,8 +195,7 @@ void field(double *coordsx, double *coordsy, double *coordsz,
             mo1nt = cuCmul(pi_n, xi_n);
             mo1np = cuCmul(tau_n, xi_n);
 
-            ne1nr = cuCmul(cuCmul(cuCmul(n, cuCadd(n, one)), 
-                            pi_n), xi_n);
+            ne1nr = cuCmul(cuCmul(cuCmul(n, cuCadd(n, one)), pi_n), xi_n);
             ne1nt = cuCmul(tau_n, dn);
             ne1np = cuCmul(pi_n, dn);
 
@@ -255,7 +256,7 @@ void field(double *coordsx, double *coordsy, double *coordsz,
     }
 }
 ''', 'field')
-    
+
     def cufieldf(self):
         return cp.RawKernel(r'''
 #include <cuComplex.h>
@@ -269,8 +270,10 @@ void field(float *coordsx, float *coordsy, float *coordsz,
            int norders, int length,
            bool bohren, bool cartesian,
            cuFloatComplex *e1, cuFloatComplex *e2, cuFloatComplex *e3) {
-        
-    for (int idx = threadIdx.x + blockDim.x * blockIdx.x; idx < length;          idx += blockDim.x * gridDim.x) {
+
+    for (int idx = threadIdx.x + blockDim.x * blockIdx.x;
+         idx < length;
+         idx += blockDim.x * gridDim.x) {
 
         float kx, ky, kz, krho, kr, phi, theta;
         float cosphi, costheta, coskr, sinphi, sintheta, sinkr;
@@ -357,7 +360,7 @@ void field(float *coordsx, float *coordsy, float *coordsz,
             mo1nt = cuCmulf(pi_n, xi_n);
             mo1np = cuCmulf(tau_n, xi_n);
 
-            ne1nr = cuCmulf(cuCmulf(cuCmulf(n, cuCaddf(n, one)), 
+            ne1nr = cuCmulf(cuCmulf(cuCmulf(n, cuCaddf(n, one)),
                             pi_n), xi_n);
             ne1nt = cuCmulf(tau_n, dn);
             ne1np = cuCmulf(pi_n, dn);
@@ -420,12 +423,12 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 }
 ''', 'field')
 
-        
-if __name__ == '__main__': # pragma: no cover
-    from pylorenzmie.theory.FastSphere import FastSphere
-    from pylorenzmie.theory.Instrument import Instrument
+
+if __name__ == '__main__':  # pragma: no cover
+    from pylorenzmie.theory import (Sphere, Instrument)
     import matplotlib.pyplot as plt
     from time import time
+    
     # Create coordinate grid for image
     x = np.arange(0, 201)
     y = np.arange(0, 201)
@@ -435,11 +438,11 @@ if __name__ == '__main__': # pragma: no cover
     zv = np.zeros_like(xv)
     coordinates = np.stack((xv, yv, zv))
     # Place a sphere in the field of view, above the focal plane
-    particle = FastSphere()
+    particle = Sphere()
     particle.r_p = [150, 150, 200]
     particle.a_p = 0.5
     particle.n_p = 1.45
-    particle2 = FastSphere()
+    particle2 = Sphere()
     particles = [particle, particle2]
     particles.reverse()
     # Form image with default instrument

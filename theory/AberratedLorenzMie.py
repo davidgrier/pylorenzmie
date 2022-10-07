@@ -13,6 +13,12 @@ class AberratedLorenzMie(LorenzMie):
         self.pupil = pupil or 1000.
         self.spherical = spherical or 0.
 
+    @LorenzMie.properties.getter
+    def properties(self) -> dict:
+        return {**super().properties,
+                'pupil': self.pupil,
+                'spherical': self.spherical}
+
     def scattered_field(self, particle, *args):
         psi = super().scattered_field(particle, *args)
         r_p = particle.r_p + particle.r_0

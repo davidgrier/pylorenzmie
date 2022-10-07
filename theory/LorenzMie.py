@@ -166,10 +166,8 @@ class LorenzMie(LMObject):
 
     @property
     def properties(self) -> dict:
-        p = dict()
-        p.update(self.particle.properties)
-        p.update(self.instrument.properties)
-        return p
+        return {**self.particle.properties,
+                **self.instrument.properties}
 
     @properties.setter
     def properties(self, properties: dict) -> None:

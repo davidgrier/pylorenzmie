@@ -16,11 +16,10 @@ def Hologram(cls: LorenzMie, name: str):
                      **kwargs: Optional[Any]) -> None:
             super().__init__(**kwargs)
 
-        @property
+        @cls.properties.getter
         def properties(self) -> dict:
-            p = super().properties
-            p['alpha'] = self.alpha
-            return p
+            return {**super().properties,
+                    'alpha': self.alpha}
 
         def hologram(self) -> np.ndarray:
             '''Return hologram of sphere

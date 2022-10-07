@@ -72,11 +72,10 @@ class Sphere(Particle):
 
     @Particle.properties.getter
     def properties(self) -> dict:
-        p = Particle.properties.fget(self)
-        p['a_p'] = self.a_p
-        p['n_p'] = self.n_p
-        p['k_p'] = self.k_p
-        return p
+        return {**super().properties,
+                'a_p': self.a_p,
+                'n_p': self.n_p,
+                'k_p': self.k_p}
 
     def ab(self, n_m: complex, wavelength: float):
         '''Returns the Mie scattering coefficients
@@ -229,7 +228,7 @@ def mie_coefficients(a_p: float,
 
 if __name__ == '__main__':  # pragma: no cover
     from time import perf_counter
-    
+
     s = Sphere(a_p=0.75, n_p=1.5)
     print(s.a_p, s.n_p)
     print(s.ab(1.339, 0.447).shape)
