@@ -13,11 +13,15 @@ class AberratedLorenzMie(LorenzMie):
         self.pupil = pupil or 1000.
         self.spherical = spherical or 0.
 
-    def correction(self, dr: np.ndarray) -> np.ndarray:
+    def scattered_field(self, particle, *args):
+        psi = super().scattered_field(particle, *args)
+        r_p = particle.r_p + particle.r_0
+        dr = self.coordinates - r_p[:, None]
         rhosq = (dr[0]**2 + dr[1]**2) / self.pupil**2
         phi = 6.*rhosq * (rhosq - 1.) + 1.
-        phi *= self.spherical  # any dependence on z_p (dr[2]) goes here.
-        return np.exp(-1j * phi)
+        phi *= self.spherical
+        psi *= np.exp(-1j * phi)
+        return psi
 
 
 def main():
@@ -46,7 +50,7 @@ def main():
     instrument.n_m = 1.340
     # Use generalized Lorenz-Mie theory to compute field
     kernel = AberratedLorenzMie(coords, particle, instrument)
-    kernel.spherical = 0.*np.pi
+    kernel.spherical = 1.
     kernel.field()
     start = perf_counter()
     field = kernel.field()

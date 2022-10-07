@@ -125,6 +125,7 @@ class LorenzMie(LMObject):
 
     @coordinates.setter
     def coordinates(self, coordinates: np.ndarray) -> None:
+        logger.debug('Setting coordinates')
         if coordinates is None:
             self._coordinates = None
             return
@@ -180,6 +181,19 @@ class LorenzMie(LMObject):
             if hasattr(self, property):
                 setattr(self, property, value)
 
+    def scattered_field(self, particle, cartesian, bohren):
+        k = self.instrument.wavenumber()
+        n_m = self.instrument.n_m
+        wavelength = self.instrument.wavelength
+        r_p = particle.r_p + particle.r_0
+        dr = self.coordinates - r_p[:, None]
+        self.kdr[...] = np.asarray(k * dr)
+        ab = particle.ab(n_m, wavelength)
+        psi = self.compute(ab, self.kdr, *self.buffers,
+                           cartesian=cartesian, bohren=bohren)
+        psi *= np.exp(-1j * k * r_p[2])
+        return psi
+
     def field(self,
               cartesian: bool = True,
               bohren: bool = True) -> np.ndarray:
@@ -187,26 +201,11 @@ class LorenzMie(LMObject):
         if (self.coordinates is None or self.particle is None):
             return None
         logger.debug('Computing field')
-        k = self.instrument.wavenumber()
-        n_m = self.instrument.n_m
-        wavelength = self.instrument.wavelength
         self.result.fill(0.+0.j)
         for p in np.atleast_1d(self.particle):
             logger.debug(p)
-            r_p = p.r_p + p.r_0
-            dr = self.coordinates - r_p[:, None]
-            self.kdr[...] = np.asarray(k * dr)
-            ab = p.ab(n_m, wavelength)
-            this = self.compute(ab, self.kdr, *self.buffers,
-                                cartesian=cartesian, bohren=bohren)
-            this *= np.exp(-1j * k * r_p[2])
-            this *= self.correction(dr)
-            self.result += this
+            self.result += self.scattered_field(p, cartesian, bohren)
         return self.result
-
-    def correction(self, dr: np.ndarray):
-        '''Correction should be overriden by subclass'''
-        return 1.
 
     def allocate(self) -> None:
         '''Allocate ndarrays for calculation'''
@@ -386,7 +385,8 @@ if __name__ == '__main__':  # pragma: no cover
     from time import perf_counter
 
     # Create coordinate grid for image
-    coords = coordinates((201, 201))
+    shape = (201, 201)
+    coords = coordinates(shape)
     # Place two spheres in the field of view, above the focal plane
     pa = Sphere()
     pa.r_p = [150, 150, 200]
@@ -412,5 +412,5 @@ if __name__ == '__main__':  # pragma: no cover
     # Compute hologram from field and show it
     field[0, :] += 1.
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
-    plt.imshow(hologram.reshape(201, 201), cmap='gray')
+    plt.imshow(hologram.reshape(shape), cmap='gray')
     plt.show()

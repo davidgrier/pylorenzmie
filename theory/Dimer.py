@@ -1,4 +1,4 @@
-from pylorenzmie.theory import Cluster, Sphere
+from pylorenzmie.theory import (Cluster, Sphere)
 from dataclasses import dataclass
 import numpy as np
 from typing import Any
@@ -22,12 +22,12 @@ class Dimer(Cluster):
         if key in ['a_p', 'theta', 'phi', 'magnification']:
             self.update_positions()
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         p = {'a_p': self.a_p, 'n_p': self.n_p, 'k_p': self.k_p}
         self.particles = [Sphere(**p), Sphere(**p)]
         self.update_positions()
 
-    def update_positions(self):
+    def update_positions(self) -> None:
         if len(self) != 2:
             return
         x_p = np.cos(self.theta) * np.cos(self.phi)
