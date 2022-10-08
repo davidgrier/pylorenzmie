@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Any
 import json
+import pandas as pd
 
 
 class LMObject(ABC):
@@ -60,3 +61,25 @@ class LMObject(ABC):
             JSON-encoded string of properties
         '''
         self.properties = json.loads(s)
+
+    def to_pandas(self, **kwargs: Optional[Any]) -> pd.Series:
+        '''Returns pandas Series of adjustable properties
+
+        Parameters
+        ----------
+        Accepts all keywords of pandas.Series
+
+        Returns
+        -------
+        series: pandas Series
+        '''
+        return pd.Series(self.properties, **kwargs)
+
+    def from_pandas(self, series: pd.Series) -> None:
+        '''Loads adjustable properties from pandas Series
+
+        Parameters
+        ----------
+        series: pandas Series
+        '''
+        self.properties = series.to_dict()
