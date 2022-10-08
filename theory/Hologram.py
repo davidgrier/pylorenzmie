@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 from pylorenzmie.theory import (AberratedLorenzMie, LorenzMie)
 from typing import Optional, Any
 import numpy as np
@@ -7,35 +6,26 @@ import numpy as np
 def Hologram(cls: LorenzMie, name: str):
     '''Return class for calculating holograms'''
 
-    @dataclass
-    class HologramClass(cls):
+    def init(self,
+             **kwargs: Optional[Any]) -> None:
+        super(self.__class__, self).__init__(**kwargs)
 
-        alpha: Optional[float] = 1.
+    def hologram(self) -> np.ndarray:
+        '''Return hologram of sphere
 
-        def __init__(self,
-                     **kwargs: Optional[Any]) -> None:
-            super().__init__(**kwargs)
+        Returns
+        -------
+        hologram : numpy.ndarray
+            Computed hologram.
+        '''
+        field = self.field()
+        field[0, :] += 1.
+        hologram = np.sum(np.real(field * np.conj(field)), axis=0)
+        return hologram
 
-        @cls.properties.getter
-        def properties(self) -> dict:
-            return {**super().properties,
-                    'alpha': self.alpha}
-
-        def hologram(self) -> np.ndarray:
-            '''Return hologram of sphere
-
-            Returns
-            -------
-            hologram : numpy.ndarray
-                Computed hologram.
-            '''
-            field = self.alpha * self.field()
-            field[0, :] += 1.
-            hologram = np.sum(np.real(field * np.conj(field)), axis=0)
-            return hologram
-
-    HologramClass.__name__ = name
-    return HologramClass
+    return type(name, (cls,), {
+        '__init__': init,
+        'hologram': hologram})
 
 
 LMHologram = Hologram(LorenzMie, "LMHologram")

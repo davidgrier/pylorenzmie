@@ -1,17 +1,18 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import numpy as np
+
 from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
-from typing import Union, Optional, Any
-
 from pylorenzmie.utilities import configuration as config
+from typing import Union, Optional, Any
+import numpy as np
 
 if config.has_numba():
     from numba import njit
 else:  # pragma: no cover
     from pylorenzmie.utilities.numba import njit
+
 
 import logging
 logger = logging.getLogger(__name__)
@@ -106,7 +107,7 @@ class LorenzMie(LMObject):
         self.instrument = instrument or Instrument(**kwargs)
 
     def __str__(self) -> str:
-        fmt = '<{}(particle=part, instrument=inst)>\n\t'
+        fmt = '{}(particle=part, instrument=inst)\n\t'
         fmt += 'part = {}\n\tinst = {}'
         return fmt.format(self.__class__.__name__,
                           str(self.particle),

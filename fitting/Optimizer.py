@@ -55,14 +55,14 @@ class Optimizer(object):
                  data=None,
                  robust=False,
                  fixed=None,
-                 settings=None,                                 
+                 settings=None,
                  **kwargs):
         self.model = model
         self.data = data
         self.settings = settings
         self.robust = robust
         defaults = ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
-        self.fixed = fixed or defaults      
+        self.fixed = fixed or defaults
         self._result = None
 
     @property
@@ -72,11 +72,11 @@ class Optimizer(object):
     @settings.setter
     def settings(self, settings):
         '''Dictionary of settings for scipy.optimize.least_squares
-        
+
         NOTES:
         (a) method:
             trf:     Trust Region Reflective
-            dogbox:  
+            dogbox:
             lm:      Levenberg-Marquardt
                      NOTE: only supports linear loss
         (b) loss
@@ -90,14 +90,14 @@ class Optimizer(object):
             x_scale: specify scale for each adjustable variable
         '''
         if settings is None:
-            settings = {'method': 'lm',    # (a)
-                        'ftol': 1e-3,      # default: 1e-8
-                        'xtol': 1e-6,      # default: 1e-8
-                        'gtol': 1e-6,      # default: 1e-8
-                        'loss': 'linear',  # (b)
-                        'max_nfev': 2000,  # max function evaluations
-                        'diff_step': 1e-5, # default: machine epsilon
-                        'x_scale': 'jac'}  # (c)
+            settings = {'method': 'lm',     # (a)
+                        'ftol': 1e-3,       # default: 1e-8
+                        'xtol': 1e-6,       # default: 1e-8
+                        'gtol': 1e-6,       # default: 1e-8
+                        'loss': 'linear',   # (b)
+                        'max_nfev': 2000,   # max function evaluations
+                        'diff_step': 1e-5,  # default: machine epsilon
+                        'x_scale': 'jac'}   # (c)
         self._settings = settings
 
     @property
@@ -127,7 +127,7 @@ class Optimizer(object):
     @property
     def variables(self):
         return self._variables
-        
+
     @property
     def result(self):
         return self._result
@@ -168,7 +168,7 @@ class Optimizer(object):
         for property, value in properties.items():
             if hasattr(self, property):
                 setattr(self, property, value)
-        
+
     #
     # Public methods
     #
@@ -184,14 +184,14 @@ class Optimizer(object):
         p0 = self._initial_estimates()
         self._result = least_squares(self._residuals, p0, **self.settings)
         return self.report
-    
+
     #
     # Private methods
     #
     def _initial_estimates(self):
         p0 = [self.model.properties[p] for p in self.variables]
         return np.array(p0)
-    
+
     def _residuals(self, values):
         '''Updates properties and returns residuals'''
         self.model.properties = dict(zip(self.variables, values))
@@ -217,5 +217,5 @@ class Optimizer(object):
         VT = VT[:s.size]
         pcov = np.dot(VT.T / s**2, VT)
         uncertainty = np.sqrt(redchi * np.diag(pcov))
-        
+
         return redchi, uncertainty
