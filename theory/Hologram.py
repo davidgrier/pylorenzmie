@@ -37,14 +37,12 @@ def Hologram(base_class: LorenzMie, name: str) -> dataclass:
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        field = self.alpha * self.field()
+        field = self.field()
         field[0, :] += 1.
         hologram = np.sum(np.real(field * np.conj(field)), axis=0)
         return hologram
 
-    return dataclass(type(name, (base_class,),
-                          {'alpha': 1.,
-                           'hologram': hologram}))
+    return dataclass(type(name, (base_class,), {'hologram': hologram}))
 
 
 LMHologram = Hologram(LorenzMie, 'LMHologram')

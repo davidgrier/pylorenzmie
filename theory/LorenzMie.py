@@ -67,7 +67,7 @@ class LorenzMie(LMObject):
     coordinates : numpy.ndarray
         [3, npts] array of x, y and z coordinates where field
         is calculated
-    particle : Particle
+    particle : Particle | List[Particle]
         Object representing the particle scattering light
     instrument : Instrument
         Object resprenting the light-scattering instrument
@@ -78,20 +78,21 @@ class LorenzMie(LMObject):
         Returns the complex-valued field at each of the coordinates.
     '''
 
-    coordinates: Optional[np.ndarray] = field(repr=False, default=None)
-    particle: Union[Particle, List[Particle], None] = Sphere()
-    instrument: Optional[Instrument] = Instrument()
+    coordinates: np.ndarray = field(repr=False, default=None)
+    particle: Union[Particle, List[Particle]] = Sphere()
+    instrument: Instrument = Instrument()
     method: str = 'numpy'
 
     def __setattr__(self, prop, val):
         if prop == 'coordinates':
-            super().__setattr__(prop, self.pad(val))
+            super().__setattr__(prop, self._pad(val))
             self.allocate()
         else:
             super().__setattr__(prop, val)
 
     @staticmethod
-    def pad(coordinates: Optional[np.ndarray]) -> None:
+    def _pad(coordinates: Optional[np.ndarray]) -> None:
+        '''Ensure coordinates have shape (3, npts)'''
         logger.debug('Setting coordinates')
         c = np.atleast_2d(0. if coordinates is None else coordinates)
         ndim, npts = c.shape
@@ -115,6 +116,7 @@ class LorenzMie(LMObject):
                 setattr(self, property, value)
 
     def scattered_field(self, particle, cartesian, bohren):
+        '''Return field scattered by one particle'''
         k = self.instrument.wavenumber()
         n_m = self.instrument.n_m
         wavelength = self.instrument.wavelength
