@@ -1,14 +1,33 @@
-from pylorenzmie.theory import (AberratedLorenzMie, LorenzMie)
-from typing import Optional, Any
+from dataclasses import dataclass
+from pylorenzmie.theory import LorenzMie
 import numpy as np
 
 
-def Hologram(cls: LorenzMie, name: str):
-    '''Return class for calculating holograms'''
+def Hologram(base_class: LorenzMie, name: str) -> dataclass:
+    '''Return class for calculating holograms
 
-    def init(self,
-             **kwargs: Optional[Any]) -> None:
-        super(self.__class__, self).__init__(**kwargs)
+    Arguments
+    ---------
+    base_class : LorenzMie
+        Base class that calculates scattered field
+    name : str
+        Name of created hologram class
+
+    Returns
+    -------
+    class : dataclass
+        Class whose instances implement generative models
+        for in-line holographic imaging.
+
+    Example
+    -------
+    from AberratedLorenzMie import AberratedLorenzMie as base
+
+    cls = Hologram(base, 'ALMHologram')
+    a = cls()
+    hologram = a.hologram()
+
+    '''
 
     def hologram(self) -> np.ndarray:
         '''Return hologram of sphere
@@ -18,23 +37,23 @@ def Hologram(cls: LorenzMie, name: str):
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        field = self.field()
+        field = self.alpha * self.field()
         field[0, :] += 1.
         hologram = np.sum(np.real(field * np.conj(field)), axis=0)
         return hologram
 
-    return type(name, (cls,), {
-        '__init__': init,
-        'hologram': hologram})
+    return dataclass(type(name, (base_class,),
+                          {'alpha': 1.,
+                           'hologram': hologram}))
 
 
-LMHologram = Hologram(LorenzMie, "LMHologram")
-ALMHologram = Hologram(AberratedLorenzMie, "ALMHologram")
+LMHologram = Hologram(LorenzMie, 'LMHologram')
 
 
-def main():
+def run_test(cls=LMHologram, **kwargs):
     from pylorenzmie.utilities import coordinates
     from pylorenzmie.theory import (Sphere, Instrument)
+    from pprint import pprint
     import matplotlib.pyplot as plt
 
     # Create coordinate grid for image
@@ -50,19 +69,18 @@ def main():
     pb.a_p = 1.
     pb.n_p = 1.45
     particle = [pa, pb]
-    # Form image with default instrument
+    # Form image with specified instrument
     instrument = Instrument()
     instrument.magnification = 0.048
     instrument.wavelength = 0.447
     instrument.n_m = 1.340
 
-    a = ALMHologram(coordinates=coords,
-                    particle=particle,
-                    instrument=instrument)
-    print(a)
+    a = cls(coords, particle, instrument, **kwargs)
+
+    pprint(a)
     plt.imshow(a.hologram().reshape(shape), cmap='gray')
     plt.show()
 
 
 if __name__ == '__main__':
-    main()
+    run_test()
