@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from dataclasses import (dataclass, field)
 from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
-from typing import List, Union, Optional, Any
+from typing import (List, Optional, Union)
 import numpy as np
 
 import logging
@@ -54,6 +55,7 @@ Copyright (c) 2018 David G. Grier
 np.seterr(all='raise')
 
 
+@dataclass
 class LorenzMie(LMObject):
     '''
     Compute scattered light field with Generalized Lorenz-Mie theory
@@ -62,13 +64,13 @@ class LorenzMie(LMObject):
 
     Properties
     ----------
+    coordinates : numpy.ndarray
+        [3, npts] array of x, y and z coordinates where field
+        is calculated
     particle : Particle
         Object representing the particle scattering light
     instrument : Instrument
         Object resprenting the light-scattering instrument
-    coordinates : numpy.ndarray
-        [3, npts] array of x, y and z coordinates where field
-        is calculated
 
     Methods
     -------
@@ -76,78 +78,26 @@ class LorenzMie(LMObject):
         Returns the complex-valued field at each of the coordinates.
     '''
 
-    method = 'numpy'
+    coordinates: Optional[np.ndarray] = field(repr=False, default=None)
+    particle: Union[Particle, List[Particle], None] = Sphere()
+    instrument: Optional[Instrument] = Instrument()
+    method: str = 'numpy'
 
-    def __init__(self,
-                 coordinates: np.ndarray = None,
-                 particle: Particle = None,
-                 instrument: Instrument = None,
-                 **kwargs: Optional[Any]) -> None:
-        '''
-        Keywords
-        ----------
-        coordinates : numpy.ndarray
-           [3, npts] array of x, y and z coordinates where field
-           is calculated
-        particle : Particle
-           Object representing the particle. Default: Sphere()
-        instrument : Instrument
-           Object resprenting the light-scattering instrument
-        '''
-        self.coordinates = coordinates
-        self.particle = particle or Sphere(**kwargs)
-        self.instrument = instrument or Instrument(**kwargs)
+    def __setattr__(self, prop, val):
+        if prop == 'coordinates':
+            super().__setattr__(prop, self.pad(val))
+            self.allocate()
+        else:
+            super().__setattr__(prop, val)
 
-    def __str__(self) -> str:
-        fmt = '{}(particle=part, instrument=inst)\n\t'
-        fmt += 'part = {}\n\tinst = {}'
-        return fmt.format(self.__class__.__name__,
-                          str(self.particle),
-                          str(self.instrument))
-
-    def __repr__(self) -> str:
-        return self.__str__()
-
-    @property
-    def coordinates(self) -> np.ndarray:
-        '''Three-dimensional coordinates at which field is calculated
-
-        Expected shape is (3, npts)
-        '''
-        return self._coordinates
-
-    @coordinates.setter
-    def coordinates(self, coordinates: Optional[np.ndarray]) -> None:
+    @staticmethod
+    def pad(coordinates: Optional[np.ndarray]) -> None:
         logger.debug('Setting coordinates')
         c = np.atleast_2d(0. if coordinates is None else coordinates)
         ndim, npts = c.shape
         if ndim > 3:
             raise ValueError(f'Incompatible shape: {coordinates.shape=}')
-        self._coordinates = np.vstack([c, np.zeros((3-ndim, npts))])
-        self.allocate()
-
-    @property
-    def particle(self) -> Particle:
-        '''Particle responsible for light scattering'''
-        return self._particle
-
-    @particle.setter
-    def particle(self, particle: Union[Particle, List[Particle]]) -> None:
-        logger.debug('Setting particle')
-        p = np.atleast_1d(particle)
-        if isinstance(p[0], Particle):
-            self._particle = particle
-
-    @property
-    def instrument(self) -> Instrument:
-        '''Imaging instrument'''
-        return self._instrument
-
-    @instrument.setter
-    def instrument(self, instrument: Instrument) -> None:
-        logger.debug('Setting instrument')
-        if isinstance(instrument, Instrument):
-            self._instrument = instrument
+        return np.vstack([c, np.zeros((3-ndim, npts))])
 
     @property
     def properties(self) -> dict:
