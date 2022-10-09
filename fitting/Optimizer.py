@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+from pylorenzmie.lib import LMObject
+from pylorenzmie.theory import LMHologram
 import numpy as np
 from scipy.optimize import least_squares
 from scipy.linalg import svd
@@ -10,7 +12,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-class Optimizer(object):
+class Optimizer(LMObject):
     '''
     Fit generative light-scattering model to data
 
@@ -19,18 +21,16 @@ class Optimizer(object):
     Properties
     ----------
     model : LMHologram
-        Computational model for calculating holograms
+        Computational model for calculating holograms.
     data : numpy.ndarray
-        Target for optimization with model
-    noise : float
-        Estimate for the additive noise value at each data pixel
+        Target for optimization with model.
     robust : bool
         If True, use robust optimization (absolute deviations)
         otherwise use least-squares optimization
         Default: False (least-squares)
     fixed : list of str
         Names of properties of the model that should not vary during fitting.
-        Default: ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
+        Default: ['wavelength', 'magnification', 'n_m', 'k_p']
     variables : list of str
         Names of properties of the model that will be optimized.
         Default: All model.properties that are not fixed
@@ -38,39 +38,38 @@ class Optimizer(object):
         Dictionary of settings for the optimization method
     properties : dict
         Dictionary of settings for the optimizer as a whole
-    result : scipy.optimize.OptimizeResult
-        Set by optimize()
-    report : pandas.Series
+    result : pandas.Series
         Optimized values of the variables, together with numerical
-        uncertainties
+        uncertainties.
 
     Methods
     -------
     optimize() : pandas.Series
-        Parameters that optimize model to fit the data.
+        Optimizes parameters to fit the model to the data.
+        Returns result.
     '''
 
     def __init__(self,
-                 model=None,
-                 data=None,
-                 robust=False,
-                 fixed=None,
-                 settings=None,
-                 **kwargs):
-        self.model = model
+                 model: LMHologram = None,
+                 data: np.ndarray = None,
+                 robust: bool = False,
+                 fixed: bool = None,
+                 settings: dict = None,
+                 **kwargs) -> None:
+        self.model = model or LMHologram(**kwargs)
         self.data = data
         self.settings = settings
         self.robust = robust
-        defaults = ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
+        defaults = 'wavelength magnification n_m k_p'.split()
         self.fixed = fixed or defaults
         self._result = None
 
     @property
-    def settings(self):
+    def settings(self) -> dict:
         return self._settings
 
     @settings.setter
-    def settings(self, settings):
+    def settings(self, settings: dict) -> None:
         '''Dictionary of settings for scipy.optimize.least_squares
 
         NOTES:
@@ -101,11 +100,11 @@ class Optimizer(object):
         self._settings = settings
 
     @property
-    def robust(self):
+    def robust(self) -> bool:
         return self.settings['loss'] in ['soft_l1', 'huber', 'cauchy']
 
     @robust.setter
-    def robust(self, robust):
+    def robust(self, robust: bool) -> None:
         if robust:
             self.settings['method'] = 'dogbox'
             self.settings['loss'] = 'cauchy'
@@ -114,39 +113,33 @@ class Optimizer(object):
             self.settings['loss'] = 'linear'
 
     @property
-    def fixed(self):
+    def fixed(self) -> list:
         '''list of fixed properties'''
         return self._fixed
 
     @fixed.setter
-    def fixed(self, fixed):
+    def fixed(self, fixed: list) -> None:
         self._fixed = fixed
-        properties = self.model.properties
-        self._variables = [p for p in properties if p not in self.fixed]
 
     @property
-    def variables(self):
-        return self._variables
+    def variables(self) -> list:
+        return [p for p in self.model.properties if p not in self.fixed]
 
     @property
-    def result(self):
-        return self._result
-
-    @property
-    def report(self):
+    def result(self) -> pd.Series:
         '''Parse result into pandas.Series'''
-        if self.result is None:
+        if self._result is None:
             return None
         a = self.variables
         b = ['d' + c for c in a]
         keys = list(sum(zip(a, b), ()))
         keys.extend(['success', 'npix', 'redchi'])
 
-        values = self.result.x
+        values = self._result.x
         npix = self.data.size
         redchi, uncertainties = self._statistics()
         values = list(sum(zip(values, uncertainties), ()))
-        values.extend([self.result.success, npix, redchi])
+        values.extend([self._result.success, npix, redchi])
         return pd.Series(dict(zip(keys, values)))
 
     @property
@@ -183,7 +176,7 @@ class Optimizer(object):
         '''
         p0 = self._initial_estimates()
         self._result = least_squares(self._residuals, p0, **self.settings)
-        return self.report
+        return self.result
 
     #
     # Private methods
@@ -207,7 +200,7 @@ class Optimizer(object):
         value decomposition, using the Moore-Penrose inverse
         after discarding small singular values.
         '''
-        res = self.result
+        res = self._result
         ndeg = self.data.size - res.x.size  # number of degrees of freedom
         redchi = 2.*res.cost / ndeg         # reduced chi-squared
 
@@ -219,3 +212,23 @@ class Optimizer(object):
         uncertainty = np.sqrt(redchi * np.diag(pcov))
 
         return redchi, uncertainty
+
+
+def test_case():
+    from pylorenzmie.utilities import coordinates
+
+    shape = (201, 201)
+    c = coordinates(shape)
+    model = LMHologram(coordinates=c)
+    model.particle.a_p = 0.75
+    model.particle.n_p = 1.42
+    model.particle.r_p = [100., 100., 225.]
+    data = model.hologram().reshape(shape)
+    data += model.instrument.noise * np.random.normal(size=shape)
+
+    a = Optimizer(model=model, data=data.flatten())
+    print(a.optimize())
+
+
+if __name__ == '__main__':
+    test_case()

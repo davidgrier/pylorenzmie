@@ -1,11 +1,10 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pylorenzmie.lib import LMObject
 import numpy as np
 import logging
-from typing import Union
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -30,8 +29,6 @@ class Instrument(LMObject):
         Effective size of pixels [um/pixel]
     n_m : float
         Refractive index of medium
-    background : float or numpy.ndarray
-        Background image
     noise : float
         Estimated noise as a percentage of the mean value
     dark_count : float
@@ -45,12 +42,11 @@ class Instrument(LMObject):
         Wavenumber of light
     '''
 
-    wavelength: float = 0.532
-    magnification: float = 0.135
-    n_m: float = 1.335
-    background: Union[float, np.ndarray] = field(repr=False, default=1.)
-    noise: float = field(repr=False, default=0.05)
-    darkcount: float = field(repr=False, default=0.)
+    wavelength: float = 0.447
+    magnification: float = 0.048
+    n_m: float = 1.340
+    noise: float = 0.05
+    darkcount: float = 0.
 
     @LMObject.properties.getter
     def properties(self) -> dict:
