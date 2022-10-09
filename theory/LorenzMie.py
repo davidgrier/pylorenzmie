@@ -310,9 +310,10 @@ class LorenzMie(LMObject):
             return es
 
 
-if __name__ == '__main__':  # pragma: no cover
+def run_test(cls=LorenzMie, **kwargs):
     import matplotlib.pyplot as plt
     from pylorenzmie.utilities import coordinates
+    from pylorenzmie.theory import (Sphere, Instrument)
     from time import perf_counter
 
     # Create coordinate grid for image
@@ -324,8 +325,8 @@ if __name__ == '__main__':  # pragma: no cover
     pa.a_p = 0.5
     pa.n_p = 1.45
     pb = Sphere()
-    pb.r_p = [100, 10, 75]
-    pb.a_p = 0.75
+    pb.r_p = [100, 10, 250]
+    pb.a_p = 1.
     pb.n_p = 1.45
     particle = [pa, pb]
     # Form image with default instrument
@@ -333,9 +334,8 @@ if __name__ == '__main__':  # pragma: no cover
     instrument.magnification = 0.048
     instrument.wavelength = 0.447
     instrument.n_m = 1.340
-    k = instrument.wavenumber()
-    # Use Generalized Lorenz-Mie theory to compute field
-    kernel = LorenzMie(coords, particle, instrument)
+    # Use generalized Lorenz-Mie theory to compute field
+    kernel = cls(coords, particle, instrument, **kwargs)
     kernel.field()
     start = perf_counter()
     field = kernel.field()
@@ -345,3 +345,7 @@ if __name__ == '__main__':  # pragma: no cover
     hologram = np.sum(np.real(field * np.conj(field)), axis=0)
     plt.imshow(hologram.reshape(shape), cmap='gray')
     plt.show()
+
+
+if __name__ == '__main__':
+    run_test()
