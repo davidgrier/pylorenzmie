@@ -1,18 +1,10 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-
 from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
-from pylorenzmie.utilities import configuration as config
-from typing import Union, Optional, Any
+from typing import List, Union, Optional, Any
 import numpy as np
-
-if config.has_numba():
-    from numba import njit
-else:  # pragma: no cover
-    from pylorenzmie.utilities.numba import njit
-
 
 import logging
 logger = logging.getLogger(__name__)
@@ -125,21 +117,13 @@ class LorenzMie(LMObject):
         return self._coordinates
 
     @coordinates.setter
-    def coordinates(self, coordinates: np.ndarray) -> None:
+    def coordinates(self, coordinates: Optional[np.ndarray]) -> None:
         logger.debug('Setting coordinates')
-        if coordinates is None:
-            self._coordinates = None
-            return
-        c = np.array(coordinates)
-        if c.ndim == 1:            # only x specified
-            c = np.vstack((c, np.zeros((2, c.size))))
-        elif c.shape[0] == 2:      # only (x, y) specified
-            z = np.zeros_like(c[0])
-            c = np.vstack((c, z))
-        elif c.shape[0] != 3:      # pragma: no cover
-            raise ValueError(
-                'coordinates should have shape ({1|2|3}, npts).')
-        self._coordinates = c
+        c = np.atleast_2d(0. if coordinates is None else coordinates)
+        ndim, npts = c.shape
+        if ndim > 3:
+            raise ValueError(f'Incompatible shape: {coordinates.shape=}')
+        self._coordinates = np.vstack([c, np.zeros((3-ndim, npts))])
         self.allocate()
 
     @property
@@ -148,7 +132,7 @@ class LorenzMie(LMObject):
         return self._particle
 
     @particle.setter
-    def particle(self, particle: Union[Particle, list]) -> None:
+    def particle(self, particle: Union[Particle, List[Particle]]) -> None:
         logger.debug('Setting particle')
         p = np.atleast_1d(particle)
         if isinstance(p[0], Particle):
@@ -188,14 +172,15 @@ class LorenzMie(LMObject):
         dr = self.coordinates - r_p[:, None]
         self.kdr[...] = np.asarray(k * dr)
         ab = particle.ab(n_m, wavelength)
-        psi = self.compute(ab, self.kdr, *self.buffers,
+        psi = self.compute(ab, self.kdr, self.buffers,
                            cartesian=cartesian, bohren=bohren)
         psi *= np.exp(-1j * k * r_p[2])
         return psi
 
     def field(self,
               cartesian: bool = True,
-              bohren: bool = True) -> np.ndarray:
+              bohren: bool = True,
+              **kwargs) -> np.ndarray:
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
@@ -214,13 +199,9 @@ class LorenzMie(LMObject):
         self.result = np.empty(shape, dtype=complex)
 
     @staticmethod
-    @njit()  # unittest does not cover jitted methods
     def compute(ab: np.ndarray,
                 kdr: np.ndarray,
-                mo1n: np.ndarray,
-                ne1n: np.ndarray,
-                es: np.ndarray,
-                ec: np.ndarray,
+                buffers: List[np.ndarray],
                 cartesian: bool = True,
                 bohren: bool = True) -> np.ndarray:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
@@ -252,6 +233,7 @@ class LorenzMie(LMObject):
         '''
 
         norders = ab.shape[0]  # number of partial waves in sum
+        mo1n, ne1n, es, ec = buffers
 
         # GEOMETRY
         # 1. particle displacement [pixel]

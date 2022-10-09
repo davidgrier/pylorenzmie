@@ -32,7 +32,7 @@ class cupyLorenzMie(LorenzMie):
     method = 'cupy'
 
     def __init__(self, *args, double_precision=True, **kwargs):
-        super(cupyLorenzMie, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.double_precision = double_precision
 
     @property
@@ -54,29 +54,33 @@ class cupyLorenzMie(LorenzMie):
             self.ctype = np.complex64
         self.allocate()
 
+    def scattered_field(self, particle, cartesian, bohren):
+        ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
+        ar = ab[:, 0].real.astype(self.dtype)
+        ai = ab[:, 0].imag.astype(self.dtype)
+        br = ab[:, 1].real.astype(self.dtype)
+        bi = ab[:, 1].imag.astype(self.dtype)
+        ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
+        coordsx, coordsy, coordsz = self.gpu_coordinates
+        r_p = (particle.r_p + particle.r_0).astype(self.dtype)
+        k = self.dtype(self.instrument.wavenumber())
+        phase = self.ctype(np.exp(-1.j * k * r_p[2]))
+        self.kernel((self.blockspergrid,), (self.threadsperblock,),
+                    (coordsx, coordsy, coordsz,
+                     *r_p, k, phase,
+                     ar, ai, br, bi,
+                     ab.shape[0], coordsx.shape[0],
+                     cartesian, bohren,
+                     *self.result))
+        return self.result
+
     def field(self, cartesian=True, bohren=True, gpu=False):
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
         self.result.fill(0.+0.j)
-        k = self.dtype(self.instrument.wavenumber())
         for p in np.atleast_1d(self.particle):
-            ab = p.ab(self.instrument.n_m, self.instrument.wavelength)
-            ar = ab[:, 0].real.astype(self.dtype)
-            ai = ab[:, 0].imag.astype(self.dtype)
-            br = ab[:, 1].real.astype(self.dtype)
-            bi = ab[:, 1].imag.astype(self.dtype)
-            ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
-            coordsx, coordsy, coordsz = self.gpu_coordinates
-            x_p, y_p, z_p = p.r_p.astype(self.dtype)
-            phase = self.ctype(np.exp(-1.j * k * z_p))
-            self.kernel((self.blockspergrid,), (self.threadsperblock,),
-                        (coordsx, coordsy, coordsz,
-                         x_p, y_p, z_p, k, phase,
-                         ar, ai, br, bi,
-                         ab.shape[0], coordsx.shape[0],
-                         cartesian, bohren,
-                         *self.result))
+            self.scattered_field(p, cartesian, bohren)
         return self.result if gpu else self.result.get()
 
     def allocate(self):
@@ -426,17 +430,13 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 
 if __name__ == '__main__':  # pragma: no cover
     from pylorenzmie.theory import (Sphere, Instrument)
+    from pylorenzmie.utilities import coordinates
     import matplotlib.pyplot as plt
     from time import time
-    
+
     # Create coordinate grid for image
-    x = np.arange(0, 201)
-    y = np.arange(0, 201)
-    xv, yv = np.meshgrid(x, y)
-    xv = xv.flatten()
-    yv = yv.flatten()
-    zv = np.zeros_like(xv)
-    coordinates = np.stack((xv, yv, zv))
+    shape = (201, 201)
+    c = coordinates(shape)
     # Place a sphere in the field of view, above the focal plane
     particle = Sphere()
     particle.r_p = [150, 150, 200]
@@ -452,7 +452,7 @@ if __name__ == '__main__':  # pragma: no cover
     instrument.n_m = 1.335
     k = instrument.wavenumber()
     # Use Generalized Lorenz-Mie theory to compute field
-    kernel = cupyLorenzMie(coordinates=coordinates,
+    kernel = cupyLorenzMie(coordinates=c,
                            particle=particles,
                            instrument=instrument)
     kernel.field()
@@ -462,6 +462,6 @@ if __name__ == '__main__':  # pragma: no cover
     # Compute hologram from field and show it
     field[0, :] += 1.
     hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
-    hologram = hologram.get()
-    plt.imshow(hologram.reshape(201, 201), cmap='gray')
+    hologram = hologram.get().reshape(shape)
+    plt.imshow(hologram, cmap='gray')
     plt.show()
