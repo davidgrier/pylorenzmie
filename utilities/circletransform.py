@@ -27,7 +27,7 @@ class Circletransform(object):
     '''
 
     def __init__(self) -> None:
-        self._kernel = np.ones(1, 1)
+        self._kernel = np.ones((1, 1))
 
     def kernel(self, shape: tuple) -> np.ndarray:
         '''Fourier transform of the orientational alignment kernel:
@@ -78,7 +78,7 @@ class Circletransform(object):
         # Fourier convolution theorem
         psi = fft2(psi, workers=-1)
         psi *= self.kernel(image.shape)
-        psi = ifft2(psi, worker=-1)
+        psi = ifft2(psi, workers=-1)
 
         # Transformed image is the intensity of the convolution
         c = (psi * np.conjugate(psi)).real
@@ -86,5 +86,16 @@ class Circletransform(object):
 
 
 def circletransform(image: np.ndarray) -> np.ndarray:
-    c = Circletransform()
-    return c.transform(image)
+    '''Transform an image to emphasize ring-like features
+
+    Arguments
+    ---------
+    image : np.ndarray
+        image data
+
+    Returns
+    -------
+    circletransform : np.ndarray
+        transformed image
+    '''
+    return Circletransform().transform(image)
