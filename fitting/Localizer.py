@@ -1,8 +1,6 @@
 import numpy as np
-from scipy.signal import savgol_filter
-from scipy.fft import (fft2, ifft2, fftshift)
 import trackpy as tp
-from pylorenzmie.utilities import aziavg
+from pylorenzmie.utilities import (aziavg, Circletransform)
 
 
 class Localizer(object):
@@ -31,6 +29,7 @@ class Localizer(object):
                  nfringes=None,
                  maxrange=None,
                  **kwargs):
+        self._circletransform = Circletransform()
         self._tp_opts = tp_opts or dict(diameter=31, minmass=30)
         self._nfringes = nfringes or 20
         self._maxrange = maxrange or 400
@@ -52,7 +51,7 @@ class Localizer(object):
         bboxes : tuple
             ((x0, y0), w, h) bounding box of feature
         '''
-        a = self._circletransform(image)
+        a = self._circletransform.transform(image)
         features = tp.locate(a, **self._tp_opts, characterize=False)
 
         predictions = []
@@ -65,78 +64,8 @@ class Localizer(object):
             predictions.append(prediction)
         return predictions
 
-    def _kernel(self, image):
-        '''
-        Fourier transform of the orientational alignment kernel:
-        K(k) = e^(-2 i \theta) / k
-
-        kernel ordering is shifted to accommodate FFT pixel ordering
-
-        Parameters
-        ----------
-        image : numpy.ndarray
-            image shape used to compute kernel
-
-        Returns
-        -------
-        kernel : numpy.ndarray
-            orientation alignment kernel in Fourier space
-        '''
-        if image.shape != self._shape:
-            self._shape = image.shape
-            ny, nx = image.shape
-            kx = fftshift(np.linspace(-0.5, 0.5, nx))
-            ky = fftshift(np.linspace(-0.5, 0.5, ny))
-            k = np.hypot.outer(ky, kx) + 0.001
-            kernel = np.subtract.outer(1.j*ky, kx) / k
-            kernel *= kernel / k
-            self.__kernel = kernel
-        return self.__kernel
-
-    def _circletransform(self, image):
-        '''
-        Transform image to emphasize circular features
-
-        Parameters
-        ----------
-        image : numpy.ndarray
-            grayscale image data
-
-        Returns
-        -------
-        transform : numpy.ndarray
-            An array with the same shape as image, transformed
-            to emphasize circular features.
-
-        Notes
-        -----
-        Algorithm described in
-        B. J. Krishnatreya and D. G. Grier
-        "Fast feature identification for holographic tracking:
-        The orientation alignment transform,"
-        Optics Express 22, 12773-12778 (2014)
-        '''
-
-        # Orientational order parameter:
-        # psi(r) = |\partial_x a + i \partial_y a|^2
-        psi = np.empty_like(image, dtype=complex)
-        psi.real = savgol_filter(image, 13, 3, 1, axis=1)
-        psi.imag = savgol_filter(image, 13, 3, 1, axis=0)
-        psi *= psi
-
-        # Convolve psi(r) with K(r) using the
-        # Fourier convolution theorem
-        psi = fft2(psi, workers=-1)
-        psi *= self._kernel(image)
-        psi = ifft2(psi, workers=-1)
-
-        # Transformed image is the intensity of the convolution
-        c = (psi * np.conjugate(psi)).real
-        return c / np.max(c)
-
     def _extent(self, norm, center):
-        '''
-        Radius of feature based on counting diffraction fringes
+        '''Return radius of feature by counting diffraction fringes
 
         Parameters
         ----------
