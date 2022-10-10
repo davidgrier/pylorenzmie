@@ -1,9 +1,10 @@
+from pylorenzmie.lib import LMObject
 import numpy as np
 import trackpy as tp
 from pylorenzmie.utilities import (aziavg, Circletransform)
 
 
-class Localizer(object):
+class Localizer(LMObject):
     '''Identify and localize features in holograms
 
     Properties
@@ -14,9 +15,9 @@ class Localizer(object):
     maxrange : int
         Maximum extent of feature [pixels]
         Default: 400
-    tp_opts : dict
-        Dictionary of options for trackpy.locate()
-        Default: dict(diameter=31, minmass=30)
+    diameter : int
+        Scale of localized features [pixels]
+        Default: 31
 
     Methods
     -------
@@ -24,18 +25,23 @@ class Localizer(object):
         Returns centers and bounding boxes of features
         detected in image
     '''
+
     def __init__(self,
-                 tp_opts=None,
+                 diameter=None,
                  nfringes=None,
                  maxrange=None,
                  **kwargs):
+        self.diameter = diameter or 31
+        self.nfringes = nfringes or 20
+        self.maxrange = maxrange or 400
         self._circletransform = Circletransform()
-        self._tp_opts = tp_opts or dict(diameter=31, minmass=30)
-        self._nfringes = nfringes or 20
-        self._maxrange = maxrange or 400
-        self._shape = None
 
-    def detect(self, image):
+    @LMObject.properties.fget
+    def properties(self) -> dict:
+        keys = 'nfringes maxrange diameter'.split()
+        return {k: getattr(self, k) for k in keys}
+
+    def detect(self, image, **kwargs):
         '''
         Localize features in normalized holographic microscopy images
 
@@ -43,6 +49,9 @@ class Localizer(object):
         ----------
         image : array_like
             image data
+
+        detect() also accepts all of the keyword arguments
+        for trackpy.locate()
 
         Returns
         -------
@@ -52,7 +61,7 @@ class Localizer(object):
             ((x0, y0), w, h) bounding box of feature
         '''
         a = self._circletransform.transform(image)
-        features = tp.locate(a, **self._tp_opts, characterize=False)
+        features = tp.locate(a, self.diameter, characterize=False, **kwargs)
 
         predictions = []
         for n, feature in features.iterrows():
@@ -64,12 +73,12 @@ class Localizer(object):
             predictions.append(prediction)
         return predictions
 
-    def _extent(self, norm, center):
+    def _extent(self, data, center):
         '''Return radius of feature by counting diffraction fringes
 
         Parameters
         ----------
-        norm : array_like
+        data : array_like
             Normalized image data
         center : tuple
             (x_p, y_p) coordinates of feature center
@@ -79,10 +88,7 @@ class Localizer(object):
         extent : int
             Extent of feature [pixels]
         '''
-        b = aziavg(norm, center) - 1.
+        b = aziavg(data, center) - 1.
         ndx = np.where(np.diff(np.sign(b)))[0] + 1
-        if len(ndx) <= self._nfringes:
-            extent = self._maxrange
-        else:
-            extent = ndx[self._nfringes]
-        return extent
+        toobig = len(ndx) <= self.nfringes
+        return self.maxrange if toobig else ndx[self.nfringes]
