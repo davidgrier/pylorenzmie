@@ -46,8 +46,8 @@ class Circletransform(object):
         if shape == self._kernel.shape:
             return self._kernel
         ny, nx = shape
-        kx = fftshift(np.linspace(-0.5, 0.5, nx))
-        ky = fftshift(np.linspace(-0.5, 0.5, ny))
+        kx = fftshift(np.linspace(-1., 1, nx, endpoint=False))
+        ky = fftshift(np.linspace(-1., 1, ny, endpoint=False))
         k = np.hypot.outer(ky, kx) + 0.001
         kernel = np.subtract.outer(1.j*ky, kx) / k
         kernel *= kernel / k
