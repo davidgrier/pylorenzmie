@@ -1,5 +1,6 @@
 import numpy as np
 from scipy.signal import savgol_filter
+from scipy.fft import (fft2, ifft2, fftshift)
 import trackpy as tp
 from pylorenzmie.utilities import aziavg
 
@@ -18,7 +19,7 @@ class Localizer(object):
     tp_opts : dict
         Dictionary of options for trackpy.locate()
         Default: dict(diameter=31, minmass=30)
-    
+
     Methods
     -------
     detect(image) : list of dict
@@ -38,7 +39,7 @@ class Localizer(object):
     def detect(self, image):
         '''
         Localize features in normalized holographic microscopy images
-        
+
         Parameters
         ----------
         image : array_like
@@ -52,12 +53,7 @@ class Localizer(object):
             ((x0, y0), w, h) bounding box of feature
         '''
         a = self._circletransform(image)
-        a /= np.max(a)
-        features = tp.locate(a, **self._tp_opts)
-
-        nfeatures = len(features)
-        if nfeatures == 0:
-            return None, None
+        features = tp.locate(a, **self._tp_opts, characterize=False)
 
         predictions = []
         for n, feature in features.iterrows():
@@ -72,7 +68,7 @@ class Localizer(object):
     def _kernel(self, image):
         '''
         Fourier transform of the orientational alignment kernel:
-        K(k) = e^(-2 i \theta) / k^3
+        K(k) = e^(-2 i \theta) / k
 
         kernel ordering is shifted to accommodate FFT pixel ordering
 
@@ -89,16 +85,16 @@ class Localizer(object):
         if image.shape != self._shape:
             self._shape = image.shape
             ny, nx = image.shape
-            kx = np.fft.ifftshift(np.linspace(-0.5, 0.5, nx))
-            ky = np.fft.ifftshift(np.linspace(-0.5, 0.5, ny))
+            kx = fftshift(np.linspace(-0.5, 0.5, nx))
+            ky = fftshift(np.linspace(-0.5, 0.5, ny))
             k = np.hypot.outer(ky, kx) + 0.001
-            kernel = np.subtract.outer(1.j*ky, kx)
-            kernel *= kernel / k**3
+            kernel = np.subtract.outer(1.j*ky, kx) / k
+            kernel *= kernel / k
             self.__kernel = kernel
         return self.__kernel
 
     def _circletransform(self, image):
-        """
+        '''
         Transform image to emphasize circular features
 
         Parameters
@@ -119,23 +115,24 @@ class Localizer(object):
         "Fast feature identification for holographic tracking:
         The orientation alignment transform,"
         Optics Express 22, 12773-12778 (2014)
-        """
-        
+        '''
+
         # Orientational order parameter:
         # psi(r) = |\partial_x a + i \partial_y a|^2
-        psi = np.empty_like(image, dtype=np.complex)
+        psi = np.empty_like(image, dtype=complex)
         psi.real = savgol_filter(image, 13, 3, 1, axis=1)
         psi.imag = savgol_filter(image, 13, 3, 1, axis=0)
         psi *= psi
 
         # Convolve psi(r) with K(r) using the
         # Fourier convolution theorem
-        psi = np.fft.fft2(psi)
+        psi = fft2(psi, workers=-1)
         psi *= self._kernel(image)
-        psi = np.fft.ifft2(psi)
+        psi = ifft2(psi, workers=-1)
 
         # Transformed image is the intensity of the convolution
-        return (psi * np.conjugate(psi)).real
+        c = (psi * np.conjugate(psi)).real
+        return c / np.max(c)
 
     def _extent(self, norm, center):
         '''
@@ -160,5 +157,3 @@ class Localizer(object):
         else:
             extent = ndx[self._nfringes]
         return extent
-
-
