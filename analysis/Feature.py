@@ -42,7 +42,7 @@ class Feature(object):
 
     def __init__(self,
                  data: np.ndarray = None,
-                 coordinates: np.narray = None,
+                 coordinates: np.ndarray = None,
                  model: LorenzMie = None,
                  fixed: List[str] = None,
                  **kwargs) -> None:
@@ -122,14 +122,14 @@ class Feature(object):
         return self.hologram() - self.data
 
 
-if __name__ == '__main__':  # pragma: no cover
+def example():
     import os
     import cv2
-    from time import time
+    from time import perf_counter
 
     THIS_DIR = os.path.dirname(os.path.abspath(__file__))
     path = (THIS_DIR, '..', 'docs', 'tutorials', 'crop.png')
-    TEST_IMAGE = os.path.join(path)
+    TEST_IMAGE = os.path.join(*path)
 
     # Feature with instrumental properties and mask properties
     a = Feature(wavelength=0.447, magnification=0.048, n_m=1.34,
@@ -149,12 +149,16 @@ if __name__ == '__main__':  # pragma: no cover
     p.r_p = [data.shape[0]//2, data.shape[1]//2, 330.]
     p.a_p = 1.1
     p.n_p = 1.4
-    print('Initial estimates:\n{}'.format(p))
+    print(f'Initial estimates:\n{p}')
 
     # init dummy hologram for proper speed gauge
-    b = a.model.hologram()
-    start = time()
-    result = a.optimize()
-    delta = time() - start
-    print('Refined estimates:\n{}'.format(p))
-    print('Time to fit: {:.3f} s'.format(time() - start))
+    a.model.hologram()
+    start = perf_counter()
+    a.optimize()
+    delta = perf_counter() - start
+    print(f'Refined estimates:\n{p}')
+    print(f'Time to fit: {delta:.3f} s')
+
+
+if __name__ == '__main__':  # pragma: no cover
+    example()
