@@ -7,11 +7,6 @@ import numpy as np
 
 import pylorenzmie.utilities.configuration as config
 
-if config.has_numba():
-    from numba import njit
-else:  # pragma: no cover
-    from pylorenzmie.utilities.numba import njit
-
 
 @dataclass
 class Sphere(Particle):
@@ -77,7 +72,7 @@ class Sphere(Particle):
                 'n_p': self.n_p,
                 'k_p': self.k_p}
 
-    def ab(self, n_m: complex, wavelength: float):
+    def ab(self, n_m: complex, wavelength: float) -> np.ndarray:
         '''Returns the Mie scattering coefficients
 
         Arguments
@@ -96,7 +91,6 @@ class Sphere(Particle):
                                 n_m, wavelength)
 
 
-@njit(cache=True, parallel=True)
 def wiscombe_yang(x: float, m: complex) -> int:
     '''Return the number of terms to keep in partial wave expansion
 
@@ -120,20 +114,19 @@ def wiscombe_yang(x: float, m: complex) -> int:
     # Wiscombe (1980)
     xl = np.abs(x)
     if xl <= 8.:
-        ns = np.floor(xl + 4. * xl**(1. / 3.) + 1.)
+        ns = np.floor(xl + 4. * np.cbrt(xl) + 1.)
     elif xl <= 4200.:
-        ns = np.floor(xl + 4.05 * xl**(1. / 3.) + 2.)
+        ns = np.floor(xl + 4.05 * np.cbrt(xl) + 2.)
     else:
-        ns = np.floor(xl + 4. * xl**(1. / 3.) + 2.)
+        ns = np.floor(xl + 4. * np.cbrt(xl) + 2.)
 
     # Yang (2003) Eq. (30)
     xm = np.abs(x * m)
     xm_1 = np.abs(np.roll(x, -1) * m)
-    nstop = max(ns, xm.max(), xm_1.max())
+    nstop = np.max([ns, np.max(xm), np.max(xm_1)])
     return int(nstop)
 
 
-@njit(cache=True, parallel=True)
 def mie_coefficients(a_p: float,
                      n_p: float,
                      k_p: float,
