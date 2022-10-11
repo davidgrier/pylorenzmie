@@ -2,10 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from pylorenzmie.fitting import (Estimator, Optimizer)
-from pylorenzmie.theory import LMHologram
+from typing import List
+from pylorenzmie.analysis import (Mask, Estimator, Optimizer)
+from pylorenzmie.theory import LorenzMie
 from pylorenzmie.utilities import coordinates
-from .Mask import Mask
 
 
 class Feature(object):
@@ -41,28 +41,28 @@ class Feature(object):
     '''
 
     def __init__(self,
-                 data=None,
-                 coordinates=None,
-                 model=None,
-                 fixed=None,
-                 **kwargs):
+                 data: np.ndarray = None,
+                 coordinates: np.narray = None,
+                 model: LorenzMie = None,
+                 fixed: List[str] = None,
+                 **kwargs) -> None:
         self._coordinates = None
         self.mask = Mask(**kwargs)
-        self.model = model or LMHologram(**kwargs)
+        self.model = model or LorenzMie()
+        self.model.properties = kwargs
         self.data = data
         self.coordinates = coordinates
         self.estimator = Estimator(feature=self, **kwargs)
         self.optimizer = Optimizer(model=self.model, **kwargs)
-        self.optimizer.fixed = fixed or [*self.optimizer.fixed,
-                                         *self.model.aberrations.properties]
+        self.optimizer.fixed = fixed or self.optimizer.fixed
 
     @property
-    def data(self):
+    def data(self) -> np.ndarray:
         '''Values of the (normalized) data at each pixel'''
         return self._data
 
     @data.setter
-    def data(self, data):
+    def data(self, data: np.ndarray) -> None:
         if data is not None:
             saturated = (data == np.max(data))
             nan = np.isnan(data)

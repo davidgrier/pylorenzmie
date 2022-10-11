@@ -21,7 +21,7 @@ class Optimizer(LMObject):
     Properties
     ----------
     model : LMHologram
-        Computational model for calculating holograms.
+        Generative model for calculating holograms.
     data : numpy.ndarray
         Target for optimization with model.
     robust : bool
@@ -45,7 +45,7 @@ class Optimizer(LMObject):
     Methods
     -------
     optimize() : pandas.Series
-        Optimizes parameters to fit the model to the data.
+        Optimizes model parameters to fit the model to the data.
         Returns result.
     '''
 
@@ -174,17 +174,13 @@ class Optimizer(LMObject):
         result : pandas.Series
             Values, uncertainties and statistics from fit
         '''
-        p0 = self._initial_estimates()
+        p0 = np.array([self.model.properties[p] for p in self.variables])
         self._result = least_squares(self._residuals, p0, **self.settings)
         return self.result
 
     #
     # Private methods
     #
-    def _initial_estimates(self):
-        p0 = [self.model.properties[p] for p in self.variables]
-        return np.array(p0)
-
     def _residuals(self, values):
         '''Updates properties and returns residuals'''
         self.model.properties = dict(zip(self.variables, values))
@@ -223,11 +219,17 @@ def test_case():
     model.particle.a_p = 0.75
     model.particle.n_p = 1.42
     model.particle.r_p = [100., 100., 225.]
-    data = model.hologram().reshape(shape)
-    data += model.instrument.noise * np.random.normal(size=shape)
+    data = model.hologram()
+    data += model.instrument.noise * np.random.normal(size=shape).flatten()
 
-    a = Optimizer(model=model, data=data.flatten())
-    print(a.optimize())
+    a = Optimizer(model=model)
+    a.data = data
+    result = a.optimize()
+    print(result)
+
+    # model.properties has been updated
+    # model.properties = result.loc[a.variables]
+    # print(model.properties)
 
 
 if __name__ == '__main__':

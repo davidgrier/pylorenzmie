@@ -14,9 +14,8 @@ else:
     numpyLorenzMie = LorenzMie
 from .AberratedLorenzMie import AberratedLorenzMie
 
-from .Hologram import (Hologram, LMHologram)
+# Alias for backward compatibility
+LMHologram = LorenzMie
 
-
-__all__ = ['Particle', 'Sphere', 'Cluster', 'Dimer',
-           'Instrument', 'LorenzMie', 'AberratedLorenzMie',
-           'Hologram', 'LMHologram']
+__all__ = 'Instrument Particle Sphere Cluster Dimer' \
+          'LorenzMie AberratedLorenzMie LMHologram'.split()

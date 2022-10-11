@@ -341,7 +341,7 @@ class LorenzMie(LMObject):
             return es
 
 
-def run_test(cls=LorenzMie, **kwargs):
+def example(cls=LorenzMie, **kwargs):
     import matplotlib.pyplot as plt
     from pylorenzmie.utilities import coordinates
     from pylorenzmie.theory import (Sphere, Instrument)
@@ -377,4 +377,4 @@ def run_test(cls=LorenzMie, **kwargs):
 
 
 if __name__ == '__main__':
-    run_test()
+    example()

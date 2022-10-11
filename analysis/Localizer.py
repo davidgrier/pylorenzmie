@@ -1,7 +1,8 @@
 from pylorenzmie.lib import LMObject
+from pylorenzmie.utilities import (aziavg, Circletransform)
 import numpy as np
 import trackpy as tp
-from pylorenzmie.utilities import (aziavg, Circletransform)
+import pandas as pd
 
 
 class Localizer(LMObject):
@@ -55,10 +56,9 @@ class Localizer(LMObject):
 
         Returns
         -------
-        centers : numpy.array
-            (x, y) coordinates of feature centers
-        bboxes : tuple
-            ((x0, y0), w, h) bounding box of feature
+        results: pandas.DataFrame
+           x_p, y_p, bbox
+           bbox: ((x0, y0), w, h)
         '''
         a = self._circletransform.transform(image)
         features = tp.locate(a, self.diameter, characterize=False, **kwargs)
@@ -71,7 +71,7 @@ class Localizer(LMObject):
             bbox = (r0, extent, extent)
             prediction = dict(x_p=r_p[0], y_p=r_p[1], bbox=bbox)
             predictions.append(prediction)
-        return predictions
+        return pd.DataFrame(predictions)
 
     def _extent(self, data, center):
         '''Return radius of feature by counting diffraction fringes

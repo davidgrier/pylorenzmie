@@ -1,14 +1,13 @@
-import cv2
-import numpy as np
-import pandas as pd
-from .Feature import Feature
+from pylorenzmie.analysis import (Localizer, Feature)
+from pylorenzmie.lib import LMObject
 from pylorenzmie.utilities import coordinates as make_coordinates
-from pylorenzmie.fitting import (Localizer, Estimator)
+import pandas as pd
+import numpy as np
 
 
-class Frame(object):
+class Frame(LMObject):
     '''
-    Abstraction of a holographic microscopy video frame. 
+    Abstraction of a holographic microscopy video frame.
     ...
 
     Properties
@@ -22,25 +21,25 @@ class Frame(object):
     features : list
         List of Feature objects identified in data by detect()
         or analyze()
-    bboxes : tuple or list of tuples
-        List of bounding boxes: ((x0, y0), w, h) for each feature
-        identified by detect() or analyze()
     results : pandas.DataFrame
-        Summary of tracking and characterization data obtained by estimate(),
+        Summary of tracking and characterization data from estimate(),
         optimize() or analyze()
- 
+
     Methods
     -------
     detect() : int
-        Detect and localize features in data. Sets features and bboxes
+        Detect and localize features in data. Sets features.
 
         Returns
         -------
-        nfeatures : int
-            Number of features detected
+        self
 
     estimate() :
-        Estimate particle position and characteristics for each feature
+        Estimate particle position and characteristics for each feature.
+
+        Returns
+        -------
+        self
 
     optimize() :
         Refine estimates for particle positions and characteristics
@@ -54,7 +53,7 @@ class Frame(object):
         Identify features in image that are associated with
         particles and optimize the parameters of those features.
         Results are obtained by running detect(), estimate() and optimize()
-    
+
         Arguments
         ---------
         image : [optional] numpy.ndarray
@@ -66,16 +65,16 @@ class Frame(object):
         results: pandas.DataFrame
             Summary of tracking and characterization results from data
     '''
-    def __init__(self, **kwargs):
-        self._data = None
-        self._shape = None
-        self._coordinates = None
+    def __init__(self, data=None, **kwargs):
+        self._shape = (0, 0)
+        self._data = data
         self.localizer = Localizer(**kwargs)
-        self._features = []
-        self._bboxes = []
-        self._results = None
         self.kwargs = kwargs
-        
+
+    @LMObject.properties.fget
+    def properties(self):
+        return dict()
+
     @property
     def shape(self):
         '''image shape'''
@@ -85,17 +84,14 @@ class Frame(object):
     def shape(self, shape):
         if shape == self._shape:
             return
-        if shape is None:
-            self._coordinates = None
-        else:
-            self._coordinates = make_coordinates(shape, flatten=False)
+        self._coordinates = make_coordinates(shape, flatten=False)
         self._shape = shape
 
     @property
     def coordinates(self):
         '''Coordinates of pixels in image data'''
         return self._coordinates
-    
+
     @property
     def data(self):
         '''image data'''
@@ -103,52 +99,38 @@ class Frame(object):
 
     @data.setter
     def data(self, data):
-        if data is not None:
-            if data.shape != self.shape:
-                self.shape = data.shape
-            self._data = data
-
-    @property
-    def features(self):
-        '''List of objects of type Feature'''
-        return self._features
-
-    @property
-    def bboxes(self):
-        '''List of bounding boxes'''
-        return self._bboxes
-
-    @bboxes.setter
-    def bboxes(self, bboxes):
-        if isinstance(bboxes, tuple): # only one bbox
-            bboxes = [bboxes]
-        self._bboxes = bboxes
+        if data is None:
+            data = np.ndarray([])
         self._features = []
-        for bbox in bboxes:
-            ((x0, y0), w, h) = bbox
-            dim = min(w, h)
-            data = self.data[y0:y0+dim, x0:x0+dim]
-            coordinates = self.coordinates[:, y0:y0+dim, x0:x0+dim]
-            feature = Feature(data=data,
-                              coordinates=coordinates.reshape((2, -1)),
-                              **self.kwargs)
-            self._features.append(feature)
+        self._results = pd.DataFrame()
+        self.shape = data.shape
+        self._data = data
 
     @property
     def results(self):
         '''DataFrame containing tracking and characterization results'''
         return self._results
 
+    @property
+    def features(self):
+        '''List of objects of type Feature'''
+        return self._features
+
     def detect(self):
+        '''Detect and localize features in data
         '''
-        Detect and localize features in data
-        '''
-        discoveries = self.localizer.detect(self.data)
-        self.bboxes = [discovery['bbox'] for discovery in discoveries]
-        for feature, discovery in zip(self.features, discoveries):
-            feature.particle.x_p = discovery['x_p']
-            feature.particle.y_p = discovery['y_p']
-        return len(discoveries)
+        self._results = self.localizer.detect(self.data)
+        self._features = []
+        for _, feature in self._results.iterrows():
+            (x0, y0), w, h = feature.bbox
+            dim = min(w, h)
+            d = self.data[y0:y0+dim, x0:x0+dim]
+            c = self.coordinates[:, y0:y0+dim, x0:x0+dim].reshape((2, -1))
+            this = Feature(data=d, coordinates=c, **self.kwargs)
+            this.particle.x_p = feature.x_p
+            this.particle.y_p = feature.y_p
+            self._features.append(this)
+        return self
 
     def estimate(self):
         '''
@@ -156,6 +138,7 @@ class Frame(object):
         '''
         for feature in self.features:
             feature.estimate()
+        return self
 
     def optimize(self):
         '''
@@ -180,6 +163,4 @@ class Frame(object):
             Optimized parameters of generative model for each feature
         '''
         self.data = data
-        self.detect()
-        self.estimate()
-        return self.optimize()     
+        return self.detect().estimate().optimize()
