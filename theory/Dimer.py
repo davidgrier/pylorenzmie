@@ -38,9 +38,9 @@ class Dimer(Cluster):
         self.particles[1].r_p = -r_p
 
 
-def main():
+def example():
     from pylorenzmie.utilities import coordinates
-    from pylorenzmie.theory import Instrument, LMHologram
+    from pylorenzmie.theory import (Instrument, LorenzMie)
     import matplotlib.pyplot as plt
 
     shape = (301, 301)
@@ -56,12 +56,12 @@ def main():
     dimer.theta = 0.
     dimer.phi = np.pi/4.
 
-    a = LMHologram(coordinates=coords,
-                   particle=dimer,
-                   instrument=instrument)
+    a = LorenzMie(coordinates=coords,
+                  particle=dimer,
+                  instrument=instrument)
     plt.imshow(a.hologram().reshape(shape), cmap='gray')
     plt.show()
 
 
 if __name__ == '__main__':
-    main()
+    example()

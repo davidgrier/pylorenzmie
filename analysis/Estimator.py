@@ -7,7 +7,7 @@ from scipy.special import jn_zeros
 
 class Estimator(object):
     '''Estimate parameters of a holographic feature
-    
+
     Properties
     ----------
     z_p : float

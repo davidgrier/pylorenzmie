@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from pylorenzmie.theory.LorenzMie import (LorenzMie, run_test)
+from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 import numpy as np
 
 
@@ -27,4 +27,4 @@ class AberratedLorenzMie(LorenzMie):
 
 
 if __name__ == '__main__':
-    run_test(AberratedLorenzMie, spherical=1.)
+    example(AberratedLorenzMie, spherical=1.)
