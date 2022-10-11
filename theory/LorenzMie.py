@@ -133,7 +133,23 @@ class LorenzMie(LMObject):
               cartesian: bool = True,
               bohren: bool = True,
               **kwargs) -> np.ndarray:
-        '''Return field scattered by particles in the system'''
+        '''Return field scattered by particles in the system
+
+        Arguments
+        ---------
+        cartesian: bool (default True)
+            True: field is projected onto Cartesian axes (x, y, z) with
+               z being the propagation direction and
+               x being the axis of the illumination polarization
+            False: field is returned in polar coordinates (r, theta, phi)
+        bohren: bool (default True)
+            True: z sign convention from Bohren and Huffman
+
+        Returns
+        -------
+        field : numpy.ndarray
+            (3, npts) complex value of the scattered field
+        '''
         if (self.coordinates is None or self.particle is None):
             return None
         logger.debug('Computing field')
@@ -142,6 +158,19 @@ class LorenzMie(LMObject):
             logger.debug(p)
             self.result += self.scattered_field(p, cartesian, bohren)
         return self.result
+
+    def hologram(self) -> np.ndarray:
+        '''Return hologram of particle
+
+        Returns
+        -------
+        hologram : numpy.ndarray
+            Computed hologram.
+        '''
+        psi = self.field()
+        psi[0, :] += 1.
+        hologram = np.sum(np.real(psi * np.conj(psi)), axis=0)
+        return hologram
 
     def allocate(self) -> None:
         '''Allocate ndarrays for calculation'''
@@ -340,11 +369,9 @@ def run_test(cls=LorenzMie, **kwargs):
     kernel = cls(coords, particle, instrument, **kwargs)
     kernel.field()
     start = perf_counter()
-    field = kernel.field()
+    hologram = kernel.hologram()
     print(f'Time to calculate: {perf_counter()-start} s')
     # Compute hologram from field and show it
-    field[0, :] += 1.
-    hologram = np.sum(np.real(field * np.conj(field)), axis=0)
     plt.imshow(hologram.reshape(shape), cmap='gray')
     plt.show()
 
