@@ -1,6 +1,9 @@
 import numpy as np
 from scipy.signal import savgol_filter
-from scipy.fft import (fft2, ifft2, fftshift)
+try:
+    from scipy.fft import (fft2, ifft2, fftshift)
+except ModuleNotFoundError:
+    from scipy.fftpack import (fft2, ifft2, fftshift)
 
 
 class Circletransform(object):
