@@ -129,10 +129,7 @@ class LorenzMie(LMObject):
         psi *= np.exp(-1j * k * r_p[2])
         return psi
 
-    def field(self,
-              cartesian: bool = True,
-              bohren: bool = True,
-              **kwargs) -> np.ndarray:
+    def field(self, cartesian: bool = True, bohren: bool = True) -> np.ndarray:
         '''Return field scattered by particles in the system
 
         Arguments

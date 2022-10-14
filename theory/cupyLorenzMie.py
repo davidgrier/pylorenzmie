@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from dataclasses import dataclass
+from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 import numpy as np
 import cupy as cp
-from .LorenzMie import LorenzMie
 
 
+@dataclass
 class cupyLorenzMie(LorenzMie):
     '''
     Compute scattered light field with CUDA acceleration.
@@ -29,22 +31,17 @@ class cupyLorenzMie(LorenzMie):
 
     '''
 
-    method = 'cupy'
+    method: str = 'cupy'
+    double_precision: bool = True
 
-    def __init__(self, *args, double_precision=True, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.double_precision = double_precision
+    def __setattr__(self, key, val):
+        super().__setattr__(key, val)
+        if key == 'double_precision':
+            self.set_precision()
 
-    @property
-    def double_precision(self):
-        '''Toggles between single and double precision for CUDA'''
-        return self._double_precision
-
-    @double_precision.setter
-    def double_precision(self, state):
+    def set_precision(self):
         # NOTE: Check if GPU is capable of double precision
-        self._double_precision = bool(state)
-        if self._double_precision:
+        if self.double_precision:
             self.kernel = self.cufield()
             self.dtype = np.float64
             self.ctype = np.complex128
@@ -428,40 +425,5 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 ''', 'field')
 
 
-if __name__ == '__main__':  # pragma: no cover
-    from pylorenzmie.theory import (Sphere, Instrument)
-    from pylorenzmie.utilities import coordinates
-    import matplotlib.pyplot as plt
-    from time import time
-
-    # Create coordinate grid for image
-    shape = (201, 201)
-    c = coordinates(shape)
-    # Place a sphere in the field of view, above the focal plane
-    particle = Sphere()
-    particle.r_p = [150, 150, 200]
-    particle.a_p = 0.5
-    particle.n_p = 1.45
-    particle2 = Sphere()
-    particles = [particle, particle2]
-    particles.reverse()
-    # Form image with default instrument
-    instrument = Instrument()
-    instrument.magnification = 0.135
-    instrument.wavelength = 0.447
-    instrument.n_m = 1.335
-    k = instrument.wavenumber()
-    # Use Generalized Lorenz-Mie theory to compute field
-    kernel = cupyLorenzMie(coordinates=c,
-                           particle=particles,
-                           instrument=instrument)
-    kernel.field()
-    start = time()
-    field = kernel.field()
-    print("Time to calculate field: {}".format(time() - start))
-    # Compute hologram from field and show it
-    field[0, :] += 1.
-    hologram = cp.sum(cp.real(field * cp.conj(field)), axis=0)
-    hologram = hologram.get().reshape(shape)
-    plt.imshow(hologram, cmap='gray')
-    plt.show()
+if __name__ == '__main__':
+    example(cupyLorenzMie)
