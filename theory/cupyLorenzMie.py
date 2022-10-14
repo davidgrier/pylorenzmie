@@ -101,9 +101,11 @@ class cupyLorenzMie(LorenzMie):
             pass
 
     def cufieldf(self) -> cp.RawKernel:
+        '''Return CUDA kernel for single-precision field computation'''
         return cp.RawKernel(self.kernel, 'field')
 
     def cufield(self) -> cp.RawKernel:
+        '''Return CUDA kernel for double-precision field computation'''
         change = {'f(': '(', 'float': 'double', 'Float': 'Double'}
         kernel = self.kernel
         for before, after in change.items():
