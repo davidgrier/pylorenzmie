@@ -5,8 +5,6 @@ from dataclasses import dataclass
 from pylorenzmie.theory import Particle
 import numpy as np
 
-import pylorenzmie.utilities.configuration as config
-
 
 @dataclass
 class Sphere(Particle):
