@@ -4,7 +4,7 @@
 from numba import njit
 from dataclasses import dataclass
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
-from typing import (Optional, List)
+from typing import Optional
 import numpy as np
 
 import logging
@@ -20,7 +20,7 @@ class numbaLorenzMie(LorenzMie):
     method: str = 'numba'
 
     @staticmethod
-    @njit(cache=True)
+    @njit(cache=True, fastmath=True, parallel=True)
     def pad(coordinates: Optional[np.ndarray]) -> None:
         logger.debug('Setting coordinates')
         c = np.atleast_2d(0. if coordinates is None else coordinates)
@@ -30,10 +30,10 @@ class numbaLorenzMie(LorenzMie):
         return np.vstack([c, np.zeros((3-ndim, npts))])
 
     @staticmethod
-    @njit(cache=True)
+    @njit(cache=True, fastmath=True, parallel=True)
     def compute(ab: np.ndarray,
                 kdr: np.ndarray,
-                buffers: List[np.ndarray],
+                buffers: np.ndarray,
                 cartesian: bool = True,
                 bohren: bool = True) -> np.ndarray:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate

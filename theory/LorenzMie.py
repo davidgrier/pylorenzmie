@@ -176,7 +176,8 @@ class LorenzMie(LMObject):
         '''Allocate ndarrays for calculation'''
         shape = self.coordinates.shape
         self.kdr = np.empty(shape, dtype=float)
-        self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
+        buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
+        self.buffers = np.array(buffers)
         self.result = np.empty(shape, dtype=complex)
 
     @staticmethod
