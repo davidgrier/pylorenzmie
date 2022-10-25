@@ -3,6 +3,7 @@ from pylorenzmie.lib import LMObject
 from pylorenzmie.utilities import coordinates as make_coordinates
 import pandas as pd
 import numpy as np
+from typing import (Optional, Tuple, List, Dict)
 
 
 class Frame(LMObject):
@@ -65,40 +66,42 @@ class Frame(LMObject):
         results: pandas.DataFrame
             Summary of tracking and characterization results from data
     '''
-    def __init__(self, data=None, **kwargs):
+    def __init__(self,
+                 data: Optional[np.ndarray] = None,
+                 **kwargs) -> None:
         self._shape = (0, 0)
         self._data = data
         self.localizer = Localizer(**kwargs)
         self.kwargs = kwargs
 
     @LMObject.properties.fget
-    def properties(self):
+    def properties(self) -> Dict:
         return dict()
 
     @property
-    def shape(self):
+    def shape(self) -> Tuple:
         '''image shape'''
         return self._shape
 
     @shape.setter
-    def shape(self, shape):
+    def shape(self, shape: Tuple) -> None:
         if shape == self._shape:
             return
         self._coordinates = make_coordinates(shape, flatten=False)
         self._shape = shape
 
     @property
-    def coordinates(self):
+    def coordinates(self) -> np.ndarray:
         '''Coordinates of pixels in image data'''
         return self._coordinates
 
     @property
-    def data(self):
+    def data(self) -> np.ndarray:
         '''image data'''
         return self._data
 
     @data.setter
-    def data(self, data):
+    def data(self, data: Optional[np.ndarray]) -> None:
         if data is None:
             data = np.ndarray([])
         self._features = []
@@ -107,16 +110,16 @@ class Frame(LMObject):
         self._data = data
 
     @property
-    def results(self):
+    def results(self) -> pd.DataFrame:
         '''DataFrame containing tracking and characterization results'''
         return self._results
 
     @property
-    def features(self):
+    def features(self) -> List[Feature]:
         '''List of objects of type Feature'''
         return self._features
 
-    def detect(self):
+    def detect(self) -> Frame:
         '''Detect and localize features in data
         '''
         self._results = self.localizer.detect(self.data)
@@ -132,7 +135,7 @@ class Frame(LMObject):
             self._features.append(this)
         return self
 
-    def estimate(self):
+    def estimate(self) -> Frame:
         '''
         Estimate parameters for current features
         '''
@@ -140,7 +143,7 @@ class Frame(LMObject):
             feature.estimate()
         return self
 
-    def optimize(self):
+    def optimize(self) -> pd.DataFrame:
         '''
         Optimize adjustable parameters
         '''
@@ -148,7 +151,8 @@ class Frame(LMObject):
         self._results = pd.DataFrame(results)
         return self._results
 
-    def analyze(self, data=None):
+    def analyze(self,
+                data: Optional[np.ndarray] = None) -> pd.DataFrame:
         '''
         Detect features, estimate parameters, and fit
 

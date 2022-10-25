@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from typing import List
+from typing import (Optional, List)
 from pylorenzmie.analysis import (Mask, Estimator, Optimizer)
 from pylorenzmie.theory import LorenzMie
 from pylorenzmie.utilities import coordinates
@@ -41,10 +41,10 @@ class Feature(object):
     '''
 
     def __init__(self,
-                 data: np.ndarray = None,
-                 coordinates: np.ndarray = None,
-                 model: LorenzMie = None,
-                 fixed: List[str] = None,
+                 data: Optional[np.ndarray] = None,
+                 coordinates: Optional[np.ndarray] = None,
+                 model: Optional[LorenzMie] = None,
+                 fixed: Optional[List[str]] = None,
                  **kwargs) -> None:
         self._coordinates = None
         self.mask = Mask(**kwargs)
