@@ -50,7 +50,7 @@ class Feature(object):
         self.model = model or LorenzMie()
         self.data = data
         self.coordinates = coordinates
-        self.estimator = Estimator(feature=self)
+        self.estimator = Estimator()
         self.optimizer = Optimizer(model=self.model)
         self.optimizer.fixed = fixed or self.optimizer.fixed
 
@@ -143,7 +143,7 @@ def example():
 
     # Normalized image data
     data = cv2.imread(TEST_IMAGE)
-    data = cv2.cvtColor(data, cv2.COLOR_BGR2GRAY).astype(np.float)
+    data = cv2.cvtColor(data, cv2.COLOR_BGR2GRAY).astype(float)
     data /= np.mean(data)
     a.data = data
 
