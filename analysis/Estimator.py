@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from pylorenzmie.lib import LMObject
-from pylorenzmie.analysis import Feature
 from typing import Optional
 import pandas as pd
 import numpy as np
@@ -33,7 +32,6 @@ class Estimator(LMObject):
     z_p: Optional[float] = None
     a_p: Optional[float] = None
     n_p: float = 1.5
-    feature: Feature = None
 
     @LMObject.properties.fget
     def properties(self):
@@ -52,8 +50,10 @@ class Estimator(LMObject):
         instrument = feature.model.instrument
         self.k = instrument.wavenumber()
         self.noise = instrument.noise
+        self.magnification = instrument.magification
         center = np.array(feature.data.shape) // 2
         self.profile = aziavg(feature.data, center) - 1.
+        self.coordinates = feature.coordinates
 
     def _estimate_z(self):
         '''Estimate axial position of particle
@@ -81,7 +81,7 @@ class Estimator(LMObject):
 
     def _estimate_center(self):
         if (self.x_p is None) | (self.y_p is None):
-            self.x_p, self.y_p = np.mean(self.feature.coordinates, axis=1)
+            self.x_p, self.y_p = np.mean(self.coordinates, axis=1)
 
     def _estimate_a(self):
         '''Estimate radius of particle
@@ -91,11 +91,10 @@ class Estimator(LMObject):
         '''
         if self.a_p is not None:
             return
-        magnification = self.feature.model.instrument.magnification
         minima = argrelmin(self.profile)
         alpha_n = np.sqrt((self.z_p/minima)**2 + 1.)
         a_p = np.median(jn_zeros(1, len(alpha_n)) * alpha_n) / self.k
-        return 2. * magnification * a_p
+        return 2. * self.magnification * a_p
 
     def predict(self, feature=None):
         if feature is None:
