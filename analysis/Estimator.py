@@ -33,7 +33,7 @@ class Estimator(LMObject):
     z_p: Optional[float] = None
     a_p: Optional[float] = None
     n_p: float = 1.5
-    feature: Optional[Feature] = None
+    feature: Feature = None
 
     @LMObject.properties.fget
     def properties(self):

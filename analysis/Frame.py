@@ -3,7 +3,10 @@ from pylorenzmie.lib import LMObject
 from pylorenzmie.utilities import coordinates as make_coordinates
 import pandas as pd
 import numpy as np
-from typing import (Optional, Tuple, List, Dict)
+from typing import (Optional, Tuple, List, Dict, TypeVar)
+
+
+AnyFrame = TypeVar('AnyFrame', bound='Frame')
 
 
 class Frame(LMObject):
@@ -119,7 +122,7 @@ class Frame(LMObject):
         '''List of objects of type Feature'''
         return self._features
 
-    def detect(self) -> Frame:
+    def detect(self) -> AnyFrame:
         '''Detect and localize features in data
         '''
         self._results = self.localizer.detect(self.data)
@@ -135,7 +138,7 @@ class Frame(LMObject):
             self._features.append(this)
         return self
 
-    def estimate(self) -> Frame:
+    def estimate(self) -> AnyFrame:
         '''
         Estimate parameters for current features
         '''

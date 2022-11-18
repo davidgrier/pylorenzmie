@@ -44,16 +44,14 @@ class Feature(object):
                  data: Optional[np.ndarray] = None,
                  coordinates: Optional[np.ndarray] = None,
                  model: Optional[LorenzMie] = None,
-                 fixed: Optional[List[str]] = None,
-                 **kwargs) -> None:
+                 fixed: Optional[List[str]] = None) -> None:
         self._coordinates = None
-        self.mask = Mask(**kwargs)
+        self.mask = Mask()
         self.model = model or LorenzMie()
-        self.model.properties = kwargs
         self.data = data
         self.coordinates = coordinates
-        self.estimator = Estimator(feature=self, **kwargs)
-        self.optimizer = Optimizer(model=self.model, **kwargs)
+        self.estimator = Estimator(feature=self)
+        self.optimizer = Optimizer(model=self.model)
         self.optimizer.fixed = fixed or self.optimizer.fixed
 
     @property
@@ -131,9 +129,17 @@ def example():
     path = (THIS_DIR, '..', 'docs', 'tutorials', 'crop.png')
     TEST_IMAGE = os.path.join(*path)
 
-    # Feature with instrumental properties and mask properties
-    a = Feature(wavelength=0.447, magnification=0.048, n_m=1.34,
-                distribution='radial', percentpix=0.1)
+    # Feature
+    a = Feature()
+
+    # model properties
+    a.model.wavelength = 0.447
+    a.model.magnification = 0.048
+    a.model.n_m = 1.34
+
+    # pixel selection mask
+    a.mask.distribution='radial'
+    a.mask.percentpix=0.1
 
     # Normalized image data
     data = cv2.imread(TEST_IMAGE)
