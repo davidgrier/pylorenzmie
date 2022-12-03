@@ -15,7 +15,9 @@
     },
     "directory": "~/junk",
     "imgtype": "png",
-    "shape": [512, 640],
+    "shape": [1024, 1280],
+    "spherical": 1.0,
+    "pupil": 1000.0,
     "noise": 0.05,
     "nframes": 10
 }

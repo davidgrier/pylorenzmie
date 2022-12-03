@@ -82,12 +82,12 @@ class LorenzMie(LMObject):
     instrument: Instrument = Instrument()
     method: str = 'numpy'
 
-    def __setattr__(self, prop, val):
-        if prop == 'coordinates':
-            super().__setattr__(prop, self._pad(val))
+    def __setattr__(self, name, value):
+        if name == 'coordinates':
+            super().__setattr__(name, self._pad(value))
             self.allocate()
         else:
-            super().__setattr__(prop, val)
+            super().__setattr__(name, value)
 
     @staticmethod
     def _pad(coordinates: Optional[np.ndarray]) -> None:
@@ -106,11 +106,13 @@ class LorenzMie(LMObject):
 
     @properties.setter
     def properties(self, properties: dict) -> None:
-        for p, v in properties.items():
-            if hasattr(self.particle, p):
-                setattr(self.particle, p, v)
-            elif hasattr(self.instrument, p):
-                setattr(self.instrument, p, v)
+        for name, value in properties.items():
+            if hasattr(self.particle, name):
+                setattr(self.particle, name, value)
+            elif hasattr(self.instrument, name):
+                setattr(self.instrument, name, value)
+            elif hasattr(self, name):
+                setattr(self, name, value)
 
     def scattered_field(self, particle, cartesian, bohren):
         '''Return field scattered by one particle'''

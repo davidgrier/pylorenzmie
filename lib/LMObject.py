@@ -65,8 +65,6 @@ class LMObject(ABC):
         s : str
             JSON-encoded string of properties
         '''
-
-
         self.properties = json.loads(s)
 
     def to_pandas(self, **kwargs: Optional[Any]) -> pd.Series:
