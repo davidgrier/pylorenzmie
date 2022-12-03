@@ -3,7 +3,8 @@
 
 '''Make Training Data'''
 import json
-from pylorenzmie.theory import (LorenzMie, Sphere)
+from pylorenzmie.theory import Sphere
+from pylorenzmie.theory import AberratedLorenzMie as LorenzMie
 from pylorenzmie.utilities import coordinates
 import numpy as np
 from pathlib import Path
@@ -16,14 +17,15 @@ def feature_extent(sphere, config, nfringes=20, maxrange=300):
 
     x = np.arange(0, maxrange)
     h = LorenzMie(coordinates=x)
-    h.properties = config
+    h.instrument.properties = config['instrument']
+    h.spherical = config['spherical']
+    h.pupil = config['pupil']
     h.particle.a_p = sphere.a_p
     h.particle.n_p = sphere.n_p
     h.particle.z_p = sphere.z_p
     b = h.hologram() - 1.
     ndx = np.where(np.diff(np.sign(b)))[0] + 1
-    extent = maxrange if (len(ndx) <= nfringes) else float(ndx[nfringes])
-    return extent
+    return maxrange if (len(ndx) <= nfringes) else float(ndx[nfringes])
 
 
 def format_yolo(spheres, config):
@@ -95,7 +97,9 @@ def mtd(configfile='mtd.json'):
     shape = config['shape']
     coords = coordinates(shape)
     holo = LorenzMie(coordinates=coords)
-    holo.properties = config
+    holo.instrument.properties = config['instrument']
+    holo.spherical = config['spherical']
+    holo.pupil = config['pupil']
 
     # create directories and filenames
     directory = Path(config['directory']).expanduser()
