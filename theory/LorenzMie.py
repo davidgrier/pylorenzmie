@@ -1,15 +1,14 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 from dataclasses import (dataclass, field)
 from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 from typing import (List, Optional, Union)
 import numpy as np
 
+
 import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
+
 
 '''
 This object uses generalized Lorenz-Mie theory to compute the
@@ -107,13 +106,11 @@ class LorenzMie(LMObject):
 
     @properties.setter
     def properties(self, properties: dict) -> None:
-        # Set properties of components
-        self.particle.properties = properties
-        self.instrument.properties = properties
-        # Set own properties: useful for subclassing
-        for property, value in properties.items():  # pragma: no cover
-            if hasattr(self, property):
-                setattr(self, property, value)
+        for p, v in properties.items():
+            if hasattr(self.particle, p):
+                setattr(self.particle, p, v)
+            elif hasattr(self.instrument, p):
+                setattr(self.instrument, p, v)
 
     def scattered_field(self, particle, cartesian, bohren):
         '''Return field scattered by one particle'''
@@ -129,7 +126,9 @@ class LorenzMie(LMObject):
         psi *= np.exp(-1j * k * r_p[2])
         return psi
 
-    def field(self, cartesian: bool = True, bohren: bool = True) -> np.ndarray:
+    def field(self,
+              cartesian: bool = True,
+              bohren: bool = True) -> np.ndarray:
         '''Return field scattered by particles in the system
 
         Arguments
