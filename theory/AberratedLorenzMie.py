@@ -17,15 +17,18 @@ def ALM_Factory(base_class):
                     'pupil': self.pupil,
                     'spherical': self.spherical}
 
-        def scattered_field(self, particle, *args):
-            psi = super().scattered_field(particle, *args)
-            r_p = particle.r_p + particle.r_0
+        def aberration(self, r_p):
+            '''Returns spherical aberration for particle at r_p'''
             dr = self.coordinates - r_p[:, None]
             rhosq = (dr[0]**2 + dr[1]**2) / self.pupil**2
             phi = 6.*rhosq * (rhosq - 1.) + 1.
             phi *= self.spherical
-            psi *= np.exp(-1j * phi)
-            return psi
+            return np.exp(-1j * phi)
+
+        def scattered_field(self, particle, *args):
+            psi = super().scattered_field(particle, *args)
+            r_p = particle.r_p + particle.r_0
+            return psi * self.aberration(r_p)
 
     return AberratedLorenzMie
 
