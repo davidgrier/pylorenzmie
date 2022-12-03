@@ -50,7 +50,7 @@ class Estimator(LMObject):
         instrument = feature.model.instrument
         self.k = instrument.wavenumber()
         self.noise = instrument.noise
-        self.magnification = instrument.magification
+        self.magnification = instrument.magnification
         center = np.array(feature.data.shape) // 2
         self.profile = aziavg(feature.data, center) - 1.
         self.coordinates = feature.coordinates

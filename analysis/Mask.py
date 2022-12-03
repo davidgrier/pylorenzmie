@@ -2,6 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+from enum import Enum
+from typing import (Optional, List)
+
 
 def gaussian(x, mu, sig):
     '''Gaussian function for radial distribution'''
@@ -26,73 +29,78 @@ class Mask(object):
     exclude : numpy.ndarray
         indexes of pixels to exclude from mask
     mask : numpy.ndarray
- 
     '''
-    
+
+    class MASK(Enum):
+        UNIFORM = 0
+        RADIAL = 1
+        DONUT = 2
+        FAST = 3
+
     def __init__(self,
-                 coordinates=None,
-                 percentpix=0.1,
-                 distribution='fast',
-                 exclude=None,
-                 **kwargs):
-        
-        self.d_map = {'uniform': self._uniform_distribution,
-                      'radial': self._radial_distribution,
-                      'donut': self._donut_distribution,
-                      'fast': self._fast_distribution}
-        
+                 coordinates: Optional[np.ndarray] = None,
+                 percentpix: float = 0.1,
+                 distribution: Optional[MASK] = None,
+                 exclude: Optional[List] = None,
+                 **kwargs) -> None:
+
+        self.d_map = {self.MASK.UNIFORM: self._uniform_distribution,
+                      self.MASK.RADIAL: self._radial_distribution,
+                      self.MASK.DONUT: self._donut_distribution,
+                      self.MASK.FAST: self._fast_distribution}
+
         self._percentpix = percentpix
-        self._distribution = distribution
+        self._distribution = distribution or self.MASK.FAST
         self._exclude = exclude or []
         self.coordinates = coordinates
 
     @property
-    def coordinates(self):
+    def coordinates(self) -> np.ndarray:
         '''Distance of each pixel from center of feature'''
         return self._coordinates
-    
+
     @coordinates.setter
-    def coordinates(self, coordinates):
+    def coordinates(self, coordinates: np.ndarray) -> None:
         self._coordinates = coordinates
         if coordinates is not None:
             center = np.mean(coordinates, axis=1)
             self._distance = np.linalg.norm(coordinates.T - center, axis=1)
         self._update()
-        
+
     @property
-    def percentpix(self):
+    def percentpix(self) -> float:
         '''Percentage of pixels to sample, expressed as a fraction'''
         return self._percentpix
 
     @percentpix.setter
-    def percentpix(self, value):
+    def percentpix(self, value: float) -> None:
         self._percentpix = np.clip(float(value), 0, 1)
         self._update()
 
     @property
-    def distribution(self):
-        '''Name of the probability distribution'''
+    def distribution(self) -> MASK:
+        '''Type of probability distribution'''
         return self._distribution
 
     @distribution.setter
-    def distribution(self, name):
-        if name in self.d_map:
-            self._distribution = name
+    def distribution(self, distribution: MASK) -> None:
+        if distribution in self.d_map:
+            self._distribution = distribution
         else:
-            self._distribution = 'fast'
+            self._distribution = self.MASK.FAST
         self._update()
 
     @property
-    def exclude(self):
+    def exclude(self) -> List:
         '''indexes of pixels to exclude from fits'''
         return self._exclude
 
     @exclude.setter
-    def exclude(self, exclude):
+    def exclude(self, exclude: List) -> None:
         self._exclude = exclude
 
     @property
-    def selected(self):
+    def selected(self) -> np.ndarray:
         return self._selected
 
     # Various sampling probability distributions

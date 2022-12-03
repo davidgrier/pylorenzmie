@@ -1,7 +1,8 @@
-from abc import ABC, abstractmethod
-from typing import Optional, Any
+from abc import (ABC, abstractmethod)
+from typing import (Optional, Any)
 import json
 import pandas as pd
+import numpy as np
 
 
 class LMObject(ABC):
@@ -50,7 +51,11 @@ class LMObject(ABC):
         str : string
             JSON-encoded string of properties
         '''
-        return json.dumps(self.properties, **kwargs)
+        def np_encoder(obj):
+            if isinstance(obj, np.generic):
+                return obj.item()
+
+        return json.dumps(self.properties, default=np_encoder, **kwargs)
 
     def from_json(self, s: str) -> None:
         '''Loads JSON string of adjustable properties
@@ -60,6 +65,8 @@ class LMObject(ABC):
         s : str
             JSON-encoded string of properties
         '''
+
+
         self.properties = json.loads(s)
 
     def to_pandas(self, **kwargs: Optional[Any]) -> pd.Series:
