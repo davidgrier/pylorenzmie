@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 '''Make Training Data'''
+
 import json
 from pylorenzmie.theory import Sphere
 from pylorenzmie.theory import AberratedLorenzMie as LorenzMie
@@ -14,7 +15,6 @@ import shutil
 
 def feature_extent(sphere, config, nfringes=20, maxrange=300):
     '''Radius of holographic feature in pixels'''
-
     x = np.arange(0, maxrange)
     h = LorenzMie(coordinates=x)
     h.instrument.properties = config['instrument']
