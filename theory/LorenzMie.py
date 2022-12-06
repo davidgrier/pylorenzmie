@@ -109,7 +109,10 @@ class LorenzMie(LMObject):
 
     @property
     def coordinates(self) -> np.ndarray:
-        return self._coordinates
+        try:
+            return self._coordinates
+        except AttributeError:
+            return None
 
     @coordinates.setter
     def coordinates(self, coords: np.ndarray) -> None:
@@ -385,7 +388,6 @@ def example(cls=LorenzMie, **kwargs):
     start = perf_counter()
     hologram = kernel.hologram()
     print(f'Time to calculate: {perf_counter()-start} s')
-    print(kernel)
     # Compute hologram from field and show it
     plt.imshow(hologram.reshape(shape), cmap='gray')
     plt.show()
