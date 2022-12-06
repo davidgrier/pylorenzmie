@@ -43,5 +43,5 @@ AberratedLorenzMie = ALM_Factory(LorenzMie)
 if __name__ == '__main__':
     from pylorenzmie.theory.cupyLorenzMie import cupyLorenzMie
 
-    cupyALM = ALM_Factory(cupyLorenzMie)
+    cupyALM = ALM_Factory(LorenzMie)
     example(cupyALM, spherical=1.)
