@@ -109,10 +109,7 @@ class LorenzMie(LMObject):
 
     @property
     def coordinates(self) -> np.ndarray:
-        try:
-            return self._coordinates
-        except AttributeError:
-            return None
+        return self._coordinates
 
     @coordinates.setter
     def coordinates(self, coords: np.ndarray) -> None:
@@ -129,6 +126,10 @@ class LorenzMie(LMObject):
     def _device_coordinates(self) -> np.ndarray:
         return self._coordinates
 
+    @staticmethod
+    def to_field(phase):
+        return np.exp(-1j * phase)
+
     def scattered_field(self, particle, cartesian, bohren):
         '''Return field scattered by one particle'''
         k = self.instrument.wavenumber()
@@ -140,7 +141,7 @@ class LorenzMie(LMObject):
         ab = particle.ab(n_m, wavelength)
         psi = self.compute(ab, self.kdr, self.buffers,
                            cartesian=cartesian, bohren=bohren)
-        psi *= np.exp(-1j * k * r_p[2])
+        psi *= self.to_field(k* r_p[2])
         return psi
 
     def field(self,
