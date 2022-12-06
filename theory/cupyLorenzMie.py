@@ -37,8 +37,9 @@ class cupyLorenzMie(LorenzMie):
                  *args,
                  double_precision: bool = True,
                  **kwargs):
-        self.double_precision = double_precision
+        self.ctype = None
         super().__init__(*args, **kwargs)
+        self.double_precision = double_precision
 
     @property
     def double_precision(self) -> bool:
@@ -101,14 +102,13 @@ class cupyLorenzMie(LorenzMie):
 
     def allocate(self) -> None:
         '''Allocate buffers for calculation'''
-        self.threadsperblock = 32
-        self.blockspergrid = 1
-        if self.coordinates is None:
+        if (self.coordinates is None) or (self.ctype is None):
             return
         shape = self.coordinates.shape
         self.result = cp.empty(shape, dtype=self.ctype)
         self.gpu_coordinates = cp.asarray(self.coordinates, self.dtype)
         self.holo = cp.empty(shape[1], dtype=self.dtype)
+        self.threadsperblock = 32
         self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
                               self.threadsperblock)
 
