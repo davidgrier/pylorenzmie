@@ -34,10 +34,11 @@ class cupyLorenzMie(LorenzMie):
     method: str = 'cupy'
 
     def __init__(self,
+                 *args,
                  double_precision: bool = True,
                  **kwargs):
-        super().__init__(**kwargs)
         self.double_precision = double_precision
+        super().__init__(*args, **kwargs)
 
     @property
     def double_precision(self) -> bool:
@@ -47,7 +48,7 @@ class cupyLorenzMie(LorenzMie):
     def double_precision(self, double_precision: bool) -> None:
         # NOTE: Check if GPU is capable of double precision
         self._double_precision = double_precision
-        if self.double_precision:
+        if double_precision:
             self.kernel = self.cufield()
             self.dtype = np.float64
             self.ctype = np.complex128
@@ -80,6 +81,10 @@ class cupyLorenzMie(LorenzMie):
     def field(self, **kwargs) -> np.ndarray:
         return self._device_field(**kwargs).get()
 
+    @property
+    def _device_coordinates(self):
+        return self.gpu_coordinates
+
     def _device_field(self,
                       cartesian: bool = True,
                       bohren: bool = True) -> cp.ndarray:
@@ -93,17 +98,16 @@ class cupyLorenzMie(LorenzMie):
 
     def allocate(self) -> None:
         '''Allocate buffers for calculation'''
-        try:
-            shape = self.coordinates.shape
-            self.result = cp.empty(shape, dtype=self.ctype)
-            self._device_coordinates = cp.asarray(self.coordinates,
-                                                  self.dtype)
-            self.holo = cp.empty(shape[1], dtype=self.dtype)
-            self.threadsperblock = 32
-            self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
-                                  self.threadsperblock)
-        except Exception:
-            pass
+        self.threadsperblock = 32
+        self.blockspergrid = 1
+        if self.coordinates is None:
+            return
+        shape = self.coordinates.shape
+        self.result = cp.empty(shape, dtype=self.ctype)
+        self.gpu_coordinates = cp.asarray(self.coordinates, self.dtype)
+        self.holo = cp.empty(shape[1], dtype=self.dtype)
+        self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
+                              self.threadsperblock)
 
     def cufieldf(self) -> cp.RawKernel:
         '''Return CUDA kernel for single-precision field computation'''
