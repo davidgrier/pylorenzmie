@@ -5,7 +5,7 @@ from typing import Tuple, Optional
 def coordinates(shape: Tuple[int, int],
                 corner: Optional[Tuple[int, int]] = None,
                 flatten: bool = True,
-                dtype=float):
+                dtype=float) -> np.ndarray:
     '''Return coordinate system for Lorenz-Mie microscopy images
 
     Parameters
