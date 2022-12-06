@@ -63,17 +63,13 @@ class cupyLorenzMie(LorenzMie):
         br = ab[:, 1].real.astype(self.dtype)
         bi = ab[:, 1].imag.astype(self.dtype)
         ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
-        # coordsx, coordsy, coordsz = self.gpu_coordinates
-        print(self.gpu_coordinates.shape[1])
         r_p = (particle.r_p + particle.r_0).astype(self.dtype)
         k = self.dtype(self.instrument.wavenumber())
         phase = self.ctype(np.exp(-1.j * k * r_p[2]))
         self.kernel((self.blockspergrid,), (self.threadsperblock,),
-                    (*self.gpu_coordinates, # coordsx, coordsy, coordsz,
-                     *r_p, k, phase,
-                     ar, ai, br, bi,
-                     ab.shape[0],
-                     self.gpu_coordinates.shape[1], #coordsx.shape[0],
+                    (*self.gpu_coordinates, *r_p, k, phase,
+                     ar, ai, br, bi, ab.shape[0],
+                     self.gpu_coordinates.shape[1],
                      cartesian, bohren,
                      *self.result))
 
