@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from dataclasses import dataclass
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from pylorenzmie.theory import Particle
 from typing import (Union, Any)
@@ -9,7 +8,6 @@ import numpy as np
 import cupy as cp
 
 
-@dataclass
 class cupyLorenzMie(LorenzMie):
     '''
     Compute scattered light field with CUDA acceleration.
@@ -34,15 +32,21 @@ class cupyLorenzMie(LorenzMie):
     '''
 
     method: str = 'cupy'
-    double_precision: bool = True
 
-    def __setattr__(self, key: str, val: Any) -> None:
-        super().__setattr__(key, val)
-        if key == 'double_precision':
-            self.set_precision()
+    def __init__(self,
+                 double_precision: bool = True,
+                 **kwargs):
+        super().__init__(**kwargs)
+        self.double_precision = double_precision
 
-    def set_precision(self):
+    @property
+    def double_precision(self) -> bool:
+        return self._double_precision
+
+    @double_precision.setter
+    def double_precision(self, double_precision: bool) -> None:
         # NOTE: Check if GPU is capable of double precision
+        self._double_precision = double_precision
         if self.double_precision:
             self.kernel = self.cufield()
             self.dtype = np.float64
@@ -73,24 +77,27 @@ class cupyLorenzMie(LorenzMie):
                      cartesian, bohren,
                      *self.result))
 
-    def field(self,
-              cartesian: bool = True,
-              bohren: bool = True,
-              gpu: bool = False) -> Union[np.ndarray, cp.ndarray]:
+    def field(self, **kwargs) -> np.ndarray:
+        return self._device_field(**kwargs).get()
+
+    def _device_field(self,
+                      cartesian: bool = True,
+                      bohren: bool = True) -> cp.ndarray:
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
         self.result.fill(0.+0.j)
         for p in np.atleast_1d(self.particle):
             self.scattered_field(p, cartesian, bohren)
-        return self.result if gpu else self.result.get()
+        return self.result
 
     def allocate(self) -> None:
         '''Allocate buffers for calculation'''
         try:
             shape = self.coordinates.shape
             self.result = cp.empty(shape, dtype=self.ctype)
-            self.gpu_coordinates = cp.asarray(self.coordinates, self.dtype)
+            self._device_coordinates = cp.asarray(self.coordinates,
+                                                  self.dtype)
             self.holo = cp.empty(shape[1], dtype=self.dtype)
             self.threadsperblock = 32
             self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //

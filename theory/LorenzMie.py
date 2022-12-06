@@ -1,7 +1,6 @@
-from dataclasses import (dataclass, field)
 from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
-from typing import (List, Optional, Union)
+from typing import (List, Dict, Optional, Union)
 import numpy as np
 
 
@@ -54,7 +53,6 @@ Copyright (c) 2018 David G. Grier
 np.seterr(all='raise')
 
 
-@dataclass
 class LorenzMie(LMObject):
     '''
     Compute scattered light field with Generalized Lorenz-Mie theory
@@ -77,35 +75,30 @@ class LorenzMie(LMObject):
         Returns the complex-valued field at each of the coordinates.
     '''
 
-    coordinates: np.ndarray = field(repr=False, default=None)
-    particle: Union[Particle, List[Particle]] = Sphere()
-    instrument: Instrument = Instrument()
     method: str = 'numpy'
 
-    def __setattr__(self, name, value):
-        if name == 'coordinates':
-            super().__setattr__(name, self._pad(value))
-            self.allocate()
-        else:
-            super().__setattr__(name, value)
+    def __init__(self,
+                 coordinates: np.ndarray = None,
+                 particle: Optional[Union[Particle, List[Particle]]] = None,
+                 instrument: Optional[Instrument] = None) -> None:
+        super().__init__()
+        self.coordinates = coordinates
+        self.particle = particle or Sphere()
+        self.instrument = instrument or Instrument()
 
-    @staticmethod
-    def _pad(coordinates: Optional[np.ndarray]) -> None:
-        '''Ensure coordinates have shape (3, npts)'''
-        logger.debug('Setting coordinates')
-        c = np.atleast_2d(0. if coordinates is None else coordinates)
-        ndim, npts = c.shape
-        if ndim > 3:
-            raise ValueError(f'Incompatible shape: {coordinates.shape=}')
-        return np.vstack([c, np.zeros((3-ndim, npts))])
+    def __repr__(self) -> str:
+        part = f'particle={self.particle!r}'
+        inst = f'instrument={self.instrument!r}'
+        args = [part, inst]
+        return '{}({})'.format(type(self).__name__, ', '.join(args))
 
     @property
-    def properties(self) -> dict:
+    def properties(self) -> Dict:
         return {**self.particle.properties,
                 **self.instrument.properties}
 
     @properties.setter
-    def properties(self, properties: dict) -> None:
+    def properties(self, properties: Dict) -> None:
         for name, value in properties.items():
             if hasattr(self.particle, name):
                 setattr(self.particle, name, value)
@@ -113,6 +106,25 @@ class LorenzMie(LMObject):
                 setattr(self.instrument, name, value)
             elif hasattr(self, name):
                 setattr(self, name, value)
+
+    @property
+    def coordinates(self) -> np.ndarray:
+        return self._coordinates
+
+    @coordinates.setter
+    def coordinates(self, coords: np.ndarray) -> None:
+        '''Ensure coordinates have shape (3, npts)'''
+        logger.debug('Setting coordinates')
+        c = np.atleast_2d(0. if coords is None else coords)
+        ndim, npts = c.shape
+        if ndim > 3:
+            raise ValueError(f'Incompatible shape: {coords.shape=}')
+        self._coordinates = np.vstack([c, np.zeros((3-ndim, npts))])
+        self.allocate()
+
+    @property
+    def _device_coordinates(self) -> np.ndarray:
+        return self._coordinates
 
     def scattered_field(self, particle, cartesian, bohren):
         '''Return field scattered by one particle'''
@@ -156,6 +168,9 @@ class LorenzMie(LMObject):
             logger.debug(p)
             self.result += self.scattered_field(p, cartesian, bohren)
         return self.result
+
+    def _device_field(self, **kwargs):
+        return self.field(**kwargs)
 
     def hologram(self) -> np.ndarray:
         '''Return hologram of particle
@@ -370,6 +385,7 @@ def example(cls=LorenzMie, **kwargs):
     start = perf_counter()
     hologram = kernel.hologram()
     print(f'Time to calculate: {perf_counter()-start} s')
+    print(kernel)
     # Compute hologram from field and show it
     plt.imshow(hologram.reshape(shape), cmap='gray')
     plt.show()
