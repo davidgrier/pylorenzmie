@@ -23,11 +23,11 @@ def ALM_Factory(base_class):
 
         def aberration(self, r_p):
             '''Returns spherical aberration for particle at r_p'''
-            dr = self.coordinates - r_p[:, None]
+            dr = self._device_coordinates - r_p[:, None]
             rhosq = (dr[0]**2 + dr[1]**2) / self.pupil**2
             phase = 6.*rhosq * (rhosq - 1.) + 1.
             phase *= self.spherical
-            return np.exp(-1j * phase)
+            return self.to_field(phase)
 
         def scattered_field(self, particle, *args):
             field = super().scattered_field(particle, *args)
@@ -41,7 +41,4 @@ AberratedLorenzMie = ALM_Factory(LorenzMie)
 
 
 if __name__ == '__main__':
-    from pylorenzmie.theory.cupyLorenzMie import cupyLorenzMie
-
-    cupyALM = ALM_Factory(cupyLorenzMie)
-    example(cupyALM, spherical=1.)
+    example(AberratedLorenzMie, spherical=0.9)

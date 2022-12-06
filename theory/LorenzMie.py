@@ -126,8 +126,7 @@ class LorenzMie(LMObject):
     def _device_coordinates(self) -> np.ndarray:
         return self._coordinates
 
-    @staticmethod
-    def to_field(phase):
+    def to_field(self, phase):
         return np.exp(-1j * phase)
 
     def scattered_field(self, particle, cartesian, bohren):

@@ -58,6 +58,9 @@ class cupyLorenzMie(LorenzMie):
             self.ctype = np.complex64
         self.allocate()
 
+    def to_field(self, phase):
+        return self.ctype(cp.exp(1j * phase))
+
     def scattered_field(self,
                         particle: Particle,
                         cartesian: bool,
