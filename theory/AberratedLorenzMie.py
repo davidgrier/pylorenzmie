@@ -7,10 +7,11 @@ def ALM_Factory(base_class):
     class AberratedLorenzMie(base_class):
 
         def __init__(self,
+                     *args,
                      pupil: float = 1000.,
                      spherical: float = 0.,
                      **kwargs) -> None:
-            super().__init__(**kwargs)
+            super().__init__(*args, **kwargs)
             self.pupil = pupil
             self.spherical = spherical
 
@@ -24,14 +25,14 @@ def ALM_Factory(base_class):
             '''Returns spherical aberration for particle at r_p'''
             dr = self.coordinates - r_p[:, None]
             rhosq = (dr[0]**2 + dr[1]**2) / self.pupil**2
-            phi = 6.*rhosq * (rhosq - 1.) + 1.
-            phi *= self.spherical
-            return np.exp(-1j * phi)
+            phase = 6.*rhosq * (rhosq - 1.) + 1.
+            phase *= self.spherical
+            return np.exp(-1j * phase)
 
         def scattered_field(self, particle, *args):
-            psi = super().scattered_field(particle, *args)
+            field = super().scattered_field(particle, *args)
             r_p = particle.r_p + particle.r_0
-            return psi * self.aberration(r_p)
+            return field * self.aberration(r_p)
 
     return AberratedLorenzMie
 
