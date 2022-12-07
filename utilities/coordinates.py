@@ -31,7 +31,7 @@ def coordinates(shape: Tuple[int, int],
         Coordinate system
     '''
     ny, nx = shape
-    left, top = 0, 0 if corner is None else corner
+    left, top = (0, 0) if corner is None else corner
     x = np.arange(left, left + nx, dtype=dtype)
     y = np.arange(top, top + ny, dtype=dtype)
     xy = np.array(np.meshgrid(x, y))
