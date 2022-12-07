@@ -2,22 +2,24 @@
 # -*- coding: utf-8 -*-
 
 from numba import njit
-from dataclasses import dataclass
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from typing import Optional
 import numpy as np
-
 import logging
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 np.seterr(all='raise')
 
 
-@dataclass
 class numbaLorenzMie(LorenzMie):
 
     method: str = 'numba'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
 
     @staticmethod
     @njit(cache=True, fastmath=True, parallel=True)
@@ -65,7 +67,11 @@ class numbaLorenzMie(LorenzMie):
         '''
 
         norders = ab.shape[0]  # number of partial waves in sum
-        mo1n, ne1n, es, ec = buffers
+        mo1n = buffers[0]
+        ne1n = buffers[1]
+        es = buffers[2]
+        ec = buffers[3]
+        # mo1n, ne1n, es, ec = buffers
 
         # GEOMETRY
         # 1. particle displacement [pixel]

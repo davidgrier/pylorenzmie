@@ -2,9 +2,9 @@ from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 from typing import (List, Dict, Optional, Union)
 import numpy as np
-
-
 import logging
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
