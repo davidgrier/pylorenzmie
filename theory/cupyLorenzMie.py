@@ -60,7 +60,7 @@ class cupyLorenzMie(LorenzMie):
         self.allocate()
 
     def to_field(self, phase):
-        return self.ctype(cp.exp(1j * phase))
+        return cp.exp(1j * phase)
 
     def scattered_field(self,
                         particle: Particle,
@@ -74,7 +74,7 @@ class cupyLorenzMie(LorenzMie):
         ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
         r_p = (particle.r_p + particle.r_0).astype(self.dtype)
         k = self.dtype(self.instrument.wavenumber())
-        phase = self.ctype(np.exp(-1.j * k * r_p[2]))
+        phase = np.exp(-1.j * k * r_p[2], dtype=self.ctype)
         self.kernel((self.blockspergrid,), (self.threadsperblock,),
                     (*self.gpu_coordinates, *r_p, k, phase,
                      ar, ai, br, bi, ab.shape[0],
@@ -148,9 +148,7 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 
         kx = k * (coordsx[idx] - x_p);
         ky = k * (coordsy[idx] - y_p);
-        kz = k * (coordsz[idx] - z_p);
-
-        kz *= -1;
+        kz = -k * (coordsz[idx] - z_p);
 
         krho = sqrt(kx*kx + ky*ky);
         kr = sqrt(krho*krho + kz*kz);

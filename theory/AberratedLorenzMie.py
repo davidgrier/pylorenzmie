@@ -23,10 +23,10 @@ def ALM_Factory(base_class):
 
         def aberration(self, r_p):
             '''Returns spherical aberration for particle at r_p'''
-            dr = self._device_coordinates - r_p[:, None]
-            rhosq = (dr[0]**2 + dr[1]**2) / self.pupil**2
+            r = self._device_coordinates
+            rhosq = ((r[0] - r_p[0])**2 + (r[1] - r_p[1])**2) / self.pupil**2
             phase = 6.*rhosq * (rhosq - 1.) + 1.
-            phase *= self.spherical
+            phase *= -self.spherical
             return self.to_field(phase)
 
         def scattered_field(self, particle, *args):
