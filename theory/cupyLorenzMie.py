@@ -3,7 +3,7 @@
 
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from pylorenzmie.theory import Particle
-from typing import (Union, Any)
+from typing import Union
 import numpy as np
 import cupy as cp
 
@@ -80,7 +80,8 @@ class cupyLorenzMie(LorenzMie):
                      ar, ai, br, bi, ab.shape[0],
                      self.gpu_coordinates.shape[1],
                      cartesian, bohren,
-                     *self.result))
+                     *self.buffer))
+        return self.buffer
 
     def field(self, **kwargs) -> np.ndarray:
         return self._device_field(**kwargs).get()
@@ -97,7 +98,7 @@ class cupyLorenzMie(LorenzMie):
             return None
         self.result.fill(0.+0.j)
         for p in np.atleast_1d(self.particle):
-            self.scattered_field(p, cartesian, bohren)
+            self.result += self.scattered_field(p, cartesian, bohren)
         return self.result
 
     def allocate(self) -> None:
@@ -106,6 +107,7 @@ class cupyLorenzMie(LorenzMie):
             return
         shape = self.coordinates.shape
         self.result = cp.empty(shape, dtype=self.ctype)
+        self.buffer = cp.empty(shape, dtype=self.ctype)
         self.gpu_coordinates = cp.asarray(self.coordinates, self.dtype)
         self.holo = cp.empty(shape[1], dtype=self.dtype)
         self.threadsperblock = 32
@@ -276,14 +278,14 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 
             ecz = cuCsubf(cuCmulf(esr, cost), cuCmulf(est, sint));
 
-            e1[idx] = cuCaddf(e1[idx], cuCmulf(ecx, phase));
-            e2[idx] = cuCaddf(e2[idx], cuCmulf(ecy, phase));
-            e3[idx] = cuCaddf(e3[idx], cuCmulf(ecz, phase));
+            e1[idx] = cuCmulf(ecx, phase);
+            e2[idx] = cuCmulf(ecy, phase);
+            e3[idx] = cuCmulf(ecz, phase);
         }
         else {
-            e1[idx] = cuCaddf(e1[idx], cuCmulf(esr, phase));
-            e2[idx] = cuCaddf(e2[idx], cuCmulf(est, phase));
-            e3[idx] = cuCaddf(e3[idx], cuCmulf(esp, phase));
+            e1[idx] = cuCmulf(esr, phase);
+            e2[idx] = cuCmulf(est, phase);
+            e3[idx] = cuCmulf(esp, phase);
         }
     }
 }
