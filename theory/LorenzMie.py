@@ -127,7 +127,7 @@ class LorenzMie(LMObject):
         return self._coordinates
 
     def to_field(self, phase):
-        return np.exp(-1j * phase)
+        return np.exp(1j * phase)
 
     def scattered_field(self, particle, cartesian, bohren):
         '''Return field scattered by one particle'''
@@ -138,14 +138,24 @@ class LorenzMie(LMObject):
         dr = self.coordinates - r_p[:, None]
         self.kdr[...] = np.asarray(k * dr)
         ab = particle.ab(n_m, wavelength)
-        psi = self.compute(ab, self.kdr, self.buffers,
-                           cartesian=cartesian, bohren=bohren)
-        psi *= self.to_field(k* r_p[2])
-        return psi
+        field = self.compute(ab, self.kdr, self.buffers,
+                             cartesian=cartesian, bohren=bohren)
+        field *= np.exp(-1j * k * r_p[2])
+        return field
 
-    def field(self,
-              cartesian: bool = True,
-              bohren: bool = True) -> np.ndarray:
+    def _device_field(self,
+                      cartesian: bool = True,
+                      bohren: bool = True) -> np.ndarray:  
+        if (self.coordinates is None or self.particle is None):
+            return None
+        logger.debug('Computing field')
+        self._field.fill(0.+0.j)
+        for p in np.atleast_1d(self.particle):
+            logger.debug(p)
+            self._field += self.scattered_field(p, cartesian, bohren)
+        return self._field
+
+    def field(self, *args, **kwargs):
         '''Return field scattered by particles in the system
 
         Arguments
@@ -163,17 +173,7 @@ class LorenzMie(LMObject):
         field : numpy.ndarray
             (3, npts) complex value of the scattered field
         '''
-        if (self.coordinates is None or self.particle is None):
-            return None
-        logger.debug('Computing field')
-        self.result.fill(0.+0.j)
-        for p in np.atleast_1d(self.particle):
-            logger.debug(p)
-            self.result += self.scattered_field(p, cartesian, bohren)
-        return self.result
-
-    def _device_field(self, **kwargs):
-        return self.field(**kwargs)
+        return self._device_field(*args, **kwargs)
 
     def hologram(self) -> np.ndarray:
         '''Return hologram of particle
@@ -194,7 +194,7 @@ class LorenzMie(LMObject):
         self.kdr = np.empty(shape, dtype=float)
         buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
         self.buffers = np.array(buffers)
-        self.result = np.empty(shape, dtype=complex)
+        self._field = np.empty(shape, dtype=complex)
 
     @staticmethod
     def compute(ab: np.ndarray,
@@ -384,7 +384,7 @@ def example(cls=LorenzMie, **kwargs):
     instrument.n_m = 1.340
     # Use generalized Lorenz-Mie theory to compute field
     kernel = cls(coords, particle, instrument, **kwargs)
-    kernel.field()
+    # kernel.field()
     start = perf_counter()
     hologram = kernel.hologram()
     print(f'Time to calculate: {perf_counter()-start} s')
