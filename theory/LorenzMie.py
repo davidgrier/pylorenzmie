@@ -145,7 +145,7 @@ class LorenzMie(LMObject):
 
     def _device_field(self,
                       cartesian: bool = True,
-                      bohren: bool = True) -> np.ndarray:  
+                      bohren: bool = True) -> np.ndarray:
         if (self.coordinates is None or self.particle is None):
             return None
         logger.debug('Computing field')
@@ -282,7 +282,7 @@ class LorenzMie(LMObject):
         pi_n = np.ones(shape)
 
         # 3. Vector spherical harmonics: [r,theta,phi]
-        mo1n[0, :] = 0.j                 # no radial component
+        mo1n[0].fill(0.j)                 # no radial component
 
         # storage for scattered field
         es.fill(0.j)
@@ -304,13 +304,13 @@ class LorenzMie(LMObject):
             dn = (n * xi_n) / kr - xi_nm1
 
             # vector spherical harmonics (4.50)
-            mo1n[1, :] = pi_n * xi_n     # ... divided by cosphi/kr
-            mo1n[2, :] = tau_n * xi_n    # ... divided by sinphi/kr
+            mo1n[1] = pi_n * xi_n     # ... divided by cosphi/kr
+            mo1n[2] = tau_n * xi_n    # ... divided by sinphi/kr
 
             # ... divided by cosphi sintheta/kr^2
-            ne1n[0, :] = n * (n + 1.) * pi_n * xi_n
-            ne1n[1, :] = tau_n * dn      # ... divided by cosphi/kr
-            ne1n[2, :] = pi_n * dn       # ... divided by sinphi/kr
+            ne1n[0] = n * (n + 1.) * pi_n * xi_n
+            ne1n[1] = tau_n * dn      # ... divided by cosphi/kr
+            ne1n[2] = pi_n * dn       # ... divided by sinphi/kr
 
             # prefactor, page 93
             en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
@@ -334,9 +334,9 @@ class LorenzMie(LMObject):
         # spherical harmonics for accuracy and efficiency ...
         # ... put them back at the end.
         radialfactor = 1. / kr
-        es[0, :] *= cosphi * sintheta * radialfactor**2
-        es[1, :] *= cosphi * radialfactor
-        es[2, :] *= sinphi * radialfactor
+        es[0] *= cosphi * sintheta * radialfactor**2
+        es[1] *= cosphi * radialfactor
+        es[2] *= sinphi * radialfactor
 
         # By default, the scattered wave is returned in spherical
         # coordinates.  Project components onto Cartesian coordinates.
@@ -344,15 +344,14 @@ class LorenzMie(LMObject):
         # is linearly polarized along x
 
         if cartesian:
-            ec[0, :] = es[0, :] * sintheta * cosphi
-            ec[0, :] += es[1, :] * costheta * cosphi
-            ec[0, :] -= es[2, :] * sinphi
+            ec[0] = es[0] * sintheta * cosphi
+            ec[0] += es[1] * costheta * cosphi
+            ec[0] -= es[2] * sinphi
 
-            ec[1, :] = es[0, :] * sintheta * sinphi
-            ec[1, :] += es[1, :] * costheta * sinphi
-            ec[1, :] += es[2, :] * cosphi
-            ec[2, :] = (es[0, :] * costheta -
-                        es[1, :] * sintheta)
+            ec[1] = es[0] * sintheta * sinphi
+            ec[1] += es[1] * costheta * sinphi
+            ec[1] += es[2] * cosphi
+            ec[2] = es[0] * costheta - es[1] * sintheta
             return ec
         else:
             return es
