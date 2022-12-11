@@ -47,6 +47,7 @@ def example():
     coords = coordinates(shape)
     instrument = Instrument()
     instrument.magnification = 0.048
+    instrument.numerical_aperture = 1.45
     instrument.wavelength = 0.447
     instrument.n_m = 1.340
     dimer = Dimer(magnification=instrument.magnification)
@@ -55,7 +56,6 @@ def example():
     dimer.r_p = [150., 150., 250.]
     dimer.theta = 0.
     dimer.phi = np.pi/4.
-
     a = LorenzMie(coordinates=coords,
                   particle=dimer,
                   instrument=instrument)

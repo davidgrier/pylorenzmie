@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 from pylorenzmie.lib import LMObject
-from pylorenzmie.theory import LMHologram
+from pylorenzmie.theory import LorenzMie
 import numpy as np
 from scipy.optimize import least_squares
 from scipy.linalg import svd
@@ -20,7 +20,7 @@ class Optimizer(LMObject):
 
     Properties
     ----------
-    model : LMHologram
+    model : LorenzMie
         Generative model for calculating holograms.
     data : numpy.ndarray
         Target for optimization with model.
@@ -30,7 +30,8 @@ class Optimizer(LMObject):
         Default: False (least-squares)
     fixed : list of str
         Names of properties of the model that should not vary during fitting.
-        Default: ['wavelength', 'magnification', 'n_m', 'k_p']
+        Default: ['wavelength', 'magnification', 'pixel_pitch',
+                  'numerical_aperture', 'n_m', 'k_p']
     variables : list of str
         Names of properties of the model that will be optimized.
         Default: All model.properties that are not fixed
@@ -50,17 +51,17 @@ class Optimizer(LMObject):
     '''
 
     def __init__(self,
-                 model: LMHologram = None,
+                 model: LorenzMie = None,
                  data: np.ndarray = None,
                  robust: bool = False,
                  fixed: bool = None,
                  settings: dict = None,
                  **kwargs) -> None:
-        self.model = model or LMHologram(**kwargs)
+        self.model = model or LorenzMie(**kwargs)
         self.data = data
         self.settings = settings
         self.robust = robust
-        defaults = 'wavelength magnification n_m k_p'.split()
+        defaults = 'wavelength magnification pixel_pitch numerical_aperture n_m k_p'.split()
         self.fixed = fixed or defaults
         self._result = None
 
@@ -215,7 +216,7 @@ def test_case():
 
     shape = (201, 201)
     c = coordinates(shape)
-    model = LMHologram(coordinates=c)
+    model = LorenzMie(coordinates=c)
     model.particle.a_p = 0.75
     model.particle.n_p = 1.42
     model.particle.r_p = [100., 100., 225.]

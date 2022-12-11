@@ -379,6 +379,7 @@ def example(cls=LorenzMie, **kwargs):
     # Form image with default instrument
     instrument = Instrument()
     instrument.magnification = 0.048
+    instrument.numerical_aperture = 1.45
     instrument.wavelength = 0.447
     instrument.n_m = 1.340
     # Use generalized Lorenz-Mie theory to compute field
