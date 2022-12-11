@@ -1,10 +1,31 @@
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
-import numpy as np
 
 
-def ALM_Factory(base_class):
+def ALM_Factory(base_class: LorenzMie):
+
+    '''Returns a class definition for a Lorenz-Mie theory
+    that incoporates spherical aberration
+
+    Arguments
+    ---------
+    base_class : LorenzMie
+        Scattering theory to be subclassed
+    '''
 
     class AberratedLorenzMie(base_class):
+
+        '''Class definition for a Lorenz-Mie theory that
+        incorporates spherical aberration.
+
+        Inherits
+        --------
+        LorenzMie
+
+        Properties
+        ----------
+        spherical : float
+            Amount of spherical aberration to incorporate.
+        '''
 
         def __init__(self,
                      *args,
@@ -18,7 +39,7 @@ def ALM_Factory(base_class):
             return {**super().properties,
                     'spherical': self.spherical}
 
-        def aberration(self, r_p):
+        def _aberration(self, r_p):
             '''Returns spherical aberration for particle at r_p'''
             NA = self.instrument.numerical_aperture
             n_m = self.instrument.n_m
@@ -33,7 +54,7 @@ def ALM_Factory(base_class):
         def scattered_field(self, particle, *args):
             field = super().scattered_field(particle, *args)
             r_p = particle.r_p + particle.r_0
-            return field * self.aberration(r_p)
+            return field * self._aberration(r_p)
 
     return AberratedLorenzMie
 
