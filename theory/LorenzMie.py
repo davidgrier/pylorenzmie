@@ -87,10 +87,10 @@ class LorenzMie(LMObject):
         self.instrument = instrument or Instrument()
 
     def __repr__(self) -> str:
-        part = f'particle={self.particle!r}'
-        inst = f'instrument={self.instrument!r}'
-        args = [part, inst]
-        return '{}({})'.format(type(self).__name__, ', '.join(args))
+        r = '{}(instrument, particle)'.format(self.__class__.__qualname__)
+        inst = f'instrument={self.instrument!r}'.replace(',', ',\n\t')
+        part = f'particle={self.particle!r}'.replace(',', ',\n\t')
+        return '\n    '.join([r, inst, part])
 
     @property
     def properties(self) -> Dict:
