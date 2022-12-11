@@ -1,4 +1,7 @@
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
+from pylorenzmie.theory.Particle import Particle
+import numpy as np
+from typing import (Tuple, Dict, Any)
 
 
 def ALM_Factory(base_class: LorenzMie):
@@ -28,18 +31,18 @@ def ALM_Factory(base_class: LorenzMie):
         '''
 
         def __init__(self,
-                     *args,
+                     *args: Tuple[Any],
                      spherical: float = 0.,
                      **kwargs) -> None:
             super().__init__(*args, **kwargs)
             self.spherical = spherical
 
         @LorenzMie.properties.getter
-        def properties(self) -> dict:
+        def properties(self) -> Dict:
             return {**super().properties,
                     'spherical': self.spherical}
 
-        def _aberration(self, r_p):
+        def _aberration(self, r_p: np.ndarray) -> Any:
             '''Returns spherical aberration for particle at r_p'''
             NA = self.instrument.numerical_aperture
             n_m = self.instrument.n_m
@@ -51,7 +54,9 @@ def ALM_Factory(base_class: LorenzMie):
             phase *= -self.spherical
             return self.to_field(phase)
 
-        def scattered_field(self, particle, *args):
+        def scattered_field(self,
+                            particle: Particle,
+                            *args: Tuple[Any]):
             field = super().scattered_field(particle, *args)
             r_p = particle.r_p + particle.r_0
             return field * self._aberration(r_p)
