@@ -8,23 +8,28 @@ def ALM_Factory(base_class):
 
         def __init__(self,
                      *args,
-                     pupil: float = 1000.,
                      spherical: float = 0.,
                      **kwargs) -> None:
             super().__init__(*args, **kwargs)
-            self.pupil = pupil
             self.spherical = spherical
 
         @LorenzMie.properties.getter
         def properties(self) -> dict:
             return {**super().properties,
-                    'pupil': self.pupil,
                     'spherical': self.spherical}
+
+        @property
+        def pupil(self):
+            NA = self.instrument.numerical_aperture
+            n_m = self.instrument.n_m
+            return 2.*NA/n_m
 
         def aberration(self, r_p):
             '''Returns spherical aberration for particle at r_p'''
-            r = self._device_coordinates
-            rhosq = ((r[0] - r_p[0])**2 + (r[1] - r_p[1])**2) / self.pupil**2
+            omega = self.pupil * r_p[2]
+            x = (self._device_coordinates[0] - r_p[0]) / omega
+            y = (self._device_coordinates[1] - r_p[1]) / omega
+            rhosq = x*x + y*y
             phase = 6.*rhosq * (rhosq - 1.) + 1.
             phase *= -self.spherical
             return self.to_field(phase)

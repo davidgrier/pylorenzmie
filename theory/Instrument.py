@@ -27,13 +27,15 @@ class Instrument(LMObject):
     wavelength : float
         Vacuum wavelength of light [um]
     magnification : float
-        Effective size of pixels [um/pixel]
-    n_m : float
-        Refractive index of medium
+        System magnification [um/pixel]
+    numerical_aperture : float
+        Numerical aperture (NA) of objective lens
     noise : float
-        Estimated noise as a percentage of the mean value
+        Estimated camera noise as a percentage of the mean intensity
     dark_count : float
         Dark count of camera
+    n_m : float
+        Refractive index of medium
     properties : dict
         Adjustable properties of the instrument model
 
@@ -45,15 +47,17 @@ class Instrument(LMObject):
 
     wavelength: float = 0.447
     magnification: float = 0.048
-    n_m: float = 1.340
+    numerical_aperture: float = 1.45
     noise: float = 0.05
     darkcount: float = 0.
+    n_m: float = 1.340
 
     @LMObject.properties.getter
     def properties(self) -> dict:
         return {'n_m': self.n_m,
                 'wavelength': self.wavelength,
-                'magnification': self.magnification}
+                'magnification': self.magnification,
+                'numerical_aperture': self.numerical_aperture}
 
     def wavenumber(self,
                    in_medium: bool = True,
@@ -78,7 +82,7 @@ class Instrument(LMObject):
         if in_medium:
             k *= self.n_m                 # ... in medium
         if magnified:
-            k *= self.magnification       # ... in image units
+            k *= self.magnification               # ... in image units
         return k
 
 
