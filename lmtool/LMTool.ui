@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1161</width>
-    <height>767</height>
+    <width>670</width>
+    <height>613</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,21 +18,6 @@
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
-    <property name="spacing">
-     <number>2</number>
-    </property>
-    <property name="leftMargin">
-     <number>5</number>
-    </property>
-    <property name="topMargin">
-     <number>2</number>
-    </property>
-    <property name="rightMargin">
-     <number>5</number>
-    </property>
-    <property name="bottomMargin">
-     <number>2</number>
-    </property>
     <item>
      <widget class="QTabWidget" name="tabs">
       <property name="sizePolicy">
@@ -47,17 +32,29 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
-      <widget class="GraphicsLayoutWidget" name="imageTab">
+      <widget class="ImageWidget" name="imageWidget">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="MinimumExpanding" vsizetype="MinimumExpanding">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>640</width>
+         <height>480</height>
+        </size>
+       </property>
        <attribute name="title">
         <string>image</string>
        </attribute>
       </widget>
-      <widget class="PlotWidget" name="profilePlot">
+      <widget class="ProfileWidget" name="profileWidget">
        <attribute name="title">
         <string>profile</string>
        </attribute>
       </widget>
-      <widget class="GraphicsLayoutWidget" name="fitTab">
+      <widget class="FitWidget" name="fitWidget">
        <attribute name="title">
         <string>fit</string>
        </attribute>
@@ -65,283 +62,7 @@
      </widget>
     </item>
     <item>
-     <widget class="QFrame" name="parameterFrame">
-      <property name="frameShape">
-       <enum>QFrame::StyledPanel</enum>
-      </property>
-      <property name="frameShadow">
-       <enum>QFrame::Raised</enum>
-      </property>
-      <layout class="QGridLayout" name="gridLayout">
-       <property name="leftMargin">
-        <number>0</number>
-       </property>
-       <property name="topMargin">
-        <number>0</number>
-       </property>
-       <property name="rightMargin">
-        <number>0</number>
-       </property>
-       <property name="bottomMargin">
-        <number>0</number>
-       </property>
-       <property name="spacing">
-        <number>1</number>
-       </property>
-       <item row="0" column="0">
-        <widget class="ParameterWidget" name="wavelength">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Wavelength of illumination [micrometers]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="1">
-        <widget class="ParameterWidget" name="magnification">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Magnification [micrometers/pixel]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="0" column="2">
-        <widget class="ParameterWidget" name="n_m">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Refractive index of medium</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="0">
-        <widget class="ParameterWidget" name="a_p">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Radius of particle [micrometers]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="ParameterWidget" name="n_p">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Refractive index of particle</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="2">
-        <widget class="ParameterWidget" name="k_p">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Absorption coefficient of particle</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="0">
-        <widget class="ParameterWidget" name="x_p">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>x coordinate [pixel]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="1">
-        <widget class="ParameterWidget" name="y_p">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>y coordinate [pixel]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="2" column="2">
-        <widget class="ParameterWidget" name="z_p">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Axial position of particle [pixel]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="0">
-        <widget class="ParameterWidget" name="bbox">
-         <property name="focusPolicy">
-          <enum>Qt::TabFocus</enum>
-         </property>
-         <property name="statusTip">
-          <string>Bounding box size [pixels]</string>
-         </property>
-         <property name="frameShape">
-          <enum>QFrame::Panel</enum>
-         </property>
-         <property name="frameShadow">
-          <enum>QFrame::Sunken</enum>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="1">
-        <widget class="QPushButton" name="optimizeButton">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="minimumSize">
-          <size>
-           <width>0</width>
-           <height>30</height>
-          </size>
-         </property>
-         <property name="font">
-          <font>
-           <pointsize>12</pointsize>
-          </font>
-         </property>
-         <property name="statusTip">
-          <string>Optimize parameters</string>
-         </property>
-         <property name="whatsThis">
-          <string/>
-         </property>
-         <property name="text">
-          <string>Optimize</string>
-         </property>
-        </widget>
-       </item>
-       <item row="3" column="2">
-        <widget class="QWidget" name="methodWidget" native="true">
-         <layout class="QVBoxLayout" name="methodLayout">
-          <property name="spacing">
-           <number>2</number>
-          </property>
-          <property name="leftMargin">
-           <number>5</number>
-          </property>
-          <property name="topMargin">
-           <number>0</number>
-          </property>
-          <property name="rightMargin">
-           <number>0</number>
-          </property>
-          <property name="bottomMargin">
-           <number>0</number>
-          </property>
-          <item>
-           <widget class="QRadioButton" name="LMButton">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::NoFocus</enum>
-            </property>
-            <property name="statusTip">
-             <string>Levenberg-Marquardt optimization</string>
-            </property>
-            <property name="text">
-             <string>Levenberg-Marquardt</string>
-            </property>
-            <property name="checked">
-             <bool>true</bool>
-            </property>
-           </widget>
-          </item>
-          <item>
-           <widget class="QRadioButton" name="RCButton">
-            <property name="sizePolicy">
-             <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
-              <horstretch>0</horstretch>
-              <verstretch>0</verstretch>
-             </sizepolicy>
-            </property>
-            <property name="focusPolicy">
-             <enum>Qt::NoFocus</enum>
-            </property>
-            <property name="statusTip">
-             <string>Robust optimization (Cauchy loss)</string>
-            </property>
-            <property name="text">
-             <string> Robust (Cauchy)</string>
-            </property>
-           </widget>
-          </item>
-         </layout>
-        </widget>
-       </item>
-      </layout>
-     </widget>
+     <widget class="ALMWidget" name="controls" native="true"/>
     </item>
    </layout>
   </widget>
@@ -350,8 +71,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1161</width>
-     <height>22</height>
+     <width>670</width>
+     <height>37</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -363,7 +84,16 @@
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
+   <widget class="QMenu" name="menuOptimization">
+    <property name="title">
+     <string>Optimization</string>
+    </property>
+    <addaction name="actionEstimate"/>
+    <addaction name="actionOptimize"/>
+    <addaction name="actionRobust"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuOptimization"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionQuit">
@@ -386,40 +116,65 @@
     <string>Save Parameters As ...</string>
    </property>
   </action>
+  <action name="actionOptimize">
+   <property name="text">
+    <string>O&amp;ptimize</string>
+   </property>
+   <property name="iconText">
+    <string>Optimize</string>
+   </property>
+   <property name="toolTip">
+    <string>Optimize</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="actionRobust">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Robust</string>
+   </property>
+  </action>
+  <action name="actionEstimate">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Estimate</string>
+   </property>
+  </action>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>PlotWidget</class>
+   <class>ImageWidget</class>
    <extends>QWidget</extends>
-   <header>pyqtgraph</header>
+   <header>ImageWidget</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>GraphicsLayoutWidget</class>
+   <class>ProfileWidget</class>
    <extends>QWidget</extends>
-   <header>pyqtgraph</header>
+   <header>ProfileWidget</header>
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>ParameterWidget</class>
-   <extends>QFrame</extends>
-   <header>ParameterWidget</header>
+   <class>ALMWidget</class>
+   <extends>QWidget</extends>
+   <header>ALMWidget</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>FitWidget</class>
+   <extends>QWidget</extends>
+   <header>FitWidget</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
  <tabstops>
   <tabstop>tabs</tabstop>
-  <tabstop>wavelength</tabstop>
-  <tabstop>magnification</tabstop>
-  <tabstop>n_m</tabstop>
-  <tabstop>a_p</tabstop>
-  <tabstop>n_p</tabstop>
-  <tabstop>k_p</tabstop>
-  <tabstop>x_p</tabstop>
-  <tabstop>y_p</tabstop>
-  <tabstop>z_p</tabstop>
-  <tabstop>bbox</tabstop>
-  <tabstop>optimizeButton</tabstop>
  </tabstops>
  <resources/>
  <connections>

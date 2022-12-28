@@ -1,144 +1,140 @@
 # /usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import logging
-import os
-import json
 import cv2
 import numpy as np
-import pyqtgraph as pg
-from matplotlib import cm
-
-try:
-    import cupy
-except ImportError:
-    pass
-from pylorenzmie.theory import (Sphere, Instrument, LMHologram)
-from pylorenzmie.analysis import Frame
-from pylorenzmie.utilities import (coordinates, azistd)
+from pylorenzmie.utilities import (azistd, coordinates)
+import json
 
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
-from PyQt5 import (QtWidgets, QtCore, uic)
+from PyQt5.QtWidgets import (QMainWindow, QFileDialog)
+from PyQt5 import uic
+from typing import (Optional, Union)
+import logging
 
-logger = logging.getLogger('LMTool')
+
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 
-class LMTool(QtWidgets.QMainWindow):
+class LMTool(QMainWindow):
+
+    uifile = 'LMTool.ui'
 
     def __init__(self,
-                 data=None,
-                 background=None,
-                 percentpix=0.3):
+                 filename: Optional[str] = None,
+                 background: Union[str, float, None] = None):
         super(LMTool, self).__init__()
+        uic.loadUi(self.uifile, self)
+        self._setupTheory()
+        self.readHologram(filename)
+        self._connectSignals()
 
-        self.setupPyQtGraph()
-        uic.loadUi('LMTool.ui', self)
-        self.setupControls()
-        self.setupTabs()
-        self.setupTheory(percentpix)
-        self.autonormalize = True         # FIXME: should be a UI option
-        self.setupData(data, background)
-        self.connectSignals()
-        self.loadDefaults()
+    def _setupTheory(self):
+        model = type(self.profileWidget.model)()
+        self.fitWidget.optimizer.model = model
 
-    @pyqtProperty(int)
-    def maxrange(self):
-        return self.bbox.value() // 2
+    @pyqtProperty(object)
+    def data(self):
+        return self._data
 
-    @pyqtProperty(list)
-    def parameters(self):
-        p = ['wavelength', 'magnification', 'n_m',
-             'a_p', 'n_p', 'k_p',
-             'x_p', 'y_p', 'z_p', 'bbox']
-        return p
-    
-    def setupPyQtGraph(self):
-        pg.setConfigOption('background', 'w')
-        pg.setConfigOption('foreground', 'k')
-        pg.setConfigOption('imageAxisOrder', 'row-major')
-    
-    #
-    # Set up widgets
-    #
+    @data.setter
+    def data(self, data):
+        self._data = data / np.mean(data)
+        self.coordinates = coordinates(data.shape, flatten=False)
+        self.controls.x_p.setRange((0, data.shape[1]-1))
+        self.controls.y_p.setRange((0, data.shape[0]-1))
+        self.imageWidget.data = self._data
+        self._updateProfile()
 
-    def setupControls(self):
-        self.bbox.checkbox.hide()
-        self.x_p.setStep(1.)
-        self.y_p.setStep(1.)
-        self.z_p.setStep(1.)
-        
-    def setupTabs(self):
-        options = dict(enableMenu=False,
-                       enableMouse=False,
-                       invertY=False,
-                       lockAspect=True)
-        self.setupImageTab(options)
-        self.setupProfileTab()
-        self.setupFitTab(options)
-        
-    def setupImageTab(self, options):   
-        self.imageTab.ci.layout.setContentsMargins(0, 0, 0, 0)
-        self.image = pg.ImageItem(border=pg.mkPen('k'))
-        self.imageTab.addViewBox(**options).addItem(self.image)
-        pen = pg.mkPen('w', width=3)
-        hoverPen = pg.mkPen('y', width=3)
-        self.roi = pg.CircleROI([100,100], radius=100., parent=self.image)
-        self.roi.setPen(pen)
-        self.roi.hoverPen = hoverPen
-        self.roi.removeHandle(0)
+    @pyqtSlot()
+    def readHologram(self, filename: Optional[str] = None) -> None:
+        if filename is None:
+            get = QFileDialog.getOpenFileName
+            filename, _ = get(self, 'Open Hologram', '', 'Images (*.png)')
+        if filename is None:
+            return
+        self.data = cv2.imread(filename, 0).astype(float)
 
-    def setupProfileTab(self):
-        plot = self.profilePlot
-        plot.setXRange(0., self.maxrange)
-        plot.showGrid(True, True, 0.2)
-        plot.setLabel('bottom', 'r [pixel]')
-        plot.setLabel('left', 'b(r)')
-        pen = pg.mkPen('k', width=3, style=QtCore.Qt.DashLine)
-        plot.addLine(y=1., pen=pen)
-        pen = pg.mkPen('k', width=3)
-        plot.getAxis('bottom').setPen(pen)
-        plot.getAxis('left').setPen(pen)
-        pen = pg.mkPen('r', width=3)
-        self.theoryProfile = pg.PlotCurveItem(pen=pen)
-        plot.addItem(self.theoryProfile)
-        pen = pg.mkPen('k', width=3)
-        self.dataProfile = pg.PlotCurveItem(pen=pen)
-        plot.addItem(self.dataProfile)
-        pen = pg.mkPen('k', width=1, style=QtCore.Qt.DashLine)
-        self.regionUpper = pg.PlotCurveItem(pen=pen)
-        self.regionLower = pg.PlotCurveItem(pen=pen)
-        self.dataRegion = pg.FillBetweenItem(
-            self.regionUpper, self.regionLower,
-            brush=pg.mkBrush(255, 165, 0, 128))
-        plot.addItem(self.dataRegion)
+    @pyqtSlot()
+    def saveParameters(self, filename: Optional[str] = None) -> None:
+        if filename is None:
+            get = QFileDialog.getSaveFileName
+            filename, _ = get(self, 'Save Parameters', '', 'JSON (*.json)')
+        if filename is None:
+            return
+        properties = self.controls.properties
+        with open(filename, 'w') as f:
+            json.dump(properties, f, indent=4, sort_keys=True)
 
-    def setupFitTab(self, options):
-        self.fitTab.ci.layout.setContentsMargins(0, 0, 0, 0)
-        pen = pg.mkPen('k')
-        self.region = pg.ImageItem(pen=pen)
-        self.fit = pg.ImageItem(pen=pen)
-        self.residuals = pg.ImageItem(pen=pen)
-        self.fitTab.addViewBox(**options).addItem(self.region)
-        self.fitTab.addViewBox(**options).addItem(self.fit)
-        self.fitTab.addViewBox(**options).addItem(self.residuals)
-        map = cm.get_cmap('bwr')
-        map._init()
-        lut = (map._lut * 255).view(np.ndarray)
-        self.residuals.setLookupTable(lut)
-    
-    def setupTheory(self, percentpix):
-        # Profile and Frame use the same particle and instrument
-        self.particle = Sphere()
-        self.instrument = Instrument()
-        # Theory for radial profile
-        self.theory = LMHologram(particle=self.particle,
-                                 instrument=self.instrument)
-        self.theory.coordinates = np.arange(self.maxrange)
-        # Theory for image
-        self.frame = Frame(particle=self.particle,
-                           instrument=self.instrument,
-                           percentpix=percentpix)
+    def _connectSignals(self) -> None:
+        self.imageWidget.roiChanged.connect(self._handleROIChanged)
+        self.imageWidget.radiusChanged.connect(self._handleRadiusChanged)
+        self.controls.propertyChanged.connect(self._handlePropertyChanged)
+        self.actionOpen.triggered.connect(self.readHologram)
+        self.actionSave_Parameters.triggered.connect(self.saveParameters)
+        self.actionOptimize.triggered.connect(self.optimize)
+        self.actionRobust.triggered.connect(self.setRobust)
+
+    def _updateProfile(self):
+        x_p = self.controls.x_p.value()
+        y_p = self.controls.y_p.value()
+        self.profileWidget.data = azistd(self._data, (x_p, y_p))
+
+    @pyqtSlot(float, float)
+    def _handleROIChanged(self, x_p, y_p):
+        self.controls.blockSignals(True)
+        self.controls.properties = dict(x_p=x_p, y_p=y_p)
+        self.controls.blockSignals(False)
+        self._updateProfile()
+        data, coords = self.crop()
+        self.fitWidget.region.setImage(data)
+
+    @pyqtSlot(int)
+    def _handleRadiusChanged(self, radius):
+        self.profileWidget.radius = radius
+        data, coords = self.crop()
+        self.fitWidget.region.setImage(data)
+
+    @pyqtSlot(str, float)
+    def _handlePropertyChanged(self, name, value):
+        if name == 'x_p':
+            self.imageWidget.x_p = value
+        elif name == 'y_p':
+            self.imageWidget.y_p = value
+        self.profileWidget.properties = {name: value}
+
+    def crop(self):
+        x0, y0 = list(map(int, self.imageWidget.roi.pos()))
+        w, h = list(map(int, self.imageWidget.roi.size()))
+        x1, y1 = x0+w, y0+h
+        return self.data[y0:y1, x0:x1], self.coordinates[:, y0:y1, x0:x1]
+
+    @pyqtSlot()
+    def optimize(self):
+        self.statusBar().showMessage('Optimizing parameters...')
+        logger.info('Starting optimization...')
+        optimizer = self.fitWidget.optimizer
+        optimizer.model.properties = self.controls.properties
+        optimizer.fixed = self.controls.fixed
+        result = self.fitWidget.optimize(*self.crop())
+        self.controls.properties = optimizer.model.properties
+        '''
+        if self.LMButton.isChecked():
+            feature.optimizer.settings['method'] = 'lm'
+            feature.optimizer.settings['loss'] = 'linear'
+        else:
+            feature.optimizer.settings['method'] = 'dogbox'
+            feature.optimizer.settings['loss'] = 'cauchy'
+        '''
+        logger.info(f'Finished!\n{result}')
+        self.statusBar().showMessage('Optimization complete')
+
+    @pyqtSlot(bool)
+    def setRobust(self, robust):
+        logger.info(f'{robust=}')
+
+    ###
     #
     # Routines for loading data
     #
@@ -154,189 +150,28 @@ class LMTool(QtWidgets.QMainWindow):
                 self.frame.background = background
 
     @pyqtSlot()
-    def openHologram(self, filename=None):
-        if filename is None:
-            filename, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self, 'Open Hologram', '', 'Images (*.png)')
-        data = cv2.imread(filename, 0).astype(float)
-        if data is None:
-            return
-        self.data = data
-        
-    @pyqtSlot()
     def openBackground(self, filename=None):
         if filename is None:
-            filename, _ = QtWidgets.QFileDialog.getOpenFileName(
+            filename, _ = QFileDialog.getOpenFileName(
                 self, 'Open Background', '', 'Images (*.png)')
         background = cv2.imread(filename, 0).astype(float)
         if background is None:
             return
         self.frame.background = background
 
-    @pyqtProperty(object)
-    def data(self):
-        return self.frame.data
 
-    @data.setter
-    def data(self, data):
-        self.frame.data = data / np.mean(data)
-        self.image.setImage(self.frame.data)
-        self.x_p.setRange((0, data.shape[1]-1))
-        self.y_p.setRange((0, data.shape[0]-1))
-        self.bbox.setRange((0, min(data.shape[0]-1, data.shape[1]-1)))
-        self.updateDataProfile()
-
-    def loadDefaults(self):
-        basedir = os.path.dirname(os.path.abspath(__file__))
-        with open(os.path.join(basedir, 'LMTool.json'), 'r') as file:
-            settings = json.load(file)
-        for parameter in self.parameters:
-            widget = getattr(self, parameter)
-            for setting, value in settings[parameter].items():
-                logger.debug('{}: {}: {}'.format(parameter, setting, value))
-                setter_name = 'set{}'.format(setting.capitalize())
-                setter = getattr(widget, setter_name)
-                setter(value)
-    #
-    # Slots for handling user interaction
-    #
-    def connectSignals(self):
-        self.actionOpen.triggered.connect(self.openHologram)
-        self.actionSave_Parameters.triggered.connect(self.saveParameters)
-        self.tabs.currentChanged.connect(self.handleTabChanged)
-        for parameter in self.parameters:
-            widget = getattr(self, parameter)
-            widget.valueChanged['double'].connect(self.updateParameter)
-        self.optimizeButton.clicked.connect(self.optimize)
-        self.roi.sigRegionChanged.connect(self.handleROIChanged)
-        
-    @pyqtSlot(int)
-    def handleTabChanged(self, tab):
-        if (tab == 1):
-            self.updateDataProfile()
-        if (tab == 2):
-            self.updateFit()
-
-    @pyqtSlot(object)
-    def handleROIChanged(self, roi):
-        x0, y0 = roi.pos()
-        dim, _ = roi.size()
-        self.bbox.setValue(dim)
-        self.x_p.setValue(x0 + dim/2)
-        self.y_p.setValue(y0 + dim/2)
-
-    @pyqtSlot(float)
-    def updateParameter(self, value):
-        parameter = self.sender().objectName()
-        if parameter == 'bbox':
-            self.profilePlot.setXRange(0., self.maxrange)
-        elif hasattr(self.instrument, parameter):
-            setattr(self.instrument, parameter, value)
-        elif hasattr(self.particle, parameter):
-            setattr(self.particle, parameter, value)
-        if parameter in ['x_p', 'y_p', 'bbox']:
-            self.updateROI()
-        self.updatePlots()
-
-    #
-    # Routines to update plots
-    #
-    def updatePlots(self):
-        self.updateTheoryProfile()
-        self.updateDataProfile()
-        if self.tabs.currentIndex() == 2:
-            self.updateFit()
-
-    def updateDataProfile(self):
-        avg, std = azistd(self.frame.data, self.particle.r_p[0:2])
-        self.dataProfile.setData(avg)
-        self.regionUpper.setData(avg + std)
-        self.regionLower.setData(avg - std)
-
-    def updateTheoryProfile(self):
-        x = np.arange(self.maxrange, dtype=float)
-        y = np.full_like(x, self.particle.y_p)
-        coordinates = np.stack((x + self.particle.x_p, y))
-        self.theory.coordinates = coordinates
-        profile = self.theory.hologram()
-        self.theoryProfile.setData(x, profile)
-
-    def updateFit(self):
-        feature = self.frame.features[0]
-        self.region.setImage(feature.data)
-        self.fit.setImage(feature.hologram())
-        self.residuals.setImage(feature.residuals())
-
-    def updateROI(self):
-        dim = self.maxrange
-        x_p = self.particle.x_p
-        y_p = self.particle.y_p
-        h, w = self.frame.shape
-        x0 = int(np.clip(x_p - dim, 0, w - 2))
-        y0 = int(np.clip(y_p - dim, 0, h - 2))
-        x1 = int(np.clip(x_p + dim, x0 + 1, w - 1))
-        y1 = int(np.clip(y_p + dim, y0 + 1, h - 1))
-        self.roi.setSize((2*dim+1, 2*dim+1), (0.5, 0.5), update=False)
-        self.roi.setPos(x0, y0, update=False)
-        self.frame.bboxes = [((x0, y0), x1-x0, y1-y0)]
-        
-    #
-    # Routines associated with fitting
-    #
-    @pyqtSlot()
-    def optimize(self):
-        self.statusBar().showMessage('Optimizing parameters...')
-        logger.info('Starting optimization...')
-        feature = self.frame.features[0]
-        feature.particle = self.particle
-        if self.LMButton.isChecked():
-            feature.optimizer.settings['method'] = 'lm'
-            feature.optimizer.settings['loss'] = 'linear'
-        else:
-            feature.optimizer.settings['method'] = 'dogbox'
-            feature.optimizer.settings['loss'] = 'cauchy'
-        fixed = [p for p in self.parameters if getattr(self, p).fixed]
-        feature.optimizer.fixed = fixed
-        result = feature.optimize()
-        self.updateUiValues()
-        self.updatePlots()
-        logger.info('Finished!\n{}'.format(str(result)))
-        self.statusBar().showMessage('Optimization complete')
-
-    def updateUiValues(self):
-        '''Update Ui with parameters from particle and instrument'''
-        for parameter in self.parameters:
-            widget = getattr(self, parameter)
-            widget.blockSignals(True)
-            if hasattr(self.particle, parameter):
-                widget.setValue(getattr(self.particle, parameter))
-            elif hasattr(self.instrument, parameter):
-                widget.setValue(getattr(self.instrument, parameter))
-            widget.blockSignals(False)
-
-    @pyqtSlot()
-    def saveParameters(self, filename=None):
-        if filename is None:
-            filename, _ = QtWidgets.QFileDialog.getSaveFileName(
-                self, 'Save Parameters', '', 'JSON (*.json)')
-        parameters = {name: getattr(self, name).value()
-                      for name in self.parameters}
-        try:
-            with open(filename, 'w') as file:
-                json.dump(parameters, file, indent=4, sort_keys=True)
-        except IOError:
-            print('error')
-
- 
 def main():
+    from PyQt5.QtWidgets import QApplication
+    from pathlib import Path
     import sys
     import argparse
 
-    basedir = os.path.dirname(os.path.abspath(__file__))
-    fn = os.path.join(basedir, '..', 'docs', 'tutorials', 'crop.png')
+    basedir = Path(__file__).parent.parent.resolve()
+    filename = basedir / 'docs' / 'tutorials' / 'crop.png'
+    filename = str(filename)
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename', type=str, default=fn,
+    parser.add_argument('filename', type=str, default=filename,
                         nargs='?', action='store')
     parser.add_argument('-b', '--background', dest='background',
                         default=None, action='store',
@@ -348,7 +183,7 @@ def main():
     if background is not None and background.isdigit():
         background = int(background)
 
-    app = QtWidgets.QApplication(qt_args)
+    app = QApplication(qt_args)
     lmtool = LMTool(args.filename, background)
     lmtool.show()
     sys.exit(app.exec_())

@@ -93,12 +93,12 @@ class LorenzMie(LMObject):
         return '\n    '.join([r, inst, part])
 
     @property
-    def properties(self) -> Dict:
+    def properties(self) -> Dict[str, float]:
         return {**self.particle.properties,
                 **self.instrument.properties}
 
     @properties.setter
-    def properties(self, properties: Dict) -> None:
+    def properties(self, properties: Dict[str, float]) -> None:
         for name, value in properties.items():
             if hasattr(self.particle, name):
                 setattr(self.particle, name, value)
@@ -190,6 +190,7 @@ class LorenzMie(LMObject):
 
     def allocate(self) -> None:
         '''Allocate ndarrays for calculation'''
+        logger.debug('Allocating buffers')
         shape = self.coordinates.shape
         self.kdr = np.empty(shape, dtype=float)
         buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
