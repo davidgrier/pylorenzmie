@@ -16,6 +16,16 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+'''
+To do
+* support for sampling which pixels to fit
+* saving parameters
+* correct normalization (currently it simply divides by the mean)
+* interactive residuals (currently only updates after fits)
+* support for cuda-accelerated kernels.
+* set ROI for new picture
+'''
+
 
 class LMTool(QMainWindow):
 
@@ -74,7 +84,6 @@ class LMTool(QMainWindow):
         self.actionOpen.triggered.connect(self.readHologram)
         self.actionSave_Parameters.triggered.connect(self.saveParameters)
         self.actionOptimize.triggered.connect(self.optimize)
-        self.actionRobust.triggered.connect(self.setRobust)
 
     def _updateProfile(self):
         x_p = self.controls.x_p.value()
@@ -117,22 +126,11 @@ class LMTool(QMainWindow):
         optimizer = self.fitWidget.optimizer
         optimizer.model.properties = self.controls.properties
         optimizer.fixed = self.controls.fixed
+        optimizer.robust = self.actionRobust.isChecked()
         result = self.fitWidget.optimize(*self.crop())
         self.controls.properties = optimizer.model.properties
-        '''
-        if self.LMButton.isChecked():
-            feature.optimizer.settings['method'] = 'lm'
-            feature.optimizer.settings['loss'] = 'linear'
-        else:
-            feature.optimizer.settings['method'] = 'dogbox'
-            feature.optimizer.settings['loss'] = 'cauchy'
-        '''
         logger.info(f'Finished!\n{result}')
         self.statusBar().showMessage('Optimization complete')
-
-    @pyqtSlot(bool)
-    def setRobust(self, robust):
-        logger.info(f'{robust=}')
 
     ###
     #
