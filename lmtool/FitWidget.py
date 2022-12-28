@@ -6,10 +6,10 @@ class FitWidget(pg.GraphicsLayoutWidget):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._setupUi()
+        self._configurePlot()
         self.optimizer = Optimizer()
 
-    def _setupUi(self):
+    def _configurePlot(self):
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.setBackground('w')
         options = dict(border=pg.mkPen('k', width=2),
