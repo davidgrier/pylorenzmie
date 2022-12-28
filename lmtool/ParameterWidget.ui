@@ -6,9 +6,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>147</width>
-    <height>53</height>
+    <width>166</width>
+    <height>52</height>
    </rect>
+  </property>
+  <property name="sizePolicy">
+   <sizepolicy hsizetype="MinimumExpanding" vsizetype="Fixed">
+    <horstretch>0</horstretch>
+    <verstretch>0</verstretch>
+   </sizepolicy>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>166</width>
+    <height>52</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>ParameterWidget</string>
@@ -19,82 +31,77 @@
   <property name="frameShadow">
    <enum>QFrame::Sunken</enum>
   </property>
-  <layout class="QVBoxLayout" name="verticalLayout">
-   <property name="spacing">
-    <number>1</number>
-   </property>
+  <layout class="QGridLayout" name="gridLayout" columnstretch="2,2,1">
    <property name="leftMargin">
     <number>2</number>
    </property>
    <property name="topMargin">
-    <number>0</number>
+    <number>1</number>
    </property>
    <property name="rightMargin">
     <number>2</number>
    </property>
    <property name="bottomMargin">
-    <number>0</number>
+    <number>1</number>
    </property>
-   <item>
-    <widget class="QWidget" name="group" native="true">
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <property name="spacing">
-       <number>2</number>
-      </property>
-      <property name="leftMargin">
-       <number>0</number>
-      </property>
-      <property name="topMargin">
-       <number>0</number>
-      </property>
-      <property name="rightMargin">
-       <number>0</number>
-      </property>
-      <property name="bottomMargin">
-       <number>0</number>
-      </property>
-      <item>
-       <widget class="QLabel" name="label">
-        <property name="text">
-         <string>Parameter</string>
-        </property>
-        <property name="buddy">
-         <cstring>spinbox</cstring>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="DoubleSpinBox" name="spinbox"/>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="checkbox">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="toolTip">
-         <string>fix parameter</string>
-        </property>
-        <property name="text">
-         <string/>
-        </property>
-        <property name="checkable">
-         <bool>true</bool>
-        </property>
-       </widget>
-      </item>
-     </layout>
+   <property name="horizontalSpacing">
+    <number>2</number>
+   </property>
+   <property name="verticalSpacing">
+    <number>1</number>
+   </property>
+   <item row="0" column="0">
+    <widget class="QLabel" name="label">
+     <property name="text">
+      <string>Parameter</string>
+     </property>
     </widget>
    </item>
-   <item>
+   <item row="0" column="1">
+    <widget class="DoubleSpinBox" name="spinbox">
+     <property name="decimals">
+      <number>4</number>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="2">
+    <widget class="QCheckBox" name="checkbox">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="toolTip">
+      <string>fix parameter</string>
+     </property>
+     <property name="layoutDirection">
+      <enum>Qt::LeftToRight</enum>
+     </property>
+     <property name="autoFillBackground">
+      <bool>false</bool>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="checkable">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="3">
     <widget class="DoubleSlider" name="slider">
      <property name="focusPolicy">
       <enum>Qt::NoFocus</enum>
      </property>
      <property name="orientation">
       <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="invertedAppearance">
+      <bool>false</bool>
+     </property>
+     <property name="invertedControls">
+      <bool>false</bool>
      </property>
     </widget>
    </item>
@@ -122,45 +129,8 @@
    </slots>
   </customwidget>
  </customwidgets>
- <tabstops>
-  <tabstop>spinbox</tabstop>
-  <tabstop>checkbox</tabstop>
-  <tabstop>slider</tabstop>
- </tabstops>
  <resources/>
  <connections>
-  <connection>
-   <sender>checkbox</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>slider</receiver>
-   <slot>setDisabled(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>133</x>
-     <y>15</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>74</x>
-     <y>42</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>checkbox</sender>
-   <signal>stateChanged(int)</signal>
-   <receiver>spinbox</receiver>
-   <slot>setDisabled(int)</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>133</x>
-     <y>15</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>96</x>
-     <y>15</y>
-    </hint>
-   </hints>
-  </connection>
   <connection>
    <sender>spinbox</sender>
    <signal>editingFinished(double)</signal>
@@ -206,6 +176,38 @@
     <hint type="destinationlabel">
      <x>96</x>
      <y>15</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkbox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>slider</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>133</x>
+     <y>14</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>73</x>
+     <y>40</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>checkbox</sender>
+   <signal>toggled(bool)</signal>
+   <receiver>spinbox</receiver>
+   <slot>setDisabled(bool)</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>133</x>
+     <y>14</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>95</x>
+     <y>14</y>
     </hint>
    </hints>
   </connection>

@@ -6,8 +6,10 @@ import numpy as np
 from scipy.optimize import least_squares
 from scipy.linalg import svd
 import pandas as pd
-
+from typing import (Optional, List, Dict)
 import logging
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
@@ -51,11 +53,11 @@ class Optimizer(LMObject):
     '''
 
     def __init__(self,
-                 model: LorenzMie = None,
-                 data: np.ndarray = None,
+                 model: Optional[LorenzMie] = None,
+                 data: Optional[np.ndarray] = None,
                  robust: bool = False,
-                 fixed: bool = None,
-                 settings: dict = None,
+                 fixed: Optional[List[str]] = None,
+                 settings: Optional[Dict] = None,
                  **kwargs) -> None:
         self.model = model or LorenzMie(**kwargs)
         self.data = data
@@ -166,7 +168,7 @@ class Optimizer(LMObject):
     #
     # Public methods
     #
-    def optimize(self):
+    def optimize(self) -> pd.Series:
         '''
         Fit Model to data
 
@@ -215,8 +217,8 @@ def test_case():
     from pylorenzmie.utilities import coordinates
 
     shape = (201, 201)
-    c = coordinates(shape)
-    model = LorenzMie(coordinates=c)
+    model = LorenzMie()
+    model.coordinates = coordinates(shape)
     model.particle.a_p = 0.75
     model.particle.n_p = 1.42
     model.particle.r_p = [100., 100., 225.]

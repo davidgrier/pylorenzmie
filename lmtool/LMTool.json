@@ -5,7 +5,7 @@
 	"range": [0.405, 1.070],
 	"value": 0.447,
 	"fixed": true,
-	"decimals": 4
+	"decimals": 3
     },
     "magnification": {
 	"text": "magnification",
@@ -14,7 +14,7 @@
 	"value": 0.048,
 	"step": 0.001,
 	"fixed": true,
-	"decimals": 4
+	"decimals": 3
     },
     "n_m": {
 	"text": "n<sub>m</sub>",
@@ -22,7 +22,7 @@
 	"value": 1.340,
 	"step": 0.001,
 	"fixed": true,
-	"decimals": 4
+	"decimals": 3
     },
     "a_p": {
 	"text": "a<sub>p</sub>",
@@ -30,14 +30,14 @@
 	"range": [0.1, 10.0],
 	"step": 0.005,
 	"value": 0.75,
-	"decimals": 4
+	"decimals": 3
     },
     "n_p": {
 	"text": "n<sub>p</sub>",
-	"range": [1.30, 2.50],
-	"step": 0.005,
-	"value": 1.45,
-	"decimals": 4
+	"range": [1.0, 2.50],
+	"step": 0.001,
+	"value": 1.450,
+	"decimals": 3
     },
     "k_p": {
 	"text": "k<sub>p</sub>",
@@ -71,12 +71,19 @@
 	"value": 100.0,
 	"decimals": 2
     },
-    "alpha": {
-	"text": "alpha",
-	"range": [0.0, 2.0],
+    "numerical_aperture": {
+	"text": "NA",
+	"range": [0.1, 1.45],
 	"step": 0.01,
-	"value": 1.0,
+	"value": 1.45,
 	"fixed": true,
+	"decimals": 2
+    },
+    "spherical": {
+	"text": "spherical",
+	"range": [-5.0, 5.0],
+	"step": 0.01,
+	"value": 0.0,
 	"decimals": 2
     },
     "bbox": {
