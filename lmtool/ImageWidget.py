@@ -28,7 +28,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
                        invertY=False,
                        lockAspect=True)
         self.addViewBox(**options).addItem(self.image)
-        self.roi = pg.CircleROI([100, 100],
+        self.roi = pg.CircleROI([0, 0],
                                 radius=self._radius,
                                 parent=self.image)
         self.roi.setPen(pg.mkPen('w', width=3))
@@ -39,7 +39,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
     @pyqtSlot(object)
     def handleChange(self, roi) -> None:
-        radius = int(roi.size()[0]) // 2
+        radius = int(self.roi.size()[0]) // 2
         if radius == self._radius:
             x0, y0 = roi.pos()
             self.roiChanged.emit(x0+radius, y0+radius)
@@ -55,6 +55,8 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     def data(self, data):
         self._data = data
         self.image.setImage(data)
+        self.roi.setPos([0, 0])
+        self.roi.setSize([200, 200])
 
     @pyqtProperty(float)
     def x_p(self) -> float:
