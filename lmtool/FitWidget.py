@@ -3,6 +3,7 @@ from pylorenzmie.analysis import Optimizer
 from pylorenzmie.theory import LorenzMie
 from PyQt5.QtCore import (pyqtProperty, QRectF)
 import numpy as np
+import pandas as pd
 from typing import Dict
 
 
@@ -38,15 +39,17 @@ class FitWidget(pg.GraphicsLayoutWidget):
         plots[2].setYLink(plots[0])
         cm = pg.colormap.getFromMatplotlib('bwr')
         self.residuals.setColorMap(cm)
+        self.residuals.setLevels((-10, 10))
 
-    def mask(self, data):
+    def mask(self, data: np.ndarray) -> np.ndarray:
         data = data.flatten()
         mask = np.random.choice([True, False], data.size,
                                 p=[self.fraction, 1-self.fraction])
         mask[data == np.max(data)] = False
         return mask
 
-    def optimize(self, data, coords):
+    def optimize(self, data: np.ndarray,
+                 coords: np.ndarray) -> pd.Series:
         mask = self.mask(data)
         coords = coords.reshape((2, -1))
         self.optimizer.data = data.flatten()[mask]
@@ -58,7 +61,6 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.fit.setImage(hologram)
         noise = self.optimizer.model.instrument.noise
         self.residuals.setImage((data - hologram)/noise)
-        self.residuals.setLevels((-10, 10))
         self.fit.setRect(self.rect)
         self.residuals.setRect(self.rect)
         return result

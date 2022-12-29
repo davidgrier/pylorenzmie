@@ -23,6 +23,8 @@ To do
 * interactive residuals (currently only updates after fits)
 * support for cuda-accelerated kernels.
 * choose loss for robust fitter
+* fitting controls?
+* dark count
 '''
 
 

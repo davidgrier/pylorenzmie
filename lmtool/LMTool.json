@@ -86,20 +86,12 @@
 	"value": 0.0,
 	"decimals": 2
     },
-    "bbox": {
-	"text": "bbox",
-	"suffix": " pixel",
-	"range": [150.0, 400.0],
-	"step": 2.0,
-	"value": 201.0,
-	"decimals": 1
-    },
     "noise": {
 	"text": "noise",
-	"suffix": " %",
-	"range": [1.0, 100],
-	"step": 1.0,
-	"value": 5.0,
-	"decimals": 1
+	"range": [0.01, 1.0],
+	"step": 0.01,
+	"value": 0.05,
+	"fixed": true,
+	"decimals": 3
     }
 }
