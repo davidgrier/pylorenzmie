@@ -96,14 +96,12 @@ class LMTool(QMainWindow):
         self.controls.properties = dict(x_p=x_p, y_p=y_p)
         self.controls.blockSignals(False)
         self._updateProfile()
-        data, coords = self.crop()
-        self.fitWidget.region.setImage(data)
+        self.fitWidget.setData(*self.crop(True))
 
     @pyqtSlot(int)
     def _handleRadiusChanged(self, radius):
         self.profileWidget.radius = radius
-        data, coords = self.crop()
-        self.fitWidget.region.setImage(data)
+        self.fitWidget.setData(*self.crop(True))
 
     @pyqtSlot(str, float)
     def _handlePropertyChanged(self, name, value):
@@ -113,11 +111,13 @@ class LMTool(QMainWindow):
             self.imageWidget.y_p = value
         self.profileWidget.properties = {name: value}
 
-    def crop(self):
-        x0, y0 = list(map(int, self.imageWidget.roi.pos()))
-        w, h = list(map(int, self.imageWidget.roi.size()))
-        x1, y1 = x0+w, y0+h
-        return self.data[y0:y1, x0:x1], self.coordinates[:, y0:y1, x0:x1]
+    def crop(self, rect=False):
+        get = self.imageWidget.roi.getArraySlice
+        (sy, sx), _ = get(self._data, self.imageWidget.image)
+        if rect:
+            return self.data[sy, sx], self.imageWidget.rect()
+        else:
+            return self.data[sy, sx], self.coordinates[:, sy, sx]
 
     @pyqtSlot()
     def optimize(self):
