@@ -62,7 +62,7 @@
      </widget>
     </item>
     <item>
-     <widget class="ALMWidget" name="controls" native="true"/>
+     <widget class="QWidget" name="controls" native="true"/>
     </item>
    </layout>
   </widget>
@@ -158,12 +158,6 @@
    <class>ProfileWidget</class>
    <extends>QWidget</extends>
    <header>ProfileWidget</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>ALMWidget</class>
-   <extends>QWidget</extends>
-   <header>ALMWidget</header>
    <container>1</container>
   </customwidget>
   <customwidget>

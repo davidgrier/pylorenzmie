@@ -1,7 +1,9 @@
 import pyqtgraph as pg
 from pylorenzmie.analysis import Optimizer
-from PyQt5.QtCore import QRectF
+from pylorenzmie.theory import LorenzMie
+from PyQt5.QtCore import (pyqtProperty, QRectF)
 import numpy as np
+from typing import Dict
 
 
 class FitWidget(pg.GraphicsLayoutWidget):
@@ -51,3 +53,19 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.region.setImage(data)
         self.region.setRect(rect)
         self.rect = rect
+
+    @pyqtProperty(LorenzMie)
+    def model(self) -> LorenzMie:
+        return self.optimizer.model
+
+    @model.setter
+    def model(self, model: LorenzMie) -> None:
+        self.optimizer.model = model
+
+    @pyqtProperty(dict)
+    def properties(self) -> Dict[str, float]:
+        return self.optimizer.model.properties
+
+    @properties.setter
+    def properties(self, properties: Dict[str, float]) -> None:
+        self.optimizer.model.properties = properties

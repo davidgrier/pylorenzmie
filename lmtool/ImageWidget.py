@@ -88,6 +88,10 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         pos[1] = y_p - self._radius
         self.roi.setPos(pos)
 
+    @pyqtProperty(int)
+    def radius(self) -> int:
+        return self._radius
+
     def rect(self) -> QRectF:
         pos = self.roi.pos()
         size = self.roi.size()
