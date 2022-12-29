@@ -9,7 +9,7 @@ import json
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog)
 from PyQt5 import uic
-from typing import (Type, Optional, Union)
+from typing import (Type, Optional, Union, Tuple)
 import logging
 
 
@@ -18,12 +18,11 @@ logger.setLevel(logging.INFO)
 
 '''
 To do
-* saving parameters
+* save results from fits, including metadata
+* control panel for fitter, including choice of loss for robust fitter
 * correct normalization (currently it simply divides by the mean)
 * interactive residuals (currently only updates after fits)
 * support for cuda-accelerated kernels.
-* choose loss for robust fitter
-* fitting controls?
 * dark count
 '''
 
@@ -94,13 +93,13 @@ class LMTool(QMainWindow):
         self.actionSave_Parameters.triggered.connect(self.saveParameters)
         self.actionOptimize.triggered.connect(self.optimize)
 
-    def _updateProfile(self):
+    def _updateProfile(self) -> None:
         x_p = self.controls.x_p.value()
         y_p = self.controls.y_p.value()
         self.profileWidget.data = azistd(self._data, (x_p, y_p))
 
     @pyqtSlot(float, float)
-    def _handleROIChanged(self, x_p, y_p):
+    def _handleROIChanged(self, x_p: float, y_p: float) -> None:
         self.controls.blockSignals(True)
         self.controls.properties = dict(x_p=x_p, y_p=y_p)
         self.controls.blockSignals(False)
@@ -108,19 +107,19 @@ class LMTool(QMainWindow):
         self.fitWidget.setData(*self.crop(True))
 
     @pyqtSlot(int)
-    def _handleRadiusChanged(self, radius):
+    def _handleRadiusChanged(self, radius: int) -> None:
         self.profileWidget.radius = radius
         self.fitWidget.setData(*self.crop(True))
 
     @pyqtSlot(str, float)
-    def _handlePropertyChanged(self, name, value):
+    def _handlePropertyChanged(self, name: str, value: float) -> None:
         if name == 'x_p':
             self.imageWidget.x_p = value
         elif name == 'y_p':
             self.imageWidget.y_p = value
         self.profileWidget.properties = {name: value}
 
-    def crop(self, rect=False):
+    def crop(self, rect: bool = False) -> Tuple:
         get = self.imageWidget.roi.getArraySlice
         (sy, sx), _ = get(self._data, self.imageWidget.image)
         if rect:
@@ -129,8 +128,7 @@ class LMTool(QMainWindow):
             return self.data[sy, sx], self.coordinates[:, sy, sx]
 
     @pyqtSlot()
-    def optimize(self):
-        self.statusBar().showMessage('Optimizing parameters...')
+    def optimize(self) -> None:
         logger.info('Starting optimization...')
         optimizer = self.fitWidget.optimizer
         optimizer.model.properties = self.controls.properties
@@ -139,11 +137,7 @@ class LMTool(QMainWindow):
         result = self.fitWidget.optimize(*self.crop())
         self.controls.properties = optimizer.model.properties
         logger.info(f'Finished!\n{result}')
-        self.statusBar().showMessage('Optimization complete')
-
-    def setControls(self, controls):
-
-        self._setupTheory()
+        self.statusBar().showMessage('Optimization complete', 2000)
 
 
 def main():

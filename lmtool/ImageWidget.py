@@ -52,11 +52,11 @@ class ImageWidget(pg.GraphicsLayoutWidget):
             self.radiusChanged.emit(radius)
 
     @pyqtProperty(np.ndarray)
-    def data(self):
+    def data(self) -> np.ndarray:
         return self._data
 
     @data.setter
-    def data(self, data):
+    def data(self, data: np.ndarray) -> None:
         self._data = data
         self.image.setImage(data)
         h, w = data.shape

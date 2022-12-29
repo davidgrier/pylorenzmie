@@ -3,7 +3,7 @@ from PyQt5 import uic
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
 from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
 from pylorenzmie.theory import LorenzMie
-from typing import Dict
+from typing import (List, Dict)
 import json
 
 
@@ -44,7 +44,7 @@ class LMWidget(QFrame):
                 getattr(self, name).setValue(value)
 
     @pyqtProperty(list)
-    def fixed(self) -> list:
+    def fixed(self) -> List[str]:
         return [c.objectName() for c in self.controls if c.fixed()]
 
     @fixed.setter
