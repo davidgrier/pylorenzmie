@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
+from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QRectF)
 import numpy as np
 from typing import Optional
 
@@ -21,13 +21,21 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
     def _configurePlot(self) -> None:
         self.setBackground('w')
-        self.image = pg.ImageItem(border=pg.mkPen('k', width=2))
+        pen = pg.mkPen('k', width=2)
+        self.image = pg.ImageItem(border=pen)
         self.image.axisOrder = 'row-major'
+        '''
         options = dict(enableMenu=False,
                        enableMouse=False,
                        invertY=False,
                        lockAspect=True)
         self.addViewBox(**options).addItem(self.image)
+        '''
+        plot = self.addPlot(row=0, col=0) #, **options)
+        plot.addItem(self.image)
+        plot.getAxis('bottom').setPen(pen)
+        plot.getAxis('left').setPen(pen)
+        plot.setAspectLocked()
         self.roi = pg.CircleROI([0, 0],
                                 radius=self._radius,
                                 parent=self.image)
@@ -55,6 +63,8 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     def data(self, data):
         self._data = data
         self.image.setImage(data)
+        h, w = data.shape
+        self.image.setRect(QRectF(0, 0, w, h))
         self.roi.setPos([0, 0])
         self.roi.setSize([200, 200])
 
@@ -77,6 +87,11 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         pos = self.roi.pos()
         pos[1] = y_p - self._radius
         self.roi.setPos(pos)
+
+    def rect(self) -> QRectF:
+        pos = self.roi.pos()
+        size = self.roi.size()
+        return QRectF(*pos, *size)
 
 
 def example():
