@@ -9,13 +9,13 @@ from typing import Dict
 
 class FitWidget(pg.GraphicsLayoutWidget):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._configurePlot()
         self.optimizer = Optimizer()
         self.fraction = 0.5
 
-    def _configurePlot(self):
+    def _configurePlot(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
         self.setBackground('w')
         pen = pg.mkPen('k', width=2)
@@ -48,7 +48,8 @@ class FitWidget(pg.GraphicsLayoutWidget):
         mask[data == np.max(data)] = False
         return mask
 
-    def optimize(self, data: np.ndarray,
+    def optimize(self,
+                 data: np.ndarray,
                  coords: np.ndarray) -> pd.Series:
         mask = self.mask(data)
         coords = coords.reshape((2, -1))
