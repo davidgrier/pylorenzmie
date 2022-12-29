@@ -4,12 +4,12 @@
 import cv2
 import numpy as np
 from pylorenzmie.utilities import (azistd, coordinates)
+from pylorenzmie.lmtool.LMWidget import LMWidget
 import json
-
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog)
 from PyQt5 import uic
-from typing import (Optional, Union)
+from typing import (Type, Optional, Union)
 import logging
 
 
@@ -32,24 +32,32 @@ class LMTool(QMainWindow):
     uifile = 'LMTool.ui'
 
     def __init__(self,
+                 controls: Type[LMWidget],
                  filename: Optional[str] = None,
                  background: Union[str, float, None] = None):
         super(LMTool, self).__init__()
         uic.loadUi(self.uifile, self)
-        self._setupTheory()
+        self._setupTheory(controls())
         self.readHologram(filename)
         self._connectSignals()
 
-    def _setupTheory(self):
-        model = type(self.profileWidget.model)()
-        self.fitWidget.optimizer.model = model
+    def _setupTheory(self, controls: LMWidget) -> None:
+        layout = self.controls.parent().layout()
+        layout.replaceWidget(self.controls, controls)
+        self.controls.close()
+        self.controls = controls
+        self.profileWidget.model = self.controls.cls()
+        self.profileWidget.properties = self.controls.properties
+        self.profileWidget.radius = self.imageWidget.radius
+        self.fitWidget.model = self.controls.cls()
+        self.fitWidget.properties = self.controls.properties
 
-    @pyqtProperty(object)
-    def data(self):
+    @pyqtProperty(np.ndarray)
+    def data(self) -> np.ndarray:
         return self._data
 
     @data.setter
-    def data(self, data):
+    def data(self, data: np.ndarray) -> None:
         self._data = data / np.mean(data)
         self.coordinates = coordinates(data.shape, flatten=False)
         self.controls.x_p.setRange((0, data.shape[1]-1))
@@ -132,33 +140,13 @@ class LMTool(QMainWindow):
         logger.info(f'Finished!\n{result}')
         self.statusBar().showMessage('Optimization complete')
 
-    ###
-    #
-    # Routines for loading data
-    #
-    def setupData(self, data, background):
-        if type(data) is str:
-            self.openHologram(data)
-        else:
-            self.data = data.astype(float)
-        if not self.autonormalize:
-            if type(background) is str:
-                self.openBackground(background)
-            elif type(background) is int:
-                self.frame.background = background
+    def setControls(self, controls):
 
-    @pyqtSlot()
-    def openBackground(self, filename=None):
-        if filename is None:
-            filename, _ = QFileDialog.getOpenFileName(
-                self, 'Open Background', '', 'Images (*.png)')
-        background = cv2.imread(filename, 0).astype(float)
-        if background is None:
-            return
-        self.frame.background = background
+        self._setupTheory()
 
 
 def main():
+    from pylorenzmie.lmtool.ALMWidget import ALMWidget
     from PyQt5.QtWidgets import QApplication
     from pathlib import Path
     import sys
@@ -182,7 +170,7 @@ def main():
         background = int(background)
 
     app = QApplication(qt_args)
-    lmtool = LMTool(args.filename, background)
+    lmtool = LMTool(ALMWidget, args.filename, background)
     lmtool.show()
     sys.exit(app.exec_())
 

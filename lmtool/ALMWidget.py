@@ -5,7 +5,7 @@ from pylorenzmie.theory import AberratedLorenzMie
 class ALMWidget(LMWidget):
 
     cls = AberratedLorenzMie
-    uifile = 'ALMWidget.ui'
+    uiFile = 'ALMWidget.ui'
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

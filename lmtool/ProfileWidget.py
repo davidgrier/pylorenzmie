@@ -1,6 +1,6 @@
 import pyqtgraph as pg
 from PyQt5.QtCore import (Qt, pyqtProperty, pyqtSlot)
-from pylorenzmie.theory import AberratedLorenzMie as LorenzMie
+from pylorenzmie.theory import LorenzMie
 import numpy as np
 from typing import (Optional, Tuple, Dict)
 

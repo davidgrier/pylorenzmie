@@ -10,21 +10,21 @@ import json
 class LMWidget(QFrame):
 
     cls = LorenzMie
-    uifile = 'LMWidget.ui'
-    configfile = 'LMTool.json'
+    uiFile = 'LMWidget.ui'
+    configFile = 'LMTool.json'
 
     propertyChanged = pyqtSignal(str, float)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        uic.loadUi(self.uifile, self)
+        uic.loadUi(self.uiFile, self)
         self.model = self.cls()
         self._loadConfig()
         self._connectSignals()
         self.model.properties = self.properties
 
     def _loadConfig(self) -> None:
-        with open(self.configfile) as f:
+        with open(self.configFile) as f:
             config = json.load(f)
         self.setConfig(config)
 
