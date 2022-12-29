@@ -55,6 +55,9 @@
      <property name="text">
       <string>Parameter</string>
      </property>
+     <property name="buddy">
+      <cstring>checkbox</cstring>
+     </property>
     </widget>
    </item>
    <item row="0" column="1">
