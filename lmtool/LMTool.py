@@ -18,7 +18,6 @@ logger.setLevel(logging.INFO)
 
 '''
 To do
-* support for sampling which pixels to fit
 * saving parameters
 * correct normalization (currently it simply divides by the mean)
 * interactive residuals (currently only updates after fits)

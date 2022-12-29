@@ -12,6 +12,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         super().__init__(*args, **kwargs)
         self._configurePlot()
         self.optimizer = Optimizer()
+        self.fraction = 0.5
 
     def _configurePlot(self):
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -38,13 +39,26 @@ class FitWidget(pg.GraphicsLayoutWidget):
         cm = pg.colormap.getFromMatplotlib('bwr')
         self.residuals.setColorMap(cm)
 
+    def mask(self, data):
+        data = data.flatten()
+        mask = np.random.choice([True, False], data.size,
+                                p=[self.fraction, 1-self.fraction])
+        mask[data == np.max(data)] = False
+        return mask
+
     def optimize(self, data, coords):
-        self.optimizer.data = data.flatten()
-        self.optimizer.model.coordinates = coords.reshape((2, -1))
+        mask = self.mask(data)
+        coords = coords.reshape((2, -1))
+        self.optimizer.data = data.flatten()[mask]
+        self.optimizer.model.coordinates = coords[:, mask]
         result = self.optimizer.optimize()
+        self.optimizer.model.coordinates = coords
         hologram = self.optimizer.model.hologram().reshape(data.shape)
+        hologram = np.clip(hologram, np.min(data), np.max(data))
         self.fit.setImage(hologram)
-        self.residuals.setImage(data - hologram)
+        noise = self.optimizer.model.instrument.noise
+        self.residuals.setImage((data - hologram)/noise)
+        self.residuals.setLevels((-10, 10))
         self.fit.setRect(self.rect)
         self.residuals.setRect(self.rect)
         return result
