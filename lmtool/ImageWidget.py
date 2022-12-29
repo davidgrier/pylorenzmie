@@ -24,23 +24,19 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         pen = pg.mkPen('k', width=2)
         self.image = pg.ImageItem(border=pen)
         self.image.axisOrder = 'row-major'
-        '''
-        options = dict(enableMenu=False,
-                       enableMouse=False,
-                       invertY=False,
-                       lockAspect=True)
-        self.addViewBox(**options).addItem(self.image)
-        '''
-        plot = self.addPlot(row=0, col=0) #, **options)
+        plot = self.addPlot(row=0, col=0)
         plot.addItem(self.image)
         plot.getAxis('bottom').setPen(pen)
         plot.getAxis('left').setPen(pen)
         plot.setAspectLocked()
+        pen = pg.mkPen('w', width=3)
+        hpen = pg.mkPen('y', width=3)
         self.roi = pg.CircleROI([0, 0],
+                                pen=pen, handlePen=pen,
+                                hoverPen=hpen, handleHoverPen=hpen,
                                 radius=self._radius,
                                 parent=self.image)
-        self.roi.setPen(pg.mkPen('w', width=3))
-        self.roi.hoverPen = pg.mkPen('y', width=3)
+        pen = pg.mkPen('w', width=3)
 
     def _connectSignals(self) -> None:
         self.roi.sigRegionChangeFinished.connect(self.handleChange)
