@@ -31,9 +31,8 @@ class Optimizer(LMObject):
         otherwise use least-squares optimization
         Default: False (least-squares)
     fixed : list of str
-        Names of properties of the model that should not vary during fitting.
-        Default: ['wavelength', 'magnification', 'pixel_pitch',
-                  'numerical_aperture', 'n_m', 'k_p']
+        Names of properties of the model that should remain constant
+        during fitting
     variables : list of str
         Names of properties of the model that will be optimized.
         Default: All model.properties that are not fixed
@@ -56,15 +55,14 @@ class Optimizer(LMObject):
                  model: Optional[LorenzMie] = None,
                  data: Optional[np.ndarray] = None,
                  robust: bool = False,
-                 fixed: Optional[List[str]] = None,
+                 fixed: List[str] = [],
                  settings: Optional[Dict] = None,
                  **kwargs) -> None:
         self.model = model or LorenzMie(**kwargs)
         self.data = data
         self.settings = settings
         self.robust = robust
-        defaults = 'wavelength magnification pixel_pitch numerical_aperture n_m k_p'.split()
-        self.fixed = fixed or defaults
+        self.fixed = fixed
         self._result = None
 
     @property
@@ -93,7 +91,7 @@ class Optimizer(LMObject):
         '''
         if settings is None:
             settings = {'method': 'lm',     # (a)
-                        'ftol': 1e-3,       # default: 1e-8
+                        'ftol': 1e-4,       # default: 1e-8
                         'xtol': 1e-6,       # default: 1e-8
                         'gtol': 1e-6,       # default: 1e-8
                         'loss': 'linear',   # (b)
@@ -109,24 +107,27 @@ class Optimizer(LMObject):
     @robust.setter
     def robust(self, robust: bool) -> None:
         if robust:
-            self.settings['method'] = 'dogbox'
+            self.settings['method'] = 'trf'
             self.settings['loss'] = 'cauchy'
         else:
             self.settings['method'] = 'lm'
             self.settings['loss'] = 'linear'
 
     @property
-    def fixed(self) -> list:
+    def fixed(self) -> List[str]:
         '''list of fixed properties'''
         return self._fixed
 
     @fixed.setter
-    def fixed(self, fixed: list) -> None:
+    def fixed(self, fixed: List[str]) -> None:
         self._fixed = fixed
+        self._variables = [p for p in self.model.properties
+                           if p not in fixed]
 
     @property
-    def variables(self) -> list:
-        return [p for p in self.model.properties if p not in self.fixed]
+    def variables(self) -> List[str]:
+        '''list of variable properties'''
+        return self._variables
 
     @property
     def result(self) -> pd.Series:
@@ -225,14 +226,19 @@ def test_case():
     data = model.hologram()
     data += model.instrument.noise * np.random.normal(size=shape).flatten()
 
-    a = Optimizer(model=model)
+    fixed = ('wavelength magnification pixel_pitch'
+             ' numerical_aperture n_m k_p').split()
+    a = Optimizer(model=model, fixed=fixed)
+    settings = a.settings
+    settings['method'] = 'trf'
+    settings['loss'] = 'cauchy'
+    settings['ftol'] = None
+    settings['xtol'] = 1e-3
+    settings['gtol'] = None
+    settings['verbose'] = 2
     a.data = data
     result = a.optimize()
     print(result)
-
-    # model.properties has been updated
-    # model.properties = result.loc[a.variables]
-    # print(model.properties)
 
 
 if __name__ == '__main__':
