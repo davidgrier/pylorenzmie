@@ -4,7 +4,7 @@ import logging
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.WARNING)
 
 
 class OptimizerWidget(ParameterTree):
@@ -14,6 +14,7 @@ class OptimizerWidget(ParameterTree):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._buildTree()
+        self._consistencyCheck()
         self._connectSignals()
 
     def _buildTree(self):
@@ -25,10 +26,10 @@ class OptimizerWidget(ParameterTree):
              'values': {'Levenberg-Marquardt': 'lm',
                         'Dogbox': 'dogbox',
                         'Trust Region Reflective': 'trf'},
-             'default': 'lm'},
+             'default': 'trf'},
             {'name': 'loss', 'type': 'list',
              'values': 'linear soft_l1 huber cauchy arctan'.split(),
-             'default': 'linear'},
+             'default': 'soft_l1'},
             {'name': 'ftol', 'type': 'float',
              'value': 1e-3, 'limits': [1e-8, 1e-2], 'default': 1e-3},
             {'name': 'xtol', 'type': 'float',
@@ -43,6 +44,15 @@ class OptimizerWidget(ParameterTree):
                                        children=p)
         self.setParameters(self.params, showTop=False)
 
+    def _consistencyCheck(self):
+        if self.params.child('method').value() == 'lm':
+            widget = self.params.child('loss')
+            widget.setValue('linear')
+            widget.setOpts(enabled=False)
+            self.settingChanged.emit('loss', 'linear')
+        else:
+            self.params.child('loss').setOpts(enabled=True)
+
     def _connectSignals(self):
         p = self.params.child('method')
         p.sigValueChanged.connect(self._updateLoss)
@@ -51,15 +61,7 @@ class OptimizerWidget(ParameterTree):
 
     @pyqtSlot(object, object)
     def _updateLoss(self, widget, value):
-        widget = self.params.child('loss')
-        logger.debug('updating loss')
-        if value == 'lm':
-            widget.setValue('linear')
-            widget.setOpts(enabled=False)
-            logger.debug(f'emitting {widget.name()} {value}')
-            self.settingChanged.emit('loss', 'linear')
-        else:
-            widget.setOpts(enabled=True)
+        self._consistencyCheck()
 
     @pyqtSlot(object, object)
     def _handleValueChanged(self, widget, value):
@@ -77,7 +79,7 @@ class OptimizerWidget(ParameterTree):
                 widget = self.params.child(name)
                 widget.setValue(value)
             except KeyError:
-                logger.warn(f'{name} unknown')
+                logger.debug(f'{name} unknown')
 
 
 def example():
