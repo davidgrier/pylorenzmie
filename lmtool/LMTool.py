@@ -28,14 +28,14 @@ To do
 
 class LMTool(QMainWindow):
 
-    uifile = 'LMTool.ui'
+    uiFile = 'LMTool.ui'
 
     def __init__(self,
                  controls: Type[LMWidget],
                  filename: Optional[str] = None,
                  background: Union[str, float, None] = None):
         super(LMTool, self).__init__()
-        uic.loadUi(self.uifile, self)
+        uic.loadUi(self.uiFile, self)
         self._setupTheory(controls())
         self.readHologram(filename)
         self._connectSignals()
@@ -92,7 +92,8 @@ class LMTool(QMainWindow):
         self.actionOpen.triggered.connect(self.readHologram)
         self.actionSave_Parameters.triggered.connect(self.saveParameters)
         self.actionOptimize.triggered.connect(self.optimize)
-        self.optimizerWidget.settingChanged.connect(self.fitWidget.setSetting)
+        connect = self.optimizerWidget.settingChanged.connect
+        connect(self.fitWidget.setSetting)
 
     def _updateProfile(self) -> None:
         x_p = self.controls.x_p.value()
