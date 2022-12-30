@@ -1,7 +1,7 @@
 import pyqtgraph as pg
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.theory import LorenzMie
-from PyQt5.QtCore import (pyqtProperty, QRectF)
+from PyQt5.QtCore import (pyqtProperty, QRectF, pyqtSlot)
 import numpy as np
 import pandas as pd
 from typing import Dict
@@ -13,7 +13,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         super().__init__(*args, **kwargs)
         self._configurePlot()
         self.optimizer = Optimizer()
-        self.fraction = 0.5
+        self.fraction = 0.25
 
     def _configurePlot(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -86,3 +86,10 @@ class FitWidget(pg.GraphicsLayoutWidget):
     @properties.setter
     def properties(self, properties: Dict[str, float]) -> None:
         self.optimizer.model.properties = properties
+
+    @pyqtSlot(str, object)
+    def setSetting(self, name, value):
+        if name == 'fraction':
+            self.fraction = value
+        else:
+            self.optimizer.settings[name] = value

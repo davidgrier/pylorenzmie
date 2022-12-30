@@ -21,8 +21,9 @@ class ProfileWidget(pg.PlotWidget):
     def _configurePlot(self) -> None:
         self.setBackground('w')
         self.showGrid(True, True, 0.2)
-        self.setLabel('bottom', 'r [pixels]')
-        self.setLabel('left', 'b(r)')
+        opts = {'font-size': '14pt', 'color': 'gray'}
+        self.setLabel('bottom', 'r [pixels]', **opts)
+        self.setLabel('left', 'b(r)', **opts)
         pen = pg.mkPen('k', width=3, style=Qt.DashLine)
         self.addLine(y=1, pen=pen)
         pen = pg.mkPen('k', width=3)

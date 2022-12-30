@@ -14,12 +14,11 @@ import logging
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 
 '''
 To do
 * save results from fits, including metadata
-* control panel for fitter, including choice of loss for robust fitter
 * correct normalization (currently it simply divides by the mean)
 * interactive residuals (currently only updates after fits)
 * support for cuda-accelerated kernels.
@@ -51,6 +50,7 @@ class LMTool(QMainWindow):
         self.profileWidget.radius = self.imageWidget.radius
         self.fitWidget.model = self.controls.cls()
         self.fitWidget.properties = self.controls.properties
+        self.optimizerWidget.settings = self.fitWidget.optimizer.settings
 
     @pyqtProperty(np.ndarray)
     def data(self) -> np.ndarray:
@@ -92,6 +92,7 @@ class LMTool(QMainWindow):
         self.actionOpen.triggered.connect(self.readHologram)
         self.actionSave_Parameters.triggered.connect(self.saveParameters)
         self.actionOptimize.triggered.connect(self.optimize)
+        self.optimizerWidget.settingChanged.connect(self.fitWidget.setSetting)
 
     def _updateProfile(self) -> None:
         x_p = self.controls.x_p.value()
