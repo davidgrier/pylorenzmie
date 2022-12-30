@@ -23,6 +23,7 @@ To do
 * interactive residuals (currently only updates after fits)
 * support for cuda-accelerated kernels.
 * dark count
+* reorganize so that implementation is separate from executable
 '''
 
 
@@ -142,7 +143,7 @@ class LMTool(QMainWindow):
         self.statusBar().showMessage('Optimization complete', 2000)
 
 
-def main():
+def lmtool():
     from pylorenzmie.lmtool.ALMWidget import ALMWidget
     from PyQt5.QtWidgets import QApplication
     from pathlib import Path
@@ -173,4 +174,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    lmtool()
