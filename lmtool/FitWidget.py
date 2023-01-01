@@ -41,7 +41,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         plots[2].setXLink(plots[0])
         plots[1].setYLink(plots[0])
         plots[2].setYLink(plots[0])
-        cm = pg.colormap.getFromMatplotlib('bwr')
+        cm = pg.colormap.get('CET-D1')
         self.residuals.setColorMap(cm)
         self.residuals.setLevels((-10, 10))
 
