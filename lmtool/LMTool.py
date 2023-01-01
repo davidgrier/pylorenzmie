@@ -24,6 +24,7 @@ To do
 * support for cuda-accelerated kernels.
 * dark count
 * reorganize so that implementation is separate from executable
+* toml config file
 '''
 
 
@@ -91,7 +92,9 @@ class LMTool(QMainWindow):
         self.imageWidget.radiusChanged.connect(self._handleRadiusChanged)
         self.controls.propertyChanged.connect(self._handlePropertyChanged)
         self.actionOpen.triggered.connect(self.readHologram)
-        self.actionSave_Parameters.triggered.connect(self.saveParameters)
+        self.actionSaveParameters.triggered.connect(self.saveParameters)
+        self.saveResult.triggered.connect(self.fitWidget.saveResult)
+        self.saveResultAs.triggered.connect(self.fitWidget.saveResultAs)
         self.actionOptimize.triggered.connect(self.optimize)
         connect = self.optimizerWidget.settingChanged.connect
         connect(self.fitWidget.setSetting)
