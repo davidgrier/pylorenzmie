@@ -148,7 +148,8 @@ class Optimizer(LMObject):
 
     @property
     def metadata(self):
-        metadata = {key: self.model.properties[key] for key in self.fixed}
+        metadata = {key: self.model.properties[key] for key in self.fixed
+                    if key in self.model.properties}
         metadata['settings'] = self.settings
         return pd.Series(metadata)
 

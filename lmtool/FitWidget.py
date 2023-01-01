@@ -2,9 +2,12 @@ import pyqtgraph as pg
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.theory import LorenzMie
 from PyQt5.QtCore import (pyqtProperty, QRectF, pyqtSlot)
+from PyQt5.QtWidgets import QFileDialog
+from pathlib import Path
+from datetime import datetime
 import numpy as np
 import pandas as pd
-from typing import Dict
+from typing import (Optional, Dict)
 
 
 class FitWidget(pg.GraphicsLayoutWidget):
@@ -14,6 +17,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self._configurePlot()
         self.optimizer = Optimizer()
         self.fraction = 0.25
+        self.result = None
 
     def _configurePlot(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -55,7 +59,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         coords = coords.reshape((2, -1))
         self.optimizer.data = data.flatten()[mask]
         self.optimizer.model.coordinates = coords[:, mask]
-        result = self.optimizer.optimize()
+        self.result = self.optimizer.optimize()
         self.optimizer.model.coordinates = coords
         hologram = self.optimizer.model.hologram().reshape(data.shape)
         hologram = np.clip(hologram, np.min(data), np.max(data))
@@ -64,7 +68,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.residuals.setImage((data - hologram)/noise)
         self.fit.setRect(self.rect)
         self.residuals.setRect(self.rect)
-        return result
+        return self.result
 
     def setData(self, data: np.ndarray, rect: QRectF) -> None:
         self.region.setImage(data)
@@ -93,3 +97,23 @@ class FitWidget(pg.GraphicsLayoutWidget):
             self.fraction = value
         else:
             self.optimizer.settings[name] = value
+
+    def filename(self) -> str:
+        directory = Path('~/data').expanduser()
+        directory.mkdir(exist_ok=True)
+        timestamp = datetime.now().strftime('%m_%d_%Y-%H_%M_%S')
+        return str(directory / f'lmtool_{timestamp}.h5')
+
+    @pyqtSlot()
+    def saveResult(self, filename: Optional[str] = None) -> None:
+        filename = filename or self.filename()
+        self.result.to_hdf(filename, 'result', mode='w')
+        self.optimizer.metadata.to_hdf(filename, 'metadata')
+
+    @pyqtSlot()
+    def saveResultAs(self) -> None:
+        get = QFileDialog.getSaveFileName
+        filename, _ = get(self, 'Save Results',
+                          self.filename(), 'HDF5 (*.h5)')
+        if filename is not None:
+            self.saveResult(filename)
