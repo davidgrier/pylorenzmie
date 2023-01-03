@@ -13,20 +13,17 @@ from typing import (Type, Optional, Union, Tuple)
 import logging
 
 
-
-
-
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
+
 '''
 To do
-* correct normalization (currently it simply divides by the mean)
 * interactive residuals (currently only updates after fits)
 * support for cuda-accelerated kernels.
-* dark count
 * reorganize so that implementation is separate from executable
 * toml config file
+* support for gamma
 '''
 
 
@@ -37,9 +34,10 @@ class LMTool(QMainWindow):
     def __init__(self,
                  controls: Type[LMWidget],
                  filename: Optional[str] = None,
-                 background: Union[str, float, None] = None):
+                 background: Optional[float] = None):
         super(LMTool, self).__init__()
         uic.loadUi(self.uiFile, self)
+        self.background = background or 100.
         self._setupTheory(controls())
         self.readHologram(filename)
         self._connectSignals()
@@ -75,7 +73,7 @@ class LMTool(QMainWindow):
 
     @data.setter
     def data(self, data: np.ndarray) -> None:
-        self._data = data / np.mean(data)
+        self._data = data / self.background
         self.coordinates = coordinates(data.shape, flatten=False)
         self.controls.x_p.setRange((0, data.shape[1]-1))
         self.controls.y_p.setRange((0, data.shape[0]-1))
@@ -178,7 +176,7 @@ def lmtool():
 
     background = args.background
     if background is not None and background.isdigit():
-        background = int(background)
+        background = float(background)
 
     app = QApplication(qt_args)
     lmtool = LMTool(ALMWidget, args.filename, background)
