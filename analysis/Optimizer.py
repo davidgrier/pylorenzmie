@@ -65,6 +65,9 @@ class Optimizer(LMObject):
         self.fixed = fixed
         self._result = None
 
+    #
+    # Properties that control the fitting process
+    #
     @property
     def settings(self) -> dict:
         return self._settings
@@ -102,10 +105,11 @@ class Optimizer(LMObject):
 
     @property
     def robust(self) -> bool:
-        return self.settings['loss'] in ['soft_l1', 'huber', 'cauchy']
+        return self.settings['loss'] != 'linear'
 
     @robust.setter
     def robust(self, robust: bool) -> None:
+        '''Convenience property for selecting robust fitting'''
         if robust:
             self.settings['method'] = 'trf'
             self.settings['loss'] = 'cauchy'
@@ -129,9 +133,12 @@ class Optimizer(LMObject):
         '''list of variable properties'''
         return self._variables
 
+    #
+    # Properties resulting from optimization
+    #
     @property
     def result(self) -> pd.Series:
-        '''Parse result into pandas.Series'''
+        '''Optimized properties formatted as a pandas.Series'''
         if self._result is None:
             return None
         a = self.variables
@@ -148,13 +155,15 @@ class Optimizer(LMObject):
 
     @property
     def metadata(self):
+        '''Fixed properties and fit settings'''
         metadata = {key: self.model.properties[key] for key in self.fixed
                     if key in self.model.properties}
-        metadata['settings'] = self.settings
+        metadata.update(self.settings)
         return pd.Series(metadata)
 
     @property
     def properties(self):
+        '''Properties of the Optimizer object'''
         properties = dict(settings=self.settings,
                           fixed=self.fixed)
         properties.update(self.model.properties)
@@ -227,16 +236,15 @@ def test_case():
     data = model.hologram()
     data += model.instrument.noise * np.random.normal(size=shape).flatten()
 
-    fixed = ('wavelength magnification pixel_pitch'
-             ' numerical_aperture n_m k_p').split()
+    fixed = 'wavelength magnification numerical_aperture n_m k_p'.split()
     a = Optimizer(model=model, fixed=fixed)
     settings = a.settings
     settings['method'] = 'trf'
     settings['loss'] = 'cauchy'
-    settings['ftol'] = None
-    settings['xtol'] = 1e-3
+    settings['ftol'] = 1e-3
+    settings['xtol'] = None
     settings['gtol'] = None
-    settings['verbose'] = 2
+    # settings['verbose'] = 2
     a.data = data
     result = a.optimize()
     print(result)

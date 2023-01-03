@@ -8,6 +8,12 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from typing import (Optional, Dict)
+import warnings
+
+
+# Suppress pytables warnings while saving metadata strings
+warnings.filterwarnings('ignore',
+                        category=pd.io.pytables.PerformanceWarning)
 
 
 class FitWidget(pg.GraphicsLayoutWidget):
@@ -17,6 +23,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self._configurePlot()
         self.optimizer = Optimizer()
         self.fraction = 0.25
+        self.datafile = None
         self.result = None
 
     def _configurePlot(self) -> None:
@@ -99,16 +106,18 @@ class FitWidget(pg.GraphicsLayoutWidget):
             self.optimizer.settings[name] = value
 
     def filename(self) -> str:
-        directory = Path('~/data').expanduser()
+        directory = Path('~/data/lmtool').expanduser()
         directory.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime('%m_%d_%Y-%H_%M_%S')
-        return str(directory / f'lmtool_{timestamp}.h5')
+        return str(directory / f'result_{timestamp}.h5')
 
     @pyqtSlot()
     def saveResult(self, filename: Optional[str] = None) -> None:
         filename = filename or self.filename()
         self.result.to_hdf(filename, 'result', mode='w')
-        self.optimizer.metadata.to_hdf(filename, 'metadata')
+        metadata = self.optimizer.metadata
+        metadata['datafile'] = self.datafile
+        metadata.to_hdf(filename, 'metadata')
 
     @pyqtSlot()
     def saveResultAs(self) -> None:
