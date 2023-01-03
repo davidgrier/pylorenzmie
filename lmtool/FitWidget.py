@@ -119,10 +119,20 @@ class FitWidget(pg.GraphicsLayoutWidget):
         metadata['datafile'] = self.datafile
         metadata.to_hdf(filename, 'metadata')
 
+    def saveJson(self, filename: str) -> None:
+        s = pd.concat([self.result, self.optimizer.metadata])
+        s['datafile'] = self.datafile
+        s.to_json(filename, indent=4)
+
     @pyqtSlot()
     def saveResultAs(self) -> None:
         get = QFileDialog.getSaveFileName
         filename, _ = get(self, 'Save Results',
-                          self.filename(), 'HDF5 (*.h5)')
-        if filename is not None:
+                          self.filename(),
+                          'HDF5 (*.h5);;JSON (*.json)')
+        if filename is None:
+            return
+        if '.h5' in filename:
             self.saveResult(filename)
+        elif '.json' in filename:
+            self.saveJson(filename)
