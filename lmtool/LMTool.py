@@ -13,12 +13,17 @@ from typing import (Type, Optional, Union, Tuple)
 import logging
 
 
+import pandas
+import warnings
+warnings.filterwarnings('ignore',
+                        category=pandas.io.pytables.PerformanceWarning)
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 '''
 To do
-* save results from fits, including metadata
 * correct normalization (currently it simply divides by the mean)
 * interactive residuals (currently only updates after fits)
 * support for cuda-accelerated kernels.
@@ -54,6 +59,19 @@ class LMTool(QMainWindow):
         self.fitWidget.properties = self.controls.properties
         self.optimizerWidget.settings = self.fitWidget.optimizer.settings
 
+    def _connectSignals(self) -> None:
+        self.imageWidget.roiChanged.connect(self._handleROIChanged)
+        self.imageWidget.radiusChanged.connect(self._handleRadiusChanged)
+        self.controls.propertyChanged.connect(self._handlePropertyChanged)
+        self.actionOpen.triggered.connect(self.readHologram)
+        self.actionSaveParameters.triggered.connect(self.saveParameters)
+        self.saveResult.triggered.connect(self.fitWidget.saveResult)
+        self.saveResultAs.triggered.connect(self.fitWidget.saveResultAs)
+        self.actionRobust.toggled.connect(self.setRobust)
+        self.actionOptimize.triggered.connect(self.optimize)
+        connect = self.optimizerWidget.settingChanged.connect
+        connect(self.fitWidget.setSetting)
+
     @pyqtProperty(np.ndarray)
     def data(self) -> np.ndarray:
         return self._data
@@ -72,6 +90,7 @@ class LMTool(QMainWindow):
         if filename is None:
             get = QFileDialog.getOpenFileName
             filename, _ = get(self, 'Open Hologram', '', 'Images (*.png)')
+        self.fitWidget.datafile = filename
         if filename is None:
             return
         self.data = cv2.imread(filename, 0).astype(float)
@@ -86,18 +105,6 @@ class LMTool(QMainWindow):
         properties = self.controls.properties
         with open(filename, 'w') as f:
             json.dump(properties, f, indent=4, sort_keys=True)
-
-    def _connectSignals(self) -> None:
-        self.imageWidget.roiChanged.connect(self._handleROIChanged)
-        self.imageWidget.radiusChanged.connect(self._handleRadiusChanged)
-        self.controls.propertyChanged.connect(self._handlePropertyChanged)
-        self.actionOpen.triggered.connect(self.readHologram)
-        self.actionSaveParameters.triggered.connect(self.saveParameters)
-        self.saveResult.triggered.connect(self.fitWidget.saveResult)
-        self.saveResultAs.triggered.connect(self.fitWidget.saveResultAs)
-        self.actionOptimize.triggered.connect(self.optimize)
-        connect = self.optimizerWidget.settingChanged.connect
-        connect(self.fitWidget.setSetting)
 
     def _updateProfile(self) -> None:
         x_p = self.controls.x_p.value()
@@ -132,6 +139,12 @@ class LMTool(QMainWindow):
             return self.data[sy, sx], self.imageWidget.rect()
         else:
             return self.data[sy, sx], self.coordinates[:, sy, sx]
+
+    @pyqtSlot(bool)
+    def setRobust(self, state: bool) -> None:
+        optimizer = self.fitWidget.optimizer
+        optimizer.robust = state
+        self.optimizerWidget.settings = optimizer.settings
 
     @pyqtSlot()
     def optimize(self) -> None:
