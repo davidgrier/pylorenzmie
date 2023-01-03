@@ -13,10 +13,7 @@ from typing import (Type, Optional, Union, Tuple)
 import logging
 
 
-import pandas
-import warnings
-warnings.filterwarnings('ignore',
-                        category=pandas.io.pytables.PerformanceWarning)
+
 
 
 logger = logging.getLogger(__name__)
