@@ -8,10 +8,10 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 from typing import (Optional, Dict)
-import warnings
 
 
 # Suppress pytables warnings while saving metadata strings
+import warnings
 warnings.filterwarnings('ignore',
                         category=pd.io.pytables.PerformanceWarning)
 
@@ -79,7 +79,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
 
     def setData(self, data: np.ndarray, rect: QRectF) -> None:
         self.region.setImage(data)
-        self.region.setRect(rect)
+        self.region.setOpts(rect=rect, update=True)
         self.rect = rect
 
     @pyqtProperty(LorenzMie)
