@@ -21,9 +21,10 @@ logger.setLevel(logging.WARNING)
 To do
 * interactive residuals (currently only updates after fits)
 * support for cuda-accelerated kernels.
-* reorganize so that implementation is separate from executable
+* reorganize: subdirectory for widget implementations
 * toml config file
 * support for gamma
+* estimator
 '''
 
 
