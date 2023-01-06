@@ -1,8 +1,8 @@
-from pylorenzmie.lib import LMObject
-from pylorenzmie.utilities import (aziavg, Circletransform)
+from pylorenzmie.lib import (LMObject, aziavg, CircleTransform)
 import numpy as np
 import trackpy as tp
 import pandas as pd
+from typing import Optional
 
 
 class Localizer(LMObject):
@@ -28,30 +28,39 @@ class Localizer(LMObject):
     '''
 
     def __init__(self,
-                 diameter=None,
-                 nfringes=None,
-                 maxrange=None,
-                 **kwargs):
+                 diameter: Optional[int] = None,
+                 nfringes: Optional[int] = None,
+                 maxrange: Optional[int] = None,
+                 **kwargs) -> None:
         self.diameter = diameter or 31
         self.nfringes = nfringes or 20
         self.maxrange = maxrange or 400
-        self._circletransform = Circletransform()
+        self._circletransform = CircleTransform()
+        self.detect = self.localize
 
     @LMObject.properties.fget
     def properties(self) -> dict:
         keys = 'nfringes maxrange diameter'.split()
         return {k: getattr(self, k) for k in keys}
 
-    def detect(self, image, **kwargs):
+    def localize(self,
+                 image: np.ndarray,
+                 diameter: Optional[int] = None,
+                 nfringes: Optional[int] = None,
+                 **kwargs) -> pd.DataFrame:
         '''
         Localize features in normalized holographic microscopy images
 
         Parameters
         ----------
-        image : array_like
+        image : numpy.ndarray
             image data
+        diameter : Optional[int]
+            typical size of feature [pixels]
+        nfringes : Optional[int]
+            number of fringes to enclose in bounding box
 
-        detect() also accepts all of the keyword arguments
+        localize() also accepts all of the keyword arguments
         for trackpy.locate()
 
         Returns
@@ -60,35 +69,55 @@ class Localizer(LMObject):
            x_p, y_p, bbox
            bbox: ((x0, y0), w, h)
         '''
+        diameter = diameter or self.diameter
+        nfringes = nfringes or self.nfringes
+
         a = self._circletransform.transform(image)
-        features = tp.locate(a, self.diameter, characterize=False, **kwargs)
+        features = tp.locate(a, diameter, characterize=False, **kwargs)
 
         predictions = []
         for n, feature in features.iterrows():
             r_p = feature[['x', 'y']]
-            extent = self._extent(image, r_p)
+            b = aziavg(image, r_p) - 1.
+            ndx = np.where(np.diff(np.sign(b)))[0] + 1
+            toobig = len(ndx) <= nfringes
+            extent = self.maxrange if toobig else ndx[nfringes]
             r0 = tuple((r_p - extent/2).astype(int))
             bbox = (r0, extent, extent)
             prediction = dict(x_p=r_p[0], y_p=r_p[1], bbox=bbox)
             predictions.append(prediction)
         return pd.DataFrame(predictions)
 
-    def _extent(self, data, center):
-        '''Return radius of feature by counting diffraction fringes
 
-        Parameters
-        ----------
-        data : array_like
-            Normalized image data
-        center : tuple
-            (x_p, y_p) coordinates of feature center
+def example():
+    import cv2
+    import matplotlib
+    from matplotlib import pyplot as plt
+    from matplotlib.patches import Rectangle
+    from pathlib import Path
 
-        Returns
-        -------
-        extent : int
-            Extent of feature [pixels]
-        '''
-        b = aziavg(data, center) - 1.
-        ndx = np.where(np.diff(np.sign(b)))[0] + 1
-        toobig = len(ndx) <= self.nfringes
-        return self.maxrange if toobig else ndx[self.nfringes]
+    # Create a Localizer
+    localizer = Localizer()
+
+    # Normalized hologram
+    basedir = Path(__file__).parent.parent.resolve()
+    filename = str(basedir / 'docs' / 'tutorials'/ 'PS_silica.png')
+    b = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float) / 100.
+    print(filename)
+
+    # Use Localizer to identify features in the hologram
+    features = localizer.localize(b)
+    print(features)
+
+    # Show and report results
+    style = dict(fill=False, linewidth=3, edgecolor='r')
+    matplotlib.use('TkAgg')
+    fig, ax = plt.subplots()
+    ax.imshow(b, cmap='gray')
+    for bbox in features.bbox:
+        ax.add_patch(Rectangle(*bbox, **style))
+    plt.show()
+
+
+if __name__ == '__main__':
+    example()

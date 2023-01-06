@@ -3,7 +3,7 @@
 
 import cv2
 import numpy as np
-from pylorenzmie.utilities import (azistd, coordinates)
+from pylorenzmie.lib import (azistd, coordinates)
 from pylorenzmie.lmtool.LMWidget import LMWidget
 import json
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)

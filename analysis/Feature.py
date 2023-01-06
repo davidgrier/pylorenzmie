@@ -5,7 +5,7 @@ import numpy as np
 from typing import (Optional, List)
 from pylorenzmie.analysis import (Mask, Estimator, Optimizer)
 from pylorenzmie.theory import LorenzMie
-from pylorenzmie.utilities import coordinates
+from pylorenzmie.lib import coordinates
 
 
 class Feature(object):

@@ -360,7 +360,7 @@ class LorenzMie(LMObject):
 
 def example(cls=LorenzMie, **kwargs):
     import matplotlib.pyplot as plt
-    from pylorenzmie.utilities import coordinates
+    from pylorenzmie.lib import coordinates
     from pylorenzmie.theory import (Sphere, Instrument)
     from time import perf_counter
 
