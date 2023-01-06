@@ -6,7 +6,7 @@ except ModuleNotFoundError:
     from scipy.fftpack import (fft2, ifft2, fftshift)
 
 
-class Circletransform(object):
+class CircleTransform(object):
     '''Transform image to emphasize ring-like features
 
     Parameters
@@ -72,7 +72,7 @@ class Circletransform(object):
         '''
         # Orientational order parameter:
         # psi(r) = |\partial_x a + i \partial_y a|^2
-        psi = np.empty_like(image, dtype=np.complex)
+        psi = np.empty_like(image, dtype=complex)
         psi.real = savgol_filter(image, 13, 3, 1, axis=1)
         psi.imag = savgol_filter(image, 13, 3, 1, axis=0)
         psi *= psi
@@ -101,4 +101,4 @@ def circletransform(image: np.ndarray) -> np.ndarray:
     circletransform : np.ndarray
         transformed image
     '''
-    return Circletransform().transform(image)
+    return CircleTransform().transform(image)

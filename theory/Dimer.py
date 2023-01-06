@@ -39,7 +39,7 @@ class Dimer(Cluster):
 
 
 def example():
-    from pylorenzmie.utilities import coordinates
+    from pylorenzmie.lib import coordinates
     from pylorenzmie.theory import (Instrument, LorenzMie)
     import matplotlib.pyplot as plt
 

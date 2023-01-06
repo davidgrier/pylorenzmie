@@ -3,7 +3,7 @@ from pylorenzmie.lib import LMObject
 from typing import Optional
 import pandas as pd
 import numpy as np
-from pylorenzmie.utilities import aziavg
+from pylorenzmie.lib import aziavg
 from scipy.signal import (savgol_filter, argrelmin)
 from scipy.stats import sigmaclip
 from scipy.special import jn_zeros

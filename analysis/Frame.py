@@ -1,6 +1,5 @@
 from pylorenzmie.analysis import (Localizer, Feature)
-from pylorenzmie.lib import LMObject
-from pylorenzmie.utilities import coordinates as make_coordinates
+from pylorenzmie.lib import LMObject, coordinates as make_coordinates
 import pandas as pd
 import numpy as np
 from typing import (Optional, Tuple, List, Dict, TypeVar)

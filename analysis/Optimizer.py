@@ -225,7 +225,7 @@ class Optimizer(LMObject):
 
 
 def test_case():
-    from pylorenzmie.utilities import coordinates
+    from pylorenzmie.lib import coordinates
 
     shape = (201, 201)
     model = LorenzMie()
