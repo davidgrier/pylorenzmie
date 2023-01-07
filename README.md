@@ -11,10 +11,22 @@ composition, and location in three dimensions. This package extracts
 that information by fitting a recorded hologram to a generative model
 based on the Lorenz-Mie theory of light scattering.
 
-<img src="docs/tutorials/crop.png" alt="Typical Hologram" width="200"/>
+<img src="docs/tutorials/crop.png" alt="Typical Hologram"
+width="200"/>
+
+## Interactive particle tracking and characterization
+`pylorenzmie` includes a GUI application called `LMTool.py`
+for interacting with experimentally recorded holograms.
+
+<img src="docs/lmtool/LMTool_ImageWidget.png" alt="LMTool image
+screen" width="30%"/>
+<img src="docs/lmtool/LMTool_ProfileWidget.png" alt="LMTool profile
+screen" width="30%"/>
+<img src="docs/lmtool/LMTool_FitWidget.png" alt="LMTool fit
+screen" width="30%"/>
 
 ## Authors
-David G. Grier (New York University), Lauren Altman, Sanghyuk Lee, Fook Chiong Cheong, 
+David G. Grier (New York University), Lauren Altman, Sanghyuk Lee, Fook Chiong Cheong,
 Mark D. Hannel, Michael O'Brien, Jackie Sustiel
 
 ## Licensing.
@@ -25,7 +37,7 @@ Mark D. Hannel, Michael O'Brien, Jackie Sustiel
 1. S.-H. Lee, Y. Roichman, G.-R. Yi, S.-H. Kim, S.-M. Yang,
    A. van Blaaderen, P. van Oostrum and D. G. Grier,
    "Characterizing and tracking single colloidal particles with video
-   holographic microscopy," 
+   holographic microscopy,"
    _Optics Express_ **15**, 18275-18282 (2007).
 
 ### Lorenz-Mie theory of light scattering
