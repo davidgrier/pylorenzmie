@@ -1,5 +1,6 @@
 import numpy as np
 from functools import wraps
+from typing import Tuple
 
 
 __all__ = 'aziavg azistd azimedian azimad'.split()
@@ -20,7 +21,7 @@ def azimuthaloperator(func):
     return wrappedoperator
 
 
-def docstring(purpose):
+def docstring(purpose: str) -> str:
     parameters = '''
     Parameters
     ----------
@@ -41,7 +42,7 @@ def docstring(purpose):
 
 @azimuthaloperator
 @docstring('Azimuthal average')
-def aziavg(d, r):
+def aziavg(d: np.ndarray, r: np.ndarray) -> np.ndarray:
     '''
     avg: ndarray
         Average value of data as a function of distance from center
@@ -52,7 +53,7 @@ def aziavg(d, r):
 
 @azimuthaloperator
 @docstring('Azimuthal standard deviation')
-def azistd(d, r):
+def azistd(d: np.ndarray, r: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     '''
     avg, std: tuple of numpy.ndarray
         Azimuthal average and
@@ -67,7 +68,7 @@ def azistd(d, r):
 
 @azimuthaloperator
 @docstring('Azimuthal median')
-def azimedian(d, r):
+def azimedian(d: np.ndarray, r: np.ndarray) -> np.ndarray:
     '''
     med: numpy.ndarray
         Median value as a function of distance from center
@@ -78,7 +79,7 @@ def azimedian(d, r):
 
 @azimuthaloperator
 @docstring('Azimuthal median absolute deviation')
-def azimad(d, r):
+def azimad(d: np.ndarray, r: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     '''
     med, mad: tuple of numpy.ndarray
         Azimuthal median and
