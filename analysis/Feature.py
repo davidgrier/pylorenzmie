@@ -65,7 +65,7 @@ class Feature(object):
             saturated = (data == np.max(data))
             nan = np.isnan(data)
             infinite = np.isinf(data)
-            self.mask.exclude = (saturated or nan or infinite)
+            self.mask.exclude = saturated | nan | infinite
         self._data = data
 
     @property
@@ -101,9 +101,9 @@ class Feature(object):
     def optimize(self):
         self.optimizer.data = self.data[self.mask()]
         # The following nasty hack is required for cupy because
-        # opt.coordinates = self.coordinates[:,mask]
+        # opt.coordinates = self.coordinates[:,self.mask().ravel()]
         # yields garbled results on GPU. Memory organization?
-        ndx = np.nonzero(self.mask())
+        ndx = np.nonzero(self.mask().ravel())
         coordinates = np.take(self.coordinates, ndx, axis=1).squeeze()
         self.model.coordinates = coordinates
         return self.optimizer.optimize()
@@ -126,38 +126,38 @@ def example():
     filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
 
     # Normalized hologram
-    data = cv2.imread(filename, cv2.COLOR_GRAY).astype(float)
+    data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
     data /= 100.
 
     # Feature
-    a = Feature()
+    feature = Feature()
+    feature.data = data
+    feature.coordinates = coordinates(data.shape)
+    feature.mask.fraction = 0.25
 
-    # model properties
-    a.model.wavelength = 0.447
-    a.model.magnification = 0.048
-    a.model.n_m = 1.34
-
-    # pixel selection mask
-    a.mask.fraction = 0.25
-
-    a.data = data
-
-    # Pixel coordinates
-    a.coordinates = coordinates(data.shape)
+    # instrument properties
+    instrument = feature.model.instrument
+    instrument.wavelength = 0.447
+    instrument.magnification = 0.048
+    instrument.n_m = 1.34
 
     # Initial estimates for particle properties
-    p = a.model.particle
-    p.r_p = [data.shape[0]//2, data.shape[1]//2, 330.]
-    p.a_p = 1.1
-    p.n_p = 1.4
-    print(f'Initial estimates:\n{p}')
+    particle = feature.model.particle
+    particle.r_p = [data.shape[0]//2, data.shape[1]//2, 330.]
+    particle.a_p = 1.1
+    particle.n_p = 1.4
+    print(f'Initial estimates:\n{particle}')
+
+    feature.optimizer.variables = 'x_p y_p z_p a_p n_p'.split()
 
     # init dummy hologram for proper speed gauge
-    a.model.hologram()
+    feature.model.hologram()
+
+    # perform fit
     start = perf_counter()
-    a.optimize()
+    feature.optimize()
     delta = perf_counter() - start
-    print(f'Refined estimates:\n{p}')
+    print(f'Refined estimates:\n{particle}')
     print(f'Time to fit: {delta:.3f} s')
 
 

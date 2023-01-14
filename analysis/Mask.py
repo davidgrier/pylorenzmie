@@ -25,7 +25,7 @@ class Mask(object):
         Create new random mask
     '''
 
-    shape: Tuple[int, int]
+    shape: Optional[Tuple[int, int]] = None
     fraction: float = 0.1
     exclude: Optional[np.ndarray] = None
 
@@ -42,9 +42,10 @@ class Mask(object):
         return self._mask
 
     def _uniform(self) -> None:
-        p = self.fraction
         choice = np.random.choice
-        self._mask = choice([True, False], self.shape, [p, 1.-p])
+        self._mask = choice([True, False],
+                            size=self.shape,
+                            p=[self.fraction, 1.-self.fraction])
 
     def update(self) -> None:
         self._uniform()
@@ -54,7 +55,8 @@ class Mask(object):
 
 def example():
     shape = (5, 5)
-    mask = Mask(shape)
+    mask = Mask()
+    mask.shape = shape
     mask.fraction = 0.5
     print(mask)
     data = np.arange(25).reshape(shape)
