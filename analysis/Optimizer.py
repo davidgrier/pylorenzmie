@@ -133,6 +133,12 @@ class Optimizer(LMObject):
         '''list of variable properties'''
         return self._variables
 
+    @variables.setter
+    def variables(self, variables: List[str]) -> None:
+        self._variables = variables
+        self._fixed = [p for p in self.model.properties
+                       if p not in variables]
+
     #
     # Properties resulting from optimization
     #
