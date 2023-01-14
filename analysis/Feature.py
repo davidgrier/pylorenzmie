@@ -5,7 +5,6 @@ import numpy as np
 from typing import (Optional, List)
 from pylorenzmie.analysis import (Mask, Estimator, Optimizer)
 from pylorenzmie.theory import LorenzMie
-from pylorenzmie.lib import coordinates
 
 
 class Feature(object):
@@ -62,11 +61,11 @@ class Feature(object):
     @data.setter
     def data(self, data: np.ndarray) -> None:
         if data is not None:
+            self.mask.shape = data.shape
             saturated = (data == np.max(data))
             nan = np.isnan(data)
             infinite = np.isinf(data)
-            bad = (saturated | nan | infinite).flatten()
-            self.mask.exclude = np.nonzero(bad)[0]
+            self.mask.exclude = (saturated or nan or infinite)
         self._data = data
 
     @property
@@ -76,7 +75,6 @@ class Feature(object):
 
     @coordinates.setter
     def coordinates(self, coordinates):
-        self.mask.coordinates = coordinates
         self._coordinates = coordinates
 
     @property
@@ -101,13 +99,11 @@ class Feature(object):
         return properties
 
     def optimize(self):
-        mask = self.mask.selected
-        opt = self.optimizer
-        opt.data = self.data.ravel()[mask]
+        self.optimizer.data = self.data[self.mask()]
         # The following nasty hack is required for cupy because
         # opt.coordinates = self.coordinates[:,mask]
         # yields garbled results on GPU. Memory organization?
-        ndx = np.nonzero(mask)
+        ndx = np.nonzero(self.mask())
         coordinates = np.take(self.coordinates, ndx, axis=1).squeeze()
         self.model.coordinates = coordinates
         return self.optimizer.optimize()
@@ -121,13 +117,17 @@ class Feature(object):
 
 
 def example():
-    import os
+    from pathlib import Path
     import cv2
     from time import perf_counter
+    from pylorenzmie.lib import coordinates
 
-    THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-    path = (THIS_DIR, '..', 'docs', 'tutorials', 'crop.png')
-    TEST_IMAGE = os.path.join(*path)
+    basedir = Path(__file__).parent.parent.resolve()
+    filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
+
+    # Normalized hologram
+    data = cv2.imread(filename, cv2.COLOR_GRAY).astype(float)
+    data /= 100.
 
     # Feature
     a = Feature()
@@ -138,13 +138,8 @@ def example():
     a.model.n_m = 1.34
 
     # pixel selection mask
-    a.mask.distribution='radial'
-    a.mask.percentpix=0.1
+    a.mask.fraction = 0.25
 
-    # Normalized image data
-    data = cv2.imread(TEST_IMAGE)
-    data = cv2.cvtColor(data, cv2.COLOR_BGR2GRAY).astype(float)
-    data /= np.mean(data)
     a.data = data
 
     # Pixel coordinates
