@@ -1,11 +1,11 @@
 from dataclasses import dataclass
 from pylorenzmie.lib import LMObject
-from typing import Optional
+from typing import (Optional, Dict)
 import pandas as pd
 import numpy as np
 from pylorenzmie.lib import aziavg
-from scipy.signal import (savgol_filter, argrelmin)
-from scipy.stats import sigmaclip
+from scipy.signal import (argrelmin, argrelmax)
+from scipy.stats import siegelslopes
 from scipy.special import jn_zeros
 
 
@@ -33,8 +33,11 @@ class Estimator(LMObject):
     a_p: Optional[float] = None
     n_p: float = 1.5
 
+    def __post_init__(self) -> None:
+        self.predict = self.estimate
+
     @LMObject.properties.fget
-    def properties(self):
+    def properties(self) -> Dict[str, float]:
         props = 'x_p y_p z_p a_p n_p'.split()
         return {p: getattr(self, p) for p in props}
 
@@ -55,7 +58,7 @@ class Estimator(LMObject):
         self.profile = aziavg(feature.data, center) - 1.
         self.coordinates = feature.coordinates
 
-    def _estimate_z(self):
+    def _estimate_z(self) -> None:
         '''Estimate axial position of particle
 
         Particle is assumed to be at the center of curvature
@@ -63,27 +66,23 @@ class Estimator(LMObject):
         '''
         if self.z_p is not None:
             return
-        a = self.profile
-        rho = np.arange(len(a)) + 0.5
-        lap = savgol_filter(a, 11, 3, 2) + savgol_filter(a, 11, 3, 1)/rho
+        b = self.profile
+        nmax = argrelmax(b, order=5)
+        nmin = argrelmin(b, order=5)
+        xj = np.concatenate([np.sqrt(b[nmax])-1., 1.-np.sqrt(b[nmin])])
+        rj = np.concatenate(nmax + nmin)
+        good = xj > 0.
+        xj = xj[good]
+        rj = rj[good]
+        res = siegelslopes(1./xj, rj**2)
+        self.z_p = np.sqrt(res.intercept/res.slope)
 
-        good = np.abs(a) > self.noise
-        qsq = -lap[good] / a[good] / self.k**2
-        rho = rho[good]
-
-        good = (abs(qsq) > 0.01) & (abs(qsq) < 1)
-        rho = rho[good]
-        qsq = qsq[good]
-
-        zsq = rho**2 * (1./qsq - 1.)
-
-        self.z_p = np.sqrt(np.mean(sigmaclip(zsq).clipped))
-
-    def _estimate_center(self):
-        if (self.x_p is None) | (self.y_p is None):
+    def _estimate_xy(self) -> None:
+        '''Estimate in-plane position of particle'''
+        if (self.x_p is None) or (self.y_p is None):
             self.x_p, self.y_p = np.mean(self.coordinates, axis=1)
 
-    def _estimate_a(self):
+    def _estimate_a(self) -> None:
         '''Estimate radius of particle
 
         Model interference pattern as spherical wave
@@ -96,9 +95,10 @@ class Estimator(LMObject):
         a_p = np.median(jn_zeros(1, len(alpha_n)) * alpha_n) / self.k
         return 2. * self.magnification * a_p
 
-    def predict(self, feature=None):
+    def estimate(self, feature=None) -> pd.Series:
+        ''' Estimate particle properties '''
         if feature is None:
-            return None
+            return pd.Series()
         self._initialize(feature)
         self._estimate_center()
         self._estimate_z()
