@@ -8,9 +8,9 @@ __all__ = 'aziavg azistd azimedian azimad'.split()
 
 def azimuthaloperator(func):
     @wraps(func)
-    def wrappedoperator(data, center, *args, **kwargs):
-        x_p, y_p = center
+    def wrappedoperator(data, center=None, *args, **kwargs):
         ny, nx = data.shape
+        x_p, y_p = (nx/2., ny/2.) if center is None else center
         x = np.arange(nx) - x_p
         y = np.arange(ny) - y_p
 
@@ -27,8 +27,9 @@ def docstring(purpose: str) -> str:
     ----------
     data: numpy.ndarray
         Two-dimensional data set
-    center: (x, y)
-        Center of azimuthal average
+    center: Optional[Tuple(float, float)]
+        (x, y) center of azimuthal average
+        Default: center of data
 
     Returns
     -------'''
