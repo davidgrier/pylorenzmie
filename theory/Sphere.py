@@ -4,6 +4,10 @@
 from dataclasses import dataclass
 from pylorenzmie.theory import Particle
 import numpy as np
+from typing import Dict
+
+
+Properties = Dict[str, float]
 
 
 @dataclass
@@ -64,7 +68,7 @@ class Sphere(Particle):
         self.a_p = d_p/2.
 
     @Particle.properties.getter
-    def properties(self) -> dict:
+    def properties(self) -> Properties:
         return {**super().properties,
                 'a_p': self.a_p,
                 'n_p': self.n_p,
@@ -224,5 +228,5 @@ if __name__ == '__main__':  # pragma: no cover
     print(s.a_p, s.n_p)
     print(s.ab(1.339, 0.447).shape)
     start = perf_counter()
-    s.ab(1.339, .447)
+    s.ab(1.339, 0.447)
     print(perf_counter() - start)
