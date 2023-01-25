@@ -5,11 +5,7 @@ from numba import njit
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from typing import Optional
 import numpy as np
-import logging
 
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 np.seterr(all='raise')
 
@@ -18,13 +14,12 @@ class numbaLorenzMie(LorenzMie):
 
     method: str = 'numba'
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
 
     @staticmethod
     @njit(cache=True, fastmath=True, parallel=True)
     def pad(coordinates: Optional[np.ndarray]) -> None:
-        logger.debug('Setting coordinates')
         c = np.atleast_2d(0. if coordinates is None else coordinates)
         ndim, npts = c.shape
         if ndim > 3:
