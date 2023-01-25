@@ -8,7 +8,7 @@ class Cluster(Particle):
 
     particles: list = field(repr=False, default_factory=list)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.update()
 
     def __setattr__(self, key: str, value: Any) -> None:
