@@ -49,7 +49,7 @@ class Feature(object):
         self.model = model or LorenzMie()
         self.data = data
         self.coordinates = coordinates
-        self.estimator = Estimator()
+        self.estimator = Estimator(instrument=self.model.instrument)
         self.optimizer = Optimizer(model=self.model)
         self.optimizer.fixed = fixed or self.optimizer.fixed
 
