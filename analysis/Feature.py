@@ -117,20 +117,18 @@ class Feature(object):
 
 
 def example():
-    from pathlib import Path
     import cv2
     from time import perf_counter
     from pylorenzmie.lib import coordinates
+    from pathlib import Path
 
-    basedir = Path(__file__).parent.parent.resolve()
-    filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
+    feature = Feature()
 
     # Normalized hologram
+    basedir = Path(__file__).parent.parent.resolve()
+    filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
     data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
     data /= 100.
-
-    # Feature
-    feature = Feature()
     feature.data = data
     feature.coordinates = coordinates(data.shape)
     feature.mask.fraction = 0.25

@@ -9,7 +9,7 @@ import json
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog)
 from PyQt5 import uic
-from typing import (Type, Optional, Union, Tuple)
+from typing import (Type, Optional, Tuple)
 import logging
 
 

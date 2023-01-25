@@ -1,12 +1,15 @@
 from dataclasses import dataclass
-from pylorenzmie.lib import LMObject
-from typing import (Optional, Dict)
+from pylorenzmie.lib import (LMObject, aziavg)
+from pylorenzmie.theory import Instrument
 import pandas as pd
 import numpy as np
-from pylorenzmie.lib import aziavg
 from scipy.signal import (argrelmin, argrelmax)
-from scipy.stats import siegelslopes
 from scipy.special import jn_zeros
+from typing import (Optional, Union, List, Dict)
+
+
+Features = Union[List[np.ndarray], np.ndarray]
+Predictions = Union[List[pd.Series], pd.Series]
 
 
 @dataclass
@@ -24,11 +27,18 @@ class Estimator(LMObject):
 
     Methods
     -------
-    predict(feature) : pandasSeries
-        Returns estimated properties
+    estimate(feature, center): pandas.Series
+
+        Arguments
+        ---------
+        feature : numpy.ndarray
+
+        center : list-like
+
+    predict :
+        synonum for estimate for backward compatibility
     '''
-    x_p: Optional[float] = None
-    y_p: Optional[float] = None
+    instrument: Instrument
     z_p: Optional[float] = None
     a_p: Optional[float] = None
     n_p: float = 1.5
@@ -36,27 +46,24 @@ class Estimator(LMObject):
     def __post_init__(self) -> None:
         self.predict = self.estimate
 
-    @LMObject.properties.fget
+    @property
     def properties(self) -> Dict[str, float]:
-        props = 'x_p y_p z_p a_p n_p'.split()
-        return {p: getattr(self, p) for p in props}
+        return dict(z_p=self.z_p,
+                    a_p=self.a_p,
+                    n_p=self.n_p)
 
-    def _initialize(self, feature):
+    def _initialize(self, feature: np.ndarray) -> None:
         '''Prepare for estimation
 
         self.k: wavenumber in the medium [radian/pixels]
         self.noise: noise estimate from instrument
         self.profile: aximuthal average of data
         '''
-        if (feature is None) | (feature.data is None):
-            return
-        instrument = feature.model.instrument
-        self.k = instrument.wavenumber()
-        self.noise = instrument.noise
-        self.magnification = instrument.magnification
-        center = np.array(feature.data.shape) // 2
-        self.profile = aziavg(feature.data, center) - 1.
-        self.coordinates = feature.coordinates
+        self.k = self.instrument.wavenumber()
+        self.noise = self.instrument.noise
+        self.magnification = self.instrument.magnification
+        # NOTE: Allow to pass in profile without aziavg
+        self.profile = aziavg(feature)
 
     def _estimate_z(self) -> None:
         '''Estimate axial position of particle
@@ -69,18 +76,9 @@ class Estimator(LMObject):
         b = self.profile
         nmax = argrelmax(b, order=5)
         nmin = argrelmin(b, order=5)
-        xj = np.concatenate([np.sqrt(b[nmax])-1., 1.-np.sqrt(b[nmin])])
-        rj = np.concatenate(nmax + nmin)
-        good = xj > 0.
-        xj = xj[good]
-        rj = rj[good]
-        res = siegelslopes(1./xj, rj**2)
-        self.z_p = np.sqrt(res.intercept/res.slope)
-
-    def _estimate_xy(self) -> None:
-        '''Estimate in-plane position of particle'''
-        if (self.x_p is None) or (self.y_p is None):
-            self.x_p, self.y_p = np.mean(self.coordinates, axis=1)
+        rn = np.sort(np.concatenate(nmax + nmin))
+        zn = self.k / (2.*np.pi) * (rn[1:]**2 - rn[:-1]**2)
+        self.z_p = np.median(zn)
 
     def _estimate_a(self) -> None:
         '''Estimate radius of particle
@@ -93,14 +91,28 @@ class Estimator(LMObject):
         minima = argrelmin(self.profile)
         alpha_n = np.sqrt((self.z_p/minima)**2 + 1.)
         a_p = np.median(jn_zeros(1, len(alpha_n)) * alpha_n) / self.k
-        return 2. * self.magnification * a_p
+        self.a_p = 2. * self.magnification * a_p
 
-    def estimate(self, feature=None) -> pd.Series:
-        ''' Estimate particle properties '''
-        if feature is None:
-            return pd.Series()
+    def estimate(self, feature: Features) -> Predictions:
+        '''Estimate particle properties'''
+        if isinstance(feature, list):
+            return [self.estimate(this) for this in feature]
         self._initialize(feature)
-        self._estimate_center()
         self._estimate_z()
         self._estimate_a()
         return pd.Series(self.properties)
+
+
+def example():
+    import cv2
+
+    estimator = Estimator(Instrument())
+    basedir = estimator.directory.parent
+    filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
+    hologram = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+    hologram /= 100.
+    print(estimator.estimate(hologram))
+
+
+if __name__ == '__main__':
+    example()

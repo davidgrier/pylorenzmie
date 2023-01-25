@@ -3,6 +3,7 @@ from typing import (Optional, Any)
 import json
 import pandas as pd
 import numpy as np
+from pathlib import Path
 
 
 class LMObject(ABC):
@@ -88,3 +89,7 @@ class LMObject(ABC):
         series: pandas Series
         '''
         self.properties = series.to_dict()
+
+    @property
+    def directory(self):
+        return Path(__file__).parent.resolve()

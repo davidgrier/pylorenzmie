@@ -1,8 +1,12 @@
 from pylorenzmie.lib import (LMObject, aziavg, CircleTransform)
 import numpy as np
 import trackpy as tp
+# from scipy.signal import argrelmax
 import pandas as pd
-from typing import Optional
+from typing import (Optional, Union, List)
+
+Images = Union[List[np.ndarray], np.ndarray]
+Predictions = Union[List[pd.DataFrame], pd.DataFrame]
 
 
 class Localizer(LMObject):
@@ -13,47 +17,51 @@ class Localizer(LMObject):
     nfringes : int
         Number of interference fringes used to determine feature extent
         Default: 20
-    maxrange : int
-        Maximum extent of feature [pixels]
-        Default: 400
     diameter : int
         Scale of localized features [pixels]
         Default: 31
 
     Methods
     -------
-    detect(image) : list of dict
+    localize(image) : pandas.DataFrame | List[pandas.DataFrame]
         Returns centers and bounding boxes of features
         detected in image
+
+        Arguments
+        ---------
+        image: numpy.ndarray | List[numpy.ndarray]
+        diameter : int
+        nfringes : int
+
+    detect :
+        Synonym for localize for backward compatibility
     '''
 
     def __init__(self,
                  diameter: Optional[int] = None,
                  nfringes: Optional[int] = None,
-                 maxrange: Optional[int] = None,
                  **kwargs) -> None:
         self.diameter = diameter or 31
         self.nfringes = nfringes or 20
-        self.maxrange = maxrange or 400
         self._circletransform = CircleTransform()
         self.detect = self.localize
 
     @LMObject.properties.fget
     def properties(self) -> dict:
-        keys = 'nfringes maxrange diameter'.split()
+        keys = 'nfringes diameter'.split()
         return {k: getattr(self, k) for k in keys}
 
     def localize(self,
-                 image: np.ndarray,
+                 image: Images,
                  diameter: Optional[int] = None,
                  nfringes: Optional[int] = None,
                  **kwargs) -> pd.DataFrame:
         '''
         Localize features in normalized holographic microscopy images
 
-        Parameters
-        ----------
-        image : numpy.ndarray
+        Arguments
+        ---------
+        image : numpy.ndarray | list[numpy.ndarray]
             image data
         diameter : Optional[int]
             typical size of feature [pixels]
@@ -65,12 +73,15 @@ class Localizer(LMObject):
 
         Returns
         -------
-        results: pandas.DataFrame
+        predictions: pandas.DataFrame | list[pandas.DataFrame]
            x_p, y_p, bbox
            bbox: ((x0, y0), w, h)
         '''
         diameter = diameter or self.diameter
         nfringes = nfringes or self.nfringes
+
+        if isinstance(image, list):
+            return [self.localize(b, diameter, nfringes) for b in image]
 
         a = self._circletransform.transform(image)
         features = tp.locate(a, diameter, characterize=False, **kwargs)
@@ -78,10 +89,10 @@ class Localizer(LMObject):
         predictions = []
         for n, feature in features.iterrows():
             r_p = feature[['x', 'y']]
-            b = aziavg(image, r_p) - 1.
-            ndx = np.where(np.diff(np.sign(b)))[0] + 1
-            toobig = len(ndx) <= nfringes
-            extent = self.maxrange if toobig else ndx[nfringes]
+            b = aziavg(image, r_p)
+            p = b > 1.
+            ndx = np.where(p[1:] ^ p[:-1])[0] + 1
+            extent = ndx[nfringes] if len(ndx) > nfringes else ndx[-1]
             r0 = tuple((r_p - extent/2).astype(int))
             bbox = (r0, extent, extent)
             prediction = dict(x_p=r_p[0], y_p=r_p[1], bbox=bbox)
@@ -94,19 +105,18 @@ def example():
     import matplotlib
     from matplotlib import pyplot as plt
     from matplotlib.patches import Rectangle
-    from pathlib import Path
 
     # Create a Localizer
     localizer = Localizer()
 
     # Normalized hologram
-    basedir = Path(__file__).parent.parent.resolve()
-    filename = str(basedir / 'docs' / 'tutorials'/ 'PS_silica.png')
+    basedir = localizer.directory.parent
+    filename = str(basedir / 'docs' / 'tutorials'/ 'image0010.png')
     b = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float) / 100.
     print(filename)
 
     # Use Localizer to identify features in the hologram
-    features = localizer.localize(b)
+    features = localizer.localize(b, nfringes=20)
     print(features)
 
     # Show and report results
