@@ -4,6 +4,10 @@
 from dataclasses import dataclass, field
 import numpy as np
 from pylorenzmie.lib import LMObject
+from typing import Dict
+
+
+Properties = Dict[str, float]
 
 
 @dataclass
@@ -65,7 +69,7 @@ class Particle(LMObject):
         self.x_0, self.y_0, self.z_0 = r_0
 
     @LMObject.properties.getter
-    def properties(self) -> dict:
+    def properties(self) -> Properties:
         return {'x_p': self.x_p,
                 'y_p': self.y_p,
                 'z_p': self.z_p}
