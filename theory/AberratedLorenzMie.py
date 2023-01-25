@@ -4,6 +4,9 @@ import numpy as np
 from typing import (Tuple, Dict, Any)
 
 
+Properties = Dict[str, float]
+
+
 def ALM_Factory(base_class: LorenzMie):
 
     '''Returns a class definition for a Lorenz-Mie theory
@@ -38,7 +41,7 @@ def ALM_Factory(base_class: LorenzMie):
             self.spherical = spherical
 
         @LorenzMie.properties.getter
-        def properties(self) -> Dict:
+        def properties(self) -> Properties:
             return {**super().properties,
                     'spherical': self.spherical}
 
