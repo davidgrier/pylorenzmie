@@ -4,12 +4,10 @@
 from dataclasses import dataclass
 from pylorenzmie.lib import LMObject
 import numpy as np
-import logging
+from typing import Dict
 
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+Properties = Dict[str, float]
 
 
 @dataclass
@@ -53,7 +51,7 @@ class Instrument(LMObject):
     n_m: float = 1.340
 
     @LMObject.properties.getter
-    def properties(self) -> dict:
+    def properties(self) -> Properties:
         return {'n_m': self.n_m,
                 'wavelength': self.wavelength,
                 'magnification': self.magnification,
