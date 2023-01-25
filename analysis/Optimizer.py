@@ -1,16 +1,20 @@
 # -*- coding: utf-8 -*-
 
+from pylorenzmie.lib import LMObject
+from pylorenzmie.theory import LorenzMie
 import numpy as np
 from scipy.optimize import least_squares
 from scipy.linalg import svd
 import pandas as pd
-
+from typing import (Optional, List, Dict)
 import logging
+
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-class Optimizer(object):
+class Optimizer(LMObject):
     '''
     Fit generative light-scattering model to data
 
@@ -18,19 +22,17 @@ class Optimizer(object):
 
     Properties
     ----------
-    model : LMHologram
-        Computational model for calculating holograms
+    model : LorenzMie
+        Generative model for calculating holograms.
     data : numpy.ndarray
-        Target for optimization with model
-    noise : float
-        Estimate for the additive noise value at each data pixel
+        Target for optimization with model.
     robust : bool
         If True, use robust optimization (absolute deviations)
         otherwise use least-squares optimization
         Default: False (least-squares)
     fixed : list of str
-        Names of properties of the model that should not vary during fitting.
-        Default: ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
+        Names of properties of the model that should remain constant
+        during fitting
     variables : list of str
         Names of properties of the model that will be optimized.
         Default: All model.properties that are not fixed
@@ -38,45 +40,46 @@ class Optimizer(object):
         Dictionary of settings for the optimization method
     properties : dict
         Dictionary of settings for the optimizer as a whole
-    result : scipy.optimize.OptimizeResult
-        Set by optimize()
-    report : pandas.Series
+    result : pandas.Series
         Optimized values of the variables, together with numerical
-        uncertainties
+        uncertainties.
 
     Methods
     -------
     optimize() : pandas.Series
-        Parameters that optimize model to fit the data.
+        Optimizes model parameters to fit the model to the data.
+        Returns result.
     '''
 
     def __init__(self,
-                 model=None,
-                 data=None,
-                 robust=False,
-                 fixed=None,
-                 settings=None,                                 
-                 **kwargs):
-        self.model = model
+                 model: Optional[LorenzMie] = None,
+                 data: Optional[np.ndarray] = None,
+                 robust: bool = False,
+                 fixed: List[str] = [],
+                 settings: Optional[Dict] = None,
+                 **kwargs) -> None:
+        self.model = model or LorenzMie(**kwargs)
         self.data = data
         self.settings = settings
         self.robust = robust
-        defaults = ['k_p', 'n_m', 'alpha', 'wavelength', 'magnification']
-        self.fixed = fixed or defaults      
+        self.fixed = fixed
         self._result = None
 
+    #
+    # Properties that control the fitting process
+    #
     @property
-    def settings(self):
+    def settings(self) -> dict:
         return self._settings
 
     @settings.setter
-    def settings(self, settings):
+    def settings(self, settings: dict) -> None:
         '''Dictionary of settings for scipy.optimize.least_squares
-        
+
         NOTES:
         (a) method:
             trf:     Trust Region Reflective
-            dogbox:  
+            dogbox:
             lm:      Levenberg-Marquardt
                      NOTE: only supports linear loss
         (b) loss
@@ -90,73 +93,83 @@ class Optimizer(object):
             x_scale: specify scale for each adjustable variable
         '''
         if settings is None:
-            settings = {'method': 'lm',    # (a)
-                        'ftol': 1e-3,      # default: 1e-8
-                        'xtol': 1e-6,      # default: 1e-8
-                        'gtol': 1e-6,      # default: 1e-8
-                        'loss': 'linear',  # (b)
-                        'max_nfev': 2000,  # max function evaluations
-                        'diff_step': 1e-5, # default: machine epsilon
-                        'x_scale': 'jac'}  # (c)
+            settings = {'method': 'lm',     # (a)
+                        'ftol': 1e-4,       # default: 1e-8
+                        'xtol': 1e-6,       # default: 1e-8
+                        'gtol': 1e-6,       # default: 1e-8
+                        'loss': 'linear',   # (b)
+                        'max_nfev': 2000,   # max function evaluations
+                        'diff_step': 1e-5,  # default: machine epsilon
+                        'x_scale': 'jac'}   # (c)
         self._settings = settings
 
     @property
-    def robust(self):
-        return self.settings['loss'] in ['soft_l1', 'huber', 'cauchy']
+    def robust(self) -> bool:
+        return self.settings['loss'] != 'linear'
 
     @robust.setter
-    def robust(self, robust):
+    def robust(self, robust: bool) -> None:
+        '''Convenience property for selecting robust fitting'''
         if robust:
-            self.settings['method'] = 'dogbox'
+            self.settings['method'] = 'trf'
             self.settings['loss'] = 'cauchy'
         else:
             self.settings['method'] = 'lm'
             self.settings['loss'] = 'linear'
 
     @property
-    def fixed(self):
+    def fixed(self) -> List[str]:
         '''list of fixed properties'''
         return self._fixed
 
     @fixed.setter
-    def fixed(self, fixed):
+    def fixed(self, fixed: List[str]) -> None:
         self._fixed = fixed
-        properties = self.model.properties
-        self._variables = [p for p in properties if p not in self.fixed]
+        self._variables = [p for p in self.model.properties
+                           if p not in fixed]
 
     @property
-    def variables(self):
+    def variables(self) -> List[str]:
+        '''list of variable properties'''
         return self._variables
-        
-    @property
-    def result(self):
-        return self._result
 
+    @variables.setter
+    def variables(self, variables: List[str]) -> None:
+        self._variables = variables
+        self._fixed = [p for p in self.model.properties
+                       if p not in variables]
+
+    #
+    # Properties resulting from optimization
+    #
     @property
-    def report(self):
-        '''Parse result into pandas.Series'''
-        if self.result is None:
+    def result(self) -> pd.Series:
+        '''Optimized properties formatted as a pandas.Series'''
+        if self._result is None:
             return None
         a = self.variables
         b = ['d' + c for c in a]
         keys = list(sum(zip(a, b), ()))
         keys.extend(['success', 'npix', 'redchi'])
 
-        values = self.result.x
+        values = self._result.x
         npix = self.data.size
         redchi, uncertainties = self._statistics()
         values = list(sum(zip(values, uncertainties), ()))
-        values.extend([self.result.success, npix, redchi])
+        values.extend([self._result.success, npix, redchi])
         return pd.Series(dict(zip(keys, values)))
 
     @property
     def metadata(self):
-        metadata = {key: self.model.properties[key] for key in self.fixed}
-        metadata['settings'] = self.settings
+        '''Fixed properties and fit settings'''
+        metadata = {key: self.model.properties[key] for key in self.fixed
+                    if key in self.model.properties}
+        metadata.update(self.settings)
         return pd.Series(metadata)
 
     @property
     def properties(self):
+        '''Properties of the Optimizer object'''
         properties = dict(settings=self.settings,
                           fixed=self.fixed)
         properties.update(self.model.properties)
@@ -168,11 +181,11 @@ class Optimizer(object):
         for property, value in properties.items():
             if hasattr(self, property):
                 setattr(self, property, value)
-        
+
     #
     # Public methods
     #
-    def optimize(self):
+    def optimize(self) -> pd.Series:
         '''
         Fit Model to data
 
@@ -181,17 +194,13 @@ class Optimizer(object):
         result : pandas.Series
             Values, uncertainties and statistics from fit
         '''
-        p0 = self._initial_estimates()
+        p0 = np.array([self.model.properties[p] for p in self.variables])
         self._result = least_squares(self._residuals, p0, **self.settings)
-        return self.report
-    
+        return self.result
+
     #
     # Private methods
     #
-    def _initial_estimates(self):
-        p0 = [self.model.properties[p] for p in self.variables]
-        return np.array(p0)
-    
     def _residuals(self, values):
         '''Updates properties and returns residuals'''
         self.model.properties = dict(zip(self.variables, values))
@@ -207,7 +216,7 @@ class Optimizer(object):
         value decomposition, using the Moore-Penrose inverse
         after discarding small singular values.
         '''
-        res = self.result
+        res = self._result
         ndeg = self.data.size - res.x.size  # number of degrees of freedom
         redchi = 2.*res.cost / ndeg         # reduced chi-squared
 
@@ -217,5 +226,35 @@ class Optimizer(object):
         VT = VT[:s.size]
         pcov = np.dot(VT.T / s**2, VT)
         uncertainty = np.sqrt(redchi * np.diag(pcov))
-        
+
         return redchi, uncertainty
+
+
+def test_case():
+    from pylorenzmie.lib import coordinates
+
+    shape = (201, 201)
+    model = LorenzMie()
+    model.coordinates = coordinates(shape)
+    model.particle.a_p = 0.75
+    model.particle.n_p = 1.42
+    model.particle.r_p = [100., 100., 225.]
+    data = model.hologram()
+    data += model.instrument.noise * np.random.normal(size=shape).flatten()
+
+    fixed = 'wavelength magnification numerical_aperture n_m k_p'.split()
+    a = Optimizer(model=model, fixed=fixed)
+    settings = a.settings
+    settings['method'] = 'trf'
+    settings['loss'] = 'cauchy'
+    settings['ftol'] = 1e-3
+    settings['xtol'] = None
+    settings['gtol'] = None
+    # settings['verbose'] = 2
+    a.data = data
+    result = a.optimize()
+    print(result)
+
+
+if __name__ == '__main__':
+    test_case()

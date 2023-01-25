@@ -2,37 +2,39 @@
 # -*- coding: utf-8 -*-
 
 '''Make Training Data'''
+
 import json
-from pylorenzmie.theory import (LMHologram, Sphere)
+from pylorenzmie.theory import Sphere
+from pylorenzmie.theory import AberratedLorenzMie as LorenzMie
 from pylorenzmie.utilities import coordinates
 import numpy as np
-
+from pathlib import Path
 import cv2
-import os
 import shutil
 
 
-def feature_extent(sphere, instrument, nfringes=20, maxrange=300):
+def feature_extent(sphere, config, nfringes=20, maxrange=300):
     '''Radius of holographic feature in pixels'''
-
     x = np.arange(0, maxrange)
-    h = LMHologram(coordinates=x, instrument=instrument)
+    h = LorenzMie(coordinates=x)
+    h.instrument.properties = config['instrument']
+    h.spherical = config['spherical']
+    h.pupil = config['pupil']
     h.particle.a_p = sphere.a_p
     h.particle.n_p = sphere.n_p
     h.particle.z_p = sphere.z_p
     b = h.hologram() - 1.
     ndx = np.where(np.diff(np.sign(b)))[0] + 1
-    extent = maxrange if (len(ndx) <= nfringes) else float(ndx[nfringes])
-    return extent
+    return maxrange if (len(ndx) <= nfringes) else float(ndx[nfringes])
 
 
-def format_yolo(sample, config):
+def format_yolo(spheres, config):
     '''Returns a string of YOLO annotations'''
-    (h, w) = config['shape']
+    h, w = config['shape']
     type = 0  # one class for now
     fmt = '{}' + 4 * ' {:.6f}' + '\n'
     annotation = ''
-    for sphere in sample:
+    for sphere in spheres:
         diameter = 2. * feature_extent(sphere, config)
         x_p = sphere.x_p / w
         y_p = sphere.y_p / h
@@ -42,11 +44,9 @@ def format_yolo(sample, config):
     return annotation
 
 
-def format_json(sample, config):
+def format_json(spheres):
     '''Returns a string of JSON annotations'''
-    annotation = []
-    for s in sample:
-        annotation.append(s.dumps(sort_keys=True))
+    annotation = [s.to_json() for s in spheres]
     return json.dumps(annotation, indent=4)
 
 
@@ -61,40 +61,30 @@ def make_value(range, decimals=3):
     return np.around(value, decimals=decimals)
 
 
-def make_sample(config):
-    '''Returns an array of Sphere objects'''
-    particle = config['particle']
-    nrange = particle['nspheres']
+def too_close(s1, s2, mpp):
+    d = mpp*np.square(s1.r_p - s2.r_p).sum()
+    return d < (s1.a_p + s2.a_p)
+
+
+def make_sphere(config):
+    s = Sphere()
+    for p in 'a_p n_p k_p x_p y_p z_p'.split():
+        setattr(s, p, make_value(config[p]))
+    return s
+
+
+def make_spheres(config):
+    c = config['particle']
     mpp = config['instrument']['magnification']
-    if nrange[0] == nrange[1]:
-        nspheres = nrange[0]
-    else:
-        nspheres = np.random.randint(nrange[0], nrange[1])
-    sample = []
-    for n in range(nspheres):
-        sphere = Sphere()
-        for prop in ('a_p', 'n_p', 'k_p', 'z_p'):
-            setattr(sphere, prop, make_value(particle[prop]))
-        # Making sure separation between particles is large enough##
-        close = True
-        aval = sphere.a_p
-        zval = sphere.z_p
-        while close:
-            close = False
-            xval = make_value(particle['x_p'])
-            yval = make_value(particle['y_p'])
-            for s in sample:
-                xs, ys, zs = s.x_p, s.y_p, s.z_p
-                atest = s.a_p
-                dist = np.sqrt(
-                    (xs - xval)**2 + (ys - yval)**2 + (zs - zval)**2)
-                threshold = (atest + aval) / mpp
-                if dist < threshold:
-                    close = True
-        setattr(sphere, 'x_p', xval)
-        setattr(sphere, 'y_p', yval)
-        sample.append(sphere)
-    return sample
+    nrange = c['nspheres']
+    nspheres = np.random.randint(*nrange)
+    spheres = [make_sphere(c) for _ in range(nspheres)]
+    for j in range(1, nspheres):
+        for i in range(0, j):
+            while too_close(spheres[i], spheres[j], mpp):
+                spheres[j].x_p = make_value(c['x_p'])
+                spheres[j].y_p = make_value(c['y_p'])
+    return spheres
 
 
 def mtd(configfile='mtd.json'):
@@ -105,41 +95,40 @@ def mtd(configfile='mtd.json'):
 
     # set up pipeline for hologram calculation
     shape = config['shape']
-    holo = LMHologram(coordinates=coordinates(shape))
+    coords = coordinates(shape)
+    holo = LorenzMie(coordinates=coords)
     holo.instrument.properties = config['instrument']
+    holo.spherical = config['spherical']
+    holo.pupil = config['pupil']
 
     # create directories and filenames
-    directory = os.path.expanduser(config['directory'])
-    imgtype = config['imgtype']
-    for dir in ('images_labels', 'params'):
-        if not os.path.exists(os.path.join(directory, dir)):
-            os.makedirs(os.path.join(directory, dir))
-    shutil.copy2(configfile, directory)
-    filetxtname = os.path.join(directory, 'filenames.txt')
-    imgname = os.path.join(
-        directory, 'images_labels', 'image{:04d}.' + imgtype)
-    jsonname = os.path.join(directory, 'params', 'image{:04d}.json')
-    yoloname = os.path.join(directory, 'images_labels', 'image{:04d}.txt')
+    directory = Path(config['directory']).expanduser()
+    jsondir = directory / 'params'
+    yolodir = directory / 'images_labels'
+    jsondir.mkdir(parents=True, exist_ok=True)
+    yolodir.mkdir(parents=True, exist_ok=True)
 
-    filetxt = open(filetxtname, 'w')
-    for n in range(config['nframes']):  # for each frame ...
-        print(imgname.format(n))
-        sample = make_sample(config)   # ... get params for particles
-        # ... calculate hologram
-        frame = np.random.normal(0, config['noise'], shape)
-        if len(sample) > 0:
-            holo.particle = sample
-            frame += holo.hologram().reshape(shape)
-        else:
-            frame += 1.
-        frame = np.clip(100 * frame, 0, 255).astype(np.uint8)
-        # ... and save the results
-        cv2.imwrite(imgname.format(n), frame)
-        with open(jsonname.format(n), 'w') as fp:
-            fp.write(format_json(sample, config))
-        with open(yoloname.format(n), 'w') as fp:
-            fp.write(format_yolo(sample, config))
-        filetxt.write(imgname.format(n) + '\n')
+    shutil.copy(configfile, directory)
+
+    flist = open(directory / 'filenames.txt', 'w')
+    for n in range(config['nframes']):
+        name = f'image{n:04d}'
+        jname = jsondir / (name + '.json')
+        yname = yolodir / (name + '.txt')
+        iname = yolodir / (name + '.' + config['imgtype'])
+        print(iname)
+
+        spheres = make_spheres(config)
+        holo.particle = spheres
+        frame = holo.hologram().reshape(shape)
+        frame += np.random.normal(0, config['noise'], shape)
+        frame = np.clip(100*frame, 0, 255).astype(np.uint8)
+        cv2.imwrite(str(iname), frame)
+        with open(jname, 'w') as f:
+            f.write(format_json(spheres))
+        with open(yname, 'w') as f:
+            f.write(format_yolo(spheres, config))
+        flist.write(name + '\n')
 
 
 if __name__ == '__main__':
