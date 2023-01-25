@@ -3,7 +3,6 @@
 
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from pylorenzmie.theory import Particle
-from typing import Union
 import numpy as np
 import cupy as cp
 
@@ -36,7 +35,7 @@ class cupyLorenzMie(LorenzMie):
     def __init__(self,
                  *args,
                  double_precision: bool = True,
-                 **kwargs):
+                 **kwargs) -> None:
         self.ctype = None
         super().__init__(*args, **kwargs)
         self.double_precision = double_precision

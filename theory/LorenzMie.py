@@ -9,6 +9,10 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
+Particles = Union[Particle, List[Particle]]
+Properties = Dict[str, float]
+
+
 '''
 This object uses generalized Lorenz-Mie theory to compute the
 electric field scattered by a particle with specified Lorenz-Mie
@@ -79,7 +83,7 @@ class LorenzMie(LMObject):
 
     def __init__(self,
                  coordinates: np.ndarray = None,
-                 particle: Optional[Union[Particle, List[Particle]]] = None,
+                 particle: Optional[Particles] = None,
                  instrument: Optional[Instrument] = None) -> None:
         super().__init__()
         self.coordinates = coordinates
@@ -93,12 +97,12 @@ class LorenzMie(LMObject):
         return '\n    '.join([r, inst, part])
 
     @property
-    def properties(self) -> Dict[str, float]:
+    def properties(self) -> Properties:
         return {**self.particle.properties,
                 **self.instrument.properties}
 
     @properties.setter
-    def properties(self, properties: Dict[str, float]) -> None:
+    def properties(self, properties: Properties) -> None:
         for name, value in properties.items():
             if hasattr(self.particle, name):
                 setattr(self.particle, name, value)
@@ -126,10 +130,13 @@ class LorenzMie(LMObject):
     def _device_coordinates(self) -> np.ndarray:
         return self._coordinates
 
-    def to_field(self, phase):
+    def to_field(self, phase) -> np.ndarray:
         return np.exp(1j * phase)
 
-    def scattered_field(self, particle, cartesian, bohren):
+    def scattered_field(self,
+                        particle: Particle,
+                        cartesian: bool,
+                        bohren: bool) -> np.ndarray:
         '''Return field scattered by one particle'''
         k = self.instrument.wavenumber()
         n_m = self.instrument.n_m
