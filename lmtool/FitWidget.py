@@ -37,6 +37,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
             plot.getAxis('bottom').setPen(pen)
             plot.getAxis('left').setPen(pen)
             plot.setAspectLocked()
+            plot.enableAutoRange(axis='xy', enable=True)
         options = dict(border=pen, axisOrder='row-major')
         self.region = pg.ImageItem(**options)
         self.fit = pg.ImageItem(**options)
@@ -51,6 +52,12 @@ class FitWidget(pg.GraphicsLayoutWidget):
         cm = pg.colormap.get('CET-D1')
         self.residuals.setColorMap(cm)
         self.residuals.setLevels((-10, 10))
+        cb = pg.ColorBarItem(values=(-10, 10),
+                             limits=(-10, 10),
+                             interactive=False,
+                             colorMap=cm,
+                             pen=pen)
+        self.addItem(cb)
 
     def mask(self, data: np.ndarray) -> np.ndarray:
         data = data.flatten()
@@ -79,7 +86,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
 
     def setData(self, data: np.ndarray, rect: QRectF) -> None:
         self.region.setImage(data)
-        self.region.setOpts(rect=rect, update=True)
+        self.region.setRect(rect)
         self.rect = rect
 
     @pyqtProperty(LorenzMie)
