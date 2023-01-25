@@ -1,8 +1,13 @@
 import numpy as np
+from typing import Tuple, Optional
 
-def coordinates(shape, corner=None, flatten=True, dtype=float):
+
+def coordinates(shape: Tuple[int, int],
+                corner: Optional[Tuple[int, int]] = None,
+                flatten: bool = True,
+                dtype=float) -> np.ndarray:
     '''Return coordinate system for Lorenz-Mie microscopy images
-    
+
     Parameters
     ----------
     shape : tuple
@@ -19,20 +24,15 @@ def coordinates(shape, corner=None, flatten=True, dtype=float):
     dtype : type
         Data type.
         Default: float
-       
+
     Returns
     -------
     coordinates : numpy.ndarray
         Coordinate system
     '''
-    (ny, nx) = shape
-    if corner is None:
-        (left, top) = (0, 0)
-    else:
-        (left, top) = corner
-    x = np.arange(left, nx + left, dtype=dtype)
-    y = np.arange(top, ny + top, dtype=dtype)
+    ny, nx = shape
+    left, top = (0, 0) if corner is None else corner
+    x = np.arange(left, left + nx, dtype=dtype)
+    y = np.arange(top, top + ny, dtype=dtype)
     xy = np.array(np.meshgrid(x, y))
-    if flatten:
-        return xy.reshape((2, -1))
-    return xy
+    return xy.reshape((2, -1)) if flatten else xy

@@ -9,22 +9,28 @@ class DoubleSpinBox(QDoubleSpinBox):
     editingFinished = pyqtSignal(float)
 
     def __init__(self, *args, **kwargs):
-        super(DoubleSpinBox, self).__init__(*args, **kwargs)
-        super(DoubleSpinBox, self).editingFinished.connect(
-            self._reemitEditingFinished)
+        super().__init__(*args, **kwargs)
+        super().editingFinished.connect(self._editingFinished)
 
     def stepBy(self, step):
         value = self.value()
-        super(DoubleSpinBox, self).stepBy(step)
+        super().stepBy(step)
         if self.value() != value:
             self.buttonClicked.emit(self.value())
 
-    @pyqtSlot(int)
-    def setDisabled(self, state):
-        super(DoubleSpinBox, self).setDisabled(bool(state))
-
     @pyqtSlot()
-    def _reemitEditingFinished(self):
+    def _editingFinished(self):
         self.editingFinished[float].emit(self.value())
 
-    
+
+if __name__ == '__main__':
+    from PyQt5.QtWidgets import QApplication
+
+    def report(value):
+        print(f'{value:.2f}', end='\r')
+
+    app = QApplication([])
+    widget = DoubleSpinBox()
+    widget.show()
+    widget.valueChanged[float].connect(report)
+    app.exec_()
