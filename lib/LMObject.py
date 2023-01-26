@@ -1,9 +1,12 @@
 from abc import (ABC, abstractmethod)
-from typing import (Optional, Any)
+from typing import (Optional, Dict, Any)
 import json
 import pandas as pd
 import numpy as np
 from pathlib import Path
+
+
+Properties = Dict[str, float]
 
 
 class LMObject(ABC):
@@ -31,11 +34,11 @@ class LMObject(ABC):
 
     @property
     @abstractmethod
-    def properties(self) -> dict:
+    def properties(self) -> Properties:
         return dict()
 
     @properties.setter
-    def properties(self, properties: dict) -> None:
+    def properties(self, properties: Properties) -> None:
         for name, value in properties.items():
             if hasattr(self, name):
                 setattr(self, name, value)
