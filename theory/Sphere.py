@@ -129,6 +129,12 @@ def wiscombe_yang(x: float, m: complex) -> int:
     return int(nstop)
 
 
+def nieves_pisignano(x: float,
+                     precision: float = 6.) -> int:
+    nstop = x + 0.76 * np.cbrt(precision*precision*x) - 4.1
+    return int(nstop)
+
+
 def mie_coefficients(a_p: float,
                      n_p: float,
                      k_p: float,
@@ -211,22 +217,27 @@ def mie_coefficients(a_p: float,
     # Scattering coefficients
     n = np.arange(nmax+1)
     fac = ha/m + n/x
-    ab[:, 0] = (fac * psi - np.roll(psi, 1)) / \
-        (fac * zeta - np.roll(zeta, 1))                 # Eq. (5)
+    ab[:, 0] = ((fac * psi - np.roll(psi, 1)) /
+                (fac * zeta - np.roll(zeta, 1)))              # Eq. (5)
     fac = hb*m + n/x
-    ab[:, 1] = (fac * psi - np.roll(psi, 1)) / \
-        (fac * zeta - np.roll(zeta, 1))                 # Eq. (6)
+    ab[:, 1] = ((fac * psi - np.roll(psi, 1)) /
+                (fac * zeta - np.roll(zeta, 1)))              # Eq. (6)
     ab[0, :] = complex(0., 0.)
 
     return ab
 
 
-if __name__ == '__main__':  # pragma: no cover
+def example():
     from time import perf_counter
 
     s = Sphere(a_p=0.75, n_p=1.5)
-    print(s.a_p, s.n_p)
-    print(s.ab(1.339, 0.447).shape)
+    print(s)
+    ab = s.ab(1.339, 0.447)
+    print(f'{ab.shape=}')
     start = perf_counter()
     s.ab(1.339, 0.447)
-    print(perf_counter() - start)
+    print(f'time = {perf_counter() - start} s')
+
+
+if __name__ == '__main__':  # pragma: no cover
+    example()
