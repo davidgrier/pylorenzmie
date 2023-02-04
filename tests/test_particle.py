@@ -1,6 +1,6 @@
 import unittest
 
-from theory import Particle
+from pylorenzmie.theory import Particle
 
 
 class TestParticle(unittest.TestCase):
@@ -34,9 +34,15 @@ class TestParticle(unittest.TestCase):
         self.assertEqual(self.particle.x_p, value)
 
     def test_serialize(self):
-        ser = self.particle.dumps()
+        ser = self.particle.to_json()
         b = Particle()
-        b.loads(ser)
+        b.from_json(ser)
+        self.assertEqual(self.particle.x_p, b.x_p)
+
+    def test_pandas(self):
+        ser = self.particle.to_pandas()
+        b = Particle()
+        b.from_pandas(ser)
         self.assertEqual(self.particle.x_p, b.x_p)
 
     def test_ab(self):
