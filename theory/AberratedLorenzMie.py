@@ -25,7 +25,10 @@ def ALM_Factory(base_class: LorenzMie):
 
         Inherits
         --------
-        LorenzMie
+        base_class :
+            Implementation of Lorenz-Mie scattering theory.
+            The returned class extends the scattered_field()
+            method to incorporate spherical aberration.
 
         Properties
         ----------
@@ -60,6 +63,7 @@ def ALM_Factory(base_class: LorenzMie):
         def scattered_field(self,
                             particle: Particle,
                             *args: Tuple[Any]):
+            '''Returns field scattered by particle, including aberration'''
             field = super().scattered_field(particle, *args)
             r_p = particle.r_p + particle.r_0
             return field * self._aberration(r_p)
