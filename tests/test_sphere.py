@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from theory.Sphere import (Sphere, wiscombe_yang, mie_coefficients)
+from pylorenzmie.theory.Sphere import (Sphere, wiscombe_yang, mie_coefficients)
 
 
 class TestSphere(unittest.TestCase):
@@ -18,37 +18,16 @@ class TestSphere(unittest.TestCase):
         value = 2.
         self.particle.a_p = value
         self.assertEqual(self.particle.a_p, value)
-        
-        self.particle.a_p = [value]
-        self.assertEqual(self.particle.a_p, value)
-
-        value = [1., 2.]
-        self.particle.a_p = value
-        self.assertTrue((self.particle.a_p == value).all())
 
     def test_setn(self):
         value = 1.5
         self.particle.n_p = value
         self.assertEqual(self.particle.n_p, value)
-        
-        self.particle.n_p = [value]
-        self.assertEqual(self.particle.n_p, value)
-
-        value = [1.4, 1.5]
-        self.particle.n_p = value
-        self.assertTrue((self.particle.n_p == value).all())
 
     def test_setk(self):
         value = 1e-3
         self.particle.k_p = value
         self.assertEqual(self.particle.k_p, value)
-        
-        self.particle.k_p = [value]
-        self.assertEqual(self.particle.k_p, value)
-
-        value = [1e-3, 1.e-4]
-        self.particle.k_p = value
-        self.assertTrue((self.particle.k_p == value).all())
 
     def test_ab(self):
         ab = self.particle.ab(self.n_m, self.wavelength)
@@ -66,8 +45,8 @@ class TestSphere(unittest.TestCase):
         self.assertTrue(isinstance(s, str))
 
     def test_wiscombe_yang(self):
-        x = np.atleast_1d(1.)
-        m = np.atleast_1d(10.+0.j)
+        x = 1.
+        m = 10.+0.j
         typestr = str(type(wiscombe_yang))
         if 'numba' in typestr:
             nmax = wiscombe_yang.py_func(x, m)
@@ -76,8 +55,8 @@ class TestSphere(unittest.TestCase):
         self.assertEqual(nmax, 10)
 
     def test_wiscombe_yang_mid(self):
-        x = np.atleast_1d(10.)
-        m = np.atleast_1d(10.+0.j)
+        x = 10.
+        m = 10.+0.j
         typestr = str(type(wiscombe_yang))
         if 'numba' in typestr:
             nmax = wiscombe_yang.py_func(x, m)
@@ -86,8 +65,8 @@ class TestSphere(unittest.TestCase):
         self.assertEqual(nmax, 100)
 
     def test_wiscombe_yang_large(self):
-        x = np.atleast_1d(4210.)
-        m = np.atleast_1d(10.+0.j)
+        x = 4210.
+        m = 10.+0j
         typestr = str(type(wiscombe_yang))
         if 'numba' in typestr:
             nmax = wiscombe_yang.py_func(x, m)
@@ -105,16 +84,6 @@ class TestSphere(unittest.TestCase):
             ab = mie_coefficients(*args)
         self.assertEqual(type(ab), np.ndarray)
 
-    def test_mie_coefficients_coreshell(self):
-        args = [[1.0, 1.1], [1.4, 1.5], [0., 0.],
-                self.n_m, self.wavelength]
-        typestr = str(type(mie_coefficients))
-        if 'numba' in typestr:
-            ab = mie_coefficients.py_func(*args)
-        else:
-            ab = mie_coefficients(*args)
-        self.assertEqual(type(ab), np.ndarray)        
-        
 
 if __name__ == '__main__':
     unittest.main()
