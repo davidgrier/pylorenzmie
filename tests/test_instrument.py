@@ -1,8 +1,8 @@
 import unittest
 
 import numpy as np
-from theory import Instrument
-from utilities import coordinates
+from pylorenzmie.theory import Instrument
+from pylorenzmie.lib import coordinates
 
 
 class TestInstrument(unittest.TestCase):
@@ -25,8 +25,8 @@ class TestInstrument(unittest.TestCase):
     def test_wavelength(self):
         value = 0.447
         self.instrument.wavelength = value
-        self.assertEqual(self.instrument.wavelength, value)        
-        
+        self.assertEqual(self.instrument.wavelength, value)
+
     def test_magnification(self):
         value = 0.120
         self.instrument.magnification = value
@@ -52,9 +52,9 @@ class TestInstrument(unittest.TestCase):
         n_0 = 1.341
         n_1 = 1.339
         self.instrument.n_m = n_0
-        s = self.instrument.dumps()
+        s = self.instrument.to_json()
         self.instrument.n_m = n_1
-        self.instrument.loads(s)
+        self.instrument.from_json(s)
         self.assertEqual(self.instrument.n_m, n_0)
 
     def test_dark_count(self):
@@ -67,6 +67,6 @@ class TestInstrument(unittest.TestCase):
         self.instrument.background = value
         self.assertEqual(self.instrument.background, value)
 
-        
+
 if __name__ == '__main__':
     unittest.main()
