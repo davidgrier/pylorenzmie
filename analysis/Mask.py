@@ -60,15 +60,18 @@ class Mask(object):
             self._mask[self.exclude] = False
 
 
-def example():
-    shape = (5, 5)
-    mask = Mask()
+def example(mc: Mask = Mask) -> None:
+    import matplotlib.pyplot as plt
+
+    shape = (201, 201)
+    mask = mc()
     mask.shape = shape
-    mask.fraction = 0.5
-    print(mask)
-    data = np.arange(25).reshape(shape)
-    print(data[mask()])
+    mask.fraction = 0.2
+    print(f'fraction = {np.sum(mask())/mask().size:.2f}')
+    plt.imshow(mask(), cmap='gray')
+    plt.show()
 
 
-if __name__ == '__main__': # pragma: no cover
-    example()
+
+if __name__ == '__main__':  # pragma: no cover
+    example(Mask)
