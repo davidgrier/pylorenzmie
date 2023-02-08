@@ -7,13 +7,13 @@ for mod in mods:
     if mod in sys.modules:
         sys.modules.pop(mod)
 
-from theory.LorenzMie import LorenzMie
-from utilities import coordinates
+from pylorenzmie.theory.LorenzMie import LorenzMie
+from pylorenzmie.lib import coordinates
 
 
 class TestLorenzMie(unittest.TestCase):
 
-    def setUp(self):       
+    def setUp(self):
         self.method = LorenzMie()
         self.shape = [256, 256]
 
@@ -23,8 +23,8 @@ class TestLorenzMie(unittest.TestCase):
 
     def test_method(self):
         self.assertEqual(self.method.method, 'numpy')
-        
-    def test_coordinates_None(self):
+
+    def test_coordinates_none(self):
         self.method.coordinates = None
         self.assertIs(self.method.coordinates, None)
 
@@ -37,12 +37,12 @@ class TestLorenzMie(unittest.TestCase):
         c = np.arange(self.shape[0])
         self.method.coordinates = c
         self.assertEqual(self.method.coordinates.shape[0], 3)
-        
+
     def test_coordinates_2d(self):
         c = coordinates(self.shape)
         self.method.coordinates = c
         self.assertEqual(self.method.coordinates.shape[0], 3)
-        self.assertTrue(np.allclose(self.method.coordinates[0:2,:], c))
+        self.assertTrue(np.allclose(self.method.coordinates[0:2, :], c))
 
     def test_coordinates_3dlist(self):
         c = [[1, 1, 1, 1], [2, 2, 2, 2], [3, 3, 3, 3]]
@@ -52,8 +52,8 @@ class TestLorenzMie(unittest.TestCase):
     def test_properties(self):
         '''Get properties, change one, and set properties'''
         value = -42
-        p = dict(x_p = value)
-        self.method.properties = p        
+        p = dict(x_p=value)
+        self.method.properties = p
         self.assertEqual(self.method.particle.x_p, value)
 
     def test_serialize(self):
