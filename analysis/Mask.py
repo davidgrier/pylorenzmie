@@ -41,14 +41,21 @@ class Mask(object):
     def mask(self) -> np.ndarray:
         return self._mask
 
-    def _uniform(self) -> None:
+    def _select(self) -> None:
+        '''Selects pixels for analysis
+
+        Randomly chooses a proportion of pixels to include
+        set by self.fraction.
+
+        Subclasses can override this to implement other distributions
+        '''
         choice = np.random.choice
         self._mask = choice([True, False],
                             size=self.shape,
                             p=[self.fraction, 1.-self.fraction])
 
     def update(self) -> None:
-        self._uniform()
+        self._select()
         if self.exclude is not None:
             self._mask[self.exclude] = False
 
