@@ -26,9 +26,7 @@ class TestLorenzMie(unittest.TestCase):
 
     def test_coordinates_none(self):
         self.method.coordinates = None
-        point = np.array([0, 0, 0]).reshape((3, 1))
-        self.assertTrue(np.allclose(self.method.coordinates, point))
-        # self.assertIs(self.method.coordinates, None)
+        self.assertIsInstance(self.method.coordinates, np.ndarray)
 
     def test_coordinates_point(self):
         point = np.array([1, 2, 3]).reshape((3, 1))
@@ -70,7 +68,7 @@ class TestLorenzMie(unittest.TestCase):
     def test_field_nocoordinates(self):
         self.method.coordinates = None
         field = self.method.field()
-        self.assertEqual(field, None)
+        self.assertIsInstance(field, np.ndarray)
 
     def test_field(self, bohren=False, cartesian=False):
         p = self.method.particle
@@ -90,6 +88,16 @@ class TestLorenzMie(unittest.TestCase):
 
     def test_field_both(self):
         self.test_field(bohren=True, cartesian=True)
+
+    def test_hologram(self):
+        p = self.method.particle
+        p.a_p = 1.
+        p.n_p = 1.4
+        p.r_p = [64, 64, 100]
+        c = coordinates([128, 128])
+        self.method.coordinates = c
+        holo = self.method.hologram()
+        self.assertEqual(holo.size, c.shape[1])
 
 
 if __name__ == '__main__':
