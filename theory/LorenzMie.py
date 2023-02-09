@@ -1,4 +1,4 @@
-from pylorenzmie.lib import LMObject
+from pylorenzmie.lib import (LMObject, coordinates)
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 from typing import (List, Dict, Optional, Union)
 import numpy as np
@@ -82,7 +82,7 @@ class LorenzMie(LMObject):
     method: str = 'numpy'
 
     def __init__(self,
-                 coordinates: np.ndarray = None,
+                 coordinates: Optional[np.ndarray] = None,
                  particle: Optional[Particles] = None,
                  instrument: Optional[Instrument] = None) -> None:
         super().__init__()
@@ -119,7 +119,10 @@ class LorenzMie(LMObject):
     def coordinates(self, coords: np.ndarray) -> None:
         '''Ensure coordinates have shape (3, npts)'''
         logger.debug('Setting coordinates')
-        c = np.atleast_2d(0. if coords is None else coords)
+        if coords is not None:
+            c = np.atleast_2d(coords)
+        else:
+            c = coordinates((201, 201), (-100, -100))
         ndim, npts = c.shape
         if ndim > 3:
             raise ValueError(f'Incompatible shape: {coords.shape=}')
@@ -153,8 +156,6 @@ class LorenzMie(LMObject):
     def _device_field(self,
                       cartesian: bool = True,
                       bohren: bool = True) -> np.ndarray:
-        if (self.coordinates is None or self.particle is None):
-            return None
         logger.debug('Computing field')
         self._field.fill(0.+0.j)
         for p in np.atleast_1d(self.particle):
