@@ -54,19 +54,33 @@ class Feature(object):
         self.optimizer.fixed = fixed or self.optimizer.fixed
 
     @property
+    def mask(self) -> Mask:
+        '''Mask for selecting pixels to analyze'''
+        return self._mask
+
+    @mask.setter
+    def mask(self, mask: Mask) -> None:
+        self._mask = mask
+        self._mask_data()
+
+    @property
     def data(self) -> np.ndarray:
         '''Values of the (normalized) data at each pixel'''
         return self._data
 
     @data.setter
     def data(self, data: np.ndarray) -> None:
-        if data is not None:
-            self.mask.shape = data.shape
-            saturated = (data == np.max(data))
-            nan = np.isnan(data)
-            infinite = np.isinf(data)
-            self.mask.exclude = saturated | nan | infinite
         self._data = data
+        self._mask_data()
+
+    def _mask_data(self):
+        if self.data is None:
+            return
+        self.mask.shape = self.data.shape
+        saturated = (self.data == np.max(self.data))
+        nan = np.isnan(self.data)
+        infinite = np.isinf(self.data)
+        self.mask.exclude = saturated | nan | infinite
 
     @property
     def coordinates(self):
