@@ -1,6 +1,7 @@
 from matplotlib import pyplot as plt
 import numpy as np
 
+
 def report(result):
     def value(val, err, dec=2):
         fmt = '{' + ':.{}f'.format(dec) + '}'
@@ -14,8 +15,11 @@ def report(result):
     print(*res, sep='\n')
     print('chisq = {:.2f}'.format(result.redchi))
 
+
 def present(feature):
-    fig, axes = plt.subplots(ncols=3, figsize=(10, 4), constrained_layout=True)
+    fig, axes = plt.subplots(ncols=3,
+                             figsize=(10, 4),
+                             constrained_layout=True)
 
     vmin = np.min(feature.data) * 0.9
     vmax = np.max(feature.data) * 1.1
