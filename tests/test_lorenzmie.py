@@ -26,7 +26,9 @@ class TestLorenzMie(unittest.TestCase):
 
     def test_coordinates_none(self):
         self.method.coordinates = None
-        self.assertIs(self.method.coordinates, None)
+        point = np.array([0, 0, 0]).reshape((3, 1))
+        self.assertTrue(np.allclose(self.method.coordinates, point))
+        # self.assertIs(self.method.coordinates, None)
 
     def test_coordinates_point(self):
         point = np.array([1, 2, 3]).reshape((3, 1))
@@ -60,9 +62,9 @@ class TestLorenzMie(unittest.TestCase):
         n_0 = 1.5
         n_1 = 1.4
         self.method.particle.n_p = n_0
-        s = self.method.dumps()
+        s = self.method.to_json()
         self.method.particle.n_p = n_1
-        self.method.loads(s)
+        self.method.from_json(s)
         self.assertEqual(self.method.particle.n_p, n_0)
 
     def test_field_nocoordinates(self):
@@ -88,7 +90,7 @@ class TestLorenzMie(unittest.TestCase):
 
     def test_field_both(self):
         self.test_field(bohren=True, cartesian=True)
-        
+
 
 if __name__ == '__main__':
     unittest.main()
