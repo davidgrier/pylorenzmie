@@ -143,7 +143,7 @@ class LorenzMie(LMObject):
         wavelength = self.instrument.wavelength
         r_p = particle.r_p + particle.r_0
         dr = self.coordinates - r_p[:, None]
-        self.kdr[...] = np.asarray(k * dr)
+        self.kdr = k * dr
         ab = particle.ab(n_m, wavelength)
         field = self.compute(ab, self.kdr, self.buffers,
                              cartesian=cartesian, bohren=bohren)
@@ -199,7 +199,6 @@ class LorenzMie(LMObject):
         '''Allocate ndarrays for calculation'''
         logger.debug('Allocating buffers')
         shape = self.coordinates.shape
-        self.kdr = np.empty(shape, dtype=float)
         buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
         self.buffers = np.array(buffers)
         self._field = np.empty(shape, dtype=complex)
@@ -392,7 +391,6 @@ def example(cls=LorenzMie, **kwargs):
     instrument.n_m = 1.340
     # Use generalized Lorenz-Mie theory to compute field
     kernel = cls(coords, particle, instrument, **kwargs)
-    # kernel.field()
     start = perf_counter()
     hologram = kernel.hologram()
     print(f'Time to calculate: {perf_counter()-start} s')
