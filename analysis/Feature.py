@@ -45,6 +45,7 @@ class Feature(object):
                  model: Optional[LorenzMie] = None,
                  fixed: Optional[List[str]] = None) -> None:
         self._coordinates = None
+        self._data = None
         self.mask = Mask()
         self.model = model or LorenzMie()
         self.data = data
