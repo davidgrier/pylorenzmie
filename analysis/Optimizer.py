@@ -229,6 +229,18 @@ class Optimizer(LMObject):
 
         return redchi, uncertainty
 
+    def report(self) -> str:
+        '''Returns formatted string of fitting results'''
+        result = self.result
+        s = [f'x_p = {result.x_p:.2f} ± {result.dx_p:.2f} pixels',
+             f'y_p = {result.y_p:.2f} ± {result.dy_p:.2f} pixels',
+             f'z_p = {result.z_p:.2f} ± {result.dz_p:.2f} pixels',
+             f'a_p = {result.a_p:.3f} ± {result.da_p:.3f} μm',
+             f'n_p = {result.n_p:.3f} ± {result.dn_p:.3f} μm',
+             f'npixels = {result.npix}',
+             f'𝜒 = {result.redchi:.2f}']
+        return '\n'.join(s)
+
 
 def test_case():
     from pylorenzmie.lib import coordinates
@@ -252,8 +264,8 @@ def test_case():
     settings['gtol'] = None
     # settings['verbose'] = 2
     a.data = data
-    result = a.optimize()
-    print(result)
+    a.optimize()
+    print(a.report())
 
 
 if __name__ == '__main__':
