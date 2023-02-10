@@ -7,9 +7,9 @@ from typing import (Tuple, Dict, Any)
 Properties = Dict[str, float]
 
 
-def ALM_Factory(base_class: LorenzMie):
+def Aberrated(base_class: LorenzMie):
 
-    '''Returns a class definition for a Lorenz-Mie theory
+    '''Returns a class definition for a scattering theory
     that incoporates spherical aberration
 
     Arguments
@@ -71,7 +71,7 @@ def ALM_Factory(base_class: LorenzMie):
     return AberratedLorenzMie
 
 
-AberratedLorenzMie = ALM_Factory(LorenzMie)
+AberratedLorenzMie = Aberrated(LorenzMie)
 
 
 if __name__ == '__main__':
