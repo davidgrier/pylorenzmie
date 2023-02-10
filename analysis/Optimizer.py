@@ -232,13 +232,13 @@ class Optimizer(LMObject):
     def report(self) -> str:
         '''Returns formatted string of fitting results'''
         result = self.result
-        s = [f'x_p = {result.x_p:.2f} ± {result.dx_p:.2f} pixels',
-             f'y_p = {result.y_p:.2f} ± {result.dy_p:.2f} pixels',
-             f'z_p = {result.z_p:.2f} ± {result.dz_p:.2f} pixels',
-             f'a_p = {result.a_p:.3f} ± {result.da_p:.3f} μm',
-             f'n_p = {result.n_p:.3f} ± {result.dn_p:.3f} μm',
+        s = [f'x\u209a = {result.x_p:.2f} ± {result.dx_p:.2f} pixels',
+             f'y\u209a = {result.y_p:.2f} ± {result.dy_p:.2f} pixels',
+             f'z\u209a = {result.z_p:.2f} ± {result.dz_p:.2f} pixels',
+             f'a\u209a = {result.a_p:.3f} ± {result.da_p:.3f} μm',
+             f'n\u209a = {result.n_p:.4f} ± {result.dn_p:.4f}',
              f'npixels = {result.npix}',
-             f'𝜒 = {result.redchi:.2f}']
+             f'𝜒\u00b2 = {result.redchi:.2f}']
         return '\n'.join(s)
 
 
