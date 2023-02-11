@@ -236,9 +236,16 @@ class Optimizer(LMObject):
              f'y\u209a = {result.y_p:.2f} ± {result.dy_p:.2f} pixels',
              f'z\u209a = {result.z_p:.2f} ± {result.dz_p:.2f} pixels',
              f'a\u209a = {result.a_p:.3f} ± {result.da_p:.3f} μm',
-             f'n\u209a = {result.n_p:.4f} ± {result.dn_p:.4f}',
-             f'npixels = {result.npix}',
-             f'𝜒\u00b2 = {result.redchi:.2f}']
+             f'n\u209a = {result.n_p:.4f} ± {result.dn_p:.4f}']
+
+        standard = 'x_p y_p z_p a_p n_p'.split()
+        extra = list(set(self.variables).difference(standard))
+        for p in extra:
+            s.append(f'{p} = {result[p]:.4f} ± {result["d"+p]:.4f}')
+
+        s += [f'npixels = {result.npix}',
+              f'𝜒\u00b2 = {result.redchi:.2f}']
+
         return '\n'.join(s)
 
 
