@@ -1,12 +1,11 @@
 import unittest
 
 from pylorenzmie.analysis import Feature
-from pylorenzmie.theory import (LorenzMie, Sphere)
+from pylorenzmie.theory import LorenzMie
 from pylorenzmie.lib import coordinates
-
 from pathlib import Path
 import cv2
-import numpy as np
+
 
 THIS_DIR = Path(__file__).parent
 TEST_IMAGE = str(THIS_DIR / 'data' / 'crop.png')
