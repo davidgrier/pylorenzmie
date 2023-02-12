@@ -112,7 +112,7 @@ class Feature(object):
         self._model = model
 
     def estimate(self):
-        properties = self.estimator.predict(self)
+        properties = self.estimator.estimate(self)
         self.particle.properties = properties
         return properties
 
