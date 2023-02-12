@@ -1,43 +1,30 @@
 import unittest
 
-from analysis import Mask
-from utilities import coordinates
+from pylorenzmie.analysis import Mask
 import numpy as np
+
 
 class TestMask(unittest.TestCase):
 
     def setUp(self):
         self.shape = [128, 128]
-        self.coordinates = coordinates(self.shape)
-        self.mask = Mask(self.coordinates)
+        self.mask = Mask(self.shape)
 
-    def test_percentpix(self, value=0.2):
-        a = self.mask.percentpix
-        self.mask.percentpix = value
-        self.assertEqual(self.mask.percentpix, value)
-        self.mask.percentpix = a
+    def test_fraction(self, value=0.2):
+        orig = self.mask.fraction
+        self.mask.fraction = value
+        self.assertEqual(self.mask.fraction, value)
+        fraction = np.sum(self.mask())/self.mask().size
+        self.assertAlmostEqual(value, fraction, 2, 'within tolerances')
+        self.mask.percentpix = orig
 
-    def test_percentpix_unity(self):
-        self.test_percentpix(1.)
+    def test_fraction_unity(self):
+        self.test_fraction(1.)
 
-    def test_distributions(self):
-        for d in ['uniform', 'radial', 'donut']:
-            self.mask.distribution = d
-            self.assertEqual(self.mask.distribution, d)
-
-    def test_distributions_none(self):
-        self.mask.distribution = None
-        self.assertEqual(self.mask.distribution, 'fast')
-
-    def test_coordinates(self):
-        self.mask.coordinates = None
-        self.mask.coordinates = self.coordinates
-        self.assertTrue(np.array_equal(self.coordinates.shape,
-                                       self.mask.coordinates.shape))
-
-    def test_update_nocoordinates(self):
-        self.mask.coordinates = None
-        self.assertIs(self.mask.selected, None)
+    def test_exclude(self):
+        exclude = np.empty(self.shape, dtype=bool)
+        self.mask.exclude = exclude
+        self.assertEqual(exclude.size, self.mask().size)
 
 
 if __name__ == '__main__':
