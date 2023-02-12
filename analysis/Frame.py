@@ -1,5 +1,5 @@
 from pylorenzmie.analysis import (Localizer, Feature)
-from pylorenzmie.lib import LMObject, coordinates as make_coordinates
+from pylorenzmie.lib import (LMObject, coordinates as make_coordinates)
 import pandas as pd
 import numpy as np
 from typing import (Optional, Tuple, List, Dict, TypeVar)
@@ -30,7 +30,7 @@ class Frame(LMObject):
 
     Methods
     -------
-    detect() : int
+    detect() :
         Detect and localize features in data. Sets features.
 
         Returns
@@ -70,11 +70,12 @@ class Frame(LMObject):
     '''
     def __init__(self,
                  data: Optional[np.ndarray] = None,
-                 **kwargs) -> None:
+                 **properties) -> None:
         self._shape = (0, 0)
         self._data = data
-        self.localizer = Localizer(**kwargs)
-        self.kwargs = kwargs
+        self.localizer = Localizer()
+        self.localizer.properties = properties
+        self.properties = properties
 
     @LMObject.properties.fget
     def properties(self) -> Dict:
@@ -131,7 +132,8 @@ class Frame(LMObject):
             dim = min(w, h)
             d = self.data[y0:y0+dim, x0:x0+dim]
             c = self.coordinates[:, y0:y0+dim, x0:x0+dim].reshape((2, -1))
-            this = Feature(data=d, coordinates=c, **self.kwargs)
+            this = Feature(data=d, coordinates=c)
+            this.properties = self.properties
             this.particle.x_p = feature.x_p
             this.particle.y_p = feature.y_p
             self._features.append(this)
@@ -170,3 +172,21 @@ class Frame(LMObject):
         '''
         self.data = data
         return self.detect().estimate().optimize()
+
+
+def example():
+    from pathlib import Path
+    import cv2
+
+    basedir = Path(__file__).parent.parent.resolve()
+    filename = str(basedir / 'docs' / 'tutorials' / 'image0010.png')
+    data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+    frame = Frame()
+    frame.data = data/100.
+    frame.detect()
+    print(frame.features)
+
+
+
+if __name__ == '__main__':
+    example()
