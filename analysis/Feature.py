@@ -19,7 +19,9 @@ class Feature(object):
         [npts] normalized intensity values
     coordinates : numpy.ndarray
         [3, npts] coordinates of pixels in data
-    model : LMHologram
+    mask : Mask
+        Mask for selecting pixels from data for analysis
+    model : LorenzMie
         Incorporates information about the Particle and the Instrument
         and for supported models, uses this information to compute a
         hologram at the specified coordinates.
@@ -42,11 +44,12 @@ class Feature(object):
     def __init__(self,
                  data: Optional[np.ndarray] = None,
                  coordinates: Optional[np.ndarray] = None,
+                 mask: Optional[Mask] = None,
                  model: Optional[LorenzMie] = None,
                  fixed: Optional[List[str]] = None) -> None:
         self._coordinates = None
         self._data = None
-        self.mask = Mask()
+        self.mask = mask or Mask()
         self.model = model or LorenzMie()
         self.data = data
         self.coordinates = coordinates
