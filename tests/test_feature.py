@@ -1,31 +1,36 @@
 import unittest
 
-from analysis import Feature
-from theory import (LMHologram, Sphere)
-from utilities import coordinates
+from pylorenzmie.analysis import Feature
+from pylorenzmie.theory import (LorenzMie, Sphere)
+from pylorenzmie.lib import coordinates
 
-import os
+from pathlib import Path
 import cv2
 import numpy as np
 
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-TEST_IMAGE = os.path.join(THIS_DIR, 'data/crop.png')
+THIS_DIR = Path(__file__).parent
+TEST_IMAGE = str(THIS_DIR / 'data' / 'crop.png')
 
 
 class TestFeature(unittest.TestCase):
 
     def setUp(self):
         data = cv2.imread(TEST_IMAGE, 0).astype(float)
-        data /= np.mean(data)
-        coords = coordinates(data.shape)
-        model = LMHologram(wavelength=0.447, magnification=0.048, n_m=1.34)
+        data /= 100.
         self.data = data
+        coords = coordinates(data.shape)
         self.coords = coords
-        self.feature = Feature(data=data, coordinates=coords,
-                               model=model, percentpix=0.1)
+        model = LorenzMie()
+        model.instrument.wavelength = 0.447
+        model.instrument.magnification = 0.048
+        model.instrument.n_m = 1.34
         model.particle.r_p = [data.shape[0]//2, data.shape[1]//2, 330]
         model.particle.a_p = 1.1
         model.particle.n_p = 1.4
+        self.feature = Feature(data=data,
+                               coordinates=coords,
+                               model=model)
+        self.feature.mask.fraction = 0.1
 
     def test_data(self):
         self.feature.data = self.data
@@ -38,7 +43,7 @@ class TestFeature(unittest.TestCase):
         self.assertEqual(self.data.size, res.size)
 
     def test_model(self):
-        model = LMHologram()
+        model = LorenzMie()
         self.feature.model = model
         self.assertIs(self.feature.model, model)
 
