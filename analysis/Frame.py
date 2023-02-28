@@ -183,9 +183,8 @@ def example():
     data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
     frame = Frame()
     frame.data = data/100.
-    frame.detect()
+    frame.detect().estimate()
     print(frame.features)
-
 
 
 if __name__ == '__main__':
