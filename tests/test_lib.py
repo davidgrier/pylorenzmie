@@ -1,12 +1,10 @@
 import unittest
-
 import numpy as np
+from pylorenzmie.lib import (aziavg, azimedian, azistd, coordinates)
 
-from utilities import (aziavg, azimedian, azistd)
-from utilities import coordinates
 
 class TestAzi(unittest.TestCase):
-    
+
     def setUp(self):
         self.data = np.ones((90, 100), dtype=float)
 
@@ -25,7 +23,7 @@ class TestAzi(unittest.TestCase):
         rad = int(np.sqrt(50**2 + 45**2)) + 1
         self.assertEqual(len(a), rad)
 
-        
+
 class TestCoordinates(unittest.TestCase):
 
     def setUp(self):
@@ -42,4 +40,3 @@ class TestCoordinates(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-        
