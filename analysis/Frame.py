@@ -1,3 +1,4 @@
+from pylorenzmie.theory import Instrument
 from pylorenzmie.analysis import (Localizer, Feature)
 from pylorenzmie.lib import (LMObject, coordinates as make_coordinates)
 import pandas as pd
@@ -15,6 +16,10 @@ class Frame(LMObject):
 
     Properties
     ----------
+    instrument : pylorenzmie.theory.Instrument
+        All of the features in a holographic image are interpreted
+        in the context of the properties of the instrument that
+        recorded the frame.
     data : numpy.ndarray
         (w, h) normalized holographic microscopy image
     shape : tuple
@@ -69,13 +74,13 @@ class Frame(LMObject):
             Summary of tracking and characterization results from data
     '''
     def __init__(self,
-                 data: Optional[np.ndarray] = None,
-                 **properties) -> None:
+                 instrument: Optional[Instrument] = None,
+                 localizer: Optional[Localizer] = None,
+                 data: Optional[np.ndarray] = None) -> None:
+        self.instrument = instrument or Instrument()
+        self.localizer = localizer or Localizer()
         self._shape = (0, 0)
         self._data = data
-        self.localizer = Localizer()
-        self.localizer.properties = properties
-        self.properties = properties
 
     @LMObject.properties.fget
     def properties(self) -> Dict:

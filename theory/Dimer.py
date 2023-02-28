@@ -54,7 +54,7 @@ def example():
     dimer.a_p = 0.5
     dimer.n_p = 1.42
     dimer.r_p = [150., 150., 250.]
-    dimer.theta = 0.
+    dimer.theta = np.pi/4.
     dimer.phi = np.pi/4.
     a = LorenzMie(coordinates=coords,
                   particle=dimer,
