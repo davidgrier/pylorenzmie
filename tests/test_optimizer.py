@@ -1,27 +1,28 @@
 import unittest
 
-from fitting import Optimizer
-from theory import LMHologram
-from utilities import coordinates
-import os
+from pylorenzmie.analysis import Optimizer
+from pylorenzmie.theory import LorenzMie
+from pylorenzmie.lib import coordinates
+from pathlib import Path
 import cv2
 import numpy as np
 import pandas as pd
 
-THIS_DIR = os.path.dirname(os.path.abspath(__file__))
-TEST_IMAGE = os.path.join(THIS_DIR, 'data/crop.png')
+
+THIS_DIR = Path(__file__).parent.resolve()
+TEST_IMAGE = str(THIS_DIR / 'data' / 'crop.png')
 
 
 class TestOptimizer(unittest.TestCase):
 
     def setUp(self):
-        img = cv2.imread(TEST_IMAGE, 0).astype(float)
+        img = cv2.imread(TEST_IMAGE, cv2.IMREAD_GRAYSCALE).astype(float)
         img /= np.mean(img)
-        img = img[::4,::4]
+        img = img[::4, ::4]
         self.shape = img.shape
         self.data = img.ravel()
         self.coordinates = 4.*coordinates(self.shape)
-        model = LMHologram(coordinates=self.coordinates)
+        model = LorenzMie(coordinates=self.coordinates)
         model.instrument.wavelength = 0.447
         model.instrument.magnification = 0.048
         model.instrument.n_m = 1.34
@@ -67,6 +68,6 @@ class TestOptimizer(unittest.TestCase):
         self.optimizer.properties = properties
         self.assertTrue('settings' in properties)
 
-        
+
 if __name__ == '__main__':
     unittest.main()
