@@ -48,11 +48,14 @@ def Aberrated(base_class: LorenzMie):
             return {**super().properties,
                     'spherical': self.spherical}
 
-        def _aberration(self, r_p: np.ndarray) -> Any:
-            '''Returns spherical aberration for particle at r_p'''
+        def _aperture(self, z_p: float) -> float:
             NA = self.instrument.numerical_aperture
             n_m = self.instrument.n_m
-            omega = 2.*NA*r_p[2]/n_m
+            return 2.*NA*z_p/n_m
+
+        def _aberration(self, r_p: np.ndarray) -> Any:
+            '''Returns spherical aberration for particle at r_p'''
+            omega = self._aperture(r_p[2])
             x = (self._device_coordinates[0] - r_p[0]) / omega
             y = (self._device_coordinates[1] - r_p[1]) / omega
             rhosq = x*x + y*y
