@@ -49,6 +49,9 @@ class Optimizer(LMObject):
     optimize() : pandas.Series
         Optimizes model parameters to fit the model to the data.
         Returns result.
+
+    report() : str
+        Returns formatted string of fitting results.
     '''
 
     def __init__(self,
@@ -198,6 +201,25 @@ class Optimizer(LMObject):
         self._result = least_squares(self._residuals, p0, **self.settings)
         return self.result
 
+    def report(self) -> str:
+        '''Returns formatted string of fitting results'''
+        result = self.result
+        s = [f'x\u209a = {result.x_p:.2f} ± {result.dx_p:.2f} pixels',
+             f'y\u209a = {result.y_p:.2f} ± {result.dy_p:.2f} pixels',
+             f'z\u209a = {result.z_p:.2f} ± {result.dz_p:.2f} pixels',
+             f'a\u209a = {result.a_p:.3f} ± {result.da_p:.3f} μm',
+             f'n\u209a = {result.n_p:.4f} ± {result.dn_p:.4f}']
+
+        standard = 'x_p y_p z_p a_p n_p'.split()
+        extra = list(set(self.variables).difference(standard))
+        for p in extra:
+            s.append(f'{p} = {result[p]:.4f} ± {result["d"+p]:.4f}')
+
+        s += [f'npixels = {result.npix}',
+              f'𝜒\u00b2 = {result.redchi:.2f}']
+
+        return '\n'.join(s)
+
     #
     # Private methods
     #
@@ -229,24 +251,7 @@ class Optimizer(LMObject):
 
         return redchi, uncertainty
 
-    def report(self) -> str:
-        '''Returns formatted string of fitting results'''
-        result = self.result
-        s = [f'x\u209a = {result.x_p:.2f} ± {result.dx_p:.2f} pixels',
-             f'y\u209a = {result.y_p:.2f} ± {result.dy_p:.2f} pixels',
-             f'z\u209a = {result.z_p:.2f} ± {result.dz_p:.2f} pixels',
-             f'a\u209a = {result.a_p:.3f} ± {result.da_p:.3f} μm',
-             f'n\u209a = {result.n_p:.4f} ± {result.dn_p:.4f}']
 
-        standard = 'x_p y_p z_p a_p n_p'.split()
-        extra = list(set(self.variables).difference(standard))
-        for p in extra:
-            s.append(f'{p} = {result[p]:.4f} ± {result["d"+p]:.4f}')
-
-        s += [f'npixels = {result.npix}',
-              f'𝜒\u00b2 = {result.redchi:.2f}']
-
-        return '\n'.join(s)
 
 
 def test_case():
