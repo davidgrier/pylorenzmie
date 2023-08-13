@@ -1,10 +1,8 @@
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from pylorenzmie.theory.Particle import Particle
+from pylorenzmie.lib import Properties
 import numpy as np
-from typing import (Tuple, Dict, Any)
-
-
-Properties = Dict[str, float]
+from typing import (Tuple, Any)
 
 
 def Aberrated(base_class: LorenzMie):

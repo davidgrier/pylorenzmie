@@ -1,6 +1,6 @@
-from pylorenzmie.lib import (LMObject, coordinates)
+from pylorenzmie.lib import (LMObject, Properties, coordinates)
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
-from typing import (List, Dict, Optional, Union)
+from typing import (List, Optional, Union)
 import numpy as np
 import logging
 
@@ -10,7 +10,6 @@ logger.setLevel(logging.WARNING)
 
 
 Particles = Union[Particle, List[Particle]]
-Properties = Dict[str, float]
 
 
 '''
