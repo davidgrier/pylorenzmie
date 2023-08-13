@@ -104,4 +104,5 @@ class LMObject(ABC):
 
     @property
     def directory(self):
+        '''Returns fully-qualified path to source file'''
         return Path(__file__).parent.resolve()
