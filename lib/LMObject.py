@@ -21,6 +21,9 @@ class LMObject(ABC):
     properties: dict
         Dictionary of object properties
 
+    directory: str
+        Fully resolved directory to object definition
+
     Methods
     -------
     to_json(**kwargs): str
@@ -30,6 +33,12 @@ class LMObject(ABC):
     from_json(s: str): None
         Load JSON string of properties
 
+    to_pandas(**kwargs): pandas.Series
+        Returns pandas Series of object properties and values.
+        Accepts keywords for pandas.Series.
+
+    from_pandas(s: pandas.Series): None
+        Loads properties from pandas Series
     '''
 
     @property
