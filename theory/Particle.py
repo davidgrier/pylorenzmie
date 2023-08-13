@@ -37,10 +37,12 @@ class Particle(LMObject):
     z_0 : float
         z coordinate of origin
 
+    NOTE: The units of coordinates are not specified
+
     Methods
     -------
     ab(n_m, wavelength) : numpy.ndarray
-        Returns the Mie scattering coefficients
+        Returns Mie scattering coefficients
     '''
 
     x_p: float = 0.

@@ -6,7 +6,7 @@
 import json
 from pylorenzmie.theory import Sphere
 from pylorenzmie.theory import AberratedLorenzMie as LorenzMie
-from pylorenzmie.utilities import coordinates
+from pylorenzmie.lib import coordinates
 import numpy as np
 from pathlib import Path
 import cv2
@@ -96,10 +96,10 @@ def mtd(configfile='mtd.json'):
     # set up pipeline for hologram calculation
     shape = config['shape']
     coords = coordinates(shape)
-    holo = LorenzMie(coordinates=coords)
-    holo.instrument.properties = config['instrument']
-    holo.spherical = config['spherical']
-    holo.pupil = config['pupil']
+    model = LorenzMie(coordinates=coords)
+    model.instrument.properties = config['instrument']
+    model.spherical = config['spherical']
+    model.pupil = config['pupil']
 
     # create directories and filenames
     directory = Path(config['directory']).expanduser()
@@ -110,25 +110,25 @@ def mtd(configfile='mtd.json'):
 
     shutil.copy(configfile, directory)
 
-    flist = open(directory / 'filenames.txt', 'w')
-    for n in range(config['nframes']):
-        name = f'image{n:04d}'
-        jname = jsondir / (name + '.json')
-        yname = yolodir / (name + '.txt')
-        iname = yolodir / (name + '.' + config['imgtype'])
-        print(iname)
+    with open(directory / 'filenames.txt', 'w') as flist:
+        for n in range(config['nframes']):
+            name = f'image{n:04d}'
+            jname = jsondir / (name + '.json')
+            yname = yolodir / (name + '.txt')
+            iname = yolodir / (name + '.' + config['imgtype'])
+            print(iname)
 
-        spheres = make_spheres(config)
-        holo.particle = spheres
-        frame = holo.hologram().reshape(shape)
-        frame += np.random.normal(0, config['noise'], shape)
-        frame = np.clip(100*frame, 0, 255).astype(np.uint8)
-        cv2.imwrite(str(iname), frame)
-        with open(jname, 'w') as f:
-            f.write(format_json(spheres))
-        with open(yname, 'w') as f:
-            f.write(format_yolo(spheres, config))
-        flist.write(name + '\n')
+            spheres = make_spheres(config)
+            model.particle = spheres
+            frame = model.hologram().reshape(shape)
+            frame += np.random.normal(0, config['noise'], shape)
+            frame = np.clip(100*frame, 0, 255).astype(np.uint8)
+            cv2.imwrite(str(iname), frame)
+            with open(jname, 'w') as f:
+                f.write(format_json(spheres))
+            with open(yname, 'w') as f:
+                f.write(format_yolo(spheres, config))
+            flist.write(name + '\n')
 
 
 if __name__ == '__main__':
