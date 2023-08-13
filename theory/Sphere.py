@@ -3,11 +3,8 @@
 
 from dataclasses import dataclass
 from pylorenzmie.theory import Particle
+from pylorenzmie.lib import Properties
 import numpy as np
-from typing import Dict
-
-
-Properties = Dict[str, float]
 
 
 @dataclass
@@ -20,17 +17,24 @@ class Sphere(Particle):
 
     Properties
     ----------
-    a_p : float
+    a_p: float
         radius of particle [um]
-    n_p : float
+    n_p: float
         refractive index of particle
-    k_p : float
+    k_p: float
         absorption coefficient of particle
 
     Methods
     -------
-    ab(n_m, wavelength) : numpy.ndarray
+    ab(n_m, wavelength): numpy.ndarray
         returns the Mie scattering coefficients for the sphere
+
+        Arguments
+        ---------
+        n_m: complex
+            refractive index of medium
+        wavelength: float
+            vacuum wavelength of light [micrometers]
 
     References
     ----------
@@ -79,10 +83,10 @@ class Sphere(Particle):
 
         Arguments
         ---------
-        n_m : complex
+        n_m: complex
             Refractive index of medium
-        wavelength : float
-            Vacuum wavelength of light [um]
+        wavelength: float
+            Vacuum wavelength of light [micrometers]
 
         Returns
         -------
