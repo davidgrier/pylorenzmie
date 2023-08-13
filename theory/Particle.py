@@ -3,11 +3,7 @@
 
 from dataclasses import dataclass, field
 import numpy as np
-from pylorenzmie.lib import LMObject
-from typing import Dict
-
-
-Properties = Dict[str, float]
+from pylorenzmie.lib import (LMObject, Properties)
 
 
 @dataclass
