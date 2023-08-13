@@ -2,12 +2,8 @@
 # -*- coding: utf-8 -*-
 
 from dataclasses import dataclass
-from pylorenzmie.lib import LMObject
+from pylorenzmie.lib import (LMObject, Properties)
 import numpy as np
-from typing import Dict
-
-
-Properties = Dict[str, float]
 
 
 @dataclass
