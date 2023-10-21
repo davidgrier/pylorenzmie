@@ -37,7 +37,7 @@ class h5video(object):
             msg = 'Index {} is out of range ({})'
             logger.warn(msg.format(self.index, self.nframes))
             raise IndexError
-            
+
     def get_time(self):
         return self.keys[self.index]
 
@@ -56,7 +56,7 @@ class h5video(object):
 
     def goto(self, index):
         self.index = index
-        
+
 
 def example():
     import matplotlib.pyplot as plt
@@ -74,14 +74,15 @@ def example():
         plt.show()
 
         vid.goto(220)
-        
+
         plt.imshow(vid.get_image()/bg)
         plt.gray()
         plt.show()
-        
-        print('Example timestamp: {}'.format(vid.get_time()))
-        print('Dimension of image: {}'.format(vid.shape))
-        print('Number of frames: {}'.format(vid.nframes))
-    
+
+        print(f'Example timestamp: {vid.get_time()}')
+        print(f'Dimension of image: {vid.shape}')
+        print('Number of frames: {vid.nframes}')
+
+
 if __name__ == '__main__':
     example()
