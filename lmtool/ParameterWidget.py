@@ -35,7 +35,7 @@ class ParameterWidget(QFrame):
         self.slider.valueChanged.connect(self._reportChange)
 
     @pyqtSlot(float)
-    def _reportChange(self, value):
+    def _reportChange(self, value: float) -> None:
         self.valueChanged.emit(value)
 
     def range(self) -> List[float]:
@@ -69,6 +69,7 @@ class ParameterWidget(QFrame):
                 if hasattr(self, method):
                     setter = getattr(self, method)
                     setter(value)
+
 
 if __name__ == '__main__':
     from PyQt5.QtWidgets import QApplication
