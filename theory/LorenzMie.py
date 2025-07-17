@@ -1,6 +1,5 @@
 from pylorenzmie.lib import (LMObject, Properties, coordinates)
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
-from typing import (List, Optional, Union)
 import numpy as np
 import logging
 
@@ -9,7 +8,7 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-Particles = Union[Particle, List[Particle]]
+Particles = Particle | list[Particle] | None
 
 
 '''
@@ -81,9 +80,9 @@ class LorenzMie(LMObject):
     method: str = 'numpy'
 
     def __init__(self,
-                 coordinates: Optional[np.ndarray] = None,
-                 particle: Optional[Particles] = None,
-                 instrument: Optional[Instrument] = None) -> None:
+                 coordinates: np.ndarray | None = None,
+                 particle: Particles = None,
+                 instrument: Instrument | None = None) -> None:
         super().__init__()
         self.coordinates = coordinates
         self.particle = particle or Sphere()
@@ -206,7 +205,7 @@ class LorenzMie(LMObject):
     @staticmethod
     def compute(ab: np.ndarray,
                 kdr: np.ndarray,
-                buffers: List[np.ndarray],
+                buffers: list[np.ndarray],
                 cartesian: bool = True,
                 bohren: bool = True) -> np.ndarray:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
@@ -393,7 +392,7 @@ def example(cls=LorenzMie, **kwargs) -> None:  # pragma: no cover
     kernel = cls(coords, particle, instrument, **kwargs)
     start = perf_counter()
     hologram = kernel.hologram()
-    print(f'Time to calculate: {perf_counter()-start} s')
+    print(f'Time to calculate: {perf_counter()-start:.1e} s')
     # Compute hologram from field and show it
     plt.imshow(hologram.reshape(shape), cmap='gray')
     plt.show()
