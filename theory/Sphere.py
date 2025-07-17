@@ -231,7 +231,7 @@ def mie_coefficients(a_p: float,
     return ab
 
 
-def example():
+def example() -> None:  # pragma: no cover
     from time import perf_counter
 
     s = Sphere(a_p=0.75, n_p=1.5)
