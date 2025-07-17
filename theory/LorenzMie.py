@@ -364,7 +364,7 @@ class LorenzMie(LMObject):
             return es
 
 
-def example(cls=LorenzMie, **kwargs):
+def example(cls=LorenzMie, **kwargs) -> None:  # pragma: no cover
     import matplotlib.pyplot as plt
     from pylorenzmie.lib import coordinates
     from pylorenzmie.theory import (Sphere, Instrument)
@@ -399,5 +399,5 @@ def example(cls=LorenzMie, **kwargs):
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     example()

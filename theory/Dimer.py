@@ -38,7 +38,7 @@ class Dimer(Cluster):
         self.particles[1].r_p = -r_p
 
 
-def example():
+def example():  # pragma: no cover
     from pylorenzmie.lib import coordinates
     from pylorenzmie.theory import (Instrument, LorenzMie)
     import matplotlib.pyplot as plt
@@ -63,5 +63,5 @@ def example():
     plt.show()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     example()
