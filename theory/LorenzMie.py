@@ -8,9 +8,6 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-Particles = Particle | list[Particle] | None
-
-
 '''
 This object uses generalized Lorenz-Mie theory to compute the
 electric field scattered by a particle with specified Lorenz-Mie
@@ -81,7 +78,7 @@ class LorenzMie(LMObject):
 
     def __init__(self,
                  coordinates: np.ndarray | None = None,
-                 particle: Particles = None,
+                 particle: Particle | list[Particle] | None = None,
                  instrument: Instrument | None = None) -> None:
         super().__init__()
         self.coordinates = coordinates
@@ -89,7 +86,8 @@ class LorenzMie(LMObject):
         self.instrument = instrument or Instrument()
 
     def __repr__(self) -> str:
-        r = '{}(instrument, particle)'.format(self.__class__.__qualname__)
+        classname = self.__class__.__qualname__
+        r = f'{classname}(instrument, particle)'
         inst = f'instrument={self.instrument!r}'.replace(',', ',\n\t')
         part = f'particle={self.particle!r}'.replace(',', ',\n\t')
         return '\n    '.join([r, inst, part])
