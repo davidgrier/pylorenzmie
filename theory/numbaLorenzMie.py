@@ -5,6 +5,7 @@ from numba import njit
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from typing import Optional
 import numpy as np
+from numpy.typing import NDArray
 
 
 np.seterr(all='raise')
@@ -19,7 +20,7 @@ class numbaLorenzMie(LorenzMie):
 
     @staticmethod
     @njit(cache=True, fastmath=True, parallel=True)
-    def pad(coordinates: Optional[np.ndarray]) -> None:
+    def pad(coordinates: NDArray[float] | None = None) -> None:
         c = np.atleast_2d(0. if coordinates is None else coordinates)
         ndim, npts = c.shape
         if ndim > 3:
@@ -28,11 +29,11 @@ class numbaLorenzMie(LorenzMie):
 
     @staticmethod
     @njit(cache=True, fastmath=True, parallel=True)
-    def compute(ab: np.ndarray,
-                kdr: np.ndarray,
-                buffers: np.ndarray,
+    def compute(ab: NDArray[complex],
+                kdr: NDArray[float],
+                buffers: NDArray[complex],
                 cartesian: bool = True,
-                bohren: bool = True) -> np.ndarray:  # pragma: no cover
+                bohren: bool = True) -> NDArray[complex]:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
 
         Arguments
