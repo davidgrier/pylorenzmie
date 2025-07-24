@@ -2,11 +2,11 @@ from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from pylorenzmie.theory.Particle import Particle
 from pylorenzmie.lib import Properties
 import numpy as np
-from typing import (Tuple, Any)
+from typing import Any
+from numpy.typing import NDArray
 
 
 def Aberrated(base_class: LorenzMie):
-
     '''Returns a class definition for a scattering theory
     that incoporates spherical aberration
 
@@ -34,8 +34,7 @@ def Aberrated(base_class: LorenzMie):
             Amount of spherical aberration to incorporate.
         '''
 
-        def __init__(self,
-                     *args: Tuple[Any],
+        def __init__(self, *args,
                      spherical: float = 0.,
                      **kwargs) -> None:
             super().__init__(*args, **kwargs)
@@ -51,7 +50,7 @@ def Aberrated(base_class: LorenzMie):
             n_m = self.instrument.n_m
             return 2.*NA*z_p/n_m
 
-        def _aberration(self, r_p: np.ndarray) -> Any:
+        def _aberration(self, r_p: NDArray[float]) -> Any:
             '''Returns spherical aberration for particle at r_p'''
             omega = self._aperture(r_p[2])
             x = (self._device_coordinates[0] - r_p[0]) / omega
@@ -63,7 +62,7 @@ def Aberrated(base_class: LorenzMie):
 
         def scattered_field(self,
                             particle: Particle,
-                            *args: Tuple[Any]):
+                            *args):
             '''Returns field scattered by particle, including aberration'''
             field = super().scattered_field(particle, *args)
             r_p = particle.r_p + particle.r_0
