@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from pylorenzmie.theory import Particle
 from pylorenzmie.lib import Properties
 import numpy as np
+from numpy.typing import NDArray
 
 
 @dataclass
@@ -143,7 +144,7 @@ def mie_coefficients(a_p: float,
                      n_p: float,
                      k_p: float,
                      n_m: complex,
-                     wavelength: float) -> np.ndarray:
+                     wavelength: float) -> NDArray[complex]:
     '''Returns the Mie scattering coefficients for a sphere
 
     This works for an isotropic homogeneous sphere illuminated by
@@ -237,10 +238,10 @@ def example() -> None:  # pragma: no cover
     s = Sphere(a_p=0.75, n_p=1.5)
     print(s)
     ab = s.ab(1.339, 0.447)
-    print(f'{ab.shape=}')
+    print(f'{ab.shape = }')
     start = perf_counter()
     s.ab(1.339, 0.447)
-    print(f'time = {perf_counter() - start} s')
+    print(f'time = {perf_counter() - start:.2e} s')
 
 
 if __name__ == '__main__':  # pragma: no cover
