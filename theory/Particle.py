@@ -50,21 +50,21 @@ class Particle(LMObject):
     z_0: float = field(repr=False, default=0.)
 
     @property
-    def r_p(self) -> NDArray[np.float64]:
+    def r_p(self) -> NDArray[float]:
         '''Three-dimensional coordinates of particle's center'''
         return np.asarray([self.x_p, self.y_p, self.z_p])
 
     @r_p.setter
-    def r_p(self, r_p: NDArray[np.float64]) -> None:
+    def r_p(self, r_p: NDArray[float]) -> None:
         self.x_p, self.y_p, self.z_p = r_p
 
     @property
-    def r_0(self) -> NDArray[np.float64]:
+    def r_0(self) -> NDArray[float]:
         '''Three-dimensional coordinates of origin'''
         return np.asarray([self.x_0, self.y_0, self.z_0])
 
     @r_0.setter
-    def r_0(self, r_0: NDArray[np.float64]) -> None:
+    def r_0(self, r_0: NDArray[float]) -> None:
         self.x_0, self.y_0, self.z_0 = r_0
 
     @LMObject.properties.getter

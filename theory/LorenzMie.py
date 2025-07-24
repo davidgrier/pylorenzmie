@@ -1,6 +1,7 @@
 from pylorenzmie.lib import (LMObject, Properties, coordinates)
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 import numpy as np
+from numpy.typing import NDArray
 import logging
 
 
@@ -77,7 +78,7 @@ class LorenzMie(LMObject):
     method: str = 'numpy'
 
     def __init__(self,
-                 coordinates: np.ndarray | None = None,
+                 coordinates: NDArray[float] | None = None,
                  particle: Particle | list[Particle] | None = None,
                  instrument: Instrument | None = None) -> None:
         super().__init__()
@@ -108,11 +109,11 @@ class LorenzMie(LMObject):
                 setattr(self, name, value)
 
     @property
-    def coordinates(self) -> np.ndarray:
+    def coordinates(self) -> NDArray[float]:
         return self._coordinates
 
     @coordinates.setter
-    def coordinates(self, coords: np.ndarray) -> None:
+    def coordinates(self, coords: NDArray[float]) -> None:
         '''Ensure coordinates have shape (3, npts)'''
         logger.debug('Setting coordinates')
         if coords is not None:
@@ -126,16 +127,16 @@ class LorenzMie(LMObject):
         self.allocate()
 
     @property
-    def _device_coordinates(self) -> np.ndarray:
+    def _device_coordinates(self) -> NDArray[float]:
         return self._coordinates
 
-    def to_field(self, phase) -> np.ndarray:
+    def to_field(self, phase: float) -> NDArray[complex]:
         return np.exp(1j * phase)
 
     def scattered_field(self,
                         particle: Particle,
                         cartesian: bool,
-                        bohren: bool) -> np.ndarray:
+                        bohren: bool) -> NDArray[complex]:
         '''Return field scattered by one particle'''
         k = self.instrument.wavenumber()
         n_m = self.instrument.n_m
@@ -151,7 +152,7 @@ class LorenzMie(LMObject):
 
     def _device_field(self,
                       cartesian: bool = True,
-                      bohren: bool = True) -> np.ndarray:
+                      bohren: bool = True) -> NDArray[complex]:
         logger.debug('Computing field')
         self._field.fill(0.+0.j)
         for p in np.atleast_1d(self.particle):
@@ -159,7 +160,7 @@ class LorenzMie(LMObject):
             self._field += self.scattered_field(p, cartesian, bohren)
         return self._field
 
-    def field(self, *args, **kwargs):
+    def field(self, *args, **kwargs) -> NDArray[complex]:
         '''Return field scattered by particles in the system
 
         Arguments
@@ -179,7 +180,7 @@ class LorenzMie(LMObject):
         '''
         return self._device_field(*args, **kwargs)
 
-    def hologram(self) -> np.ndarray:
+    def hologram(self) -> NDArray[float]:
         '''Return hologram of particle
 
         Returns
@@ -205,7 +206,7 @@ class LorenzMie(LMObject):
                 kdr: np.ndarray,
                 buffers: list[np.ndarray],
                 cartesian: bool = True,
-                bohren: bool = True) -> np.ndarray:  # pragma: no cover
+                bohren: bool = True) -> NDArray[complex]:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
 
         Arguments
