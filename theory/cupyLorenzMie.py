@@ -4,6 +4,7 @@
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from pylorenzmie.theory import Particle
 import numpy as np
+from numpy.typing import NDArray
 import cupy as cp
 
 
@@ -58,7 +59,7 @@ class cupyLorenzMie(LorenzMie):
             self.ctype = np.complex64
         self.allocate()
 
-    def to_field(self, phase):
+    def to_field(self, phase: float):
         return cp.exp(1j * phase)
 
     def scattered_field(self,
@@ -82,7 +83,7 @@ class cupyLorenzMie(LorenzMie):
                      *self.buffer))
         return self.buffer
 
-    def field(self, **kwargs) -> np.ndarray:
+    def field(self, **kwargs) -> NDArray[complex]:
         return self._device_field(**kwargs).get()
 
     @property
