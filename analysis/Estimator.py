@@ -3,13 +3,15 @@ from pylorenzmie.lib import (LMObject, aziavg)
 from pylorenzmie.theory import Instrument
 import pandas as pd
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import (argrelmin, argrelmax)
 from scipy.special import jn_zeros
-from typing import (Optional, Union, List, Dict)
 
 
-Features = Union[List[np.ndarray], np.ndarray]
-Predictions = Union[List[pd.Series], pd.Series]
+Feature = NDArray[float]
+Features = Feature | list[Feature]
+Prediction = pd.Series
+Predictions = Prediction | list[Prediction]
 
 
 @dataclass
@@ -39,20 +41,20 @@ class Estimator(LMObject):
         synonum for estimate for backward compatibility
     '''
     instrument: Instrument
-    z_p: Optional[float] = None
-    a_p: Optional[float] = None
+    z_p: float | None = None
+    a_p: float | None = None
     n_p: float = 1.5
 
     def __post_init__(self) -> None:
         self.predict = self.estimate
 
     @property
-    def properties(self) -> Dict[str, float]:
+    def properties(self) -> dict[str, float]:
         return dict(z_p=self.z_p,
                     a_p=self.a_p,
                     n_p=self.n_p)
 
-    def _initialize(self, feature: np.ndarray) -> None:
+    def _initialize(self, feature: Feature) -> None:
         '''Prepare for estimation
 
         self.k: wavenumber in the medium [radian/pixels]
@@ -103,7 +105,7 @@ class Estimator(LMObject):
         return pd.Series(self.properties)
 
 
-def example():
+def example() -> None:
     import cv2
 
     estimator = Estimator(Instrument())
