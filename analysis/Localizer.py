@@ -1,4 +1,4 @@
-from pylorenzmie.lib import (LMObject, aziavg, CircleTransform)
+from pylorenzmie.lib import (LMObject, Azimuthal, CircleTransform)
 import numpy as np
 from numpy.typing import NDArray
 import trackpy as tp
@@ -89,7 +89,7 @@ class Localizer(LMObject):
         predictions = []
         for n, feature in features.iterrows():
             r_p = feature[['x', 'y']].to_numpy()
-            b = aziavg(image, r_p)
+            b = Azimuthal.avg(image, r_p)
             p = b > 1.
             ndx = np.where(p[1:] ^ p[:-1])[0] + 1
             extent = ndx[nfringes] if len(ndx) > nfringes else ndx[-1]
