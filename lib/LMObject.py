@@ -1,16 +1,11 @@
 from abc import (ABC, abstractmethod)
-from typing import (Optional, Dict, Any)
 import json
 import pandas as pd
 import numpy as np
 from pathlib import Path
 
 
-Properties = Dict[str, float]
-
-
 class LMObject(ABC):
-
     '''
     Base class for pylorenzmie objects
 
@@ -41,6 +36,9 @@ class LMObject(ABC):
         Loads properties from pandas Series
     '''
 
+    Property = bool | int | float
+    Properties = dict[str, Property]
+
     @property
     @abstractmethod
     def properties(self) -> Properties:
@@ -52,7 +50,7 @@ class LMObject(ABC):
             if hasattr(self, name):
                 setattr(self, name, value)
 
-    def to_json(self, **kwargs: Optional[Any]) -> str:
+    def to_json(self, **kwargs) -> str:
         '''Returns JSON string of adjustable properties
 
         Parameters
@@ -80,7 +78,7 @@ class LMObject(ABC):
         '''
         self.properties = json.loads(s)
 
-    def to_pandas(self, **kwargs: Optional[Any]) -> pd.Series:
+    def to_pandas(self, **kwargs) -> pd.Series:
         '''Returns pandas Series of adjustable properties
 
         Parameters

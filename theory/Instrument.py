@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from dataclasses import dataclass
-from pylorenzmie.lib import (LMObject, Properties)
+from pylorenzmie.lib import LMObject
 import numpy as np
 
 
@@ -47,7 +47,7 @@ class Instrument(LMObject):
     n_m: float = 1.340
 
     @LMObject.properties.getter
-    def properties(self) -> Properties:
+    def properties(self) -> LMObject.Properties:
         return {'n_m': self.n_m,
                 'wavelength': self.wavelength,
                 'magnification': self.magnification,
