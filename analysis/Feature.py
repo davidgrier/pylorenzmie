@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-from typing import (Optional, List)
+from numpy.typing import NDArray
 from pylorenzmie.analysis import (Mask, Estimator, Optimizer)
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory import (LorenzMie, Particle)
 
 
 class Feature(object):
@@ -42,11 +42,11 @@ class Feature(object):
     '''
 
     def __init__(self,
-                 data: Optional[np.ndarray] = None,
-                 coordinates: Optional[np.ndarray] = None,
-                 mask: Optional[Mask] = None,
-                 model: Optional[LorenzMie] = None,
-                 fixed: Optional[List[str]] = None) -> None:
+                 data: NDArray[float] | None = None,
+                 coordinates: NDArray[int] | None = None,
+                 mask: Mask | None = None,
+                 model: LorenzMie | None = None,
+                 fixed: list[str] | None = None) -> None:
         self._coordinates = None
         self._data = None
         self.mask = mask or Mask()
@@ -68,16 +68,16 @@ class Feature(object):
         self._mask_data()
 
     @property
-    def data(self) -> np.ndarray:
+    def data(self) -> NDArray[float]:
         '''Values of the (normalized) data at each pixel'''
         return self._data
 
     @data.setter
-    def data(self, data: np.ndarray) -> None:
+    def data(self, data: NDArray[float]) -> None:
         self._data = data
         self._mask_data()
 
-    def _mask_data(self):
+    def _mask_data(self) -> None:
         if self.data is None:
             return
         self.mask.shape = self.data.shape
@@ -87,31 +87,31 @@ class Feature(object):
         self.mask.exclude = saturated | nan | infinite
 
     @property
-    def coordinates(self):
+    def coordinates(self) -> NDArray[int]:
         '''Array of pixel coordinates'''
         return self._coordinates
 
     @coordinates.setter
-    def coordinates(self, coordinates):
+    def coordinates(self, coordinates: NDArray[int]):
         self._coordinates = coordinates
 
     @property
-    def particle(self):
+    def particle(self) -> Particle:
         return self.model.particle
 
     @particle.setter
-    def particle(self, particle):
+    def particle(self, particle: Particle) -> None:
         self.model.particle = particle
 
     @property
-    def model(self):
+    def model(self) -> LorenzMie:
         return self._model
 
     @model.setter
-    def model(self, model):
+    def model(self, model: LorenzMie) -> None:
         self._model = model
 
-    def estimate(self):
+    def estimate(self) -> Particle.Properties:
         properties = self.estimator.estimate(self)
         self.particle.properties = properties
         return properties
@@ -126,15 +126,15 @@ class Feature(object):
         self.model.coordinates = coordinates
         return self.optimizer.optimize()
 
-    def hologram(self):
+    def hologram(self) -> NDArray[float]:
         self.model.coordinates = self.coordinates
         return self.model.hologram().reshape(self.data.shape)
 
-    def residuals(self):
+    def residuals(self) -> NDArray[float]:
         return self.hologram() - self.data
 
 
-def example():
+def example() -> None:
     import cv2
     from time import perf_counter
     from pylorenzmie.lib import coordinates
