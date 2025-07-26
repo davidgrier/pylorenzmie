@@ -1,7 +1,6 @@
 from pylorenzmie.theory import (Cluster, Sphere)
 from dataclasses import dataclass
 import numpy as np
-from typing import Any
 
 
 @dataclass
@@ -14,7 +13,7 @@ class Dimer(Cluster):
     phi: float = 0.
     magnification: float = 0.048
 
-    def __setattr__(self, key: str, value: Any) -> None:
+    def __setattr__(self, key: str, value: Cluster.Property) -> None:
         super().__setattr__(key, value)
         if key in ['a_p', 'n_p', 'k_p']:
             for p in self:
@@ -38,7 +37,7 @@ class Dimer(Cluster):
         self.particles[1].r_p = -r_p
 
 
-def example():  # pragma: no cover
+def example() -> None:  # pragma: no cover
     from pylorenzmie.lib import coordinates
     from pylorenzmie.theory import (Instrument, LorenzMie)
     import matplotlib.pyplot as plt
