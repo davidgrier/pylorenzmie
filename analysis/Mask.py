@@ -59,18 +59,18 @@ class Mask(object):
         if self.exclude is not None:
             self._mask[self.exclude] = False
 
+    @classmethod
+    def example(cls) -> None:
+        import matplotlib.pyplot as plt
 
-def example(mc: Mask = Mask) -> None:
-    import matplotlib.pyplot as plt
-
-    shape = (201, 201)
-    mask = mc()
-    mask.shape = shape
-    mask.fraction = 0.2
-    print(f'fraction = {np.sum(mask())/mask().size:.2f}')
-    plt.imshow(mask(), cmap='gray')
-    plt.show()
+        shape = (201, 201)
+        mask = cls()
+        mask.shape = shape
+        mask.fraction = 0.2
+        print(f'fraction = {np.sum(mask())/mask().size:.2f}')
+        plt.imshow(mask(), cmap='gray')
+        plt.show()
 
 
 if __name__ == '__main__':  # pragma: no cover
-    example(Mask)
+    Mask.example()
