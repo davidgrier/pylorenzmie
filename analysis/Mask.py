@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import numpy as np
-from typing import (Optional, Tuple, Any)
+from numpy.typing import NDArray
 
 
 @dataclass
@@ -25,20 +25,20 @@ class Mask(object):
         Create new random mask
     '''
 
-    shape: Optional[Tuple[int, int]] = None
+    shape: tuple[int, int] | None = None
     fraction: float = 0.1
-    exclude: Optional[np.ndarray] = None
+    exclude: NDArray[int] | None = None
 
-    def __setattr__(self, prop: str, value: Any) -> None:
+    def __setattr__(self, prop: str, value: object) -> None:
         super().__setattr__(prop, value)
         if prop in ['shape', 'fraction', 'exclude']:
             self.update()
 
-    def __call__(self) -> np.ndarray:
+    def __call__(self) -> NDArray[bool]:
         return self._mask
 
     @property
-    def mask(self) -> np.ndarray:
+    def mask(self) -> NDArray[bool]:
         return self._mask
 
     def _select(self) -> None:
@@ -70,7 +70,6 @@ def example(mc: Mask = Mask) -> None:
     print(f'fraction = {np.sum(mask())/mask().size:.2f}')
     plt.imshow(mask(), cmap='gray')
     plt.show()
-
 
 
 if __name__ == '__main__':  # pragma: no cover
