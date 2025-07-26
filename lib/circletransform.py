@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import savgol_filter
 try:
     from scipy.fft import (fft2, ifft2, fftshift)
@@ -32,7 +33,7 @@ class CircleTransform(object):
     def __init__(self) -> None:
         self._kernel = np.ones((1, 1))
 
-    def kernel(self, shape: tuple) -> np.ndarray:
+    def kernel(self, shape: tuple) -> NDArray[float]:
         '''Fourier transform of the orientational alignment kernel:
 
         Arguments
@@ -57,7 +58,7 @@ class CircleTransform(object):
         self._kernel = kernel
         return kernel
 
-    def transform(self, image: np.ndarray) -> np.ndarray:
+    def transform(self, image: np.ndarray) -> NDArray[float]:
         '''Perform orientation alignment transform
 
         Arguments
@@ -88,7 +89,7 @@ class CircleTransform(object):
         return c/np.max(c)
 
 
-def circletransform(image: np.ndarray) -> np.ndarray:
+def circletransform(image: NDArray[int]) -> NDArray[float]:
     '''Transform an image to emphasize ring-like features
 
     Arguments

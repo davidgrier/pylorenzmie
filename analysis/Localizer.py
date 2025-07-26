@@ -5,8 +5,8 @@ import trackpy as tp
 import pandas as pd
 
 
-Images = NDArray[int] | list[NDArray[int]]
-Predictions = pd.DataFrame | list[pd.DataFrame]
+Image = NDArray[int | float]
+Prediction = pd.DataFrame
 
 
 class Localizer(LMObject):
@@ -52,10 +52,10 @@ class Localizer(LMObject):
         return {k: getattr(self, k) for k in keys}
 
     def localize(self,
-                 image: Images,
+                 image: Image | list[Image],
                  diameter: int | None = None,
                  nfringes: int | None = None,
-                 **kwargs) -> pd.DataFrame:
+                 **kwargs) -> Prediction:
         '''
         Localize features in normalized holographic microscopy images
 
@@ -88,7 +88,7 @@ class Localizer(LMObject):
 
         predictions = []
         for n, feature in features.iterrows():
-            r_p = feature[['x', 'y']]
+            r_p = feature[['x', 'y']].to_numpy()
             b = aziavg(image, r_p)
             p = b > 1.
             ndx = np.where(p[1:] ^ p[:-1])[0] + 1
