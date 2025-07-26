@@ -1,6 +1,5 @@
 from pylorenzmie.theory import Particle
 from dataclasses import dataclass, field
-from typing import Any
 
 
 @dataclass
@@ -11,7 +10,7 @@ class Cluster(Particle):
     def __post_init__(self) -> None:
         self.update()
 
-    def __setattr__(self, key: str, value: Any) -> None:
+    def __setattr__(self, key: str, value: Particle.Property) -> None:
         super().__setattr__(key, value)
         if key in ['x_p', 'y_p', 'z_p', 'particles']:
             self._update()
