@@ -3,7 +3,7 @@
 
 import cv2
 import numpy as np
-from pylorenzmie.lib import (azistd, coordinates)
+from pylorenzmie.lib import (Azimuthal, coordinates)
 from pylorenzmie.lmtool.LMWidget import LMWidget
 import json
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
@@ -105,7 +105,7 @@ class LMTool(QMainWindow):
     def _updateProfile(self) -> None:
         x_p = self.controls.x_p.value()
         y_p = self.controls.y_p.value()
-        self.profileWidget.data = azistd(self._data, (x_p, y_p))
+        self.profileWidget.data = Azimuthal.std(self._data, (x_p, y_p))
 
     @pyqtSlot(float, float)
     def _handleROIChanged(self, x_p: float, y_p: float) -> None:
