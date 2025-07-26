@@ -1,9 +1,12 @@
 import numpy as np
+from numpy.typing import NDArray
 from functools import wraps
-from typing import Tuple
 
 
 __all__ = 'aziavg azistd azimedian azimad'.split()
+
+
+PixelData = NDArray[float]
 
 
 def azimuthaloperator(func):
@@ -43,7 +46,7 @@ def docstring(purpose: str) -> str:
 
 @azimuthaloperator
 @docstring('Azimuthal average')
-def aziavg(d: np.ndarray, r: np.ndarray) -> np.ndarray:
+def aziavg(d: PixelData, r: NDArray[float]) -> PixelData:
     '''
     avg: ndarray
         Average value of data as a function of distance from center
@@ -54,7 +57,7 @@ def aziavg(d: np.ndarray, r: np.ndarray) -> np.ndarray:
 
 @azimuthaloperator
 @docstring('Azimuthal standard deviation')
-def azistd(d: np.ndarray, r: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def azistd(d: PixelData, r: NDArray[float]) -> tuple[PixelData, PixelData]:
     '''
     avg, std: tuple of numpy.ndarray
         Azimuthal average and
@@ -69,7 +72,7 @@ def azistd(d: np.ndarray, r: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
 
 @azimuthaloperator
 @docstring('Azimuthal median')
-def azimedian(d: np.ndarray, r: np.ndarray) -> np.ndarray:
+def azimedian(d: PixelData, r: NDArray[float]) -> PixelData:
     '''
     med: numpy.ndarray
         Median value as a function of distance from center
@@ -80,7 +83,7 @@ def azimedian(d: np.ndarray, r: np.ndarray) -> np.ndarray:
 
 @azimuthaloperator
 @docstring('Azimuthal median absolute deviation')
-def azimad(d: np.ndarray, r: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+def azimad(d: PixelData, r: NDArray[float]) -> tuple[PixelData, PixelData]:
     '''
     med, mad: tuple of numpy.ndarray
         Azimuthal median and
