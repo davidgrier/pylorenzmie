@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from pylorenzmie.lib import (LMObject, aziavg)
+from pylorenzmie.lib import (LMObject, Azimuthal)
 from pylorenzmie.theory import Instrument
 import pandas as pd
 import numpy as np
@@ -65,7 +65,7 @@ class Estimator(LMObject):
         self.noise = self.instrument.noise
         self.magnification = self.instrument.magnification
         # NOTE: Allow to pass in profile without aziavg
-        self.profile = aziavg(feature)
+        self.profile = Azimuthal.avg(feature)
 
     def _estimate_z(self) -> None:
         '''Estimate axial position of particle
