@@ -1,4 +1,4 @@
-from pylorenzmie.analysis.Mask import (Mask, example)
+from pylorenzmie.analysis.Mask import Mask
 import numpy as np
 
 
@@ -10,7 +10,7 @@ class RadialMask(Mask):
             return
         f = self.fraction
         a, b = (0., 2.*f) if (f < 0.5) else (2.*f-1., 2.*(1.-f))
-        
+
         w, h = self.shape
         x = 2.*np.arange(w)/(w - 1.) - 1.
         y = 2.*np.arange(h)/(h - 1.) - 1.
@@ -21,8 +21,7 @@ class RadialMask(Mask):
         # p = np.add.outer(x*x, y*y)
         sample = np.random.random_sample(self.shape)
         self._mask = p >= sample
-        
 
 
 if __name__ == '__main__':  # pragma: no cover
-    example(RadialMask)
+    RadialMask.example()
