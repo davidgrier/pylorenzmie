@@ -9,5 +9,5 @@ from .LorenzMie import LorenzMie
 # Alias for backward compatibility
 LMHologram = LorenzMie
 
-__all__ = 'Instrument Particle Sphere Cluster Dimer' \
-          'LorenzMie LMHologram Aberrated AberratedLorenzMie'.split()
+__all__ = '''Instrument Particle Sphere Cluster Dimer
+          LorenzMie LMHologram Aberrated AberratedLorenzMie'''.split()

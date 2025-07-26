@@ -1,12 +1,12 @@
 from pylorenzmie.lib import (LMObject, aziavg, CircleTransform)
 import numpy as np
+from numpy.typing import NDArray
 import trackpy as tp
-# from scipy.signal import argrelmax
 import pandas as pd
-from typing import (Optional, Union, List)
 
-Images = Union[List[np.ndarray], np.ndarray]
-Predictions = Union[List[pd.DataFrame], pd.DataFrame]
+
+Images = NDArray[int] | list[NDArray[int]]
+Predictions = pd.DataFrame | list[pd.DataFrame]
 
 
 class Localizer(LMObject):
@@ -23,13 +23,13 @@ class Localizer(LMObject):
 
     Methods
     -------
-    localize(image) : pandas.DataFrame | List[pandas.DataFrame]
+    localize(image) : pandas.DataFrame | list[pandas.DataFrame]
         Returns centers and bounding boxes of features
         detected in image
 
         Arguments
         ---------
-        image: numpy.ndarray | List[numpy.ndarray]
+        image: numpy.ndarray | list[numpy.ndarray]
         diameter : int
         nfringes : int
 
@@ -38,8 +38,8 @@ class Localizer(LMObject):
     '''
 
     def __init__(self,
-                 diameter: Optional[int] = None,
-                 nfringes: Optional[int] = None,
+                 diameter: int | None = None,
+                 nfringes: int | None = None,
                  **kwargs) -> None:
         self.diameter = diameter or 31
         self.nfringes = nfringes or 20
@@ -53,8 +53,8 @@ class Localizer(LMObject):
 
     def localize(self,
                  image: Images,
-                 diameter: Optional[int] = None,
-                 nfringes: Optional[int] = None,
+                 diameter: int | None = None,
+                 nfringes: int | None = None,
                  **kwargs) -> pd.DataFrame:
         '''
         Localize features in normalized holographic microscopy images
@@ -63,9 +63,9 @@ class Localizer(LMObject):
         ---------
         image : numpy.ndarray | list[numpy.ndarray]
             image data
-        diameter : Optional[int]
+        diameter : int
             typical size of feature [pixels]
-        nfringes : Optional[int]
+        nfringes : int
             number of fringes to enclose in bounding box
 
         localize() also accepts all of the keyword arguments
@@ -100,7 +100,7 @@ class Localizer(LMObject):
         return pd.DataFrame(predictions)
 
 
-def example():
+def example() -> None:
     import cv2
     import matplotlib
     from matplotlib import pyplot as plt
@@ -111,7 +111,7 @@ def example():
 
     # Normalized hologram
     basedir = localizer.directory.parent
-    filename = str(basedir / 'docs' / 'tutorials'/ 'image0010.png')
+    filename = str(basedir / 'docs' / 'tutorials' / 'image0010.png')
     b = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float) / 100.
     print(filename)
 

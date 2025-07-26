@@ -1,6 +1,5 @@
 from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
 from pylorenzmie.theory.Particle import Particle
-from pylorenzmie.lib import Properties
 import numpy as np
 from typing import Any
 from numpy.typing import NDArray
@@ -41,7 +40,7 @@ def Aberrated(base_class: LorenzMie):
             self.spherical = spherical
 
         @LorenzMie.properties.getter
-        def properties(self) -> Properties:
+        def properties(self) -> LorenzMie.Properties:
             return {**super().properties,
                     'spherical': self.spherical}
 

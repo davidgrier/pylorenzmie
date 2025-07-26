@@ -3,7 +3,6 @@
 
 from dataclasses import dataclass
 from pylorenzmie.theory import Particle
-from pylorenzmie.lib import Properties
 import numpy as np
 from numpy.typing import NDArray
 
@@ -73,7 +72,7 @@ class Sphere(Particle):
         self.a_p = d_p/2.
 
     @Particle.properties.getter
-    def properties(self) -> Properties:
+    def properties(self) -> Particle.Properties:
         return {**super().properties,
                 'a_p': self.a_p,
                 'n_p': self.n_p,

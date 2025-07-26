@@ -1,4 +1,4 @@
-from pylorenzmie.lib import (LMObject, Properties, coordinates)
+from pylorenzmie.lib import (LMObject, coordinates)
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 import numpy as np
 from numpy.typing import NDArray
@@ -94,12 +94,12 @@ class LorenzMie(LMObject):
         return '\n    '.join([r, inst, part])
 
     @property
-    def properties(self) -> Properties:
+    def properties(self) -> LMObject.Properties:
         return {**self.particle.properties,
                 **self.instrument.properties}
 
     @properties.setter
-    def properties(self, properties: Properties) -> None:
+    def properties(self, properties: LMObject.Properties) -> None:
         for name, value in properties.items():
             if hasattr(self.particle, name):
                 setattr(self.particle, name, value)

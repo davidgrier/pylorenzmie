@@ -4,7 +4,7 @@
 from dataclasses import dataclass, field
 import numpy as np
 from numpy.typing import NDArray
-from pylorenzmie.lib import (LMObject, Properties)
+from pylorenzmie.lib import LMObject
 
 
 @dataclass
@@ -68,7 +68,7 @@ class Particle(LMObject):
         self.x_0, self.y_0, self.z_0 = r_0
 
     @LMObject.properties.getter
-    def properties(self) -> Properties:
+    def properties(self) -> LMObject.Properties:
         return {'x_p': self.x_p,
                 'y_p': self.y_p,
                 'z_p': self.z_p}
