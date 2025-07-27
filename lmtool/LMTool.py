@@ -4,7 +4,7 @@
 import cv2
 import numpy as np
 from numpy.typing import NDArray
-from pylorenzmie.lib import (Azimuthal, coordinates)
+from pylorenzmie.lib import (coordinates, Azimuthal)
 from pylorenzmie.lmtool.LMWidget import LMWidget
 import json
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot)

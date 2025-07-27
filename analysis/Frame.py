@@ -1,6 +1,6 @@
 from pylorenzmie.theory import Instrument
 from pylorenzmie.analysis import (Localizer, Feature)
-from pylorenzmie.lib import (LMObject, coordinates as make_coordinates)
+from pylorenzmie.lib import LMObject
 import pandas as pd
 import numpy as np
 from typing import (Optional, Tuple, List, Dict, TypeVar)
@@ -73,6 +73,7 @@ class Frame(LMObject):
         results: pandas.DataFrame
             Summary of tracking and characterization results from data
     '''
+
     def __init__(self,
                  instrument: Optional[Instrument] = None,
                  localizer: Optional[Localizer] = None,
@@ -95,7 +96,7 @@ class Frame(LMObject):
     def shape(self, shape: Tuple) -> None:
         if shape == self._shape:
             return
-        self._coordinates = make_coordinates(shape, flatten=False)
+        self._coordinates = self.meshgrid(shape, flatten=False)
         self._shape = shape
 
     @property

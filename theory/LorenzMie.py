@@ -1,4 +1,4 @@
-from pylorenzmie.lib import (LMObject, coordinates)
+from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 import numpy as np
 from numpy.typing import NDArray
@@ -119,7 +119,7 @@ class LorenzMie(LMObject):
         if coords is not None:
             c = np.atleast_2d(coords)
         else:
-            c = coordinates((201, 201), (-100, -100))
+            c = self.meshgrid((201, 201), (-100, -100))
         ndim, npts = c.shape
         if ndim > 3:
             raise ValueError(f'Incompatible shape: {coords.shape=}')
@@ -364,13 +364,12 @@ class LorenzMie(LMObject):
 
 def example(cls=LorenzMie, **kwargs) -> None:  # pragma: no cover
     import matplotlib.pyplot as plt
-    from pylorenzmie.lib import coordinates
     from pylorenzmie.theory import (Sphere, Instrument)
     from time import perf_counter
 
     # Create coordinate grid for image
     shape = (201, 201)
-    coords = coordinates(shape)
+    coords = cls.meshgrid(shape)
     # Place two spheres in the field of view, above the focal plane
     pa = Sphere()
     pa.r_p = [150, 150, 200]

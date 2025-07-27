@@ -38,12 +38,11 @@ class Dimer(Cluster):
 
 
 def example() -> None:  # pragma: no cover
-    from pylorenzmie.lib import coordinates
     from pylorenzmie.theory import (Instrument, LorenzMie)
     import matplotlib.pyplot as plt
 
     shape = (301, 301)
-    coords = coordinates(shape)
+    coords = LorenzMie.meshgrid(shape)
     instrument = Instrument()
     instrument.magnification = 0.048
     instrument.numerical_aperture = 1.45
