@@ -1,7 +1,6 @@
-from PyQt5.QtWidgets import QFrame
-from PyQt5 import uic
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot)
-from typing import (List, Dict)
+from pyqtgraph.Qt.QtWidgets import QFrame
+from pyqtgraph.Qt import uic
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
 
 
 class ParameterWidget(QFrame):
@@ -31,17 +30,17 @@ class ParameterWidget(QFrame):
         self.fixed = self.checkbox.isChecked
         self.setFixed = self.checkbox.setChecked
 
-    def _connectSignals(self):
+    def _connectSignals(self) -> None:
         self.slider.valueChanged.connect(self._reportChange)
 
     @pyqtSlot(float)
     def _reportChange(self, value: float) -> None:
         self.valueChanged.emit(value)
 
-    def range(self) -> List[float]:
+    def range(self) -> list[float]:
         return [self.minimum(), self.maximum()]
 
-    def setRange(self, range: List[float]) -> None:
+    def setRange(self, range: list[float]) -> None:
         self.slider.setRange(*range)
         self.spinbox.setRange(*range)
 
@@ -49,7 +48,7 @@ class ParameterWidget(QFrame):
         self.slider.setSingleStep(value)
         self.spinbox.setSingleStep(value)
 
-    def settings(self) -> Dict:
+    def settings(self) -> dict[str, float]:
         s = dict(text=self.text(),
                  range=self.range(),
                  value=self.value(),
@@ -62,7 +61,7 @@ class ParameterWidget(QFrame):
             s['suffix'] = self.suffix()
         return s
 
-    def setSettings(self, settings: dict) -> None:
+    def setSettings(self, settings: dict[str, float]) -> None:
         for setting, value in settings.items():
             if hasattr(self, setting):
                 method = f'set{setting.capitalize()}'
@@ -72,7 +71,7 @@ class ParameterWidget(QFrame):
 
 
 if __name__ == '__main__':
-    from PyQt5.QtWidgets import QApplication
+    from pyqtgraph.Qt.QtWidgets import QApplication
 
     def report(value):
         print(f'{value:.2f}', end='\r')
@@ -82,4 +81,4 @@ if __name__ == '__main__':
     widget.setRange([3, 11])
     widget.show()
     widget.valueChanged.connect(report)
-    app.exec_()
+    app.exec()

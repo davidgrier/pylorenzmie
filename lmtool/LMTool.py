@@ -7,9 +7,9 @@ from numpy.typing import NDArray
 from pylorenzmie.lib import (Azimuthal, coordinates)
 from pylorenzmie.lmtool.LMWidget import LMWidget
 import json
-from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
-from PyQt5.QtWidgets import (QMainWindow, QFileDialog)
-from PyQt5 import uic
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot)
+from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog)
+from pyqtgraph.Qt import uic
 import logging
 
 
@@ -157,7 +157,7 @@ class LMTool(QMainWindow):
 
 def lmtool() -> None:
     from pylorenzmie.lmtool.ALMWidget import ALMWidget
-    from PyQt5.QtWidgets import QApplication
+    from pyqtgraph.Qt.QtWidgets import QApplication
     from pathlib import Path
     import sys
     import argparse
@@ -182,7 +182,7 @@ def lmtool() -> None:
     app = QApplication(qt_args)
     lmtool = LMTool(ALMWidget, args.filename, background)
     lmtool.show()
-    sys.exit(app.exec_())
+    sys.exit(app.exec())
 
 
 if __name__ == '__main__':

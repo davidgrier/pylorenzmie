@@ -1,15 +1,15 @@
 import pyqtgraph as pg
-from PyQt5.QtCore import (Qt, pyqtProperty, pyqtSlot)
+from pyqtgraph.Qt.QtCore import (Qt, pyqtProperty, pyqtSlot)
 from pylorenzmie.theory import LorenzMie
 import numpy as np
-from typing import (Optional, Tuple, Dict)
+from numpy.typing import NDArray
 
 
 class ProfileWidget(pg.PlotWidget):
 
     def __init__(self,
                  *args,
-                 model: Optional[LorenzMie] = None,
+                 model: LorenzMie | None = None,
                  radius: int = 100,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -24,14 +24,14 @@ class ProfileWidget(pg.PlotWidget):
         opts = {'font-size': '14pt', 'color': 'gray'}
         self.setLabel('bottom', 'r [pixels]', **opts)
         self.setLabel('left', 'b(r)', **opts)
-        pen = pg.mkPen('k', width=3, style=Qt.DashLine)
+        pen = pg.mkPen('k', width=3, style=Qt.PenStyle.DashLine)
         self.addLine(y=1, pen=pen)
         pen = pg.mkPen('k', width=3)
         self.getAxis('bottom').setPen(pen)
         self.getAxis('left').setPen(pen)
         self.theory = pg.PlotCurveItem(pen=pg.mkPen('r', width=3))
         self.experiment = pg.PlotCurveItem(pen=pg.mkPen('k', width=3))
-        pen = pg.mkPen('k', width=1, style=Qt.DashLine)
+        pen = pg.mkPen('k', width=1, style=Qt.PenStyle.DashLine)
         self.upper = pg.PlotCurveItem(pen=pen)
         self.lower = pg.PlotCurveItem(pen=pen)
         brush = pg.mkBrush(255, 165, 0, 128)
@@ -43,11 +43,11 @@ class ProfileWidget(pg.PlotWidget):
         self.addItem(self.region)
 
     @pyqtProperty(dict)
-    def properties(self) -> Dict[str, float]:
+    def properties(self) -> dict[str, LorenzMie.Property]:
         return self.model.properties
 
     @properties.setter
-    def properties(self, properties) -> None:
+    def properties(self, properties: dict[str, LorenzMie.Property]) -> None:
         if 'x_p' in properties:
             properties.pop('x_p')
         if 'y_p' in properties:
@@ -68,11 +68,11 @@ class ProfileWidget(pg.PlotWidget):
         self._model = model
 
     @pyqtProperty(tuple)
-    def data(self) -> Tuple[np.ndarray, np.ndarray]:
+    def data(self) -> tuple[NDArray[float], NDArray[float]]:
         return (self._data, self._stdev)
 
     @data.setter
-    def data(self, data: Tuple[np.ndarray, np.ndarray]) -> None:
+    def data(self, data: tuple[NDArray[float], NDArray[float]]) -> None:
         self._data, self._stdev = data
         self.plotData()
 
@@ -90,7 +90,7 @@ class ProfileWidget(pg.PlotWidget):
     def plotTheory(self) -> None:
         self.theory.setData(self.model.hologram())
 
-    def plotData(self):
+    def plotData(self) -> None:
         if self._data is None:
             return
         radius = min(self.radius, len(self._data))
@@ -101,11 +101,11 @@ class ProfileWidget(pg.PlotWidget):
         self.lower.setData(data - stdev)
 
     @pyqtSlot(str, float)
-    def setProperty(self, name, value):
+    def setProperty(self, name: str, value: float) -> None:
         self.model.properties = {name: value}
 
 
-def example():
+def example() -> None:
     from pylorenzmie.theory import AberratedLorenzMie as model
 
     app = pg.mkQApp()
@@ -113,7 +113,7 @@ def example():
     widget.model = model()
     widget.radius = 150
     widget.show()
-    app.exec_()
+    app.exec()
 
 
 if __name__ == '__main__':
