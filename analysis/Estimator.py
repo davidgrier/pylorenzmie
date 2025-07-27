@@ -104,17 +104,17 @@ class Estimator(LMObject):
         self._estimate_a()
         return pd.Series(self.properties)
 
+    @classmethod
+    def example(cls) -> None:
+        import cv2
 
-def example() -> None:
-    import cv2
-
-    estimator = Estimator(Instrument())
-    basedir = estimator.directory.parent
-    filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
-    hologram = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
-    hologram /= 100.
-    print(estimator.estimate(hologram))
+        estimator = cls(Instrument())
+        basedir = estimator.directory.parent
+        filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
+        hologram = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+        hologram /= 100.
+        print(estimator.estimate(hologram))
 
 
 if __name__ == '__main__':
-    example()
+    Estimator.example()

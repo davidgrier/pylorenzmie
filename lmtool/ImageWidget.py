@@ -93,22 +93,22 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         size = self.roi.size()
         return QRectF(*pos, *size)
 
+    @classmethod
+    def example(cls) -> None:
 
-def example():
+        def radius(r):
+            print(f'radius = {r}', end='\r')
 
-    def radius(r):
-        print(f'radius = {r}', end='\r')
+        def position(x, y):
+            print(f'position = ({x:.1f}, {y:.1f})', end='\r')
 
-    def position(x, y):
-        print(f'position = ({x:.1f}, {y:.1f})', end='\r')
-
-    app = pg.mkQApp()
-    widget = ImageWidget()
-    widget.show()
-    widget.radiusChanged.connect(radius)
-    widget.roiChanged.connect(position)
-    app.exec_()
+        app = pg.mkQApp()
+        widget = cls()
+        widget.show()
+        widget.radiusChanged.connect(radius)
+        widget.roiChanged.connect(position)
+        app.exec()
 
 
 if __name__ == '__main__':
-    example()
+    ImageWidget.example()

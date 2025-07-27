@@ -99,35 +99,35 @@ class Localizer(LMObject):
             predictions.append(prediction)
         return pd.DataFrame(predictions)
 
+    @classmethod
+    def example(cls) -> None:
+        import cv2
+        import matplotlib
+        from matplotlib import pyplot as plt
+        from matplotlib.patches import Rectangle
 
-def example() -> None:
-    import cv2
-    import matplotlib
-    from matplotlib import pyplot as plt
-    from matplotlib.patches import Rectangle
+        # Create a Localizer
+        localizer = cls()
 
-    # Create a Localizer
-    localizer = Localizer()
+        # Normalized hologram
+        basedir = localizer.directory.parent
+        filename = str(basedir / 'docs' / 'tutorials' / 'image0010.png')
+        b = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float) / 100.
+        print(filename)
 
-    # Normalized hologram
-    basedir = localizer.directory.parent
-    filename = str(basedir / 'docs' / 'tutorials' / 'image0010.png')
-    b = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float) / 100.
-    print(filename)
+        # Use Localizer to identify features in the hologram
+        features = localizer.localize(b, nfringes=20)
+        print(features)
 
-    # Use Localizer to identify features in the hologram
-    features = localizer.localize(b, nfringes=20)
-    print(features)
-
-    # Show and report results
-    style = dict(fill=False, linewidth=3, edgecolor='r')
-    matplotlib.use('TkAgg')
-    fig, ax = plt.subplots()
-    ax.imshow(b, cmap='gray')
-    for bbox in features.bbox:
-        ax.add_patch(Rectangle(*bbox, **style))
-    plt.show()
+        # Show and report results
+        style = dict(fill=False, linewidth=3, edgecolor='r')
+        matplotlib.use('TkAgg')
+        fig, ax = plt.subplots()
+        ax.imshow(b, cmap='gray')
+        for bbox in features.bbox:
+            ax.add_patch(Rectangle(*bbox, **style))
+        plt.show()
 
 
 if __name__ == '__main__':
-    example()
+    Localizer.example()

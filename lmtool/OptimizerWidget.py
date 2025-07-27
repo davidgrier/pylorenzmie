@@ -83,16 +83,16 @@ class OptimizerWidget(ParameterTree):
             except KeyError:
                 logger.debug(f'{name} unknown')
 
+    @classmethod
+    def example(cls) -> None:
+        from pyqtgraph import mkQApp
 
-def example() -> None:
-    from pyqtgraph import mkQApp
-
-    app = mkQApp()
-    Widget = OptimizerWidget()
-    widget.show()
-    widget.settings = {'ftol': 1e-3, 'method': 'dogbox'}
-    app.exec()
+        app = mkQApp()
+        widget = cls()
+        widget.show()
+        widget.settings = {'ftol': 1e-3, 'method': 'dogbox'}
+        app.exec()
 
 
 if __name__ == '__main__':
-    example()
+    OptimizerWidget.example()

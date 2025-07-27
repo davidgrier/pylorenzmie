@@ -69,16 +69,20 @@ class ParameterWidget(QFrame):
                     setter = getattr(self, method)
                     setter(value)
 
+    @classmethod
+    def example(cls) -> None:
+        from pyqtgraph import mkQApp
+
+        def report(value):
+            print(f'{value:.2f}', end='\r')
+
+        app = mkQApp()
+        widget = cls()
+        widget.setRange([3, 11])
+        widget.show()
+        widget.valueChanged.connect(report)
+        app.exec()
+
 
 if __name__ == '__main__':
-    from pyqtgraph import mkQApp
-
-    def report(value):
-        print(f'{value:.2f}', end='\r')
-
-    app = mkQApp()
-    widget = ParameterWidget()
-    widget.setRange([3, 11])
-    widget.show()
-    widget.valueChanged.connect(report)
-    app.exec()
+    ParameterWidget.example()
