@@ -45,60 +45,57 @@ def docstring(purpose: str) -> str:
     return _doc
 
 
-class Azimuthal:
+@azimuthaloperator
+@docstring('Azimuthal average')
+def avg(d: Data, r: Center) -> Average:
+    '''
+    avg: ndarray
+        Average value of data as a function of distance from center
+    '''
+    nr = np.bincount(r)
+    return np.bincount(r, d) / nr
 
-    @staticmethod
-    @azimuthaloperator
-    @docstring('Azimuthal average')
-    def avg(d: Data, r: Center) -> Average:
-        '''
-        avg: ndarray
-            Average value of data as a function of distance from center
-        '''
-        nr = np.bincount(r)
-        return np.bincount(r, d) / nr
 
-    @staticmethod
-    @azimuthaloperator
-    @docstring('Azimuthal standard deviation')
-    def std(d: Data, r: Center) -> tuple[Average, Average]:
-        '''
-        avg, std: tuple of numpy.ndarray
-            Azimuthal average and
-            azimuthal standard deviation
-            as functions of distance from center
-        '''
-        nr = np.bincount(r)
-        avg = np.bincount(r, d) / nr
-        std = np.sqrt(np.bincount(r, (d - avg[r])**2) / nr)
-        return avg, std
+@azimuthaloperator
+@docstring('Azimuthal standard deviation')
+def std(d: Data, r: Center) -> tuple[Average, Average]:
+    '''
+    avg, std: tuple of numpy.ndarray
+        Azimuthal average and
+        azimuthal standard deviation
+        as functions of distance from center
+    '''
+    nr = np.bincount(r)
+    avg = np.bincount(r, d) / nr
+    std = np.sqrt(np.bincount(r, (d - avg[r])**2) / nr)
+    return avg, std
 
-    @staticmethod
-    @azimuthaloperator
-    @docstring('Azimuthal median')
-    def med(d: Data, r: Center) -> Average:
-        '''
-        med: numpy.ndarray
-            Median value as a function of distance from center
-        '''
-        med = [np.median(d[np.where(r == n)]) for n in np.arange(r.max())]
-        return np.array(med)
 
-    @staticmethod
-    @azimuthaloperator
-    @docstring('Azimuthal median absolute deviation')
-    def mad(d: Data, r: Center) -> tuple[Average, Average]:
-        '''
-        med, mad: tuple of numpy.ndarray
-            Azimuthal median and
-            azimuthal median absolute deviation
-            as functions of distance from center
-        '''
-        radii = np.arange(r.max())
-        med = np.empty_like(radii)
-        mad = np.empty_like(radii)
-        for n in radii:
-            dn = d[np.where(r == n)]
-            med[n] = np.median(dn)
-            mad[n] = np.abs(dn - med[n])
-        return med, mad
+@azimuthaloperator
+@docstring('Azimuthal median')
+def med(d: Data, r: Center) -> Average:
+    '''
+    med: numpy.ndarray
+        Median value as a function of distance from center
+    '''
+    med = [np.median(d[np.where(r == n)]) for n in np.arange(r.max())]
+    return np.array(med)
+
+
+@azimuthaloperator
+@docstring('Azimuthal median absolute deviation')
+def mad(d: Data, r: Center) -> tuple[Average, Average]:
+    '''
+    med, mad: tuple of numpy.ndarray
+        Azimuthal median and
+        azimuthal median absolute deviation
+        as functions of distance from center
+    '''
+    radii = np.arange(r.max())
+    med = np.empty_like(radii)
+    mad = np.empty_like(radii)
+    for n in radii:
+        dn = d[np.where(r == n)]
+        med[n] = np.median(dn)
+        mad[n] = np.abs(dn - med[n])
+    return med, mad

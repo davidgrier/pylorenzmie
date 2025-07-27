@@ -34,5 +34,5 @@ def coordinates(shape: tuple[int, int],
     left, top = (0, 0) if corner is None else corner
     x = np.arange(left, left + nx, dtype=dtype)
     y = np.arange(top, top + ny, dtype=dtype)
-    xy = np.meshgrid(x, y)
+    xy = np.array(np.meshgrid(x, y))
     return xy.reshape((2, -1)) if flatten else xy
