@@ -1,7 +1,7 @@
 import pyqtgraph as pg
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QRectF)
 import numpy as np
-from typing import Optional
+from numpy.typing import NDArray
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):
@@ -11,7 +11,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
     def __init__(self,
                  *args,
-                 data: Optional[np.ndarray] = None,
+                 data: NDArray[float] | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._radius = 100
@@ -52,11 +52,11 @@ class ImageWidget(pg.GraphicsLayoutWidget):
             self.radiusChanged.emit(radius)
 
     @pyqtProperty(np.ndarray)
-    def data(self) -> np.ndarray:
+    def data(self) -> NDArray[float]:
         return self._data
 
     @data.setter
-    def data(self, data: np.ndarray) -> None:
+    def data(self, data: NDArray[float]) -> None:
         self._data = data
         self.image.setImage(data)
         h, w = data.shape
