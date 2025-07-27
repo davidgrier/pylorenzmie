@@ -104,17 +104,17 @@ class ProfileWidget(pg.PlotWidget):
     def setProperty(self, name: str, value: float) -> None:
         self.model.properties = {name: value}
 
+    @classmethod
+    def example(cls) -> None:
+        from pylorenzmie.theory import AberratedLorenzMie as model
 
-def example() -> None:
-    from pylorenzmie.theory import AberratedLorenzMie as model
-
-    app = pg.mkQApp()
-    widget = ProfileWidget()
-    widget.model = model()
-    widget.radius = 150
-    widget.show()
-    app.exec()
+        app = pg.mkQApp()
+        widget = cls()
+        widget.model = model()
+        widget.radius = 150
+        widget.show()
+        app.exec()
 
 
 if __name__ == '__main__':
-    example()
+    ProfileWidget.example()

@@ -22,15 +22,19 @@ class DoubleSpinBox(QDoubleSpinBox):
     def _editingFinished(self) -> None:
         self.editingFinished[float].emit(self.value())
 
+    @classmethod
+    def example(cls) -> None:
+        from pyqtgraph import mkQApp
+
+        def report(value):
+            print(f'{value:.2f}', end='\r')
+
+        app = mkQApp()
+        widget = cls()
+        widget.show()
+        widget.valueChanged[float].connect(report)
+        app.exec()
+
 
 if __name__ == '__main__':
-    from pyqtgraph import mkQApp
-
-    def report(value):
-        print(f'{value:.2f}', end='\r')
-
-    app = mkQApp()
-    widget = DoubleSpinBox()
-    widget.show()
-    widget.valueChanged[float].connect(report)
-    app.exec()
+    DoubleSpinBox.example()
