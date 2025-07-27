@@ -1,4 +1,4 @@
-from pylorenzmie.lmtool.LMWidget import (LMWidget, example)
+from pylorenzmie.lmtool.LMWidget import LMWidget
 from pylorenzmie.theory import AberratedLorenzMie
 
 
@@ -12,4 +12,4 @@ class ALMWidget(LMWidget):
 
 
 if __name__ == '__main__':
-    example(ALMWidget)
+    ALMWidget.example()

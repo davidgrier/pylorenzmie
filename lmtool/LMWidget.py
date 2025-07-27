@@ -69,20 +69,20 @@ class LMWidget(QFrame):
                 self.controls.append(widget)
                 widget.setSettings(settings)
 
+    @classmethod
+    def example(cls):
+        from PyQt5.QtWidgets import QApplication
 
-def example(cls):
-    from PyQt5.QtWidgets import QApplication
+        def report(name, value):
+            result = f'{name}: {value}'
+            print(f'{result: <30}', end='\r')
 
-    def report(name, value):
-        result = f'{name}: {value}'
-        print(f'{result: <30}', end='\r')
-
-    app = QApplication([])
-    widget = cls()
-    widget.show()
-    widget.propertyChanged.connect(report)
-    app.exec_()
+        app = QApplication([])
+        widget = cls()
+        widget.show()
+        widget.propertyChanged.connect(report)
+        app.exec_()
 
 
 if __name__ == '__main__':
-    example(LMWidget)
+    LMWidget.example()
