@@ -101,6 +101,6 @@ class LMObject(ABC):
         self.properties = series.to_dict()
 
     @property
-    def directory(self):
+    def directory(self) -> Path:
         '''Returns fully-qualified path to source file'''
         return Path(__file__).parent.resolve()
