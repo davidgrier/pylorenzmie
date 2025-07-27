@@ -71,12 +71,12 @@ class ParameterWidget(QFrame):
 
 
 if __name__ == '__main__':
-    from pyqtgraph.Qt.QtWidgets import QApplication
+    from pyqtgraph import mkQApp
 
     def report(value):
         print(f'{value:.2f}', end='\r')
 
-    app = QApplication([])
+    app = mkQApp()
     widget = ParameterWidget()
     widget.setRange([3, 11])
     widget.show()

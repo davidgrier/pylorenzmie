@@ -71,13 +71,13 @@ class LMWidget(QFrame):
 
     @classmethod
     def example(cls):
-        from pyqtgraph.Qt.QtWidgets import QApplication
+        from pyqtgraph import mkQApp
 
         def report(name, value):
             result = f'{name}: {value}'
             print(f'{result: <30}', end='\r')
 
-        app = QApplication([])
+        app = mkQApp()
         widget = cls()
         widget.show()
         widget.propertyChanged.connect(report)

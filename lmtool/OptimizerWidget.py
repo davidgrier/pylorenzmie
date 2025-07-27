@@ -88,7 +88,7 @@ def example() -> None:
     from pyqtgraph import mkQApp
 
     app = mkQApp()
-    widget = OptimizerWidget()
+    Widget = OptimizerWidget()
     widget.show()
     widget.settings = {'ftol': 1e-3, 'method': 'dogbox'}
     app.exec()
