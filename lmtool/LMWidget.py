@@ -3,7 +3,6 @@ from PyQt5 import uic
 from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
 from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
 from pylorenzmie.theory import LorenzMie
-from typing import (List, Dict)
 import json
 
 
@@ -33,22 +32,22 @@ class LMWidget(QFrame):
             control.valueChanged.connect(self._handleChange)
 
     @pyqtProperty(dict)
-    def properties(self) -> Dict[str, float]:
+    def properties(self) -> LorenzMie.Properties:
         return {control.objectName(): control.value() for
                 control in self.controls}
 
     @properties.setter
-    def properties(self, properties: Dict[str, float]) -> None:
+    def properties(self, properties: LorenzMie.Properties) -> None:
         for name, value in properties.items():
             if hasattr(self, name):
                 getattr(self, name).setValue(value)
 
     @pyqtProperty(list)
-    def fixed(self) -> List[str]:
+    def fixed(self) -> list[str]:
         return [c.objectName() for c in self.controls if c.fixed()]
 
     @fixed.setter
-    def fixed(self, fixed: list) -> None:
+    def fixed(self, fixed: list[str]) -> None:
         for control in self.controls:
             control.setFixed(control.objectName in fixed)
 
@@ -58,11 +57,11 @@ class LMWidget(QFrame):
         self.model.properties = {name: value}
         self.propertyChanged.emit(name, value)
 
-    def config(self) -> Dict[str, Dict]:
+    def config(self) -> dict[str, LorenzMie.Properties]:
         return {n: c.settings() for n, c in self.__dict__.items()
                 if isinstance(c, ParameterWidget)}
 
-    def setConfig(self, config: Dict[str, Dict]) -> None:
+    def setConfig(self, config: dict[str, LorenzMie.Properties]) -> None:
         self.controls = []
         for control, settings in config.items():
             if hasattr(self, control):

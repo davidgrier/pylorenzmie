@@ -3,13 +3,13 @@
 
 import cv2
 import numpy as np
+from numpy.typing import NDArray
 from pylorenzmie.lib import (Azimuthal, coordinates)
 from pylorenzmie.lmtool.LMWidget import LMWidget
 import json
 from PyQt5.QtCore import (pyqtProperty, pyqtSlot)
 from PyQt5.QtWidgets import (QMainWindow, QFileDialog)
 from PyQt5 import uic
-from typing import (Type, Optional, Tuple)
 import logging
 
 
@@ -33,10 +33,10 @@ class LMTool(QMainWindow):
     uiFile = 'LMTool.ui'
 
     def __init__(self,
-                 controls: Type[LMWidget],
-                 filename: Optional[str] = None,
-                 background: Optional[float] = None):
-        super(LMTool, self).__init__()
+                 controls: LMWidget,
+                 filename: str | None = None,
+                 background: float | None = None):
+        super().__init__()
         uic.loadUi(self.uiFile, self)
         self.background = background or 100.
         self._setupTheory(controls())
@@ -69,11 +69,11 @@ class LMTool(QMainWindow):
         connect(self.fitWidget.setSetting)
 
     @pyqtProperty(np.ndarray)
-    def data(self) -> np.ndarray:
+    def data(self) -> NDArray[float]:
         return self._data
 
     @data.setter
-    def data(self, data: np.ndarray) -> None:
+    def data(self, data: NDArray[float]) -> None:
         self._data = data / self.background
         self.coordinates = coordinates(data.shape, flatten=False)
         self.controls.x_p.setRange((0, data.shape[1]-1))
@@ -82,7 +82,7 @@ class LMTool(QMainWindow):
         self._updateProfile()
 
     @pyqtSlot()
-    def readHologram(self, filename: Optional[str] = None) -> None:
+    def readHologram(self, filename: str | None = None) -> None:
         if filename is None:
             get = QFileDialog.getOpenFileName
             filename, _ = get(self, 'Open Hologram', '', 'Images (*.png)')
@@ -92,7 +92,7 @@ class LMTool(QMainWindow):
         self.data = cv2.imread(filename, 0).astype(float)
 
     @pyqtSlot()
-    def saveParameters(self, filename: Optional[str] = None) -> None:
+    def saveParameters(self, filename: str | None = None) -> None:
         if filename is None:
             get = QFileDialog.getSaveFileName
             filename, _ = get(self, 'Save Parameters', '', 'JSON (*.json)')
@@ -128,7 +128,7 @@ class LMTool(QMainWindow):
             self.imageWidget.y_p = value
         self.profileWidget.properties = {name: value}
 
-    def crop(self, rect: bool = False) -> Tuple:
+    def crop(self, rect: bool = False) -> tuple[NDArray[float], NDArray[float]]:
         get = self.imageWidget.roi.getArraySlice
         (sy, sx), _ = get(self._data, self.imageWidget.image)
         if rect:
@@ -155,7 +155,7 @@ class LMTool(QMainWindow):
         self.statusBar().showMessage('Optimization complete', 2000)
 
 
-def lmtool():
+def lmtool() -> None:
     from pylorenzmie.lmtool.ALMWidget import ALMWidget
     from PyQt5.QtWidgets import QApplication
     from pathlib import Path
