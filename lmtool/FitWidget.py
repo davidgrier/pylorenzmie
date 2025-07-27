@@ -1,8 +1,8 @@
 import pyqtgraph as pg
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.theory import LorenzMie
-from PyQt5.QtCore import (pyqtProperty, QRectF, pyqtSlot)
-from PyQt5.QtWidgets import QFileDialog
+from pyqtgraph.Qt.QtCore import (pyqtProperty, QRectF, pyqtSlot)
+from pyqtgraph.Qt.QtWidgets import QFileDialog
 from pathlib import Path
 from datetime import datetime
 import numpy as np

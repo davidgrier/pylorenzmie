@@ -1,5 +1,5 @@
 import pyqtgraph as pg
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QRectF)
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QRectF)
 import numpy as np
 from numpy.typing import NDArray
 

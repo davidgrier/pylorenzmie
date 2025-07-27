@@ -1,6 +1,6 @@
-from PyQt5.QtWidgets import QFrame
-from PyQt5 import uic
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
+from pyqtgraph.Qt.QtWidgets import QFrame
+from pyqtgraph.Qt import uic
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
 from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
 from pylorenzmie.theory import LorenzMie
 import json
@@ -71,7 +71,7 @@ class LMWidget(QFrame):
 
     @classmethod
     def example(cls):
-        from PyQt5.QtWidgets import QApplication
+        from pyqtgraph.Qt.QtWidgets import QApplication
 
         def report(name, value):
             result = f'{name}: {value}'
@@ -81,7 +81,7 @@ class LMWidget(QFrame):
         widget = cls()
         widget.show()
         widget.propertyChanged.connect(report)
-        app.exec_()
+        app.exec()
 
 
 if __name__ == '__main__':

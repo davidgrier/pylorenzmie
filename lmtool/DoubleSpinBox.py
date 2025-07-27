@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QDoubleSpinBox
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot)
+from pyqtgraph.Qt.QtWidgets import QDoubleSpinBox
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
 
 
 class DoubleSpinBox(QDoubleSpinBox):
@@ -24,7 +24,7 @@ class DoubleSpinBox(QDoubleSpinBox):
 
 
 if __name__ == '__main__':
-    from PyQt5.QtWidgets import QApplication
+    from pyqtgraph.Qt.QtWidgets import QApplication
 
     def report(value):
         print(f'{value:.2f}', end='\r')

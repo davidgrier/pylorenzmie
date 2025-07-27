@@ -1,5 +1,6 @@
+from pylorenzmie.lib import LMObject
 from pyqtgraph.parametertree import (Parameter, ParameterTree)
-from PyQt5.QtCore import (pyqtProperty, pyqtSlot, pyqtSignal)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, pyqtSignal)
 import logging
 
 
@@ -11,13 +12,13 @@ class OptimizerWidget(ParameterTree):
 
     settingChanged = pyqtSignal(str, object)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._buildTree()
         self._consistencyCheck()
         self._connectSignals()
 
-    def _buildTree(self):
+    def _buildTree(self) -> None:
         p = [
             {'name': 'fraction', 'type': 'float',
              'value': 0.5, 'limits': (0, 1), 'step': 0.01,
@@ -44,7 +45,7 @@ class OptimizerWidget(ParameterTree):
                                        children=p)
         self.setParameters(self.params, showTop=False)
 
-    def _consistencyCheck(self):
+    def _consistencyCheck(self) -> None:
         if self.params.child('method').value() == 'lm':
             widget = self.params.child('loss')
             widget.setValue('linear')
@@ -53,27 +54,28 @@ class OptimizerWidget(ParameterTree):
         else:
             self.params.child('loss').setOpts(enabled=True)
 
-    def _connectSignals(self):
+    def _connectSignals(self) -> None:
         p = self.params.child('method')
         p.sigValueChanged.connect(self._updateLoss)
         for p in self.params:
             p.sigValueChanged.connect(self._handleValueChanged)
 
     @pyqtSlot(object, object)
-    def _updateLoss(self, widget, value):
+    def _updateLoss(self, widget: 'QWidget', value: LMObject.Property):
         self._consistencyCheck()
 
     @pyqtSlot(object, object)
-    def _handleValueChanged(self, widget, value):
+    def _handleValueChanged(self, widget: 'QWidget',
+                            value: LMObject.Property):
         logger.debug(f'emitting {widget.name()} {value}')
         self.settingChanged.emit(widget.name(), value)
 
     @pyqtProperty(dict)
-    def settings(self):
+    def settings(self) -> dict[str, LMObject.Property]:
         return {p.name(): p.value() for p in self.params}
 
     @settings.setter
-    def settings(self, settings):
+    def settings(self, settings: dict[str, LMObject.Property]) -> None:
         for name, value in settings.items():
             try:
                 widget = self.params.child(name)
@@ -82,14 +84,14 @@ class OptimizerWidget(ParameterTree):
                 logger.debug(f'{name} unknown')
 
 
-def example():
+def example() -> None:
     from pyqtgraph import mkQApp
 
     app = mkQApp()
     widget = OptimizerWidget()
     widget.show()
     widget.settings = {'ftol': 1e-3, 'method': 'dogbox'}
-    app.exec_()
+    app.exec()
 
 
 if __name__ == '__main__':

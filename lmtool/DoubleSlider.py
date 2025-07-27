@@ -1,5 +1,5 @@
-from PyQt5.QtWidgets import QSlider
-from PyQt5.QtCore import (pyqtSignal, pyqtSlot)
+from pyqtgraph.Qt.QtWidgets import QSlider
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
 import logging
 import numpy as np
 
