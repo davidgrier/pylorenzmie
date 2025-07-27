@@ -6,8 +6,8 @@ from PyQt5.QtWidgets import QFileDialog
 from pathlib import Path
 from datetime import datetime
 import numpy as np
+from numpy.typing import NDArray
 import pandas as pd
-from typing import (Optional, Dict)
 
 
 # Suppress pytables warnings while saving metadata strings
@@ -59,7 +59,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
                              pen=pen)
         self.addItem(cb)
 
-    def mask(self, data: np.ndarray) -> np.ndarray:
+    def mask(self, data: NDArray[float]) -> NDArray[bool]:
         data = data.flatten()
         mask = np.random.choice([True, False], data.size,
                                 p=[self.fraction, 1-self.fraction])
@@ -67,8 +67,8 @@ class FitWidget(pg.GraphicsLayoutWidget):
         return mask
 
     def optimize(self,
-                 data: np.ndarray,
-                 coords: np.ndarray) -> pd.Series:
+                 data: NDArray[float],
+                 coords: NDArray[float]) -> pd.Series:
         mask = self.mask(data)
         coords = coords.reshape((2, -1))
         self.optimizer.data = data.flatten()[mask]
@@ -84,7 +84,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.residuals.setRect(self.rect)
         return self.result
 
-    def setData(self, data: np.ndarray, rect: QRectF) -> None:
+    def setData(self, data: NDArray[float], rect: QRectF) -> None:
         self.region.setImage(data)
         self.region.setRect(rect)
         self.rect = rect
@@ -98,15 +98,15 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.optimizer.model = model
 
     @pyqtProperty(dict)
-    def properties(self) -> Dict[str, float]:
+    def properties(self) -> LorenzMie.Properties:
         return self.optimizer.model.properties
 
     @properties.setter
-    def properties(self, properties: Dict[str, float]) -> None:
+    def properties(self, properties: LorenzMie.Properties) -> None:
         self.optimizer.model.properties = properties
 
     @pyqtSlot(str, object)
-    def setSetting(self, name, value):
+    def setSetting(self, name: str, value: LorenzMie.Property) -> None:
         if name == 'fraction':
             self.fraction = value
         else:
@@ -119,7 +119,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         return str(directory / f'result_{timestamp}.h5')
 
     @pyqtSlot()
-    def saveResult(self, filename: Optional[str] = None) -> None:
+    def saveResult(self, filename: str | None = None) -> None:
         filename = filename or self.filename()
         self.result.to_hdf(filename, 'result', mode='w')
         metadata = self.optimizer.metadata
