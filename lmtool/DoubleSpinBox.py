@@ -12,14 +12,14 @@ class DoubleSpinBox(QDoubleSpinBox):
         super().__init__(*args, **kwargs)
         super().editingFinished.connect(self._editingFinished)
 
-    def stepBy(self, step):
+    def stepBy(self, step: float) -> None:
         value = self.value()
         super().stepBy(step)
         if self.value() != value:
             self.buttonClicked.emit(self.value())
 
     @pyqtSlot()
-    def _editingFinished(self):
+    def _editingFinished(self) -> None:
         self.editingFinished[float].emit(self.value())
 
 
