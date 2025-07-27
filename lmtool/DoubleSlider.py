@@ -141,13 +141,13 @@ class DoubleSlider(QSlider):
 
 
 if __name__ == '__main__':
-    from PyQt5.QtWidgets import QApplication
+    from pyqtgraph import mkQApp
 
     def report(value):
         print(f'{value:.2f}', end='\r')
 
-    app = QApplication([])
+    app = mkQApp()
     widget = DoubleSlider()
     widget.show()
     widget.valueChanged[float].connect(report)
-    app.exec_()
+    app.exec()
