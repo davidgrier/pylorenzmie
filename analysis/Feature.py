@@ -5,6 +5,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pylorenzmie.analysis import (Mask, Estimator, Optimizer)
 from pylorenzmie.theory import (LorenzMie, Particle)
+import pandas as pd
 
 
 class Feature(object):
@@ -42,8 +43,8 @@ class Feature(object):
     '''
 
     def __init__(self,
-                 data: NDArray[float] | None = None,
-                 coordinates: NDArray[int] | None = None,
+                 data: LorenzMie.Image | None = None,
+                 coordinates: LorenzMie.Coordinates | None = None,
                  mask: Mask | None = None,
                  model: LorenzMie | None = None,
                  fixed: list[str] | None = None) -> None:
@@ -68,12 +69,12 @@ class Feature(object):
         self._mask_data()
 
     @property
-    def data(self) -> NDArray[float]:
+    def data(self) -> LorenzMie.Image:
         '''Values of the (normalized) data at each pixel'''
         return self._data
 
     @data.setter
-    def data(self, data: NDArray[float]) -> None:
+    def data(self, data: LorenzMie.Image) -> None:
         self._data = data
         self._mask_data()
 
@@ -87,12 +88,12 @@ class Feature(object):
         self.mask.exclude = saturated | nan | infinite
 
     @property
-    def coordinates(self) -> NDArray[int]:
+    def coordinates(self) -> LorenzMie.Coordinates:
         '''Array of pixel coordinates'''
         return self._coordinates
 
     @coordinates.setter
-    def coordinates(self, coordinates: NDArray[int]):
+    def coordinates(self, coordinates: LorenzMie.Coordinates):
         self._coordinates = coordinates
 
     @property
@@ -116,7 +117,7 @@ class Feature(object):
         self.particle.properties = properties
         return properties
 
-    def optimize(self):
+    def optimize(self) -> pd.Series:
         self.optimizer.data = self.data[self.mask()]
         # The following nasty hack is required for cupy because
         # opt.coordinates = self.coordinates[:,self.mask().ravel()]
@@ -126,11 +127,11 @@ class Feature(object):
         self.model.coordinates = coordinates
         return self.optimizer.optimize()
 
-    def hologram(self) -> NDArray[float]:
+    def hologram(self) -> LorenzMie.Image:
         self.model.coordinates = self.coordinates
         return self.model.hologram().reshape(self.data.shape)
 
-    def residuals(self) -> NDArray[float]:
+    def residuals(self) -> LorenzMie.Image:
         return self.hologram() - self.data
 
 

@@ -50,7 +50,7 @@ class Particle(LMObject):
     z_0: float = field(repr=False, default=0.)
 
     @property
-    def r_p(self) -> NDArray[float]:
+    def r_p(self) -> LMObject.Coordinates:
         '''Three-dimensional coordinates of particle's center'''
         return np.asarray([self.x_p, self.y_p, self.z_p])
 
@@ -59,12 +59,12 @@ class Particle(LMObject):
         self.x_p, self.y_p, self.z_p = r_p
 
     @property
-    def r_0(self) -> NDArray[float]:
+    def r_0(self) -> LMObject.Coordinates:
         '''Three-dimensional coordinates of origin'''
         return np.asarray([self.x_0, self.y_0, self.z_0])
 
     @r_0.setter
-    def r_0(self, r_0: NDArray[float]) -> None:
+    def r_0(self, r_0: LMObject.Coordinates) -> None:
         self.x_0, self.y_0, self.z_0 = r_0
 
     @LMObject.properties.getter
@@ -75,7 +75,7 @@ class Particle(LMObject):
 
     def ab(self,
            n_m: complex = 1.+0.j,
-           wavelength: float = 0.) -> np.ndarray:
+           wavelength: float = 0.) -> NDArray[complex]:
         '''Returns the Mie scattering coefficients
 
         Subclasses of Particle should override this
