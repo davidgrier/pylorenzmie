@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
+from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory import Particle
 import numpy as np
 from numpy.typing import NDArray
@@ -291,4 +291,4 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 
 
 if __name__ == '__main__':
-    example(cupyLorenzMie, double_precision=True)
+    cupyLorenzMie.example(double_precision=True)

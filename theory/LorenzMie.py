@@ -361,40 +361,40 @@ class LorenzMie(LMObject):
         else:
             return es
 
+    @classmethod
+    def example(cls, **kwargs) -> None:  # pragma: no cover
+        import matplotlib.pyplot as plt
+        from pylorenzmie.theory import (Sphere, Instrument)
+        from time import perf_counter
 
-def example(cls=LorenzMie, **kwargs) -> None:  # pragma: no cover
-    import matplotlib.pyplot as plt
-    from pylorenzmie.theory import (Sphere, Instrument)
-    from time import perf_counter
-
-    # Create coordinate grid for image
-    shape = (201, 201)
-    coords = cls.meshgrid(shape)
-    # Place two spheres in the field of view, above the focal plane
-    pa = Sphere()
-    pa.r_p = [150, 150, 200]
-    pa.a_p = 0.5
-    pa.n_p = 1.45
-    pb = Sphere()
-    pb.r_p = [100, 10, 250]
-    pb.a_p = 1.
-    pb.n_p = 1.45
-    particle = [pa, pb]
-    # Form image with default instrument
-    instrument = Instrument()
-    instrument.magnification = 0.048
-    instrument.numerical_aperture = 1.45
-    instrument.wavelength = 0.447
-    instrument.n_m = 1.340
-    # Use generalized Lorenz-Mie theory to compute field
-    kernel = cls(coords, particle, instrument, **kwargs)
-    start = perf_counter()
-    hologram = kernel.hologram()
-    print(f'Time to calculate: {perf_counter()-start:.1e} s')
-    # Compute hologram from field and show it
-    plt.imshow(hologram.reshape(shape), cmap='gray')
-    plt.show()
+        # Create coordinate grid for image
+        shape = (201, 201)
+        coords = cls.meshgrid(shape)
+        # Place two spheres in the field of view, above the focal plane
+        pa = Sphere()
+        pa.r_p = [150, 150, 200]
+        pa.a_p = 0.5
+        pa.n_p = 1.45
+        pb = Sphere()
+        pb.r_p = [100, 10, 250]
+        pb.a_p = 1.
+        pb.n_p = 1.45
+        particle = [pa, pb]
+        # Form image with default instrument
+        instrument = Instrument()
+        instrument.magnification = 0.048
+        instrument.numerical_aperture = 1.45
+        instrument.wavelength = 0.447
+        instrument.n_m = 1.340
+        # Use generalized Lorenz-Mie theory to compute field
+        kernel = cls(coords, particle, instrument, **kwargs)
+        start = perf_counter()
+        hologram = kernel.hologram()
+        print(f'Time to calculate: {perf_counter()-start:.1e} s')
+        # Compute hologram from field and show it
+        plt.imshow(hologram.reshape(shape), cmap='gray')
+        plt.show()
 
 
 if __name__ == '__main__':  # pragma: no cover
-    example()
+    LorenzMie.example()
