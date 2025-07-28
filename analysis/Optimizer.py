@@ -3,10 +3,10 @@
 from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import LorenzMie
 import numpy as np
+from numpy.typing import NDArray
 from scipy.optimize import least_squares
 from scipy.linalg import svd
 import pandas as pd
-from typing import (Optional, List, Dict)
 import logging
 
 
@@ -55,11 +55,11 @@ class Optimizer(LMObject):
     '''
 
     def __init__(self,
-                 model: Optional[LorenzMie] = None,
-                 data: Optional[np.ndarray] = None,
+                 model: LorenzMie | None = None,
+                 data: LorenzMie.Image | None = None,
                  robust: bool = False,
-                 fixed: List[str] = [],
-                 settings: Optional[Dict] = None,
+                 fixed: list[str] = [],
+                 settings: LorenzMie.Properties | None = None,
                  **kwargs) -> None:
         self.model = model or LorenzMie(**kwargs)
         self.data = data
@@ -72,11 +72,11 @@ class Optimizer(LMObject):
     # Properties that control the fitting process
     #
     @property
-    def settings(self) -> dict:
+    def settings(self) -> LorenzMie.Properties:
         return self._settings
 
     @settings.setter
-    def settings(self, settings: dict) -> None:
+    def settings(self, settings: LorenzMie.Properties) -> None:
         '''Dictionary of settings for scipy.optimize.least_squares
 
         NOTES:
@@ -121,23 +121,23 @@ class Optimizer(LMObject):
             self.settings['loss'] = 'linear'
 
     @property
-    def fixed(self) -> List[str]:
+    def fixed(self) -> list[str]:
         '''list of fixed properties'''
         return self._fixed
 
     @fixed.setter
-    def fixed(self, fixed: List[str]) -> None:
+    def fixed(self, fixed: list[str]) -> None:
         self._fixed = fixed
         self._variables = [p for p in self.model.properties
                            if p not in fixed]
 
     @property
-    def variables(self) -> List[str]:
+    def variables(self) -> list[str]:
         '''list of variable properties'''
         return self._variables
 
     @variables.setter
-    def variables(self, variables: List[str]) -> None:
+    def variables(self, variables: list[str]) -> None:
         self._variables = variables
         self._fixed = [p for p in self.model.properties
                        if p not in variables]
@@ -163,7 +163,7 @@ class Optimizer(LMObject):
         return pd.Series(dict(zip(keys, values)))
 
     @property
-    def metadata(self):
+    def metadata(self) -> pd.Series:
         '''Fixed properties and fit settings'''
         metadata = {key: self.model.properties[key] for key in self.fixed
                     if key in self.model.properties}
@@ -171,7 +171,7 @@ class Optimizer(LMObject):
         return pd.Series(metadata)
 
     @property
-    def properties(self):
+    def properties(self) -> LorenzMie.Properties:
         '''Properties of the Optimizer object'''
         properties = dict(settings=self.settings,
                           fixed=self.fixed)
@@ -179,7 +179,7 @@ class Optimizer(LMObject):
         return properties
 
     @properties.setter
-    def properties(self, properties):
+    def properties(self, properties: LorenzMie.Properties) -> None:
         self.model.properties = properties
         for property, value in properties.items():
             if hasattr(self, property):
@@ -223,13 +223,13 @@ class Optimizer(LMObject):
     #
     # Private methods
     #
-    def _residuals(self, values):
+    def _residuals(self, values: list[float]) -> LorenzMie.Image:
         '''Updates properties and returns residuals'''
         self.model.properties = dict(zip(self.variables, values))
         noise = self.model.instrument.noise
         return (self.model.hologram() - self.data) / noise
 
-    def _statistics(self):
+    def _statistics(self) -> tuple[NDArray[float], NDArray[float]]:
         '''return reduced chi-squared and standard uncertainties
 
         Uncertainties are the square roots of the diagonal
@@ -252,9 +252,7 @@ class Optimizer(LMObject):
         return redchi, uncertainty
 
 
-
-
-def test_case():
+def test_case() -> None:
     from pylorenzmie.lib import coordinates
 
     shape = (201, 201)

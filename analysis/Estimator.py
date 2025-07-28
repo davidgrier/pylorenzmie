@@ -3,12 +3,11 @@ from pylorenzmie.lib import (LMObject, Azimuthal)
 from pylorenzmie.theory import Instrument
 import pandas as pd
 import numpy as np
-from numpy.typing import NDArray
 from scipy.signal import (argrelmin, argrelmax)
 from scipy.special import jn_zeros
 
 
-Feature = NDArray[float]
+Feature = LMObject.Image
 Features = Feature | list[Feature]
 Prediction = pd.Series
 Predictions = Prediction | list[Prediction]
@@ -49,7 +48,7 @@ class Estimator(LMObject):
         self.predict = self.estimate
 
     @property
-    def properties(self) -> dict[str, float]:
+    def properties(self) -> LMObject.Properties:
         return dict(z_p=self.z_p,
                     a_p=self.a_p,
                     n_p=self.n_p)

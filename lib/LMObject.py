@@ -43,6 +43,9 @@ class LMObject(ABC):
 
     Property = bool | int | float
     Properties = dict[str, Property]
+    Image = NDArray[float] | NDArray[int]
+    Coordinates = NDArray[float]
+    Field = NDArray[complex]
 
     @property
     @abstractmethod
@@ -112,9 +115,9 @@ class LMObject(ABC):
 
     @staticmethod
     def meshgrid(shape: tuple[int, int],
-                 corner: tuple[int, int] | None = None,
+                 corner: tuple[int, int] = (0., 0.),
                  flatten: bool = True,
-                 dtype=float) -> NDArray[float]:
+                 dtype=float) -> Coordinates:
         '''Returns coordinate system for Lorenz-Mie microscopy images
 
         Parameters
@@ -140,7 +143,7 @@ class LMObject(ABC):
             Coordinate system
         '''
         ny, nx = shape
-        left, top = (0, 0) if corner is None else corner
+        left, top = corner
         x = np.arange(left, left + nx, dtype=dtype)
         y = np.arange(top, top + ny, dtype=dtype)
         xy = np.array(np.meshgrid(x, y))
