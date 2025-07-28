@@ -2,8 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from numba import njit
-from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
-from typing import Optional
+from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
 from numpy.typing import NDArray
 
@@ -20,7 +19,7 @@ class numbaLorenzMie(LorenzMie):
 
     @staticmethod
     @njit(cache=True, fastmath=True, parallel=True)
-    def pad(coordinates: NDArray[float] | None = None) -> None:
+    def pad(coordinates: LorenzMie.Coordinates | None = None) -> None:
         c = np.atleast_2d(0. if coordinates is None else coordinates)
         ndim, npts = c.shape
         if ndim > 3:
@@ -33,7 +32,7 @@ class numbaLorenzMie(LorenzMie):
                 kdr: NDArray[float],
                 buffers: NDArray[complex],
                 cartesian: bool = True,
-                bohren: bool = True) -> NDArray[complex]:  # pragma: no cover
+                bohren: bool = True) -> LorenzMie.Field:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
 
         Arguments
@@ -195,4 +194,4 @@ class numbaLorenzMie(LorenzMie):
 
 
 if __name__ == '__main__':  # pragma: no cover
-    example(numbaLorenzMie)
+    numbaLorenzMie.example()

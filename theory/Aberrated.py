@@ -1,4 +1,4 @@
-from pylorenzmie.theory.LorenzMie import (LorenzMie, example)
+from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Particle import Particle
 import numpy as np
 from typing import Any
@@ -73,4 +73,4 @@ AberratedLorenzMie = Aberrated(LorenzMie)
 
 
 if __name__ == '__main__':
-    example(AberratedLorenzMie, spherical=0.9)
+    AberratedLorenzMie.example(spherical=0.9)
