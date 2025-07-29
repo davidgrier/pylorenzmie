@@ -1,5 +1,13 @@
 import numpy as np
 from numpy.typing import NDArray
+from warnings import warn
+
+
+warn('''
+
+NOTE: coordinates() is deprecated and will be removed in a future release.
+Use LMObject.meshgrid() instead.
+''', DeprecationWarning, 2)
 
 
 def coordinates(shape: tuple[int, int],
