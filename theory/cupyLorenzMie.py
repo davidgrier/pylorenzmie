@@ -65,7 +65,7 @@ class cupyLorenzMie(LorenzMie):
     def scattered_field(self,
                         particle: Particle,
                         cartesian: bool,
-                        bohren: bool) -> None:
+                        bohren: bool) -> cp.ndarray:
         ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
         ar = ab[:, 0].real.astype(self.dtype)
         ai = ab[:, 0].imag.astype(self.dtype)
@@ -87,7 +87,7 @@ class cupyLorenzMie(LorenzMie):
         return self._device_field(**kwargs).get()
 
     @property
-    def _device_coordinates(self):
+    def _device_coordinates(self) -> cp.ndarray:
         return self.gpu_coordinates
 
     def _device_field(self,

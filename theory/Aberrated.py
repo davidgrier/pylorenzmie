@@ -1,7 +1,6 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Particle import Particle
 import numpy as np
-from typing import Any
 
 
 def Aberrated(base_class: LorenzMie):
@@ -48,7 +47,8 @@ def Aberrated(base_class: LorenzMie):
             n_m = self.instrument.n_m
             return 2.*NA*z_p/n_m
 
-        def _aberration(self, r_p: LorenzMie.Coordinates) -> Any:
+        def _aberration(self,
+                        r_p: LorenzMie.Coordinates) -> LorenzMie.Field:
             '''Returns spherical aberration for particle at r_p'''
             omega = self._aperture(r_p[2])
             x = (self._device_coordinates[0] - r_p[0]) / omega
@@ -60,7 +60,7 @@ def Aberrated(base_class: LorenzMie):
 
         def scattered_field(self,
                             particle: Particle,
-                            *args) -> Any:
+                            *args) -> LorenzMie.Field:
             '''Returns field scattered by particle, including aberration'''
             field = super().scattered_field(particle, *args)
             r_p = particle.r_p + particle.r_0

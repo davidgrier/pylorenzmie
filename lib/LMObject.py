@@ -45,7 +45,6 @@ class LMObject(ABC):
     Properties = dict[str, Property]
     Image = NDArray[float] | NDArray[int]
     Coordinates = NDArray[float]
-    Field = NDArray[complex]
 
     @property
     @abstractmethod
