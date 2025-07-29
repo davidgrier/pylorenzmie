@@ -4,7 +4,6 @@
 from numba import njit
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
-from numpy.typing import NDArray
 
 
 np.seterr(all='raise')
@@ -28,9 +27,9 @@ class numbaLorenzMie(LorenzMie):
 
     @staticmethod
     @njit(cache=True, fastmath=True, parallel=True)
-    def compute(ab: NDArray[complex],
-                kdr: NDArray[float],
-                buffers: NDArray[complex],
+    def compute(ab: LorenzMie.Coefficients,
+                kdr: LorenzMie.Coordinates,
+                buffers: list[LorenzMie.Field],
                 cartesian: bool = True,
                 bohren: bool = True) -> LorenzMie.Field:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate

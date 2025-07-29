@@ -75,6 +75,9 @@ class LorenzMie(LMObject):
         Returns the complex-valued field at each of the coordinates.
     '''
 
+    Coefficients = NDArray[complex]
+    Field = NDArray[complex]
+
     method: str = 'numpy'
 
     def __init__(self,
@@ -130,13 +133,13 @@ class LorenzMie(LMObject):
     def _device_coordinates(self) -> LMObject.Coordinates:
         return self._coordinates
 
-    def to_field(self, phase: float) -> LMObject.Field:
+    def to_field(self, phase: float) -> Field:
         return np.exp(1j * phase)
 
     def scattered_field(self,
                         particle: Particle,
                         cartesian: bool,
-                        bohren: bool) -> LMObject.Field:
+                        bohren: bool) -> Field:
         '''Return field scattered by one particle'''
         k = self.instrument.wavenumber()
         n_m = self.instrument.n_m
@@ -152,7 +155,7 @@ class LorenzMie(LMObject):
 
     def _device_field(self,
                       cartesian: bool = True,
-                      bohren: bool = True) -> LMObject.Field:
+                      bohren: bool = True) -> Field:
         logger.debug('Computing field')
         self._field.fill(0.+0.j)
         for p in np.atleast_1d(self.particle):
@@ -160,7 +163,7 @@ class LorenzMie(LMObject):
             self._field += self.scattered_field(p, cartesian, bohren)
         return self._field
 
-    def field(self, *args, **kwargs) -> LMObject.Field:
+    def field(self, *args, **kwargs) -> Field:
         '''Return field scattered by particles in the system
 
         Arguments
@@ -202,11 +205,11 @@ class LorenzMie(LMObject):
         self._field = np.empty(shape, dtype=complex)
 
     @staticmethod
-    def compute(ab: NDArray[complex],
-                kdr: NDArray[float],
-                buffers: list[NDArray[complex]],
+    def compute(ab: Coefficients,
+                kdr: LMObject.Coordinates,
+                buffers: list[Field],
                 cartesian: bool = True,
-                bohren: bool = True) -> LMObject.Field:  # pragma: no cover
+                bohren: bool = True) -> Field:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
 
         Arguments
