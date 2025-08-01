@@ -4,7 +4,6 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory import Particle
 import numpy as np
-from numpy.typing import NDArray
 import cupy as cp
 
 
@@ -83,7 +82,7 @@ class cupyLorenzMie(LorenzMie):
                      *self.buffer))
         return self.buffer
 
-    def field(self, **kwargs) -> NDArray[complex]:
+    def field(self, **kwargs) -> cp.ndarray:
         return self._device_field(**kwargs).get()
 
     @property

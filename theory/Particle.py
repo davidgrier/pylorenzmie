@@ -3,7 +3,6 @@
 
 from dataclasses import dataclass, field
 import numpy as np
-from numpy.typing import NDArray
 from pylorenzmie.lib import LMObject
 
 
@@ -55,7 +54,7 @@ class Particle(LMObject):
         return np.asarray([self.x_p, self.y_p, self.z_p])
 
     @r_p.setter
-    def r_p(self, r_p: NDArray[float]) -> None:
+    def r_p(self, r_p: LMObject.Coordinates) -> None:
         self.x_p, self.y_p, self.z_p = r_p
 
     @property
@@ -75,7 +74,7 @@ class Particle(LMObject):
 
     def ab(self,
            n_m: complex = 1.+0.j,
-           wavelength: float = 0.) -> NDArray[complex]:
+           wavelength: float = 0.) -> LMObject.Coefficients:
         '''Returns the Mie scattering coefficients
 
         Subclasses of Particle should override this

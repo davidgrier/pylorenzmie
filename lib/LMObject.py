@@ -45,6 +45,8 @@ class LMObject(ABC):
     Properties = dict[str, Property]
     Image = NDArray[float] | NDArray[int]
     Coordinates = NDArray[float]
+    Coefficients = NDArray[complex]
+    Field = NDArray[complex]
 
     def __eq__(self, other) -> bool:
         if isinstance(other, self.__class__):
