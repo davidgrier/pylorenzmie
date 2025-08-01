@@ -46,6 +46,11 @@ class LMObject(ABC):
     Image = NDArray[float] | NDArray[int]
     Coordinates = NDArray[float]
 
+    def __eq__(self, other) -> bool:
+        if isinstance(other, self.__class__):
+            return False
+        return self.properties == other.properties
+
     @property
     @abstractmethod
     def properties(self) -> Properties:
