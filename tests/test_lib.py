@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from pylorenzmie.lib import (aziavg, azimedian, azistd, coordinates)
+from pylorenzmie.lib import (LMObject, Azimuthal)
 
 
 class TestAzi(unittest.TestCase):
@@ -8,34 +8,25 @@ class TestAzi(unittest.TestCase):
     def setUp(self):
         self.data = np.ones((90, 100), dtype=float)
 
-    def test_aziavg(self):
-        a = aziavg(self.data, (50, 45))
-        rad = int(np.sqrt(50**2 + 45**2)) + 1
+    def test_aziavg(self) -> None:
+        a = Azimuthal.avg(self.data, (50, 45))
+        rad = int(np.hypot(50, 45)) + 1
         self.assertEqual(len(a), rad)
 
-    def test_azimedian(self):
-        a = azimedian(self.data, (50, 45))
-        rad = int(np.sqrt(50**2 + 45**2))
+    def test_azimedian(self) -> None:
+        a = Azimuthal.med(self.data, (50, 45))
+        rad = int(np.hypot(50, 45)) + 1
         self.assertEqual(len(a), rad)
 
-    def test_azistd(self):
-        a, s = azistd(self.data, (50, 45))
-        rad = int(np.sqrt(50**2 + 45**2)) + 1
+    def test_azistd(self) -> None:
+        a, s = Azimuthal.std(self.data, (50, 45))
+        rad = int(np.hypot(50, + 45)) + 1
         self.assertEqual(len(a), rad)
 
-
-class TestCoordinates(unittest.TestCase):
-
-    def setUp(self):
-        self.shape = [100, 90]
-
-    def test_flatten(self):
-        c = coordinates(self.shape)
-        self.assertEqual(c.ndim, 2)
-
-    def test_normal(self):
-        c = coordinates(self.shape, flatten=False)
-        self.assertEqual(c.ndim, 3)
+    def test_azimad(self) -> None:
+        a, m = Azimuthal.mad(self.data, (50, 45))
+        rad = int(np.hypot(50, 45)) + 1
+        self.assertEqual(len(a), rad)
 
 
 if __name__ == '__main__':
