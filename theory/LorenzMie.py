@@ -288,6 +288,10 @@ class LorenzMie(LMObject):
         # 3. Vector spherical harmonics: [r,theta,phi]
         mo1n[0].fill(0.j)                 # no radial component
 
+        # Allocate memory for Wiscombe functions
+        swisc = np.empty(shape)
+        twisc = np.empty(shape)
+
         # storage for scattered field
         es.fill(0.j)
 
@@ -297,27 +301,29 @@ class LorenzMie(LMObject):
             # 4. Legendre factor (4.47)
             # Method described by Wiscombe (1980)
 
-            swisc = pi_n * costheta
-            twisc = swisc - pi_nm1
+            # swisc = pi_n * costheta
+            # twisc = swisc - pi_nm1
+            np.multiply(pi_n, costheta, out=swisc)
+            np.subtract(swisc, pi_nm1, out=twisc)
             tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
 
             # ... Riccati-Bessel function, page 478
             xi_n = (2.*n - 1.) * (xi_nm1 / kr) - xi_nm2  # \xi_n(kr)
 
             # ... Deirmendjian's derivative
-            dn = (n * xi_n) / kr - xi_nm1
+            dn = n * (xi_n / kr) - xi_nm1
 
             # vector spherical harmonics (4.50)
             mo1n[1] = pi_n * xi_n     # ... divided by cosphi/kr
             mo1n[2] = tau_n * xi_n    # ... divided by sinphi/kr
 
             # ... divided by cosphi sintheta/kr^2
-            ne1n[0] = n * (n + 1.) * pi_n * xi_n
+            ne1n[0] = (n*n + n) * pi_n * xi_n
             ne1n[1] = tau_n * dn      # ... divided by cosphi/kr
             ne1n[2] = pi_n * dn       # ... divided by sinphi/kr
 
             # prefactor, page 93
-            en = 1.j**n * (2.*n + 1.) / n / (n + 1.)
+            en = 1.j**n * (2.*n + 1.) / (n*n + n)
 
             # the scattered field in spherical coordinates (4.45)
             es += (1.j * en * ab[n, 0]) * ne1n
@@ -327,7 +333,7 @@ class LorenzMie(LMObject):
             # ... angular functions (4.47)
             # Method described by Wiscombe (1980)
             pi_nm1 = pi_n
-            pi_n = swisc + ((n + 1.) / n) * twisc
+            pi_n = swisc + (1. + 1./n) * twisc
 
             # ... Riccati-Bessel function
             xi_nm2 = xi_nm1
