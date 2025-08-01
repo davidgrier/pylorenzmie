@@ -254,6 +254,8 @@ class LorenzMie(LMObject):
         # 2. geometric factors
         krho = np.hypot(kx, ky)
         kr = np.hypot(krho, kz)
+        sinkr = np.sin(kr)
+        coskr = np.cos(kr)
 
         phi = np.arctan2(ky, kx)
         cosphi = np.cos(phi)
@@ -261,8 +263,6 @@ class LorenzMie(LMObject):
         theta = np.arctan2(krho, kz)
         costheta = np.cos(theta)
         sintheta = np.sin(theta)
-        sinkr = np.sin(kr)
-        coskr = np.cos(kr)
 
         # SPECIAL FUNCTIONS
         # starting points for recursive function evaluation ...
@@ -302,7 +302,7 @@ class LorenzMie(LMObject):
             tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
 
             # ... Riccati-Bessel function, page 478
-            xi_n = (2. * n - 1.) * (xi_nm1 / kr) - xi_nm2  # \xi_n(kr)
+            xi_n = (2.*n - 1.) * (xi_nm1 / kr) - xi_nm2  # \xi_n(kr)
 
             # ... Deirmendjian's derivative
             dn = (n * xi_n) / kr - xi_nm1
@@ -317,7 +317,7 @@ class LorenzMie(LMObject):
             ne1n[2] = pi_n * dn       # ... divided by sinphi/kr
 
             # prefactor, page 93
-            en = 1.j**n * (2. * n + 1.) / n / (n + 1.)
+            en = 1.j**n * (2.*n + 1.) / n / (n + 1.)
 
             # the scattered field in spherical coordinates (4.45)
             es += (1.j * en * ab[n, 0]) * ne1n
@@ -337,16 +337,15 @@ class LorenzMie(LMObject):
         # geometric factors were divided out of the vector
         # spherical harmonics for accuracy and efficiency ...
         # ... put them back at the end.
-        radialfactor = 1. / kr
-        es[0] *= cosphi * sintheta * radialfactor**2
-        es[1] *= cosphi * radialfactor
-        es[2] *= sinphi * radialfactor
+        es[0] *= cosphi * sintheta / kr
+        es[1] *= cosphi
+        es[2] *= sinphi
+        es /= kr
 
         # By default, the scattered wave is returned in spherical
         # coordinates.  Project components onto Cartesian coordinates.
         # Assumes that the incident wave propagates along z and
         # is linearly polarized along x
-
         if cartesian:
             ec[0] = es[0] * sintheta * cosphi
             ec[0] += es[1] * costheta * cosphi
