@@ -33,7 +33,7 @@ class CircleTransform(object):
     def __init__(self) -> None:
         self._kernel = np.ones((1, 1))
 
-    def kernel(self, shape: tuple) -> NDArray[float]:
+    def kernel(self, shape: tuple[int, int]) -> NDArray[float]:
         '''Fourier transform of the orientational alignment kernel:
 
         Arguments
@@ -58,7 +58,7 @@ class CircleTransform(object):
         self._kernel = kernel
         return kernel
 
-    def transform(self, image: np.ndarray) -> NDArray[float]:
+    def transform(self, image: NDArray[float]) -> NDArray[float]:
         '''Perform orientation alignment transform
 
         Arguments
@@ -80,13 +80,14 @@ class CircleTransform(object):
 
         # Convolve psi(r) with K(r) using the
         # Fourier convolution theorem
-        psi = fft2(psi, workers=-1)
+        psi = fft2(psi, workers=-1, overwrite_x=True)
         psi *= self.kernel(image.shape)
-        psi = ifft2(psi, workers=-1)
+        psi = ifft2(psi, workers=-1, overwrite_x=True)
 
         # Transformed image is the intensity of the convolution
-        c = (psi * np.conjugate(psi)).real
-        return c/np.max(c)
+        c = np.square(psi.real) + np.square(psi.imag)
+        c /= np.max(c)
+        return c
 
 
 def circletransform(image: NDArray[int]) -> NDArray[float]:
