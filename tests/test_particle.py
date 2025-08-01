@@ -52,14 +52,6 @@ class TestParticle(unittest.TestCase):
         s = repr(self.particle)
         self.assertTrue(isinstance(s, str))
 
-    def test_meshgrid(self) -> None:
-        nx = 32
-        ny = 24
-        xy = self.particle.meshgrid((nx, ny), flatten=False)
-        self.assertTupleEqual(xy.shape, (2, nx, ny))
-        xy = self.particle.meshgrid((nx, ny), flatten=True)
-        self.assertTupleEqual(xy.shape, (2, nx*ny))
-
 
 if __name__ == '__main__':
     unittest.main()

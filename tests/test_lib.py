@@ -1,11 +1,11 @@
 import unittest
 import numpy as np
-from pylorenzmie.lib import (LMObject, Azimuthal)
+from pylorenzmie.lib import Azimuthal
 
 
 class TestAzi(unittest.TestCase):
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.data = np.ones((90, 100), dtype=float)
 
     def test_aziavg(self) -> None:

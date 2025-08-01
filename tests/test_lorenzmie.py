@@ -1,4 +1,3 @@
-from pylorenzmie.lib import coordinates
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import unittest
 import numpy as np
@@ -24,6 +23,14 @@ class TestLorenzMie(unittest.TestCase):
     def test_method(self) -> None:
         self.assertEqual(self.method.method, 'numpy')
 
+    def test_meshgrid(self) -> None:
+        nx = 32
+        ny = 24
+        xy = self.method.meshgrid((nx, ny), flatten=False)
+        self.assertTupleEqual(xy.shape, (2, nx, ny))
+        xy = self.method.meshgrid((nx, ny), flatten=True)
+        self.assertTupleEqual(xy.shape, (2, nx*ny))
+
     def test_coordinates_none(self) -> None:
         self.method.coordinates = None
         self.assertIsInstance(self.method.coordinates, np.ndarray)
@@ -39,7 +46,7 @@ class TestLorenzMie(unittest.TestCase):
         self.assertEqual(self.method.coordinates.shape[0], 3)
 
     def test_coordinates_2d(self) -> None:
-        c = coordinates(self.shape)
+        c = self.method.meshgrid(self.shape)
         self.method.coordinates = c
         self.assertEqual(self.method.coordinates.shape[0], 3)
         self.assertTrue(np.allclose(self.method.coordinates[0:2, :], c))
@@ -75,7 +82,7 @@ class TestLorenzMie(unittest.TestCase):
         p.a_p = 1.
         p.n_p = 1.4
         p.r_p = [64, 64, 100]
-        c = coordinates([128, 128])
+        c = self.method.meshgrid([128, 128])
         self.method.coordinates = c
         field = self.method.field(bohren=bohren, cartesian=cartesian)
         self.assertEqual(field.shape[1], c.shape[1])
@@ -94,7 +101,7 @@ class TestLorenzMie(unittest.TestCase):
         p.a_p = 1.
         p.n_p = 1.4
         p.r_p = [64, 64, 100]
-        c = coordinates([128, 128])
+        c = self.method.meshgrid([128, 128])
         self.method.coordinates = c
         holo = self.method.hologram()
         self.assertEqual(holo.size, c.shape[1])
