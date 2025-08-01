@@ -105,6 +105,7 @@ class Localizer(LMObject):
         import matplotlib
         from matplotlib import pyplot as plt
         from matplotlib.patches import Rectangle
+        import time
 
         # Instantiate a Localizer
         localizer = cls()
@@ -116,7 +117,9 @@ class Localizer(LMObject):
         print(filename)
 
         # Use Localizer to identify features in the hologram
+        start = time.perf_counter()
         features = localizer.localize(b, nfringes=20)
+        print(f'Elapsed time: {time.perf_counter() - start:.3f} sec')
         print(features)
 
         # Show and report results
