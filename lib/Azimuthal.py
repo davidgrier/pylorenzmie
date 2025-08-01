@@ -4,14 +4,15 @@ from functools import wraps
 
 
 Data = NDArray[float]
-Center = NDArray[int | float] | None
+Center = NDArray[int | float]
+Radii = NDArray[int]
 Average = NDArray[float]
 
 
 def azimuthaloperator(func):
     @wraps(func)
     def wrappedoperator(data: Data,
-                        center: Center = None,
+                        center: Center | None = None,
                         *args, **kwargs):
         ny, nx = data.shape
         x_p, y_p = (nx/2., ny/2.) if center is None else center
@@ -47,7 +48,7 @@ def docstring(purpose: str) -> str:
 
 @azimuthaloperator
 @docstring('Azimuthal average')
-def avg(d: Data, r: Center) -> Average:
+def avg(d: Data, r: Radii) -> Average:
     '''
     avg: ndarray
         Average value of data as a function of distance from center
@@ -58,7 +59,7 @@ def avg(d: Data, r: Center) -> Average:
 
 @azimuthaloperator
 @docstring('Azimuthal standard deviation')
-def std(d: Data, r: Center) -> tuple[Average, Average]:
+def std(d: Data, r: Radii) -> tuple[Average, Average]:
     '''
     avg, std: tuple of numpy.ndarray
         Azimuthal average and
@@ -73,29 +74,27 @@ def std(d: Data, r: Center) -> tuple[Average, Average]:
 
 @azimuthaloperator
 @docstring('Azimuthal median')
-def med(d: Data, r: Center) -> Average:
+def med(d: Data, r: Radii) -> Average:
     '''
     med: numpy.ndarray
         Median value as a function of distance from center
     '''
-    med = [np.median(d[np.where(r == n)]) for n in np.arange(r.max())]
+    nmax = r.max() + 1
+    med = [np.median(d[np.where(r == n)]) for n in np.arange(nmax)]
     return np.array(med)
 
 
 @azimuthaloperator
 @docstring('Azimuthal median absolute deviation')
-def mad(d: Data, r: Center) -> tuple[Average, Average]:
+def mad(d: Data, r: Radii) -> tuple[Average, Average]:
     '''
     med, mad: tuple of numpy.ndarray
         Azimuthal median and
         azimuthal median absolute deviation
         as functions of distance from center
     '''
-    radii = np.arange(r.max())
-    med = np.empty_like(radii)
-    mad = np.empty_like(radii)
-    for n in radii:
-        dn = d[np.where(r == n)]
-        med[n] = np.median(dn)
-        mad[n] = np.abs(dn - med[n])
-    return med, mad
+    nmax = r.max() + 1
+    med = [np.median(d[np.where(r == n)]) for n in np.arange(nmax)]
+    dev = [np.median(np.abs(d[np.where(r == n)] - med[n]))
+           for n in np.arange(nmax)]
+    return np.array(med), np.array(dev)
