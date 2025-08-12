@@ -44,9 +44,12 @@ class LMObject(ABC):
     Property = bool | int | float
     Properties = dict[str, Property]
     Image = NDArray[float] | NDArray[int]
+    Images = Image | list[Image]
     Coordinates = NDArray[float]
     Coefficients = NDArray[complex]
     Field = NDArray[complex]
+    Result = pd.Series | pd.DataFrame
+    Results = Result | list[Result]
 
     def __eq__(self, other) -> bool:
         if isinstance(other, self.__class__):

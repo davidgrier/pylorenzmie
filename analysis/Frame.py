@@ -3,10 +3,6 @@ from pylorenzmie.analysis import (Localizer, Feature)
 from pylorenzmie.lib import LMObject
 import pandas as pd
 import numpy as np
-from typing import (Optional, Tuple, List, Dict, TypeVar)
-
-
-AnyFrame = TypeVar('AnyFrame', bound='Frame')
 
 
 class Frame(LMObject):
@@ -75,29 +71,28 @@ class Frame(LMObject):
     '''
 
     def __init__(self,
-                 instrument: Optional[Instrument] = None,
-                 localizer: Optional[Localizer] = None,
-                 data: Optional[np.ndarray] = None) -> None:
+                 instrument: Instrument | None = None,
+                 localizer: Localizer | None = None,
+                 data: LMObject.Image | None = None) -> None:
         self.instrument = instrument or Instrument()
         self.localizer = localizer or Localizer()
         self._shape = (0, 0)
         self._data = data
 
     @LMObject.properties.fget
-    def properties(self) -> Dict:
+    def properties(self) -> dict:
         return dict()
 
     @property
-    def shape(self) -> Tuple:
+    def shape(self) -> tuple[int, int]:
         '''image shape'''
         return self._shape
 
     @shape.setter
-    def shape(self, shape: Tuple) -> None:
-        if shape == self._shape:
-            return
-        self._coordinates = self.meshgrid(shape, flatten=False)
-        self._shape = shape
+    def shape(self, shape: tuple[int, int]) -> None:
+        if shape != self._shape:
+            self._coordinates = self.meshgrid(shape, flatten=False)
+            self._shape = shape
 
     @property
     def coordinates(self) -> np.ndarray:
@@ -110,7 +105,7 @@ class Frame(LMObject):
         return self._data
 
     @data.setter
-    def data(self, data: Optional[np.ndarray]) -> None:
+    def data(self, data: LMObject.Image | None) -> None:
         if data is None:
             data = np.ndarray([])
         self._features = []
@@ -119,16 +114,16 @@ class Frame(LMObject):
         self._data = data
 
     @property
-    def results(self) -> pd.DataFrame:
+    def results(self) -> LMObject.Results:
         '''DataFrame containing tracking and characterization results'''
         return self._results
 
     @property
-    def features(self) -> List[Feature]:
+    def features(self) -> list[Feature]:
         '''List of objects of type Feature'''
         return self._features
 
-    def detect(self) -> AnyFrame:
+    def detect(self) -> int:
         '''Detect and localize features in data
         '''
         self._results = self.localizer.detect(self.data)
@@ -143,28 +138,24 @@ class Frame(LMObject):
             this.particle.x_p = feature.x_p
             this.particle.y_p = feature.y_p
             self._features.append(this)
-        return self
+        return len(self._features)
 
-    def estimate(self) -> AnyFrame:
-        '''
-        Estimate parameters for current features
+    def estimate(self) -> None:
+        '''Estimate parameters for current features
         '''
         for feature in self.features:
             feature.estimate()
-        return self
 
-    def optimize(self) -> pd.DataFrame:
-        '''
-        Optimize adjustable parameters
+    def optimize(self) -> LMObject.Results:
+        '''Optimize parameters for current features
         '''
         results = [feature.optimize() for feature in self.features]
         self._results = pd.DataFrame(results)
         return self._results
 
     def analyze(self,
-                data: Optional[np.ndarray] = None) -> pd.DataFrame:
-        '''
-        Detect features, estimate parameters, and fit
+                data: LMObject.Image | None = None) -> LMObject.Results:
+        '''Detect features, estimate parameters, and fit
 
         Parameters
         ----------
@@ -177,10 +168,12 @@ class Frame(LMObject):
             Optimized parameters of generative model for each feature
         '''
         self.data = data
-        return self.detect().estimate().optimize()
+        self.detect()
+        self.estimate()
+        return self.optimize()
 
 
-def example():
+def example() -> None:
     from pathlib import Path
     import cv2
 
@@ -189,7 +182,8 @@ def example():
     data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
     frame = Frame()
     frame.data = data/100.
-    frame.detect().estimate()
+    frame.detect()
+    frame.estimate()
     print(frame.features)
 
 

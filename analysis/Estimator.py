@@ -7,12 +7,6 @@ from scipy.signal import (argrelmin, argrelmax)
 from scipy.special import jn_zeros
 
 
-Feature = LMObject.Image
-Features = Feature | list[Feature]
-Prediction = pd.Series
-Predictions = Prediction | list[Prediction]
-
-
 @dataclass
 class Estimator(LMObject):
     '''Estimate parameters of a holographic feature
@@ -28,11 +22,11 @@ class Estimator(LMObject):
 
     Methods
     -------
-    estimate(feature, center): pandas.Series
+    estimate(data, center): LMObject.Result
 
         Arguments
         ---------
-        feature : numpy.ndarray
+        data : LMObject.Image
 
         center : list-like
 
@@ -53,7 +47,7 @@ class Estimator(LMObject):
                     a_p=self.a_p,
                     n_p=self.n_p)
 
-    def _initialize(self, feature: Feature) -> None:
+    def _initialize(self, data: LMObject.Image) -> None:
         '''Prepare for estimation
 
         self.k: wavenumber in the medium [radian/pixels]
@@ -64,7 +58,7 @@ class Estimator(LMObject):
         self.noise = self.instrument.noise
         self.magnification = self.instrument.magnification
         # NOTE: Allow to pass in profile without aziavg
-        self.profile = Azimuthal.avg(feature)
+        self.profile = Azimuthal.avg(data)
 
     def _estimate_z(self) -> None:
         '''Estimate axial position of particle
@@ -90,11 +84,11 @@ class Estimator(LMObject):
         if self.a_p is not None:
             return
         minima = argrelmin(self.profile)
-        alpha_n = np.sqrt((self.z_p/minima)**2 + 1.)
+        alpha_n = np.sqrt(np.square(self.z_p/minima) + 1.)
         a_p = np.median(jn_zeros(1, len(alpha_n)) * alpha_n) / self.k
         self.a_p = 2. * self.magnification * a_p
 
-    def estimate(self, feature: Features) -> Predictions:
+    def estimate(self, feature: LMObject.Images) -> LMObject.Result:
         '''Estimate particle properties'''
         if isinstance(feature, list):
             return [self.estimate(this) for this in feature]
