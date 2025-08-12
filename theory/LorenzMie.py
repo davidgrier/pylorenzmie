@@ -118,10 +118,10 @@ class LorenzMie(LMObject):
         if coords is not None:
             c = np.atleast_2d(coords)
         else:
-            c = self.meshgrid((201, 201), (-100, -100))
+            c = self.meshgrid((201, 201))
         ndim, npts = c.shape
         if ndim > 3:
-            raise ValueError(f'Incompatible shape: {coords.shape=}')
+            raise ValueError(f'Incompatible shape: {coords.shape = }')
         self._coordinates = np.vstack([c, np.zeros((3-ndim, npts))])
         self.allocate()
 
@@ -371,9 +371,8 @@ class LorenzMie(LMObject):
         from pylorenzmie.theory import (Sphere, Instrument)
         from time import perf_counter
 
-        # Create coordinate grid for image
         shape = (201, 201)
-        coords = cls.meshgrid(shape)
+        c = cls.meshgrid(shape)
         # Place two spheres in the field of view, above the focal plane
         pa = Sphere()
         pa.r_p = [150, 150, 200]
@@ -391,9 +390,10 @@ class LorenzMie(LMObject):
         instrument.wavelength = 0.447
         instrument.n_m = 1.340
         # Use generalized Lorenz-Mie theory to compute field
-        kernel = cls(coords, particle, instrument, **kwargs)
+        model = cls(coordinates=c, instrument=instrument, **kwargs)
         start = perf_counter()
-        hologram = kernel.hologram()
+        model.particle = particle
+        hologram = model.hologram()
         print(f'Time to calculate: {perf_counter()-start:.1e} s')
         # Compute hologram from field and show it
         plt.imshow(hologram.reshape(shape), cmap='gray')

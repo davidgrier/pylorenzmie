@@ -48,6 +48,7 @@ class Feature(object):
                  mask: Mask | None = None,
                  model: LorenzMie | None = None,
                  fixed: list[str] | None = None) -> None:
+        super().__init__()
         self._coordinates = None
         self._data = None
         self.mask = mask or Mask()
@@ -93,7 +94,7 @@ class Feature(object):
         return self._coordinates
 
     @coordinates.setter
-    def coordinates(self, coordinates: LorenzMie.Coordinates):
+    def coordinates(self, coordinates: LorenzMie.Coordinates) -> None:
         self._coordinates = coordinates
 
     @property
@@ -138,7 +139,6 @@ class Feature(object):
 def example() -> None:
     import cv2
     from time import perf_counter
-    from pylorenzmie.lib import coordinates
     from pathlib import Path
 
     feature = Feature()
@@ -149,7 +149,7 @@ def example() -> None:
     data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
     data /= 100.
     feature.data = data
-    feature.coordinates = coordinates(data.shape)
+    feature.coordinates = feature.model.meshgrid(data.shape)
     feature.mask.fraction = 0.25
 
     # instrument properties
