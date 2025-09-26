@@ -1,4 +1,5 @@
 import numpy as np
+from numpy.polynomial import Polynomial
 
 '''Physical properties of water'''
 
@@ -6,8 +7,9 @@ import numpy as np
 def density(temperature: float = 24.) -> float:
     '''Returns the density of water
 
-    Accounts for dependence of density on temperature:
-    CRC Handbook of Chemistry and Physics:
+    Accounts for dependence of density on temperature
+
+    Source: CRC Handbook of Chemistry and Physics:
     Thermophysical properties of water and steam.
 
     Arguments
@@ -21,12 +23,9 @@ def density(temperature: float = 24.) -> float:
     density: float
         Density of water [kg/m^3]
     '''
-    return (((999.83952 + 16.945176 * temperature) -
-             (7.9870401e-3 * temperature**2 -
-              46.170461e-6 * temperature**3) +
-             (105.56302e-9 * temperature**4 -
-              280.54235e-12 * temperature**5)) *
-            1.000028/(1. + 16.879850e-3 * temperature))
+    p = Polynomial([999.83952, 16.945176, -7.9870401e-3,
+                    46.170461e-6, 105.56302e-9, -280.54235e-12])
+    return p(temperature) * 1.000028/(1. + 16.879850e-3 * temperature)
 
 
 def refractiveindex(wavelength: float = 0.589,
@@ -34,7 +33,9 @@ def refractiveindex(wavelength: float = 0.589,
     '''Returns the refractive index of water
 
     Accounts for dispersion and temperature dependence
-    The International Association for the Properties of Water and Steam,
+
+    Source: The International Association for the Properties
+    of Water and Steam (IAPWS),
     Release on the Refractive Index of Ordinary Water Substance
     as a Function of Wavelength, Temperature and Pressure (1997)
     http://www.iapws.org/relguide/rindex.pdf
@@ -56,35 +57,24 @@ def refractiveindex(wavelength: float = 0.589,
         and wavelength
     '''
 
-    Tref = 273.15      # [K] reference temperature: freezing point of water
+    Tref = 273.15      # [K] freezing point of water
     rhoref = 1000.     # [kg/m^3] reference density
     lambdaref = 0.589  # [um] reference wavelength
 
     nT = temperature/Tref + 1.
     nrho = density(temperature)/rhoref
-    nlambda = wavelength/lambdaref
+    nlambda = np.square(wavelength/lambdaref)
+    nlambdauv = np.square(0.2292020)
+    nlambdaair = np.square(5.432937)
 
-    A = [0.244257733,
-         9.74634476e-3,
-         -3.73234996e-3,
-         2.68678472e-4,
-         1.58920570e-3,
-         2.45934259e-3,
-         0.900704920,
-         -1.66626219e-2]
-
-    nlambdauv = 0.2292020
-    nlambdaair = 5.432937
-
-    B = (A[0] +
-         A[1] * nrho +
-         A[2] * nT +
-         A[3] * nlambda**2 * nT +
-         A[4] / nlambda**2 +
-         A[5] / (nlambda**2 - nlambdauv**2) +
-         A[6] / (nlambda**2 - nlambdaair**2) +
-         A[7] * nrho**2)
-    B *= nrho
+    B = nrho * (0.244257733 +
+                9.74634476e-3 * nrho +
+                -3.73234996e-3 * nT +
+                2.68678472e-4 * nlambda * nT +
+                1.58920570e-3 / nlambda +
+                2.45934259e-3 / (nlambda - nlambdauv) +
+                0.900704920 / (nlambda - nlambdaair) +
+                -1.66626219e-2 * np.square(nrho))
 
     return np.sqrt((1. + 2.*B)/(1. - B))
 
