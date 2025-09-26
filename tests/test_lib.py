@@ -3,7 +3,7 @@ import numpy as np
 from pylorenzmie.lib import Azimuthal
 
 
-class TestAzi(unittest.TestCase):
+class TestAzimuthal(unittest.TestCase):
 
     def setUp(self) -> None:
         self.data = np.ones((90, 100), dtype=float)

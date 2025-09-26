@@ -42,7 +42,7 @@ def example() -> None:  # pragma: no cover
     import matplotlib.pyplot as plt
 
     shape = (301, 301)
-    coords = LorenzMie.meshgrid(shape)
+    coordinates = LorenzMie.meshgrid(shape)
     instrument = Instrument()
     instrument.magnification = 0.048
     instrument.numerical_aperture = 1.45
@@ -54,7 +54,7 @@ def example() -> None:  # pragma: no cover
     dimer.r_p = [150., 150., 250.]
     dimer.theta = np.pi/4.
     dimer.phi = np.pi/4.
-    a = LorenzMie(coordinates=coords,
+    a = LorenzMie(coordinates=coordinates,
                   particle=dimer,
                   instrument=instrument)
     plt.imshow(a.hologram().reshape(shape), cmap='gray')
