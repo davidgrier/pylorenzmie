@@ -1,6 +1,5 @@
 from .LMObject import LMObject
-from .coordinates import coordinates
-from .CircleTransform import CircleTransform
+from .CircleTransform import CircleTransform circletransform
 
 
-__all__ = 'LMObject coordinates Azimuthal CircleTransform'.split()
+__all__ = 'LMObject Azimuthal CircleTransform circletransform'.split()
