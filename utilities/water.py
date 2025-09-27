@@ -1,7 +1,11 @@
 import numpy as np
 from numpy.polynomial import Polynomial
+from numpy.typing import NDArray
 
 '''Physical properties of water'''
+
+
+Value = float | NDArray[float]
 
 
 def density(temperature: float = 24.) -> float:
@@ -28,8 +32,8 @@ def density(temperature: float = 24.) -> float:
     return p(temperature) * 1.000028/(1. + 16.879850e-3 * temperature)
 
 
-def refractiveindex(wavelength: float = 0.589,
-                    temperature: float = 24) -> float:
+def refractiveindex(wavelength: Value = 0.589,
+                    temperature: float = 24) -> Value:
     '''Returns the refractive index of water
 
     Accounts for dispersion and temperature dependence

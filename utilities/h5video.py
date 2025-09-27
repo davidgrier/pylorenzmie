@@ -1,15 +1,21 @@
 import h5py
 import numpy as np
-
+from numpy.typing import NDArray
 import logging
+
+
 logging.basicConfig()
-logger = logging.getLogger('configuration')
+logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
+
+
+Image = NDArray[np.uint8]
 
 
 class h5video(object):
     '''Class for reading HDF5 videos created by pyfab'''
-    def __init__(self, filename):
+
+    def __init__(self, filename: str) -> None:
         self.filename = filename
         self.image = None
         self.index = None
@@ -26,27 +32,27 @@ class h5video(object):
         self.shape = self.h5file['images/' + self.keys[0]].shape
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, *args) -> None:
         self.h5file.close()
 
-    def get_image(self):
+    def get_image(self) -> Image:
         try:
             self.image = self.frames[self.index]
             return self.image
         except IndexError:
-            msg = 'Index {} is out of range ({})'
-            logger.warn(msg.format(self.index, self.nframes))
+            msg = f'Index {self.index} is out of range ({self.nframes})'
+            logger.warn(msg)
             raise IndexError
 
-    def get_time(self):
+    def get_time(self) -> float:
         return self.keys[self.index]
 
-    def rewind(self):
+    def rewind(self) -> Image:
         self.index = 0
         self.eof = False
         return self.get_image()
 
-    def next(self):
+    def next(self) -> Image:
         if self.eof:
             return None
         if self.index == self.nframes-2:
@@ -54,11 +60,11 @@ class h5video(object):
         self.index += 1
         return self.get_image()
 
-    def goto(self, index):
+    def goto(self, index: int) -> None:
         self.index = index
 
 
-def example():
+def example() -> None:
     import matplotlib.pyplot as plt
 
     filename = 'example.h5'
@@ -81,7 +87,7 @@ def example():
 
         print(f'Example timestamp: {vid.get_time()}')
         print(f'Dimension of image: {vid.shape}')
-        print('Number of frames: {vid.nframes}')
+        print(f'Number of frames: {vid.nframes}')
 
 
 if __name__ == '__main__':
