@@ -4,7 +4,7 @@ from functools import wraps
 
 
 Data = NDArray[float]
-Center = NDArray[int | float]
+Center = NDArray[int] | NDArray[float]
 Radii = NDArray[int]
 Average = NDArray[float]
 
