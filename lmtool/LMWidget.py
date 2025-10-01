@@ -70,7 +70,7 @@ class LMWidget(QFrame):
                 widget.setSettings(settings)
 
     @classmethod
-    def example(cls):
+    def example(cls) -> None:
         from pyqtgraph import mkQApp
 
         def report(name, value):
