@@ -90,7 +90,7 @@ class CircleTransform(object):
         return c
 
 
-def circletransform(image: NDArray[int]) -> NDArray[float]:
+def circletransform(image: NDArray[float]) -> NDArray[float]:
     '''Transform an image to emphasize ring-like features
 
     Arguments
@@ -104,3 +104,29 @@ def circletransform(image: NDArray[int]) -> NDArray[float]:
         transformed image
     '''
     return CircleTransform().transform(image)
+
+
+def example() -> None:
+    from pathlib import Path
+    import cv2
+    import matplotlib.pyplot as plt
+
+    directory = Path(__file__).parent.parent.resolve()
+    filename = directory / 'docs' / 'tutorials' / 'image0400.png'
+    a = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+
+    b = circletransform(a)
+
+    fig, (axa, axb) = plt.subplots(nrows=2, sharex=True, sharey=True)
+    axa.imshow(a, cmap='gray')
+    axb.imshow(b, cmap='gray')
+    axa.axis('off')
+    axb.axis('off')
+    axa.set_xlim(400, 1050)
+    axa.set_ylim(500, 950)
+    plt.tight_layout()
+    plt.show()
+
+
+if __name__ == '__main__':
+    example()
