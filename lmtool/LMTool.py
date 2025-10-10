@@ -4,7 +4,7 @@
 import cv2
 import numpy as np
 from numpy.typing import NDArray
-from pylorenzmie.lib import (coordinates, Azimuthal)
+from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lmtool.LMWidget import LMWidget
 import json
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot)
@@ -75,7 +75,7 @@ class LMTool(QMainWindow):
     @data.setter
     def data(self, data: NDArray[float]) -> None:
         self._data = data / self.background
-        self.coordinates = coordinates(data.shape, flatten=False)
+        self.coordinates = LMObject.meshgrid(data.shape, flatten=False)
         self.controls.x_p.setRange((0, data.shape[1]-1))
         self.controls.y_p.setRange((0, data.shape[0]-1))
         self.imageWidget.data = self._data
