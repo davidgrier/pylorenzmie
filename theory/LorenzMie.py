@@ -158,7 +158,7 @@ class LorenzMie(LMObject):
                       bohren: bool = True) -> LMObject.Field:
         logger.debug('Computing field')
         self._field.fill(0.+0.j)
-        for p in np.atleast_1d(self.particle):
+        for p in self.particle:
             logger.debug(p)
             self._field += self.scattered_field(p, cartesian, bohren)
         return self._field
