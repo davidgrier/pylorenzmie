@@ -11,6 +11,10 @@ from scipy.special import jn_zeros
 class Estimator(LMObject):
     '''Estimate parameters of a holographic feature
 
+    Inherits
+    --------
+    pylorenzmie.lib.LMObject
+
     Properties
     ----------
     z_p : float
@@ -34,18 +38,24 @@ class Estimator(LMObject):
         synonum for estimate for backward compatibility
     '''
     instrument: Instrument
+    x_p: float | None = None
+    y_p: float | None = None
     z_p: float | None = None
     a_p: float | None = None
     n_p: float = 1.5
+    k_p: float = 0.
 
     def __post_init__(self) -> None:
         self.predict = self.estimate
 
     @property
     def properties(self) -> LMObject.Properties:
-        return dict(z_p=self.z_p,
+        return dict(x_p=self.x_p,
+                    y_p=self.y_p,
+                    z_p=self.z_p,
                     a_p=self.a_p,
-                    n_p=self.n_p)
+                    n_p=self.n_p,
+                    k_p=self.k_p)
 
     def _initialize(self, data: LMObject.Image) -> None:
         '''Prepare for estimation
@@ -93,6 +103,9 @@ class Estimator(LMObject):
         if isinstance(feature, list):
             return [self.estimate(this) for this in feature]
         self._initialize(feature)
+        h, w = feature.shape
+        self.x_p = w / 2.
+        self.y_p = h / 2.
         self._estimate_z()
         self._estimate_a()
         return pd.Series(self.properties)
