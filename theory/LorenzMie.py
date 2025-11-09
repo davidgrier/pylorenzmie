@@ -46,7 +46,7 @@ generalizedlorenzmie__define.pro
 which was written by David G. Grier.
 This version is
 
-Copyright (c) 2018 David G. Grier
+Copyright (c) 2018-2025 David G. Grier
 '''
 
 np.seterr(all='raise')
@@ -58,12 +58,16 @@ class LorenzMie(LMObject):
 
     ...
 
+    Inherits
+    --------
+    pylorenzmie.lib.LMObject
+
     Properties
     ----------
-    coordinates : numpy.ndarray
+    coordinates: LMObject.Coordinates
         [3, npts] array of x, y and z coordinates where field
         is calculated
-    particle : Particle | List[Particle]
+    particle : Particle | list[Particle]
         Object representing the particle scattering light
     instrument : Instrument
         Object resprenting the light-scattering instrument
@@ -187,8 +191,8 @@ class LorenzMie(LMObject):
         hologram : numpy.ndarray
             Computed hologram.
         '''
-        psi = self.field()
-        psi[0, :] += 1.
+        psi = self.field()  # scattered field
+        psi[0, :] += 1.0    # incident field
         hologram = np.sum(np.real(psi * np.conj(psi)), axis=0)
         return hologram
 
@@ -270,7 +274,7 @@ class LorenzMie(LMObject):
         # Particles above the focal plane create diverging waves
         # described by Eq. (4.13) for $h_n^{(1)}(kr)$. These have z > 0.
         # Those below the focal plane appear to be converging from the
-        # perspective of the camera. They are descrinbed by Eq. (4.14)
+        # perspective of the camera. They are described by Eq. (4.14)
         # for $h_n^{(2)}(kr)$, and have z < 0. We can select the
         # appropriate case by applying the correct sign of the imaginary
         # part of the starting functions...

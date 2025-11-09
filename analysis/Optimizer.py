@@ -20,6 +20,10 @@ class Optimizer(LMObject):
 
     ...
 
+    Inherits
+    --------
+    pylorenzmie.lib.LMObject
+
     Properties
     ----------
     model : LorenzMie
@@ -253,11 +257,9 @@ class Optimizer(LMObject):
 
 
 def test_case() -> None:
-    from pylorenzmie.lib import coordinates
-
     shape = (201, 201)
     model = LorenzMie()
-    model.coordinates = coordinates(shape)
+    model.coordinates = model.meshgrid(shape)
     model.particle.a_p = 0.75
     model.particle.n_p = 1.42
     model.particle.r_p = [100., 100., 225.]
