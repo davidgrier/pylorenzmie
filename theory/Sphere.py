@@ -14,23 +14,27 @@ class Sphere(Particle):
 
     ...
 
+    Inherits
+    --------
+    pylorenzmie.theory.Particle
+
     Properties
     ----------
     a_p: float
         radius of particle [um]
-    n_p: float
+    n_p: float | complex
         refractive index of particle
     k_p: float
         absorption coefficient of particle
 
     Methods
     -------
-    ab(n_m, wavelength): numpy.ndarray
+    ab(n_m, wavelength): Particle.Coefficients
         returns the Mie scattering coefficients for the sphere
 
         Arguments
         ---------
-        n_m: complex
+        n_m: float | complex
             refractive index of medium
         wavelength: float
             vacuum wavelength of light [micrometers]
@@ -78,27 +82,29 @@ class Sphere(Particle):
                 'k_p': self.k_p}
 
     def ab(self,
-           n_m: complex,
+           n_m: float | complex,
            wavelength: float) -> Particle.Coefficients:
         '''Returns the Mie scattering coefficients
 
         Arguments
         ---------
-        n_m: complex
+        n_m: float | complex
             Refractive index of medium
         wavelength: float
             Vacuum wavelength of light [micrometers]
 
         Returns
         -------
-        ab : numpy.ndarray
+        ab : Particle.Coefficients
             Mie AB scattering coefficients
         '''
-        return mie_coefficients(self.a_p, self.n_p, self.k_p,
+        return mie_coefficients(self.a_p,
+                                self.n_p,
+                                self.k_p,
                                 n_m, wavelength)
 
 
-def wiscombe_yang(x: float, m: complex) -> int:
+def wiscombe_yang(x: float, m: float | complex) -> int:
     '''Return the number of terms to keep in partial wave expansion
 
     Equation numbers refer to Wiscombe (1980) and Yang (2003).
@@ -109,7 +115,7 @@ def wiscombe_yang(x: float, m: complex) -> int:
     ---------
     x : complex
         size parameters for sphere
-    m : complex
+    m : float | complex
         relative refractive index of sphere
 
     Returns
@@ -135,7 +141,7 @@ def wiscombe_yang(x: float, m: complex) -> int:
 
 
 def nieves_pisignano(x: float,
-                     precision: float = 6.) -> int:
+                     precision: float | complex = 6.) -> int:
     nstop = x + 0.76 * np.cbrt(precision*precision*x) - 4.1
     return int(nstop)
 
@@ -148,9 +154,8 @@ def mie_coefficients(a_p: float,
     '''Returns the Mie scattering coefficients for a sphere
 
     This works for an isotropic homogeneous sphere illuminated by
-    a coherent plane wave propagating along z and linearly polarized
-    along x.
-
+    a coherent plane wave linearly polarized along x
+    and propagating along z.
     ...
 
     Arguments
@@ -160,15 +165,15 @@ def mie_coefficients(a_p: float,
     n_p : float
         Refractive index of the sphere
     k_p : float
-        Absorption coefficient of sphere's layers
-    n_m : complex
-        (complex) refractive index of medium
+        Absorption coefficient of sphere
+    n_m : float | complex
+        refractive index of medium
     wavelength : float
         wavelength of light [um]
 
     Returns
     -------
-    ab : numpy.ndarray
+    ab : Particle.Coefficients
         Mie AB coefficients
     '''
 

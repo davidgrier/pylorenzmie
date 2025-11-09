@@ -10,6 +10,10 @@ Prediction = pd.DataFrame
 class Localizer(LMObject):
     '''Identify and localize features in holograms
 
+    Inherits
+    --------
+    pylorenzmie.lib.LMObject
+
     Properties
     ----------
     nfringes : int
@@ -98,6 +102,26 @@ class Localizer(LMObject):
             prediction = dict(x_p=r_p[0], y_p=r_p[1], bbox=bbox)
             predictions.append(prediction)
         return pd.DataFrame(predictions)
+
+    def crop(self,
+             image: LMObject.Image,
+             bbox: tuple[tuple[int, int], int, int]) -> LMObject.Image:
+        '''
+        Crop image to bounding box
+
+        Arguments
+        ---------
+        image : numpy.ndarray
+            image data
+        bbox : tuple
+            ((x0, y0), w, h)
+
+        Returns
+        -------
+        cropped_image : LMObject.Image
+        '''
+        (x0, y0), w, h = bbox
+        return image[y0:y0+h, x0:x0+w]
 
     @classmethod
     def example(cls: 'Localizer') -> None:

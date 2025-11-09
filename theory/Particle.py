@@ -14,9 +14,13 @@ class Particle(LMObject):
 
     ...
 
-    Attributes
+    Inherits
+    --------
+    pylorenzmie.lib.LMObject
+
+    Properties
     ----------
-    r_p : numpy.ndarray
+    r_p : LMObject.Coordinates
         3-dimensional coordinates of particle's center
     x_p : float
         x coordinate
@@ -24,7 +28,7 @@ class Particle(LMObject):
         y coordinate
     z_p : float
         z coordinate
-    r_0: numpy.ndarray
+    r_0: LMObject.Coordinates
         3-dimensional origin of coordinate system
     x_0 : float
         x coordinate of origin
@@ -33,11 +37,11 @@ class Particle(LMObject):
     z_0 : float
         z coordinate of origin
 
-    NOTE: The units of coordinates are not specified
+    NOTE: Coordinates are specified in pixels
 
     Methods
     -------
-    ab(n_m, wavelength) : numpy.ndarray
+    ab(n_m, wavelength) : LMObject.Coefficients
         Returns Mie scattering coefficients
     '''
 
