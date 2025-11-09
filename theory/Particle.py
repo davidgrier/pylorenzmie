@@ -52,6 +52,23 @@ class Particle(LMObject):
     y_0: float = field(repr=False, default=0.)
     z_0: float = field(repr=False, default=0.)
 
+    def __post_init__(self) -> None:
+        self._index = 0
+
+    def __len__(self) -> int:
+        return 1
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self._index < 1:
+            self._index += 1
+            return self
+        else:
+            self._index = 0
+            raise StopIteration
+
     @property
     def r_p(self) -> LMObject.Coordinates:
         '''Three-dimensional coordinates of particle's center'''
