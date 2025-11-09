@@ -18,7 +18,6 @@ class Cluster(Particle):
             return
 
     def __len__(self) -> int:
-        print(len(self.particles))
         return len(self.particles)
 
     def __next__(self) -> Particle:
