@@ -69,6 +69,11 @@ class Particle(LMObject):
             self._index = 0
             raise StopIteration
 
+    def __getitem__(self, index: int) -> 'Particle':
+        if index != 0:
+            raise IndexError('Particle index out of range')
+        return self
+
     @property
     def r_p(self) -> LMObject.Coordinates:
         '''Three-dimensional coordinates of particle's center'''
