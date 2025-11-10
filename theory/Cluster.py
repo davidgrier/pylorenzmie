@@ -5,6 +5,19 @@ from dataclasses import dataclass, field
 @dataclass
 class Cluster(Particle):
 
+    '''
+    Abstraction of a cluster of particles for Lorenz-Mie microscopy
+
+    Inherits
+    --------
+    pylorenzmie.theory.Particle
+
+    Properties
+    ----------
+    particles : list of Particle
+        List of Particle objects in the cluster
+    '''
+
     particles: list[Particle] = field(repr=False, default_factory=list)
 
     def __post_init__(self) -> None:

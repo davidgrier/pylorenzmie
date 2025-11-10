@@ -6,6 +6,29 @@ import numpy as np
 @dataclass
 class Dimer(Cluster):
 
+    '''
+    Abstraction of a dimer of spheres for Lorenz-Mie microscopy
+
+    Inherits
+    --------
+    pylorenzmie.theory.Cluster
+
+    Properties
+    ----------
+    a_p : float
+        Radius of each sphere in micrometers
+    n_p : float
+        Refractive index of each sphere
+    k_p : float
+        Absorption coefficient of each sphere
+    theta : float
+        Polar angle of the dimer axis in radians
+    phi : float
+        Azimuthal angle of the dimer axis in radians
+    magnification : float
+        Magnification of the imaging system
+    '''
+
     a_p: float = 0.75
     n_p: float = 1.45
     k_p: float = 0.
@@ -22,6 +45,7 @@ class Dimer(Cluster):
             self.update_positions()
 
     def __post_init__(self) -> None:
+        super().__post_init__()
         p = {'a_p': self.a_p, 'n_p': self.n_p, 'k_p': self.k_p}
         self.particles = [Sphere(**p), Sphere(**p)]
         self.update_positions()
