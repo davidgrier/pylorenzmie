@@ -131,12 +131,12 @@ class LMObject(ABC):
 
         Parameters
         ----------
-        shape : tuple
+        shape : tuple[int, int]
             (nx, ny) shape of the coordinate system
 
         Keywords
         --------
-        corner : tuple
+        corner : tuple[int, int]
             (left, top) starting coordinates for x and y, respectively
         flatten : bool
             If False, coordinates shape is (2, nx, ny)
