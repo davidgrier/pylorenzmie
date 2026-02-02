@@ -7,9 +7,6 @@ class ALMWidget(LMWidget):
     cls = AberratedLorenzMie
     uiFile = 'ALMWidget.ui'
 
-    def __init__(self, *args, **kwargs) -> None:
-        super().__init__(*args, **kwargs)
-
 
 if __name__ == '__main__':
     ALMWidget.example()
