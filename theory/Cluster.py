@@ -19,6 +19,7 @@ class Cluster(Particle):
     '''
 
     particles: list[Particle] = field(repr=False, default_factory=list)
+    _index: int = field(init=False, repr=False, default=0)
 
     def __post_init__(self) -> None:
         super().__post_init__()
@@ -32,6 +33,9 @@ class Cluster(Particle):
 
     def __len__(self) -> int:
         return len(self.particles)
+
+    def __iter__(self):
+        return self
 
     def __next__(self) -> Particle:
         if self._index < len(self.particles):
