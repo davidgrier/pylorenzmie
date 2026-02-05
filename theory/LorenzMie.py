@@ -8,7 +8,7 @@ try:
     xp = cp
 #    print('CuPy is available, using GPU acceleration')
 except (ModuleNotFoundError, ImportError):
-    cp = none
+    cp = None
     xp = np
 #    print('CuPy not found, falling back to CPU')
 
