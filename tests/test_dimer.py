@@ -1,4 +1,3 @@
-# create comprehensive unit tests for Dimer.py using unittest framework.
 import unittest
 import numpy as np
 from pylorenzmie.theory import Dimer, Sphere
