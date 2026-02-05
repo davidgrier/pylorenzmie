@@ -82,7 +82,7 @@ class cupyLorenzMie(LorenzMie):
                      *self.buffer))
         return self.buffer
 
-    def field(self, **kwargs) -> cp.ndarray:
+    def field(self, **kwargs) -> np.ndarray:
         return self._device_field(**kwargs).get()
 
     @property
@@ -96,7 +96,7 @@ class cupyLorenzMie(LorenzMie):
         if (self.coordinates is None or self.particle is None):
             return None
         self.result.fill(0.+0.j)
-        for p in np.atleast_1d(self.particle):
+        for p in self.particle:
             self.result += self.scattered_field(p, cartesian, bohren)
         return self.result
 
