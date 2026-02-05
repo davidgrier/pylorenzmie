@@ -6,12 +6,15 @@
 import json
 from pylorenzmie.theory import Sphere
 from pylorenzmie.theory import AberratedLorenzMie as LorenzMie
-from pylorenzmie.lib import coordinates
+from pylorenzmie.lib import LMObject
 import numpy as np
 from pathlib import Path
 import cv2
 import shutil
-
+try: 
+    import cupy as cp
+except (ModuleNotFoundError, ImportError):
+    print('cupy not found, falling back to CPU')
 
 def feature_extent(sphere, config, nfringes=20, maxrange=300):
     '''Radius of holographic feature in pixels'''
@@ -20,9 +23,9 @@ def feature_extent(sphere, config, nfringes=20, maxrange=300):
     h.instrument.properties = config['instrument']
     h.spherical = config['spherical']
     h.pupil = config['pupil']
-    h.particle.a_p = sphere.a_p
-    h.particle.n_p = sphere.n_p
-    h.particle.z_p = sphere.z_p
+    h.particle.a_p = sphere.a_p  
+    h.particle.n_p = sphere.n_p  
+    h.particle.z_p = sphere.z_p  
     b = h.hologram() - 1.
     ndx = np.where(np.diff(np.sign(b)))[0] + 1
     return maxrange if (len(ndx) <= nfringes) else float(ndx[nfringes])
@@ -95,7 +98,7 @@ def mtd(configfile='mtd.json'):
 
     # set up pipeline for hologram calculation
     shape = config['shape']
-    coords = coordinates(shape)
+    coords = LMObject.meshgrid(shape)
     model = LorenzMie(coordinates=coords)
     model.instrument.properties = config['instrument']
     model.spherical = config['spherical']
