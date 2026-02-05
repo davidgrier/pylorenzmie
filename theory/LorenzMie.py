@@ -116,11 +116,11 @@ class LorenzMie(LMObject):
         return self._coordinates
 
     @coordinates.setter
-    def coordinates(self, coords: LMObject.Coordinates) -> None:
+    def coordinates(self, coordinates: LMObject.Coordinates) -> None:
         '''Ensure coordinates have shape (3, npts)'''
         logger.debug('Setting coordinates')
-        if coords is not None:
-            c = np.atleast_2d(coords)
+        if coordinates is not None:
+            c = np.atleast_2d(coordinates)
         else:
             c = self.meshgrid((201, 201))
         ndim, npts = c.shape
