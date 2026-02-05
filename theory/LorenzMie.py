@@ -2,6 +2,15 @@ from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 import numpy as np
 import logging
+'''use cupy if available, otherwise use numpy'''
+try:
+    import cupy as cp
+    xp = cp
+#    print('CuPy is available, using GPU acceleration')
+except (ModuleNotFoundError, ImportError):
+    cp = none
+    xp = np
+#    print('CuPy not found, falling back to CPU')
 
 
 logger = logging.getLogger(__name__)
@@ -120,13 +129,13 @@ class LorenzMie(LMObject):
         '''Ensure coordinates have shape (3, npts)'''
         logger.debug('Setting coordinates')
         if coords is not None:
-            c = np.atleast_2d(coords)
+            c = xp.atleast_2d(coords)
         else:
             c = self.meshgrid((201, 201))
         ndim, npts = c.shape
         if ndim > 3:
             raise ValueError(f'Incompatible shape: {coords.shape = }')
-        self._coordinates = np.vstack([c, np.zeros((3-ndim, npts))])
+        self._coordinates = xp.vstack([c, xp.zeros((3-ndim, npts))])
         self.allocate()
 
     @property
@@ -134,7 +143,7 @@ class LorenzMie(LMObject):
         return self._coordinates
 
     def to_field(self, phase: float) -> LMObject.Field:
-        return np.exp(1j * phase)
+        return xp.exp(1j * phase)
 
     def scattered_field(self,
                         particle: Particle,
@@ -150,7 +159,7 @@ class LorenzMie(LMObject):
         ab = particle.ab(n_m, wavelength)
         field = self.compute(ab, self.kdr, self.buffers,
                              cartesian=cartesian, bohren=bohren)
-        field *= np.exp(-1j * k * r_p[2])
+        field *= xp.exp(-1j * k * r_p[2])
         return field
 
     def _device_field(self,
@@ -193,16 +202,16 @@ class LorenzMie(LMObject):
         '''
         psi = self.field()  # scattered field
         psi[0, :] += 1.0    # incident field
-        hologram = np.sum(np.real(psi * np.conj(psi)), axis=0)
+        hologram = xp.sum(xp.real(psi * xp.conj(psi)), axis=0)
         return hologram
 
     def allocate(self) -> None:
         '''Allocate ndarrays for calculation'''
         logger.debug('Allocating buffers')
         shape = self.coordinates.shape
-        buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
-        self.buffers = np.array(buffers)
-        self._field = np.empty(shape, dtype=complex)
+        buffers = [xp.empty(shape, dtype=complex) for _ in range(4)]
+        self.buffers = xp.array(buffers)
+        self._field = xp.empty(shape, dtype=complex)
 
     @staticmethod
     def compute(ab: LMObject.Coefficients,
@@ -256,17 +265,17 @@ class LorenzMie(LMObject):
         shape = kx.shape
 
         # 2. geometric factors
-        krho = np.hypot(kx, ky)
-        kr = np.hypot(krho, kz)
-        sinkr = np.sin(kr)
-        coskr = np.cos(kr)
+        krho = xp.hypot(kx, ky)
+        kr = xp.hypot(krho, kz)
+        sinkr = xp.sin(kr)
+        coskr = xp.cos(kr)
 
-        phi = np.arctan2(ky, kx)
-        cosphi = np.cos(phi)
-        sinphi = np.sin(phi)
-        theta = np.arctan2(krho, kz)
-        costheta = np.cos(theta)
-        sintheta = np.sin(theta)
+        phi = xp.arctan2(ky, kx)
+        cosphi = xp.cos(phi)
+        sinphi = xp.sin(phi)
+        theta = xp.arctan2(krho, kz)
+        costheta = xp.cos(theta)
+        sintheta = xp.sin(theta)
 
         # SPECIAL FUNCTIONS
         # starting points for recursive function evaluation ...
@@ -278,23 +287,23 @@ class LorenzMie(LMObject):
         # for $h_n^{(2)}(kr)$, and have z < 0. We can select the
         # appropriate case by applying the correct sign of the imaginary
         # part of the starting functions...
-        factor = 1.j * np.sign(kz) if bohren else -1.j * np.sign(kz)
+        factor = 1.j * xp.sign(kz) if bohren else -1.j * xp.sign(kz)
 
         xi_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
         xi_nm1 = sinkr - factor * coskr  # \xi_0(kr)
 
         # 2. Angular functions (4.47), page 95
         # \pi_0(\cos\theta)
-        pi_nm1 = np.zeros(shape)
+        pi_nm1 = xp.zeros(shape)
         # \pi_1(\cos\theta)
-        pi_n = np.ones(shape)
+        pi_n = xp.ones(shape)
 
         # 3. Vector spherical harmonics: [r,theta,phi]
         mo1n[0].fill(0.j)                 # no radial component
 
         # Allocate memory for Wiscombe functions
-        swisc = np.empty(shape)
-        twisc = np.empty(shape)
+        swisc = xp.empty(shape)
+        twisc = xp.empty(shape)
 
         # storage for scattered field
         es.fill(0.j)
@@ -307,8 +316,8 @@ class LorenzMie(LMObject):
 
             # swisc = pi_n * costheta
             # twisc = swisc - pi_nm1
-            np.multiply(pi_n, costheta, out=swisc)
-            np.subtract(swisc, pi_nm1, out=twisc)
+            xp.multiply(pi_n, costheta, out=swisc)
+            xp.subtract(swisc, pi_nm1, out=twisc)
             tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
 
             # ... Riccati-Bessel function, page 478

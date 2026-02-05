@@ -4,6 +4,15 @@
 from dataclasses import dataclass, field
 import numpy as np
 from pylorenzmie.lib import LMObject
+'''use cupy if available, otherwise use numpy'''
+try:
+    import cupy as cp
+    xp = cp
+#    print('CuPy is available, using GPU acceleration')
+except (ModuleNotFoundError, ImportError):
+    cp = none
+    xp = np
+#    print('CuPy not found, falling back to CPU')
 
 
 @dataclass
@@ -77,7 +86,7 @@ class Particle(LMObject):
     @property
     def r_p(self) -> LMObject.Coordinates:
         '''Three-dimensional coordinates of particle's center'''
-        return np.asarray([self.x_p, self.y_p, self.z_p])
+        return xp.asarray([xp.asarray(self.x_p), xp.asarray(self.y_p), xp.asarray(self.z_p)])
 
     @r_p.setter
     def r_p(self, r_p: LMObject.Coordinates) -> None:
@@ -86,7 +95,7 @@ class Particle(LMObject):
     @property
     def r_0(self) -> LMObject.Coordinates:
         '''Three-dimensional coordinates of origin'''
-        return np.asarray([self.x_0, self.y_0, self.z_0])
+        return xp.asarray([xp.asarray(self.x_p), xp.asarray(self.y_p), xp.asarray(self.z_p)])
 
     @r_0.setter
     def r_0(self, r_0: LMObject.Coordinates) -> None:
@@ -118,7 +127,7 @@ class Particle(LMObject):
         ab : numpy.ndarray
             Mie AB scattering coefficients
         '''
-        return np.asarray([1, 1], dtype=complex)
+        return xp.asarray([1, 1], dtype=complex)
 
 
 def example() -> None:  # pragma: no cover

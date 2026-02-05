@@ -4,6 +4,15 @@
 from dataclasses import dataclass
 from pylorenzmie.theory import Particle
 import numpy as np
+'''use cupy if available, otherwise use numpy'''
+try:
+    import cupy as cp
+    xp = cp
+#    print('CuPy is available, using GPU acceleration')
+except (ModuleNotFoundError, ImportError):
+    cp = none
+    xp = np
+#    print('CuPy not found, falling back to CPU')
 
 
 @dataclass
@@ -105,6 +114,9 @@ class Sphere(Particle):
 
 
 def wiscombe_yang(x: float, m: float | complex) -> int:
+    x = xp.asarray(x)
+    m = xp.asarray(m) #to keep array consistency
+
     '''Return the number of terms to keep in partial wave expansion
 
     Equation numbers refer to Wiscombe (1980) and Yang (2003).
@@ -125,24 +137,27 @@ def wiscombe_yang(x: float, m: float | complex) -> int:
     '''
 
     # Wiscombe (1980)
-    xl = np.abs(x)
+    xl = xp.abs(x)
     if xl <= 8.:
-        ns = np.floor(xl + 4. * np.cbrt(xl) + 1.)
+        ns = xp.floor(xl + 4. * xp.cbrt(xl) + 1.)
     elif xl <= 4200.:
-        ns = np.floor(xl + 4.05 * np.cbrt(xl) + 2.)
+        ns = xp.floor(xl + 4.05 * xp.cbrt(xl) + 2.)
     else:
-        ns = np.floor(xl + 4. * np.cbrt(xl) + 2.)
+        ns = xp.floor(xl + 4. * xp.cbrt(xl) + 2.)
 
     # Yang (2003) Eq. (30)
-    xm = np.abs(x * m)
-    xm_1 = np.abs(np.roll(x, -1) * m)
-    nstop = np.max([ns, np.max(xm), np.max(xm_1)])
+    xm = xp.abs(x * m)
+    xm_1 = xp.abs(xp.roll(x, -1) * m)
+    xm_array = xp.asarray(xm)
+    ns_array = xp.asarray(ns)
+    xm_1array = xp.asarray(xm_1)
+    nstop = xp.max(xp.asarray([ns_array, xp.max(xm_array), xp.max(xm_1array)]))
     return int(nstop)
 
 
 def nieves_pisignano(x: float,
                      precision: float | complex = 6.) -> int:
-    nstop = x + 0.76 * np.cbrt(precision*precision*x) - 4.1
+    nstop = x + 0.76 * xp.cbrt(precision*precision*x) - 4.1
     return int(nstop)
 
 
@@ -178,8 +193,8 @@ def mie_coefficients(a_p: float,
     '''
 
     # size parameters for layers
-    k = 2.*np.pi/wavelength    # wave number in vacuum [um^-1]
-    k *= np.real(n_m)          # wave number in medium
+    k = 2.*xp.pi/wavelength    # wave number in vacuum [um^-1]
+    k *= xp.real(n_m)          # wave number in medium
 
     x = k * a_p                # size parameter in each layer
     m = (n_p + 1.j*k_p) / n_m  # relative refractive index in each layer
@@ -187,13 +202,13 @@ def mie_coefficients(a_p: float,
     nmax = wiscombe_yang(x, m)
 
     # storage for results
-    ab = np.empty((nmax+1, 2), np.complex128)
-    d1_z1 = np.empty(nmax+1, np.complex128)
-    d1_z2 = np.empty(nmax+1, np.complex128)
-    d3_z1 = np.empty(nmax+1, np.complex128)
-    d3_z2 = np.empty(nmax+1, np.complex128)
-    psi = np.empty(nmax+1, np.complex128)
-    zeta = np.empty(nmax+1, np.complex128)
+    ab = xp.empty((nmax+1, 2), xp.complex128)
+    d1_z1 = xp.empty(nmax+1, xp.complex128)
+    d1_z2 = xp.empty(nmax+1, xp.complex128)
+    d3_z1 = xp.empty(nmax+1, xp.complex128)
+    d3_z2 = xp.empty(nmax+1, xp.complex128)
+    psi = xp.empty(nmax+1, xp.complex128)
+    zeta = xp.empty(nmax+1, xp.complex128)
 
     # initialization
     d1_z1[nmax] = 0.                                          # Eq. (16a)
@@ -215,9 +230,9 @@ def mie_coefficients(a_p: float,
         d1_z1[n-1] = n/z1 - (1./(d1_z1[n] + n/z1))            # Eq. (16b)
 
     # upward recurrence for Psi, Zeta, PsiZeta and D3
-    psi[0] = np.sin(z1)                                       # Eq. (20a)
-    zeta[0] = -1.j * np.exp(1.j * z1)                         # Eq. (21a)
-    psizeta = 0.5 * (1. - np.exp(2.j * z1))                   # Eq. (18a)
+    psi[0] = xp.sin(z1)                                       # Eq. (20a)
+    zeta[0] = -1.j * xp.exp(1.j * z1)                         # Eq. (21a)
+    psizeta = 0.5 * (1. - xp.exp(2.j * z1))                   # Eq. (18a)
     for n in range(1, nmax+1):
         psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])               # Eq. (20b)
         zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])             # Eq. (21b)
@@ -225,13 +240,13 @@ def mie_coefficients(a_p: float,
         d3_z1[n] = d1_z1[n] + 1.j/psizeta                     # Eq. (18d)
 
     # Scattering coefficients
-    n = np.arange(nmax+1)
+    n = xp.arange(nmax+1)
     fac = ha/m + n/x
-    ab[:, 0] = ((fac * psi - np.roll(psi, 1)) /
-                (fac * zeta - np.roll(zeta, 1)))              # Eq. (5)
+    ab[:, 0] = ((fac * psi - xp.roll(psi, 1)) /
+                (fac * zeta - xp.roll(zeta, 1)))              # Eq. (5)
     fac = hb*m + n/x
-    ab[:, 1] = ((fac * psi - np.roll(psi, 1)) /
-                (fac * zeta - np.roll(zeta, 1)))              # Eq. (6)
+    ab[:, 1] = ((fac * psi - xp.roll(psi, 1)) /
+                (fac * zeta - xp.roll(zeta, 1)))              # Eq. (6)
     ab[0, :] = 0.j
 
     return ab

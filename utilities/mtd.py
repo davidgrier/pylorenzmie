@@ -11,14 +11,20 @@ import numpy as np
 from pathlib import Path
 import cv2
 import shutil
+
+'''use cupy if available, otherwise use numpy'''
 try: 
     import cupy as cp
+    xp = cp
+    print('CuPy is available, using GPU acceleration')
 except (ModuleNotFoundError, ImportError):
-    print('cupy not found, falling back to CPU')
+    cp = none
+    xp = np
+    print('CuPy not found, falling back to CPU')
 
 def feature_extent(sphere, config, nfringes=20, maxrange=300):
     '''Radius of holographic feature in pixels'''
-    x = np.arange(0, maxrange)
+    x = xp.arange(0, maxrange)
     h = LorenzMie(coordinates=x)
     h.instrument.properties = config['instrument']
     h.spherical = config['spherical']
@@ -27,7 +33,7 @@ def feature_extent(sphere, config, nfringes=20, maxrange=300):
     h.particle.n_p = sphere.n_p  
     h.particle.z_p = sphere.z_p  
     b = h.hologram() - 1.
-    ndx = np.where(np.diff(np.sign(b)))[0] + 1
+    ndx = xp.where(xp.diff(xp.sign(b)))[0] + 1
     return maxrange if (len(ndx) <= nfringes) else float(ndx[nfringes])
 
 
@@ -55,17 +61,17 @@ def format_json(spheres):
 
 def make_value(range, decimals=3):
     '''Returns the value for a property'''
-    if np.isscalar(range):
+    if xp.isscalar(range):
         value = range
     elif range[0] == range[1]:
         value = range[0]
     else:
-        value = np.random.uniform(range[0], range[1])
-    return np.around(value, decimals=decimals)
+        value = xp.random.uniform(range[0], range[1])
+    return xp.around(value, decimals=decimals)
 
 
 def too_close(s1, s2, mpp):
-    d = mpp*np.square(s1.r_p - s2.r_p).sum()
+    d = mpp*xp.square(s1.r_p - s2.r_p).sum()
     return d < (s1.a_p + s2.a_p)
 
 
@@ -80,7 +86,8 @@ def make_spheres(config):
     c = config['particle']
     mpp = config['instrument']['magnification']
     nrange = c['nspheres']
-    nspheres = np.random.randint(*nrange)
+    nspheres = xp.random.randint(*nrange)
+    nspheres = nspheres.item() #added this to extract integer value
     spheres = [make_sphere(c) for _ in range(nspheres)]
     for j in range(1, nspheres):
         for i in range(0, j):
@@ -124,8 +131,11 @@ def mtd(configfile='mtd.json'):
             spheres = make_spheres(config)
             model.particle = spheres
             frame = model.hologram().reshape(shape)
-            frame += np.random.normal(0, config['noise'], shape)
-            frame = np.clip(100*frame, 0, 255).astype(np.uint8)
+            frame += xp.random.normal(0, config['noise'], shape)
+            frame = xp.clip(100*frame, 0, 255).astype(xp.uint8)
+            frame = frame.get() if hasattr(frame, 'get') else frame  # Convert CuPy to NumPy if needed
+            frame = np.asarray(frame)  # Ensure it's a NumPy array
+            frame = frame.astype(np.uint8)
             cv2.imwrite(str(iname), frame)
             with open(jname, 'w') as f:
                 f.write(format_json(spheres))

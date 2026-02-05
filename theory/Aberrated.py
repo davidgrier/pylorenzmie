@@ -1,6 +1,15 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Particle import Particle
 import numpy as np
+'''use cupy if available, otherwise use numpy'''
+try:
+    import cupy as cp
+    xp = cp
+#    print('CuPy is available, using GPU acceleration')
+except (ModuleNotFoundError, ImportError):
+    cp = none
+    xp = np
+#    print('CuPy not found, falling back to CPU')
 
 
 def Aberrated(base_class: LorenzMie):
