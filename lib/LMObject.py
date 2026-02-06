@@ -157,3 +157,9 @@ class LMObject(ABC):
         y = np.arange(top, top + ny, dtype=dtype)
         xy = np.array(np.meshgrid(x, y))
         return xy.reshape((2, -1)) if flatten else xy
+
+    @classmethod
+    def example(cls) -> None:
+        '''Minimal example for subclasses of LMObject'''
+        a = cls()
+        print(a)
