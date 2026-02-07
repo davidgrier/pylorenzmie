@@ -121,15 +121,5 @@ class Particle(LMObject):
         return np.asarray([1, 1], dtype=complex)
 
 
-def example() -> None:  # pragma: no cover
-    p = Particle()
-    print(p)
-    print(p.r_p)
-    p.x_p = 100.
-    print(p.r_p)
-    print(p.ab())
-    print(p.properties)
-
-
 if __name__ == '__main__':  # pragma: no cover
-    example()
+    Particle.example()
