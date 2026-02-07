@@ -222,12 +222,13 @@ class Sphere(Particle):
 
         # scattering coefficients
         n = np.arange(nmax+1)
-        fac = Ha/m + n/x
+
+        fac = Ha/m + n/x                             # Eq. (5)
         ab[:, 0] = ((fac * Ψ - np.roll(Ψ, 1)) /
-                    (fac * ζ - np.roll(ζ, 1)))       # Eq. (5)
-        fac = Hb*m + n/x
+                    (fac * ζ - np.roll(ζ, 1)))
+        fac = Hb*m + n/x                             # Eq. (6)
         ab[:, 1] = ((fac * Ψ - np.roll(Ψ, 1)) /
-                    (fac * ζ - np.roll(ζ, 1)))       # Eq. (6)
+                    (fac * ζ - np.roll(ζ, 1)))
         ab[0, :] = 0.j
 
         return ab
