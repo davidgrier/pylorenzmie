@@ -98,156 +98,156 @@ class Sphere(Particle):
         ab : Particle.Coefficients
             Mie AB scattering coefficients
         '''
-        return mie_coefficients(self.a_p,
-                                self.n_p,
-                                self.k_p,
-                                n_m, wavelength)
+        return Sphere.mie_coefficients(self.a_p,
+                                       self.n_p,
+                                       self.k_p,
+                                       n_m, wavelength)
 
+    @staticmethod
+    def wiscombe_yang(x: float, m: float | complex) -> int:
+        '''Return the number of terms to keep in partial wave expansion
 
-def wiscombe_yang(x: float, m: float | complex) -> int:
-    '''Return the number of terms to keep in partial wave expansion
+        Equation numbers refer to Wiscombe (1980) and Yang (2003).
 
-    Equation numbers refer to Wiscombe (1980) and Yang (2003).
+        ...
 
-    ...
+        Arguments
+        ---------
+        x : complex
+            size parameters for sphere
+        m : float | complex
+            relative refractive index of sphere
 
-    Arguments
-    ---------
-    x : complex
-        size parameters for sphere
-    m : float | complex
-        relative refractive index of sphere
+        Returns
+        -------
+        ns : int
+            Number of terms to retain in the partial-wave expansion
+        '''
 
-    Returns
-    -------
-    ns : int
-        Number of terms to retain in the partial-wave expansion
-    '''
+        # Wiscombe (1980)
+        xl = np.abs(x)
+        if xl <= 8.:
+            ns = np.floor(xl + 4. * np.cbrt(xl) + 1.)
+        elif xl <= 4200.:
+            ns = np.floor(xl + 4.05 * np.cbrt(xl) + 2.)
+        else:
+            ns = np.floor(xl + 4. * np.cbrt(xl) + 2.)
 
-    # Wiscombe (1980)
-    xl = np.abs(x)
-    if xl <= 8.:
-        ns = np.floor(xl + 4. * np.cbrt(xl) + 1.)
-    elif xl <= 4200.:
-        ns = np.floor(xl + 4.05 * np.cbrt(xl) + 2.)
-    else:
-        ns = np.floor(xl + 4. * np.cbrt(xl) + 2.)
+        # Yang (2003) Eq. (30)
+        xm = np.abs(x * m)
+        xm_1 = np.abs(np.roll(x, -1) * m)
+        nstop = np.max([ns, np.max(xm), np.max(xm_1)])
+        return int(nstop)
 
-    # Yang (2003) Eq. (30)
-    xm = np.abs(x * m)
-    xm_1 = np.abs(np.roll(x, -1) * m)
-    nstop = np.max([ns, np.max(xm), np.max(xm_1)])
-    return int(nstop)
+    @staticmethod
+    def nieves_pisignano(x: float,
+                         precision: float | complex = 6.) -> int:
+        nstop = x + 0.76 * np.cbrt(precision*precision*x) - 4.1
+        return int(nstop)
 
+    @staticmethod
+    def mie_coefficients(a_p: float,
+                         n_p: float,
+                         k_p: float,
+                         n_m: complex,
+                         wavelength: float) -> Particle.Coefficients:
+        '''Returns the Mie scattering coefficients for a sphere
 
-def nieves_pisignano(x: float,
-                     precision: float | complex = 6.) -> int:
-    nstop = x + 0.76 * np.cbrt(precision*precision*x) - 4.1
-    return int(nstop)
+        This works for an isotropic homogeneous sphere illuminated by
+        a coherent plane wave linearly polarized along x
+        and propagating along z.
+        ...
 
+        Arguments
+        ---------
+        a_p : float
+            radius of the sphere [um]
+        n_p : float
+            refractive index of the sphere
+        k_p : float
+            absorption coefficient of sphere
+        n_m : float | complex
+            refractive index of medium
+        wavelength : float
+            wavelength of light [um]
 
-def mie_coefficients(a_p: float,
-                     n_p: float,
-                     k_p: float,
-                     n_m: complex,
-                     wavelength: float) -> Particle.Coefficients:
-    '''Returns the Mie scattering coefficients for a sphere
+        Returns
+        -------
+        ab : Particle.Coefficients
+            Mie AB coefficients
+        '''
 
-    This works for an isotropic homogeneous sphere illuminated by
-    a coherent plane wave linearly polarized along x
-    and propagating along z.
-    ...
+        # size parameters for layers
+        k = 2.*np.pi/wavelength    # wave number in vacuum [um^-1]
+        k *= np.real(n_m)          # wave number in medium
 
-    Arguments
-    ---------
-    a_p : float
-        radius of the sphere [um]
-    n_p : float
-        Refractive index of the sphere
-    k_p : float
-        Absorption coefficient of sphere
-    n_m : float | complex
-        refractive index of medium
-    wavelength : float
-        wavelength of light [um]
+        x = k * a_p                # size parameter in each layer
+        m = (n_p + 1.j*k_p) / n_m  # relative refractive index in each layer
 
-    Returns
-    -------
-    ab : Particle.Coefficients
-        Mie AB coefficients
-    '''
+        nmax = Sphere.wiscombe_yang(x, m)
 
-    # size parameters for layers
-    k = 2.*np.pi/wavelength    # wave number in vacuum [um^-1]
-    k *= np.real(n_m)          # wave number in medium
+        # storage for results
+        ab = np.empty((nmax+1, 2), np.complex128)
+        d1_z1 = np.empty(nmax+1, np.complex128)
+        d1_z2 = np.empty(nmax+1, np.complex128)
+        d3_z1 = np.empty(nmax+1, np.complex128)
+        d3_z2 = np.empty(nmax+1, np.complex128)
+        psi = np.empty(nmax+1, np.complex128)
+        zeta = np.empty(nmax+1, np.complex128)
 
-    x = k * a_p                # size parameter in each layer
-    m = (n_p + 1.j*k_p) / n_m  # relative refractive index in each layer
+        # initialization
+        d1_z1[nmax] = 0.                                          # (16a)
+        d1_z2[nmax] = 0.
+        d3_z1[0] = 1.j                                            # (18b)
+        d3_z2[0] = 1.j
 
-    nmax = wiscombe_yang(x, m)
+        # iterate outward from the sphere's core
+        z1 = x * m
+        for n in range(nmax, 0, -1):
+            d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)              # (16b)
+        ha = d1_z1.copy()                                         # (7a)
+        hb = d1_z1.copy()                                         # (8a)
 
-    # storage for results
-    ab = np.empty((nmax+1, 2), np.complex128)
-    d1_z1 = np.empty(nmax+1, np.complex128)
-    d1_z2 = np.empty(nmax+1, np.complex128)
-    d3_z1 = np.empty(nmax+1, np.complex128)
-    d3_z2 = np.empty(nmax+1, np.complex128)
-    psi = np.empty(nmax+1, np.complex128)
-    zeta = np.empty(nmax+1, np.complex128)
+        # iterate into medium (m = 1.)
+        z1 = x
+        # downward recurrence for D1 (D1[nmax] = 0)
+        for n in range(nmax, 0, -1):
+            d1_z1[n-1] = n/z1 - (1./(d1_z1[n] + n/z1))            # (16b)
 
-    # initialization
-    d1_z1[nmax] = 0.                                          # Eq. (16a)
-    d1_z2[nmax] = 0.
-    d3_z1[0] = 1.j                                            # Eq. (18b)
-    d3_z2[0] = 1.j
+        # upward recurrence for Psi, Zeta, PsiZeta and D3
+        psi[0] = np.sin(z1)                                       # (20a)
+        zeta[0] = -1.j * np.exp(1.j * z1)                         # (21a)
+        psizeta = 0.5 * (1. - np.exp(2.j * z1))                   # (18a)
+        for n in range(1, nmax+1):
+            psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])               # (20b)
+            zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])             # (21b)
+            psizeta *= (n/z1 - d1_z1[n-1]) * (n/z1 - d3_z1[n-1])  # (18c)
+            d3_z1[n] = d1_z1[n] + 1.j/psizeta                     # (18d)
 
-    # iterate outward from the sphere's core
-    z1 = x * m
-    for n in range(nmax, 0, -1):
-        d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)              # Eq. (16b)
-    ha = d1_z1.copy()                                         # Eq. (7a)
-    hb = d1_z1.copy()                                         # Eq. (8a)
+        # Scattering coefficients
+        n = np.arange(nmax+1)
+        fac = ha/m + n/x
+        ab[:, 0] = ((fac * psi - np.roll(psi, 1)) /
+                    (fac * zeta - np.roll(zeta, 1)))              # (5)
+        fac = hb*m + n/x
+        ab[:, 1] = ((fac * psi - np.roll(psi, 1)) /
+                    (fac * zeta - np.roll(zeta, 1)))              # (6)
+        ab[0, :] = 0.j
 
-    # iterate into medium (m = 1.)
-    z1 = x
-    # downward recurrence for D1 (D1[nmax] = 0)
-    for n in range(nmax, 0, -1):
-        d1_z1[n-1] = n/z1 - (1./(d1_z1[n] + n/z1))            # Eq. (16b)
+        return ab
 
-    # upward recurrence for Psi, Zeta, PsiZeta and D3
-    psi[0] = np.sin(z1)                                       # Eq. (20a)
-    zeta[0] = -1.j * np.exp(1.j * z1)                         # Eq. (21a)
-    psizeta = 0.5 * (1. - np.exp(2.j * z1))                   # Eq. (18a)
-    for n in range(1, nmax+1):
-        psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])               # Eq. (20b)
-        zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])             # Eq. (21b)
-        psizeta *= (n/z1 - d1_z1[n-1]) * (n/z1 - d3_z1[n-1])  # Eq. (18c)
-        d3_z1[n] = d1_z1[n] + 1.j/psizeta                     # Eq. (18d)
+    @classmethod
+    def example(cls) -> None:  # pragma: no cover
+        from time import perf_counter
 
-    # Scattering coefficients
-    n = np.arange(nmax+1)
-    fac = ha/m + n/x
-    ab[:, 0] = ((fac * psi - np.roll(psi, 1)) /
-                (fac * zeta - np.roll(zeta, 1)))              # Eq. (5)
-    fac = hb*m + n/x
-    ab[:, 1] = ((fac * psi - np.roll(psi, 1)) /
-                (fac * zeta - np.roll(zeta, 1)))              # Eq. (6)
-    ab[0, :] = 0.j
-
-    return ab
-
-
-def example() -> None:  # pragma: no cover
-    from time import perf_counter
-
-    s = Sphere(a_p=0.75, n_p=1.5)
-    print(s)
-    ab = s.ab(1.339, 0.447)
-    print(f'{ab.shape = }')
-    start = perf_counter()
-    s.ab(1.339, 0.447)
-    print(f'time = {perf_counter() - start:.2e} s')
+        s = cls(a_p=0.75, n_p=1.5)
+        print(s)
+        ab = s.ab(1.339, 0.447)
+        print(f'{ab.shape = }')
+        start = perf_counter()
+        s.ab(1.339, 0.447)
+        print(f'time = {perf_counter() - start:.2e} s')
 
 
 if __name__ == '__main__':  # pragma: no cover
-    example()
+    Sphere.example()

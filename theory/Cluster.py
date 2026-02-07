@@ -28,7 +28,7 @@ class Cluster(Particle):
     def __setattr__(self, key: str, value: Particle.Property) -> None:
         super().__setattr__(key, value)
         if key in ['x_p', 'y_p', 'z_p', 'particles']:
-            self._update()
+            self.update()
             return
 
     def __len__(self) -> int:
@@ -51,12 +51,9 @@ class Cluster(Particle):
             raise IndexError('Particle index out of range')
         return self.particles[index]
 
-    def _update(self) -> None:
+    def update(self) -> None:
         try:
-            for particle in self.particles:
+            for particle in self:
                 particle.r_0 = self.r_p
         except AttributeError:
             pass
-
-    def update(self) -> None:
-        self._update()

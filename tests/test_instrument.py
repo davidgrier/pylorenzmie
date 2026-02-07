@@ -2,7 +2,6 @@ import unittest
 
 import numpy as np
 from pylorenzmie.theory import Instrument
-from pylorenzmie.lib import coordinates
 
 
 class TestInstrument(unittest.TestCase):
@@ -13,14 +12,6 @@ class TestInstrument(unittest.TestCase):
     def test_repr(self):
         r = repr(self.instrument)
         self.assertIsInstance(r, str)
-
-    def test_coordinates(self, corner=None):
-        shape = [128, 128]
-        c = coordinates(shape, corner=corner)
-        self.assertEqual(c.shape[1], np.prod(shape))
-
-    def test_coordinates_corner(self):
-        self.test_coordinates(corner=(10, 20))
 
     def test_wavelength(self):
         value = 0.447
