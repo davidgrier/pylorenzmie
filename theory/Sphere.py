@@ -181,57 +181,53 @@ class Sphere(Particle):
         k = 2.*np.pi/wavelength    # wave number in vacuum [um^-1]
         k *= np.real(n_m)          # wave number in medium
 
-        x = k * a_p                # size parameter in each layer
-        m = (n_p + 1.j*k_p) / n_m  # relative refractive index in each layer
+        x = k * a_p                # size parameter
+        m = (n_p + 1.j*k_p) / n_m  # relative refractive index
 
         nmax = Sphere.wiscombe_yang(x, m)
 
         # storage for results
         ab = np.empty((nmax+1, 2), np.complex128)
-        d1_z1 = np.empty(nmax+1, np.complex128)
-        d1_z2 = np.empty(nmax+1, np.complex128)
-        d3_z1 = np.empty(nmax+1, np.complex128)
-        d3_z2 = np.empty(nmax+1, np.complex128)
-        psi = np.empty(nmax+1, np.complex128)
-        zeta = np.empty(nmax+1, np.complex128)
+        D1 = np.empty(nmax+1, np.complex128)
+        D3 = np.empty(nmax+1, np.complex128)
+        Ψ = np.empty(nmax+1, np.complex128)
+        ζ = np.empty(nmax+1, np.complex128)
 
         # initialization
-        d1_z1[nmax] = 0.                                          # (16a)
-        d1_z2[nmax] = 0.
-        d3_z1[0] = 1.j                                            # (18b)
-        d3_z2[0] = 1.j
+        D1[nmax] = 0.                                # Eq. (16a)
+        D3[0] = 1.j                                  # Eq. (18b)
 
         # iterate outward from the sphere's core
-        z1 = x * m
+        z = x * m
         for n in range(nmax, 0, -1):
-            d1_z1[n-1] = n/z1 - 1./(d1_z1[n] + n/z1)              # (16b)
-        ha = d1_z1.copy()                                         # (7a)
-        hb = d1_z1.copy()                                         # (8a)
+            D1[n-1] = n/z - 1./(D1[n] + n/z)         # Eq. (16b)
+        Ha = D1.copy()                               # Eq. (7a)
+        Hb = D1.copy()                               # Eq. (8a)
 
         # iterate into medium (m = 1.)
-        z1 = x
+        z = x
         # downward recurrence for D1 (D1[nmax] = 0)
         for n in range(nmax, 0, -1):
-            d1_z1[n-1] = n/z1 - (1./(d1_z1[n] + n/z1))            # (16b)
+            D1[n-1] = n/z - (1./(D1[n] + n/z))       # Eq. (16b)
 
-        # upward recurrence for Psi, Zeta, PsiZeta and D3
-        psi[0] = np.sin(z1)                                       # (20a)
-        zeta[0] = -1.j * np.exp(1.j * z1)                         # (21a)
-        psizeta = 0.5 * (1. - np.exp(2.j * z1))                   # (18a)
+        # upward recurrence for Ψ, ζ, Ψζ and D3
+        Ψ[0] = np.sin(z)                             # Eq. 20a)
+        ζ[0] = -1.j * np.exp(1.j * z)                # Eq. (21a)
+        Ψζ = 0.5 * (1. - np.exp(2.j * z))            # Eq. (18a)
         for n in range(1, nmax+1):
-            psi[n] = psi[n-1] * (n/z1 - d1_z1[n-1])               # (20b)
-            zeta[n] = zeta[n-1] * (n/z1 - d3_z1[n-1])             # (21b)
-            psizeta *= (n/z1 - d1_z1[n-1]) * (n/z1 - d3_z1[n-1])  # (18c)
-            d3_z1[n] = d1_z1[n] + 1.j/psizeta                     # (18d)
+            Ψ[n] = Ψ[n-1] * (n/z - D1[n-1])          # Eq. (20b)
+            ζ[n] = ζ[n-1] * (n/z - D3[n-1])          # Eq. (21b)
+            Ψζ *= (n/z - D1[n-1]) * (n/z - D3[n-1])  # Eq. (18c)
+            D3[n] = D1[n] + 1.j/Ψζ                   # Eq. (18d)
 
-        # Scattering coefficients
+        # scattering coefficients
         n = np.arange(nmax+1)
-        fac = ha/m + n/x
-        ab[:, 0] = ((fac * psi - np.roll(psi, 1)) /
-                    (fac * zeta - np.roll(zeta, 1)))              # (5)
-        fac = hb*m + n/x
-        ab[:, 1] = ((fac * psi - np.roll(psi, 1)) /
-                    (fac * zeta - np.roll(zeta, 1)))              # (6)
+        fac = Ha/m + n/x
+        ab[:, 0] = ((fac * Ψ - np.roll(Ψ, 1)) /
+                    (fac * ζ - np.roll(ζ, 1)))       # Eq. (5)
+        fac = Hb*m + n/x
+        ab[:, 1] = ((fac * Ψ - np.roll(Ψ, 1)) /
+                    (fac * ζ - np.roll(ζ, 1)))       # Eq. (6)
         ab[0, :] = 0.j
 
         return ab
