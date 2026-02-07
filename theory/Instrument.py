@@ -76,10 +76,9 @@ class Instrument(LMObject):
         if in_medium:
             k *= self.n_m                 # ... in medium
         if magnified:
-            k *= self.magnification               # ... in image units
+            k *= self.magnification       # ... in image units
         return k
 
 
 if __name__ == '__main__':  # pragma: no cover
-    a = Instrument()
-    print(a.wavelength, a.magnification)
+    Instrument.example()
