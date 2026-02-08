@@ -129,59 +129,32 @@ class LorenzMie(LMObject):
         self._coordinates = np.vstack([c, np.zeros((3-ndim, npts))])
         self.allocate()
 
-    @property
-    def _device_coordinates(self) -> LMObject.Coordinates:
-        return self._coordinates
-
     def to_field(self, phase: float) -> LMObject.Field:
         return np.exp(1j * phase)
 
-    def scattered_field(self,
-                        particle: Particle,
-                        cartesian: bool,
-                        bohren: bool) -> LMObject.Field:
-        '''Return field scattered by one particle'''
+    def field_n(self,
+                particle: Particle,
+                cartesian: bool,
+                bohren: bool) -> LMObject.Field:
+        '''Returns field scattered by one particle'''
         k = self.instrument.wavenumber()
-        n_m = self.instrument.n_m
-        wavelength = self.instrument.wavelength
         r_p = particle.r_p + particle.r_0
         dr = self.coordinates - r_p[:, None]
         self.kdr = k * dr
-        ab = particle.ab(n_m, wavelength)
-        field = self.compute(ab, self.kdr, self.buffers,
-                             cartesian=cartesian, bohren=bohren)
+        ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
+        field = self.compute(ab, cartesian=cartesian, bohren=bohren)
         field *= np.exp(-1j * k * r_p[2])
         return field
 
-    def _device_field(self,
-                      cartesian: bool = True,
-                      bohren: bool = True) -> LMObject.Field:
+    def field(self,
+              cartesian: bool = True,
+              bohren: bool = True) -> LMObject.Field:
         logger.debug('Computing field')
         self._field.fill(0.+0.j)
         for p in self.particle:
             logger.debug(p)
-            self._field += self.scattered_field(p, cartesian, bohren)
+            self._field += self.field_n(p, cartesian, bohren)
         return self._field
-
-    def field(self, *args, **kwargs) -> LMObject.Field:
-        '''Return field scattered by particles in the system
-
-        Arguments
-        ---------
-        cartesian: bool (default True)
-            True: field is projected onto Cartesian axes (x, y, z) with
-               z being the propagation direction and
-               x being the axis of the illumination polarization
-            False: field is returned in polar coordinates (r, theta, phi)
-        bohren: bool (default True)
-            True: z sign convention from Bohren and Huffman
-
-        Returns
-        -------
-        field : numpy.ndarray
-            (3, npts) complex value of the scattered field
-        '''
-        return self._device_field(*args, **kwargs)
 
     def hologram(self) -> LMObject.Image:
         '''Return hologram of particle
@@ -204,10 +177,8 @@ class LorenzMie(LMObject):
         self.buffers = np.array(buffers)
         self._field = np.empty(shape, dtype=complex)
 
-    @staticmethod
-    def compute(ab: LMObject.Coefficients,
-                kdr: LMObject.Coordinates,
-                buffers: list[LMObject.Field],
+    def compute(self,
+                ab: LMObject.Coefficients,
                 cartesian: bool = True,
                 bohren: bool = True) -> LMObject.Field:  # pragma: no cover
         '''Returns the field scattered by the particle at each coordinate
@@ -216,11 +187,6 @@ class LorenzMie(LMObject):
         ----------
         ab : numpy.ndarray
             [2, norders] Mie scattering coefficients
-        kdr : numpy.ndarray
-            [3, npts] Coordinates at which field is evaluated
-            relative to the center of the scatterer. Coordinates
-            are assumed to be multiplied by the wavenumber of
-            light in the medium, and so are dimensionless.
 
         Keywords
         --------
@@ -239,7 +205,7 @@ class LorenzMie(LMObject):
         '''
 
         norders = ab.shape[0]  # number of partial waves in sum
-        mo1n, ne1n, es, ec = buffers
+        Mo1n, Ne1n, Es, Ec = self.buffers
 
         # GEOMETRY
         # 1. particle displacement [pixel]
@@ -250,23 +216,23 @@ class LorenzMie(LMObject):
         # Accounting for this by flipping the axial coordinate
         # is equivalent to using a mirrored (left-handed)
         # coordinate system.
-        kx = kdr[0, :]
-        ky = kdr[1, :]
-        kz = -kdr[2, :]
+        kx = self.kdr[0, :]
+        ky = self.kdr[1, :]
+        kz = -self.kdr[2, :]
         shape = kx.shape
 
         # 2. geometric factors
-        krho = np.hypot(kx, ky)
-        kr = np.hypot(krho, kz)
+        kρ = np.hypot(kx, ky)
+        kr = np.hypot(kρ, kz)
         sinkr = np.sin(kr)
         coskr = np.cos(kr)
 
-        phi = np.arctan2(ky, kx)
-        cosphi = np.cos(phi)
-        sinphi = np.sin(phi)
-        theta = np.arctan2(krho, kz)
-        costheta = np.cos(theta)
-        sintheta = np.sin(theta)
+        φ = np.arctan2(ky, kx)
+        cosφ = np.cos(φ)
+        sinφ = np.sin(φ)
+        θ = np.arctan2(kρ, kz)
+        cosθ = np.cos(θ)
+        sinθ = np.sin(θ)
 
         # SPECIAL FUNCTIONS
         # starting points for recursive function evaluation ...
@@ -279,25 +245,24 @@ class LorenzMie(LMObject):
         # appropriate case by applying the correct sign of the imaginary
         # part of the starting functions...
         factor = 1.j * np.sign(kz) if bohren else -1.j * np.sign(kz)
-
-        xi_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
-        xi_nm1 = sinkr - factor * coskr  # \xi_0(kr)
+        ξ_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
+        ξ_nm1 = sinkr - factor * coskr  # \xi_0(kr)
 
         # 2. Angular functions (4.47), page 95
         # \pi_0(\cos\theta)
-        pi_nm1 = np.zeros(shape)
+        π_nm1 = np.zeros(shape)
         # \pi_1(\cos\theta)
-        pi_n = np.ones(shape)
+        π_n = np.ones(shape)
 
-        # 3. Vector spherical harmonics: [r,theta,phi]
-        mo1n[0].fill(0.j)                 # no radial component
+        # 3. Vector spherical harmonics: (r, θ, φ)
+        Mo1n[0].fill(0.j)            # no radial component
 
         # Allocate memory for Wiscombe functions
         swisc = np.empty(shape)
         twisc = np.empty(shape)
 
         # storage for scattered field
-        es.fill(0.j)
+        Es.fill(0.j)
 
         # COMPUTE field by summing partial waves
         for n in range(1, norders):
@@ -305,67 +270,67 @@ class LorenzMie(LMObject):
             # 4. Legendre factor (4.47)
             # Method described by Wiscombe (1980)
 
-            # swisc = pi_n * costheta
-            # twisc = swisc - pi_nm1
-            np.multiply(pi_n, costheta, out=swisc)
-            np.subtract(swisc, pi_nm1, out=twisc)
-            tau_n = pi_nm1 - n * twisc  # -\tau_n(\cos\theta)
+            # swisc = π_n * cosθ
+            # twisc = swisc - π_nm1
+            np.multiply(π_n, cosθ, out=swisc)
+            np.subtract(swisc, π_nm1, out=twisc)
+            τ_n = π_nm1 - n * twisc  # -\tau_n(\cos\theta)
 
             # ... Riccati-Bessel function, page 478
-            xi_n = (2.*n - 1.) * (xi_nm1 / kr) - xi_nm2  # \xi_n(kr)
+            ξ_n = (2.*n - 1.) * (ξ_nm1 / kr) - ξ_nm2  # \xi_n(kr)
 
             # ... Deirmendjian's derivative
-            dn = n * (xi_n / kr) - xi_nm1
+            Dn = n * (ξ_n / kr) - ξ_nm1
 
             # vector spherical harmonics (4.50)
-            mo1n[1] = pi_n * xi_n     # ... divided by cosphi/kr
-            mo1n[2] = tau_n * xi_n    # ... divided by sinphi/kr
+            Mo1n[1] = π_n * ξ_n      # ... divided by cosφ/kr
+            Mo1n[2] = τ_n * ξ_n      # ... divided by sinφ/kr
 
-            # ... divided by cosphi sintheta/kr^2
-            ne1n[0] = (n*n + n) * pi_n * xi_n
-            ne1n[1] = tau_n * dn      # ... divided by cosphi/kr
-            ne1n[2] = pi_n * dn       # ... divided by sinphi/kr
+            # ... divided by cosφ sinθ/kr^2
+            Ne1n[0] = (n*n + n) * π_n * ξ_n
+            Ne1n[1] = τ_n * Dn       # ... divided by cosφ/kr
+            Ne1n[2] = π_n * Dn       # ... divided by sinφ/kr
 
             # prefactor, page 93
-            en = 1.j**n * (2.*n + 1.) / (n*n + n)
+            En = 1.j**n * (2.*n + 1.) / (n*n + n)
 
             # the scattered field in spherical coordinates (4.45)
-            es += (1.j * en * ab[n, 0]) * ne1n
-            es -= (en * ab[n, 1]) * mo1n
+            Es += (1.j * En * ab[n, 0]) * Ne1n
+            Es -= (En * ab[n, 1]) * Mo1n
 
             # upward recurrences ...
             # ... angular functions (4.47)
             # Method described by Wiscombe (1980)
-            pi_nm1 = pi_n
-            pi_n = swisc + (1. + 1./n) * twisc
+            π_nm1 = π_n
+            π_n = swisc + (1. + 1./n) * twisc
 
             # ... Riccati-Bessel function
-            xi_nm2 = xi_nm1
-            xi_nm1 = xi_n
+            ξ_nm2 = ξ_nm1
+            ξ_nm1 = ξ_n
             # n: multipole sum
 
         # geometric factors were divided out of the vector
         # spherical harmonics for accuracy and efficiency ...
         # ... put them back at the end.
-        es[0] *= cosphi * sintheta / kr
-        es[1] *= cosphi
-        es[2] *= sinphi
-        es /= kr
+        Es[0] *= cosφ * sinθ / kr
+        Es[1] *= cosφ
+        Es[2] *= sinφ
+        Es /= kr
 
         # By default, the scattered wave is returned in spherical
         # coordinates.  Project components onto Cartesian coordinates.
         # Assumes that the incident wave propagates along z and
         # is linearly polarized along x
         if cartesian:
-            ec[0] = es[0] * sintheta * cosphi
-            ec[0] += es[1] * costheta * cosphi
-            ec[0] -= es[2] * sinphi
+            Ec[0] = Es[0] * sinθ * cosφ
+            Ec[0] += Es[1] * cosθ * cosφ
+            Ec[0] -= Es[2] * sinφ
 
-            ec[1] = es[0] * sintheta * sinphi
-            ec[1] += es[1] * costheta * sinphi
-            ec[1] += es[2] * cosphi
-            ec[2] = es[0] * costheta - es[1] * sintheta
-            return ec
+            Ec[1] = Es[0] * sinθ * sinφ
+            Ec[1] += Es[1] * cosθ * sinφ
+            Ec[1] += Es[2] * cosφ
+            Ec[2] = Es[0] * cosθ - Es[1] * sinθ
+            return Ec
         else:
             return es
 
