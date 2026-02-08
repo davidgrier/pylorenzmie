@@ -46,7 +46,7 @@ generalizedlorenzmie__define.pro
 which was written by David G. Grier.
 This version is
 
-Copyright (c) 2018-2025 David G. Grier
+Copyright (c) 2018-2026 David G. Grier
 '''
 
 np.seterr(all='raise')
