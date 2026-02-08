@@ -140,8 +140,8 @@ class Sphere(Particle):
         return int(nstop)
 
     @staticmethod
-    def nieves_pisignano(x: float,
-                         precision: float | complex = 6.) -> int:
+    def neves_pisignano(x: float,
+                        precision: float | complex = 6.) -> int:
         nstop = x + 0.76 * np.cbrt(precision*precision*x) - 4.1
         return int(nstop)
 
@@ -222,13 +222,12 @@ class Sphere(Particle):
 
         # scattering coefficients
         n = np.arange(nmax+1)
-
+        Ψr = np.roll(Ψ, 1)
+        ζr = np.roll(ζ, 1)
         fac = Ha/m + n/x                             # Eq. (5)
-        ab[:, 0] = ((fac * Ψ - np.roll(Ψ, 1)) /
-                    (fac * ζ - np.roll(ζ, 1)))
+        ab[:, 0] = (fac * Ψ - Ψr) / (fac * ζ - ζr)
         fac = Hb*m + n/x                             # Eq. (6)
-        ab[:, 1] = ((fac * Ψ - np.roll(Ψ, 1)) /
-                    (fac * ζ - np.roll(ζ, 1)))
+        ab[:, 1] = (fac * Ψ - Ψr) / (fac * ζ - ζr)
         ab[0, :] = 0.j
 
         return ab
