@@ -83,7 +83,8 @@ class cupyLorenzMie(LorenzMie):
         return self.buffer
 
     def field(self, **kwargs) -> np.ndarray:
-        return self._field(**kwargs).get()
+        self.compute(**kwargs)
+        return self._field.get()
 
     @property
     def _device_coordinates(self) -> cp.ndarray:
@@ -98,7 +99,7 @@ class cupyLorenzMie(LorenzMie):
         self._field.fill(0.+0.j)
         for p in self.particle:
             self._field += self.field_n(p, cartesian, bohren)
-        return self.result
+        return self._field
 
     def allocate(self) -> None:
         '''Allocate buffers for calculation'''
