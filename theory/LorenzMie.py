@@ -143,8 +143,8 @@ class LorenzMie(LMObject):
         return hologram
 
     def field(self,
-               cartesian: bool = True,
-               bohren: bool = True) -> LMObject.Field:
+              cartesian: bool = True,
+              bohren: bool = True) -> LMObject.Field:
         '''Returns field scattered by particle
 
         Returns
@@ -168,12 +168,12 @@ class LorenzMie(LMObject):
             self.__field += self._partial(p, cartesian, bohren)
         return self.__field
 
-    def _field(self, **kwargs) -> LMObject.Field:
+    def _field(self, *args, **kwargs) -> LMObject.Field:
         '''Returns field in device format
 
         Required for API consistency with subclasses.
         '''
-        return self.field()
+        return self.field(*args, **kwargs)
 
     def _partial(self,
                  particle: Particle,
@@ -189,7 +189,6 @@ class LorenzMie(LMObject):
         field *= np.exp(-1j * k * r_p[2])
         return field
 
-
     def _allocate(self) -> None:
         '''Allocate ndarrays for calculation'''
         logger.debug('Allocating buffers')
@@ -201,7 +200,7 @@ class LorenzMie(LMObject):
     def compute(self,
                 ab: LMObject.Coefficients,
                 cartesian: bool = True,
-                bohren: bool = True) -> LMObject.Field:  # pragma: no cover
+                bohren: bool = True) -> LMObject.Field:
         '''Returns the field scattered by the particle at each coordinate
 
         Arguments
