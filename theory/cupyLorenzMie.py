@@ -61,10 +61,10 @@ class cupyLorenzMie(LorenzMie):
     def to_field(self, phase: float):
         return cp.exp(1j * phase)
 
-    def scattered_field(self,
-                        particle: Particle,
-                        cartesian: bool,
-                        bohren: bool) -> cp.ndarray:
+    def field_n(self,
+                particle: Particle,
+                cartesian: bool,
+                bohren: bool) -> cp.ndarray:
         ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
         ar = ab[:, 0].real.astype(self.dtype)
         ai = ab[:, 0].imag.astype(self.dtype)
@@ -83,21 +83,21 @@ class cupyLorenzMie(LorenzMie):
         return self.buffer
 
     def field(self, **kwargs) -> np.ndarray:
-        return self._device_field(**kwargs).get()
+        return self._field(**kwargs).get()
 
     @property
     def _device_coordinates(self) -> cp.ndarray:
         return self.gpu_coordinates
 
-    def _device_field(self,
-                      cartesian: bool = True,
-                      bohren: bool = True) -> cp.ndarray:
+    def compute(self,
+                cartesian: bool = True,
+                bohren: bool = True) -> cp.ndarray:
         '''Return field scattered by particles in the system'''
         if (self.coordinates is None or self.particle is None):
             return None
-        self.result.fill(0.+0.j)
+        self._field.fill(0.+0.j)
         for p in self.particle:
-            self.result += self.scattered_field(p, cartesian, bohren)
+            self._field += self.field_n(p, cartesian, bohren)
         return self.result
 
     def allocate(self) -> None:
@@ -105,27 +105,26 @@ class cupyLorenzMie(LorenzMie):
         if (self.coordinates is None) or (self.ctype is None):
             return
         shape = self.coordinates.shape
-        self.result = cp.empty(shape, dtype=self.ctype)
+        self._field = cp.empty(shape, dtype=self.ctype)
         self.buffer = cp.empty(shape, dtype=self.ctype)
         self.gpu_coordinates = cp.asarray(self.coordinates, self.dtype)
-        self.holo = cp.empty(shape[1], dtype=self.dtype)
         self.threadsperblock = 32
         self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
                               self.threadsperblock)
 
     def cufieldf(self) -> cp.RawKernel:
         '''Return CUDA kernel for single-precision field computation'''
-        return cp.RawKernel(self.kernel, 'field')
+        return cp.RawKernel(self._cufieldcode, 'field')
 
     def cufield(self) -> cp.RawKernel:
         '''Return CUDA kernel for double-precision field computation'''
         change = {'f(': '(', 'float': 'double', 'Float': 'Double'}
-        kernel = self.kernel
+        code = self._cufieldcode
         for before, after in change.items():
-            kernel = kernel.replace(before, after)
-        return cp.RawKernel(kernel, 'field')
+            code = code.replace(before, after)
+        return cp.RawKernel(code, 'field')
 
-    kernel = r'''
+    _cufieldcode = r'''
 #include <cuComplex.h>
 
 extern "C" __global__
