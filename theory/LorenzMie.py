@@ -49,8 +49,6 @@ This version is
 Copyright (c) 2018-2026 David G. Grier
 '''
 
-np.seterr(all='raise')
-
 
 class LorenzMie(LMObject):
     '''
@@ -125,9 +123,18 @@ class LorenzMie(LMObject):
             c = self.meshgrid((201, 201))
         ndim, npts = c.shape
         if ndim > 3:
-            raise ValueError(f'Incompatible shape: {coords.shape = }')
+            raise ValueError(f'Incompatible shape: {coords.shape=}')
         self._coordinates = np.vstack([c, np.zeros((3-ndim, npts))])
         self._allocate()
+
+    def _allocate(self) -> None:
+        '''Allocate buffers for calculation
+
+        This should be overridden by subclasses'''
+        logger.debug('Allocating buffers')
+        shape = self.coordinates.shape
+        self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
+        self._field = np.empty(shape, dtype=complex)
 
     def hologram(self, **kwargs) -> LMObject.Image:
         '''Returns hologram of particle
@@ -137,15 +144,22 @@ class LorenzMie(LMObject):
         hologram : LMObject.Image
             Computed hologram.
         '''
-        psi = self.field(**kwargs)  # scattered field
-        psi[0, :] += 1.0            # incident field
-        hologram = np.sum(np.real(psi * np.conj(psi)), axis=0)
+        return self.devicehologram(**kwargs)
+
+    def devicehologram(self, **kwargs) -> LMObject.Image:
+        '''Returns hologram in device format
+
+        Required for API consistency with subclasses.
+        '''
+        field = self.devicefield(**kwargs)  # scattered field
+        field[0, :] += 1.0                  # incident field
+        hologram = np.sum(field.real**2 + field.imag**2, axis=0)
         return hologram
 
     def field(self,
               cartesian: bool = True,
               bohren: bool = True) -> LMObject.Field:
-        '''Returns field scattered by particle
+        '''Returns scattered field in CPU format
 
         Returns
         -------
@@ -155,52 +169,46 @@ class LorenzMie(LMObject):
         Keywords
         --------
         cartesian: bool
-            If True (default), project field onto Cartesian coordinates.
+            If True (default), project field onto Cartesian coordinates
             Otherwise, field is returned in spherical polar coordinates
         bohren: bool
-            If True (default), define +z along the beam's propagation direction.
+            If True (default), define +z along the beam's propagation direction
             Otherwise, flip the orientation of z.
         '''
-        logger.debug('Computing field')
-        self.__field.fill(0.+0.j)
-        for p in self.particle:
-            logger.debug(p)
-            self.__field += self._partial(p, cartesian, bohren)
-        return self.__field
+        return self.devicefield(cartesian, bohren)
 
-    def _field(self, *args, **kwargs) -> LMObject.Field:
+    def devicefield(self,
+                    cartesian: bool = True,
+                    bohren: bool = True) -> LMObject.Field:
         '''Returns field in device format
 
         Required for API consistency with subclasses.
         '''
-        return self.field(*args, **kwargs)
+        logger.debug('Computing field')
+        self._field.fill(0.+0.j)
+        for p in self.particle:
+            logger.debug(p)
+            self._field += self.scatteredfield(p, cartesian, bohren)
+        return self._field
 
-    def _partial(self,
-                 particle: Particle,
-                 cartesian: bool,
-                 bohren: bool) -> LMObject.Field:
+    def scatteredfield(self,
+                       particle: Particle,
+                       cartesian: bool,
+                       bohren: bool) -> LMObject.Field:
         '''Returns field scattered by one particle'''
         k = self.instrument.wavenumber()
         r_p = particle.r_p + particle.r_0
         dr = self.coordinates - r_p[:, None]
         self.kdr = k * dr
         ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
-        field = self.compute(ab, cartesian=cartesian, bohren=bohren)
+        field = self.lorenzmie(ab, cartesian=cartesian, bohren=bohren)
         field *= np.exp(-1j * k * r_p[2])
         return field
 
-    def _allocate(self) -> None:
-        '''Allocate ndarrays for calculation'''
-        logger.debug('Allocating buffers')
-        shape = self.coordinates.shape
-        buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
-        self.buffers = np.array(buffers)
-        self.__field = np.empty(shape, dtype=complex)
-
-    def compute(self,
-                ab: LMObject.Coefficients,
-                cartesian: bool = True,
-                bohren: bool = True) -> LMObject.Field:
+    def lorenzmie(self,
+                  ab: LMObject.Coefficients,
+                  cartesian: bool = True,
+                  bohren: bool = True) -> LMObject.Field:
         '''Returns the field scattered by the particle at each coordinate
 
         Arguments
@@ -384,6 +392,9 @@ class LorenzMie(LMObject):
         model.particle = particle
         hologram = model.hologram()
         print(f'Time to calculate: {perf_counter()-start:.1e} s')
+        start = perf_counter()
+        hologram = model.hologram()
+        print(f'Second pass: {perf_counter()-start:.1e} s')
         # Compute hologram from field and show it
         plt.imshow(hologram.reshape(shape), cmap='gray')
         plt.show()
