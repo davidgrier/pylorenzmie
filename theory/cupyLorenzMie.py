@@ -33,9 +33,8 @@ class cupyLorenzMie(LorenzMie):
                  *args,
                  double_precision: bool = True,
                  **kwargs) -> None:
-        self.ctype = None
-        super().__init__(*args, **kwargs)
         self.double_precision = double_precision
+        super().__init__(*args, **kwargs)
 
     @property
     def double_precision(self) -> bool:
@@ -43,22 +42,21 @@ class cupyLorenzMie(LorenzMie):
 
     @double_precision.setter
     def double_precision(self, double_precision: bool) -> None:
-        # NOTE: Check if GPU is capable of double precision
-        self._double_precision = double_precision
         if double_precision:
-            self.lorenzmie = self.culorenzmie()
-            self.dtype = np.float64
-            self.ctype = np.complex128
-        else:
+            try:
+                self.lorenzmie = self.culorenzmie()
+                self.dtype = cp.float64
+                self.ctype = cp.complex128
+            except cp.cuda.runtime.CUDARuntimeError:
+                double_precision = False
+        if not double_precision:
             self.lorenzmie = self.culorenzmief()
-            self.dtype = np.float32
-            self.ctype = np.complex64
-        self._allocate()
+            self.dtype = cp.float32
+            self.ctype = cp.complex64
+        self._double_precision = double_precision
 
     def _allocate(self) -> None:
         '''Allocate buffers for calculation'''
-        if (self.coordinates is None) or (self.ctype is None):
-            return
         shape = self.coordinates.shape
         self._field = cp.empty(shape, dtype=self.ctype)
         self.buffer = cp.empty(shape, dtype=self.ctype)
@@ -110,7 +108,7 @@ class cupyLorenzMie(LorenzMie):
         hologram = cp.sum(field.real**2 + field.imag**2, axis=0)
         return hologram
 
-    def field(self, **kwargs) -> np.ndarray:
+    def field(self, **kwargs) -> LorenzMie.Field:
         return self.devicefield().get()
 
     def devicefield(self, **kwargs) -> cp.ndarray:
