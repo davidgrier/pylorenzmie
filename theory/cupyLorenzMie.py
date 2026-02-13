@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory import Particle
 import numpy as np
@@ -49,22 +46,81 @@ class cupyLorenzMie(LorenzMie):
         # NOTE: Check if GPU is capable of double precision
         self._double_precision = double_precision
         if double_precision:
-            self.kernel = self.cufield()
+            self.lorenzmie = self.culorenzmie()
             self.dtype = np.float64
             self.ctype = np.complex128
         else:
-            self.kernel = self.cufieldf()
+            self.lorenzmie = self.culorenzmief()
             self.dtype = np.float32
             self.ctype = np.complex64
-        self.allocate()
+        self._allocate()
 
-    def to_field(self, phase: float):
-        return cp.exp(1j * phase)
+    def _allocate(self) -> None:
+        '''Allocate buffers for calculation'''
+        if (self.coordinates is None) or (self.ctype is None):
+            return
+        shape = self.coordinates.shape
+        self._field = cp.empty(shape, dtype=self.ctype)
+        self.buffer = cp.empty(shape, dtype=self.ctype)
+        self.devicecoordinates = cp.asarray(self.coordinates, self.dtype)
+        self.threadsperblock = 32
+        self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
+                              self.threadsperblock)
 
-    def field_n(self,
-                particle: Particle,
-                cartesian: bool,
-                bohren: bool) -> cp.ndarray:
+    def hologram(self, **kwargs) -> LorenzMie.Image:
+        '''Returns the hologram of the particle
+
+        Returns
+        -------
+        hologram : LorenzMie.Image
+            The hologram of the particle
+
+        Keywords
+        --------
+        cartesian : bool
+            If True, compute the field in cartesian coordinates.
+            Default: True
+
+        bohren : bool
+            If True, use Bohren's convention for the field.
+            Default: True
+        '''
+        return self.devicehologram().get()
+
+    def devicehologram(self, **kwargs) -> cp.ndarray:
+        '''Returns the hologram of the particle on the GPU
+
+        Returns
+        -------
+        hologram : cp.ndarray
+            The hologram of the particle on the GPU
+
+        Keywords
+        --------
+        cartesian : bool
+            If True, compute the field in cartesian coordinates.
+            Default: True
+
+        bohren : bool
+            If True, use Bohren's convention for the field.
+            Default: True
+        '''
+        field = self.devicefield(**kwargs)
+        field[0, :] += 1.
+        hologram = cp.sum(field.real**2 + field.imag**2, axis=0)
+        return hologram
+
+    def field(self, **kwargs) -> np.ndarray:
+        return self.devicefield().get()
+
+    def devicefield(self, **kwargs) -> cp.ndarray:
+        return super().devicefield(**kwargs)
+
+    def scatteredfield(self,
+                       particle: Particle,
+                       cartesian: bool,
+                       bohren: bool) -> cp.ndarray:
+        '''Returns the field scattered by one particle'''
         ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
         ar = ab[:, 0].real.astype(self.dtype)
         ai = ab[:, 0].imag.astype(self.dtype)
@@ -74,71 +130,41 @@ class cupyLorenzMie(LorenzMie):
         r_p = (particle.r_p + particle.r_0).astype(self.dtype)
         k = self.dtype(self.instrument.wavenumber())
         phase = np.exp(-1.j * k * r_p[2], dtype=self.ctype)
-        self.kernel((self.blockspergrid,), (self.threadsperblock,),
-                    (*self.gpu_coordinates, *r_p, k, phase,
-                     ar, ai, br, bi, ab.shape[0],
-                     self.gpu_coordinates.shape[1],
-                     cartesian, bohren,
-                     *self.buffer))
+        self.lorenzmie((self.blockspergrid,), (self.threadsperblock,),
+                       (*self.devicecoordinates, *r_p, k, phase,
+                        ar, ai, br, bi, ab.shape[0],
+                        self.devicecoordinates.shape[1],
+                        cartesian, bohren,
+                        *self.buffer))
         return self.buffer
 
-    def field(self, **kwargs) -> np.ndarray:
-        self.compute(**kwargs)
-        return self._field.get()
-
-    @property
-    def _device_coordinates(self) -> cp.ndarray:
-        return self.gpu_coordinates
-
-    def compute(self,
-                cartesian: bool = True,
-                bohren: bool = True) -> cp.ndarray:
-        '''Return field scattered by particles in the system'''
-        if (self.coordinates is None or self.particle is None):
-            return None
-        self._field.fill(0.+0.j)
-        for p in self.particle:
-            self._field += self.field_n(p, cartesian, bohren)
-        return self._field
-
-    def allocate(self) -> None:
-        '''Allocate buffers for calculation'''
-        if (self.coordinates is None) or (self.ctype is None):
-            return
-        shape = self.coordinates.shape
-        self._field = cp.empty(shape, dtype=self.ctype)
-        self.buffer = cp.empty(shape, dtype=self.ctype)
-        self.gpu_coordinates = cp.asarray(self.coordinates, self.dtype)
-        self.threadsperblock = 32
-        self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
-                              self.threadsperblock)
-
-    def cufieldf(self) -> cp.RawKernel:
+    def culorenzmief(self) -> cp.RawKernel:
         '''Return CUDA kernel for single-precision field computation'''
-        return cp.RawKernel(self._cufieldcode, 'field')
+        return cp.RawKernel(self._culorenzmie, 'field')
 
-    def cufield(self) -> cp.RawKernel:
+    def culorenzmie(self) -> cp.RawKernel:
         '''Return CUDA kernel for double-precision field computation'''
         change = {'f(': '(', 'float': 'double', 'Float': 'Double'}
-        code = self._cufieldcode
+        code = self._culorenzmie
         for before, after in change.items():
             code = code.replace(before, after)
         return cp.RawKernel(code, 'field')
 
-    _cufieldcode = r'''
-#include <cuComplex.h>
+    _culorenzmie = r'''
+# include <cuComplex.h>
+
 
 extern "C" __global__
-void field(float *coordsx, float *coordsy, float *coordsz,
+void field(float * coordsx, float * coordsy, float * coordsz,
            float x_p, float y_p, float z_p, float k,
            cuFloatComplex phase,
-           float ar [], float ai [],
-           float br [], float bi [],
+           float ar[], float ai[],
+           float br[], float bi[],
            int norders, int length,
            bool bohren, bool cartesian,
-           cuFloatComplex *e1, cuFloatComplex *e2, cuFloatComplex *e3) {
+           cuFloatComplex * e1, cuFloatComplex * e2, cuFloatComplex * e3) {
 
-    for (int idx = threadIdx.x + blockDim.x * blockIdx.x;
+    for (int idx=threadIdx.x + blockDim.x * blockIdx.x;
          idx < length;
          idx += blockDim.x * gridDim.x) {
 
@@ -154,9 +180,9 @@ void field(float *coordsx, float *coordsy, float *coordsz,
 
         phi = atan2(ky, kx);
         theta = atan2(krho, kz);
-        sincos(phi, &sinphi, &cosphi);
-        sincos(theta, &sintheta, &costheta);
-        sincos(kr, &sinkr, &coskr);
+        sincos(phi, & sinphi, & cosphi);
+        sincos(theta, & sintheta, & costheta);
+        sincos(kr, & sinkr, & coskr);
 
         cuFloatComplex i = make_cuFloatComplex(0.0, 1.0);
         cuFloatComplex factor, xi_nm2, xi_nm1;
@@ -203,14 +229,14 @@ void field(float *coordsx, float *coordsy, float *coordsz,
         cosp = make_cuFloatComplex(cosphi, 0.);
         sint = make_cuFloatComplex(sintheta, 0.);
         sinp = make_cuFloatComplex(sinphi, 0.);
-        krc  = make_cuFloatComplex(kr, 0.);
+        krc = make_cuFloatComplex(kr, 0.);
 
         cuFloatComplex one, two, n, fac, en, a, b;
         one = make_cuFloatComplex(1., 0.);
         two = make_cuFloatComplex(2., 0.);
         int mod;
 
-        for (int j = 1; j < norders; j++) {
+        for (int j=1; j < norders; j++) {
             n = make_cuFloatComplex(float(j), 0.);
 
             swisc = cuCmulf(pi_n, cost);
@@ -231,10 +257,10 @@ void field(float *coordsx, float *coordsy, float *coordsz,
             ne1np = cuCmulf(pi_n, dn);
 
             mod = j % 4;
-            if (mod == 1) {fac = i;}
-            else if (mod == 2) {fac = make_cuFloatComplex(-1., 0.);}
-            else if (mod == 3) {fac = make_cuFloatComplex(0., -1.);}
-            else {fac = one;}
+            if (mod == 1) {fac = i; }
+            else if (mod == 2) {fac = make_cuFloatComplex(-1., 0.); }
+            else if (mod == 3) {fac = make_cuFloatComplex(0., -1.); }
+            else {fac = one; }
 
             en = cuCdivf(cuCdivf(cuCmulf(fac,
                     cuCaddf(cuCmulf(two, n), one)), n), cuCaddf(n, one));
