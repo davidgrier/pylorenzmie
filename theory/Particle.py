@@ -99,8 +99,8 @@ class Particle(LMObject):
                 'z_p': self.z_p}
 
     def ab(self,
-           n_m: complex = 1.+0.j,
-           wavelength: float = 0.) -> LMObject.Coefficients:
+           n_m: float | complex = 1.+0.j,
+           wavelength: float = 0.532) -> LMObject.Coefficients:
         '''Returns the Mie scattering coefficients
 
         Subclasses of Particle should override this

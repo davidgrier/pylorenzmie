@@ -82,8 +82,8 @@ class Sphere(Particle):
                 'k_p': self.k_p}
 
     def ab(self,
-           n_m: float | complex,
-           wavelength: float) -> Particle.Coefficients:
+           n_m: float | complex = 1.42,
+           wavelength: float = 0.532) -> Particle.Coefficients:
         '''Returns the Mie scattering coefficients
 
         Arguments
