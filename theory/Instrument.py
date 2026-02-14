@@ -35,7 +35,7 @@ class Instrument(LMObject):
 
     Methods
     -------
-    wavenumber(in_medium=True, magnified=True) : float
+    wavenumber(in_medium=True, scaled=True) : float
         Wavenumber of light
     '''
 
@@ -55,16 +55,16 @@ class Instrument(LMObject):
 
     def wavenumber(self,
                    in_medium: bool = True,
-                   magnified: bool = True) -> float:
+                   scaled: bool = True) -> float:
         '''Return the wave number of light
 
         Parameters
         ----------
         in_medium : bool
-            If set (default) return the wave number in the medium
+            If True (default) return the wave number in the medium
             Otherwise, return the wave number in vacuum
-        magnified : bool
-            If set (default) return the scaled value [radian/pixel]
+        scaled : bool
+            If True (default) return the scaled value [radian/pixel]
             Otherwise, return SI value [radian/um]
 
         Returns
@@ -75,7 +75,7 @@ class Instrument(LMObject):
         k = 2. * np.pi / self.wavelength  # wave number in vacuum
         if in_medium:
             k *= self.n_m                 # ... in medium
-        if magnified:
+        if scaled:
             k *= self.magnification       # ... in image units
         return k
 
