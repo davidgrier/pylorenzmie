@@ -396,6 +396,7 @@ class LorenzMie(LMObject):
         hologram = model.hologram()
         print(f'Second pass: {perf_counter()-start:.1e} s')
         # Compute hologram from field and show it
+        plt.figure(num=f'{cls.__name__} example')
         plt.imshow(hologram.reshape(shape), cmap='gray')
         plt.show()
 
