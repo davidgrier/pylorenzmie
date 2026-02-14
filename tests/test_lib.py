@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
-from pylorenzmie.lib import Azimuthal
+import cv2
+from pylorenzmie.lib import (Azimuthal, circletransform)
 
 
 class TestAzimuthal(unittest.TestCase):
@@ -27,6 +28,16 @@ class TestAzimuthal(unittest.TestCase):
         a, m = Azimuthal.mad(self.data, (50, 45))
         rad = int(np.hypot(50, 45)) + 1
         self.assertEqual(len(a), rad)
+
+
+class TestCircleTransform(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.data = cv2.imread('data/crop.png', cv2.IMREAD_GRAYSCALE)
+
+    def test_transform(self) -> None:
+        b = circletransform(self.data)
+        self.assertEqual(self.data.shape, b.shape)
 
 
 if __name__ == '__main__':
