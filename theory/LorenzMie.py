@@ -8,51 +8,16 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-'''
-This object uses generalized Lorenz-Mie theory to compute the
-electric field scattered by a particle with specified Lorenz-Mie
-scattering coefficients. The field is calculated at specified
-three-dimensional coordinates under the assumption that the
-incident illumination is a plane wave that is linearly polarized
-along x and is propagating along -z.
-
-REFERENCES:
-1. Adapted from Chapter 4 in
-   C. F. Bohren and D. R. Huffman,
-   Absorption and Scattering of Light by Small Particles,
-   (New York, Wiley, 1983).
-
-2. W. J. Wiscombe, "Improved Mie scattering algorithms,"
-   Appl. Opt. 19, 1505-1509 (1980).
-
-3. W. J. Lentz, "Generating Bessel function in Mie scattering
-   calculations using continued fractions," Appl. Opt. 15,
-   668-671 (1976).
-
-4. S. H. Lee, Y. Roichman, G. R. Yi, S. H. Kim, S. M. Yang,
-   A. van Blaaderen, P. van Oostrum and D. G. Grier,
-   "Characterizing and tracking single colloidal particles with
-   video holographic microscopy," Opt. Express 15, 18275-18282
-   (2007).
-
-5. F. C. Cheong, B. Sun, R. Dreyfus, J. Amato-Grill, K. Xiao,
-   L. Dixon and D. G. Grier,
-   "Flow visualization and flow cytometry with holographic video
-   microscopy," Opt. Express 17, 13071-13079 (2009).
-
-HISTORY
-This code was adapted from the IDL implementation of
-generalizedlorenzmie__define.pro
-which was written by David G. Grier.
-This version is
-
-Copyright (c) 2018-2026 David G. Grier
-'''
-
-
 class LorenzMie(LMObject):
     '''
     Compute scattered light field with Generalized Lorenz-Mie theory
+
+    LorenzMie uses generalized Lorenz-Mie theory to compute the
+    electric field scattered by a particle with specified Lorenz-Mie
+    scattering coefficients. The field is calculated at specified
+    three-dimensional coordinates under the assumption that the
+    incident illumination is a plane wave that is linearly polarized
+    along x and is propagating along -z.
 
     ...
 
@@ -74,6 +39,33 @@ class LorenzMie(LMObject):
     -------
     field(cartesian=True, bohren=True)
         Returns the complex-valued field at each of the coordinates.
+    hologram(cartesian=True, bohren=True)
+        Returns the hologram of the particle at the coordinates.
+
+    References
+    ----------
+    1. Adapted from Chapter 4 in
+    C. F. Bohren and D. R. Huffman,
+    Absorption and Scattering of Light by Small Particles,
+    (New York, Wiley, 1983).
+
+    2. W. J. Wiscombe, "Improved Mie scattering algorithms,"
+    Appl. Opt. 19, 1505-1509 (1980).
+
+    3. W. J. Lentz, "Generating Bessel function in Mie scattering
+    calculations using continued fractions," Appl. Opt. 15,
+    668-671 (1976).
+
+    4. S. H. Lee, Y. Roichman, G. R. Yi, S. H. Kim, S. M. Yang,
+    A. van Blaaderen, P. van Oostrum and D. G. Grier,
+    "Characterizing and tracking single colloidal particles with
+    video holographic microscopy," Opt. Express 15, 18275-18282
+    (2007).
+
+    5. F. C. Cheong, B. Sun, R. Dreyfus, J. Amato-Grill, K. Xiao,
+    L. Dixon and D. G. Grier,
+    "Flow visualization and flow cytometry with holographic video
+    microscopy," Opt. Express 17, 13071-13079 (2009).
     '''
 
     method: str = 'numpy'
@@ -144,17 +136,17 @@ class LorenzMie(LMObject):
         hologram : LMObject.Image
             Computed hologram.
         '''
-        return self.devicehologram(**kwargs)
+        field = self.devicefield(**kwargs)  # scattered field
+        field[0, :] += 1.0                  # incident field
+        hologram = np.sum(field.real**2 + field.imag**2, axis=0)
+        return hologram
 
     def devicehologram(self, **kwargs) -> LMObject.Image:
         '''Returns hologram in device format
 
         Required for API consistency with subclasses.
         '''
-        field = self.devicefield(**kwargs)  # scattered field
-        field[0, :] += 1.0                  # incident field
-        hologram = np.sum(field.real**2 + field.imag**2, axis=0)
-        return hologram
+        return self.hologram(**kwargs)
 
     def field(self,
               cartesian: bool = True,
@@ -175,7 +167,12 @@ class LorenzMie(LMObject):
             If True (default), define +z along the beam's propagation direction
             Otherwise, flip the orientation of z.
         '''
-        return self.devicefield(cartesian, bohren)
+        logger.debug('Computing field')
+        self._field.fill(0.+0.j)
+        for p in self.particle:
+            logger.debug(p)
+            self._field += self.scatteredfield(p, cartesian, bohren)
+        return self._field
 
     def devicefield(self,
                     cartesian: bool = True,
@@ -184,12 +181,7 @@ class LorenzMie(LMObject):
 
         Required for API consistency with subclasses.
         '''
-        logger.debug('Computing field')
-        self._field.fill(0.+0.j)
-        for p in self.particle:
-            logger.debug(p)
-            self._field += self.scatteredfield(p, cartesian, bohren)
-        return self._field
+        return self.field(cartesian, bohren)
 
     def scatteredfield(self,
                        particle: Particle,
