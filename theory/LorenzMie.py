@@ -128,7 +128,9 @@ class LorenzMie(LMObject):
         self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
         self._field = np.empty(shape, dtype=complex)
 
-    def hologram(self, **kwargs) -> LMObject.Image:
+    def hologram(self,
+                 cartesian: bool = True,
+                 bohren: bool = True) -> LMObject.Image:
         '''Returns hologram of particle
 
         Returns
@@ -136,17 +138,9 @@ class LorenzMie(LMObject):
         hologram : LMObject.Image
             Computed hologram.
         '''
-        field = self.devicefield(**kwargs)  # scattered field
-        field[0, :] += 1.0                  # incident field
-        hologram = np.sum(field.real**2 + field.imag**2, axis=0)
-        return hologram
-
-    def devicehologram(self, **kwargs) -> LMObject.Image:
-        '''Returns hologram in device format
-
-        Required for API consistency with subclasses.
-        '''
-        return self.hologram(**kwargs)
+        field = self.field(cartesian=cartesian, bohren=bohren)
+        field[0, :] += 1.0
+        return np.sum(field.real**2 + field.imag**2, axis=0)
 
     def field(self,
               cartesian: bool = True,
@@ -164,7 +158,7 @@ class LorenzMie(LMObject):
             If True (default), project field onto Cartesian coordinates
             Otherwise, field is returned in spherical polar coordinates
         bohren: bool
-            If True (default), define +z along the beam's propagation direction
+            If True (default), +z along the propagation direction
             Otherwise, flip the orientation of z.
         '''
         logger.debug('Computing field')
@@ -173,15 +167,6 @@ class LorenzMie(LMObject):
             logger.debug(p)
             self._field += self.scatteredfield(p, cartesian, bohren)
         return self._field
-
-    def devicefield(self,
-                    cartesian: bool = True,
-                    bohren: bool = True) -> LMObject.Field:
-        '''Returns field in device format
-
-        Required for API consistency with subclasses.
-        '''
-        return self.field(cartesian, bohren)
 
     def scatteredfield(self,
                        particle: Particle,

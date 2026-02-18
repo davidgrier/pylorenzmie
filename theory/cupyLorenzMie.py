@@ -85,7 +85,10 @@ class cupyLorenzMie(LorenzMie):
         '''
         return self.devicehologram().get()
 
-    def devicehologram(self, **kwargs) -> cp.ndarray:
+    def hologram(self,
+                 cartesian: bool = True,
+                 bohren: bool = True,
+                 device: bool = False) -> cp.ndarray:
         '''Returns the hologram of the particle on the GPU
 
         Returns
@@ -103,16 +106,17 @@ class cupyLorenzMie(LorenzMie):
             If True, use Bohren's convention for the field.
             Default: True
         '''
-        field = self.devicefield(**kwargs)
+        field = self.field(cartesian=cartesian, bohren=bohren, device=True)
         field[0, :] += 1.
         hologram = cp.sum(field.real**2 + field.imag**2, axis=0)
-        return hologram
+        return hologram if device else hologram.get()
 
-    def field(self, **kwargs) -> LorenzMie.Field:
-        return self.devicefield().get()
-
-    def devicefield(self, **kwargs) -> cp.ndarray:
-        return super().devicefield(**kwargs)
+    def field(self,
+              cartesian: bool = True,
+              bohren: bool = True,
+              device: bool = False) -> LorenzMie.Field:
+        super().field(cartesian=cartesian, bohren=bohren)
+        return self._field if device else self._field.get()
 
     def scatteredfield(self,
                        particle: Particle,
