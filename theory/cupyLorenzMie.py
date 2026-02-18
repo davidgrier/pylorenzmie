@@ -72,26 +72,6 @@ class cupyLorenzMie(LorenzMie):
         self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
                               self.threadsperblock)
 
-    def hologram(self, **kwargs) -> LorenzMie.Image:
-        '''Returns the hologram of the particle
-
-        Returns
-        -------
-        hologram : LorenzMie.Image
-            The hologram of the particle
-
-        Keywords
-        --------
-        cartesian : bool
-            If True, compute the field in cartesian coordinates.
-            Default: True
-
-        bohren : bool
-            If True, use Bohren's convention for the field.
-            Default: True
-        '''
-        return self.devicehologram().get()
-
     def hologram(self,
                  cartesian: bool = True,
                  bohren: bool = True,
@@ -108,7 +88,6 @@ class cupyLorenzMie(LorenzMie):
         cartesian : bool
             If True, compute the field in cartesian coordinates.
             Default: True
-
         bohren : bool
             If True, use Bohren's convention for the field.
             Default: True
