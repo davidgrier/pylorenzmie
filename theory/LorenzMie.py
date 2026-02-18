@@ -130,7 +130,8 @@ class LorenzMie(LMObject):
 
     def hologram(self,
                  cartesian: bool = True,
-                 bohren: bool = True) -> LMObject.Image:
+                 bohren: bool = True,
+                 device: bool = False) -> LMObject.Image:
         '''Returns hologram of particle
 
         Returns
@@ -144,7 +145,8 @@ class LorenzMie(LMObject):
 
     def field(self,
               cartesian: bool = True,
-              bohren: bool = True) -> LMObject.Field:
+              bohren: bool = True,
+              device: bool = False) -> LMObject.Field:
         '''Returns scattered field in CPU format
 
         Returns
