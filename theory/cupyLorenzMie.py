@@ -2,6 +2,11 @@ from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory import Particle
 import numpy as np
 import cupy as cp
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 
 class cupyLorenzMie(LorenzMie):
@@ -48,6 +53,8 @@ class cupyLorenzMie(LorenzMie):
                 self.dtype = cp.float64
                 self.ctype = cp.complex128
             except cp.cuda.runtime.CUDARuntimeError:
+                logger.warning('GPU not capable of double precision'
+                               'Falling back to single precision')
                 double_precision = False
         if not double_precision:
             self.lorenzmie = self.culorenzmief()
