@@ -76,7 +76,7 @@ class cupyLorenzMie(LorenzMie):
                  cartesian: bool = True,
                  bohren: bool = True,
                  device: bool = False) -> cp.ndarray:
-        '''Returns the hologram of the particle on the GPU
+        '''Returns the hologram of the particle
 
         Returns
         -------
@@ -100,31 +100,29 @@ class cupyLorenzMie(LorenzMie):
     def field(self,
               cartesian: bool = True,
               bohren: bool = True,
-              device: bool = False) -> LorenzMie.Field:
-        super().field(cartesian=cartesian, bohren=bohren)
-        return self._field if device else self._field.get()
-
-    def scatteredfield(self,
-                       particle: Particle,
-                       cartesian: bool,
-                       bohren: bool) -> cp.ndarray:
+              device: bool = False) -> cp.ndarray:
         '''Returns the field scattered by one particle'''
-        ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
-        ar = ab[:, 0].real.astype(self.dtype)
-        ai = ab[:, 0].imag.astype(self.dtype)
-        br = ab[:, 1].real.astype(self.dtype)
-        bi = ab[:, 1].imag.astype(self.dtype)
-        ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
-        r_p = (particle.r_p + particle.r_0).astype(self.dtype)
         k = self.dtype(self.instrument.wavenumber())
-        phase = np.exp(-1.j * k * r_p[2], dtype=self.ctype)
-        self.lorenzmie((self.blockspergrid,), (self.threadsperblock,),
-                       (*self.devicecoordinates, *r_p, k, phase,
-                        ar, ai, br, bi, ab.shape[0],
-                        self.devicecoordinates.shape[1],
-                        cartesian, bohren,
-                        *self.buffer))
-        return self.buffer
+        n_m = self.instrument.n_m
+        wavelength = self.instrument.wavelength
+        self._field.fill(0.+0.j)
+        for particle in self.particle:
+            ab = particle.ab(n_m, wavelength)
+            ar = ab[:, 0].real.astype(self.dtype)
+            ai = ab[:, 0].imag.astype(self.dtype)
+            br = ab[:, 1].real.astype(self.dtype)
+            bi = ab[:, 1].imag.astype(self.dtype)
+            ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
+            r_p = (particle.r_p + particle.r_0).astype(self.dtype)
+            phase = np.exp(-1.j * k * r_p[2], dtype=self.ctype)
+            self.lorenzmie((self.blockspergrid,), (self.threadsperblock,),
+                           (*self.devicecoordinates, *r_p, k, phase,
+                            ar, ai, br, bi, ab.shape[0],
+                            self.devicecoordinates.shape[1],
+                            cartesian, bohren,
+                            *self.buffer))
+            self._field += self.buffer
+        return self._field if device else self._field.get()
 
     def culorenzmief(self) -> cp.RawKernel:
         '''Return CUDA kernel for single-precision field computation'''
