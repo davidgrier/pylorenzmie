@@ -128,31 +128,13 @@ class LorenzMie(LMObject):
         self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
         self._field = np.empty(shape, dtype=complex)
 
-    def hologram(self,
-                 cartesian: bool = True,
-                 bohren: bool = True,
-                 device: bool = False) -> LMObject.Image:
+    def hologram(self, **kwargs) -> LMObject.Image:
         '''Returns hologram of particle
 
         Returns
         -------
         hologram : LMObject.Image
             Computed hologram.
-        '''
-        field = self.field(cartesian=cartesian, bohren=bohren)
-        field[0, :] += 1.0
-        return np.sum(field.real**2 + field.imag**2, axis=0)
-
-    def field(self,
-              cartesian: bool = True,
-              bohren: bool = True,
-              device: bool = False) -> LMObject.Field:
-        '''Returns scattered field in CPU format
-
-        Returns
-        -------
-        field : LMObject.Field
-            complex-valued electric field
 
         Keywords
         --------
@@ -163,32 +145,45 @@ class LorenzMie(LMObject):
             If True (default), +z along the propagation direction
             Otherwise, flip the orientation of z.
         '''
-        logger.debug('Computing field')
-        self._field.fill(0.+0.j)
-        for p in self.particle:
-            logger.debug(p)
-            self._field += self.scatteredfield(p, cartesian, bohren)
-        return self._field
+        field = self.field(**kwargs)
+        field[0, :] += 1.0
+        return np.sum(field.real**2 + field.imag**2, axis=0)
 
-    def scatteredfield(self,
-                       particle: Particle,
-                       cartesian: bool,
-                       bohren: bool) -> LMObject.Field:
-        '''Returns field scattered by one particle'''
+    def field(self, **kwargs) -> LMObject.Field:
+        '''Returns field scattered particle
+
+        Keywords
+        --------
+        cartesian: bool
+            If True (default), project field onto Cartesian coordinates
+            Otherwise, field is returned in spherical polar coordinates
+        bohren: bool
+            If True (default), +z along the propagation direction
+            Otherwise, flip the orientation of z.
+
+        Returns
+        -------
+        field : LMObject.Field
+            complex-valued electric field scattered by the particle
+        '''
         k = self.instrument.wavenumber()
-        r_p = particle.r_p + particle.r_0
-        dr = self.coordinates - r_p[:, None]
-        self.kdr = k * dr
-        ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
-        field = self.lorenzmie(ab, cartesian=cartesian, bohren=bohren)
-        field *= np.exp(-1j * k * r_p[2])
-        return field
+        n_m = self.instrument.n_m
+        wavelength = self.instrument.wavelength
+        self._field.fill(0.+0.j)
+        for particle in self.particle:
+            r_p = particle.r_p + particle.r_0
+            dr = self.coordinates - r_p[:, None]
+            self.kdr = k * dr
+            ab = particle.ab(n_m, wavelength)
+            self._field += self.lorenzmie(ab, **kwargs)
+            self._field *= np.exp(-1j * k * r_p[2])
+        return self._field
 
     def lorenzmie(self,
                   ab: LMObject.Coefficients,
                   cartesian: bool = True,
                   bohren: bool = True) -> LMObject.Field:
-        '''Returns the field scattered by the particle at each coordinate
+        '''Returns the field described by ab coefficients
 
         Arguments
         ----------
@@ -198,10 +193,10 @@ class LorenzMie(LMObject):
         Keywords
         --------
         cartesian : bool
-            If set, return field projected onto Cartesian coordinates.
+            If True, return field projected onto Cartesian coordinates.
             Otherwise, return polar projection.
         bohren : bool
-            If set, use sign convention from Bohren and Huffman.
+            If True, use sign convention from Bohren and Huffman.
             Otherwise, use opposite sign convention.
 
         Returns
