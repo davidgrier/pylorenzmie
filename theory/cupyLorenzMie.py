@@ -126,29 +126,31 @@ class cupyLorenzMie(LorenzMie):
 
     def culorenzmief(self) -> cp.RawKernel:
         '''Return CUDA kernel for single-precision field computation'''
-        return cp.RawKernel(self._culorenzmie, 'field')
+        return cp.RawKernel(self._cudalorenzmie, 'lorenzmie')
 
     def culorenzmie(self) -> cp.RawKernel:
         '''Return CUDA kernel for double-precision field computation'''
         change = {'f(': '(', 'float': 'double', 'Float': 'Double'}
-        code = self._culorenzmie
+        code = self._cudalorenzmie
         for before, after in change.items():
             code = code.replace(before, after)
-        return cp.RawKernel(code, 'field')
+        return cp.RawKernel(code, 'lorenzmie')
 
-    _culorenzmie = r'''
+    _cudalorenzmie = r'''
 # include <cuComplex.h>
 
 
 extern "C" __global__
-void field(float * coordsx, float * coordsy, float * coordsz,
-           float x_p, float y_p, float z_p, float k,
-           cuFloatComplex phase,
-           float ar[], float ai[],
-           float br[], float bi[],
-           int norders, int length,
-           bool bohren, bool cartesian,
-           cuFloatComplex * e1, cuFloatComplex * e2, cuFloatComplex * e3) {
+void lorenzmie(float * coordsx, float * coordsy, float * coordsz,
+               float x_p, float y_p, float z_p, float k,
+               cuFloatComplex phase,
+               float ar[], float ai[],
+               float br[], float bi[],
+               int norders, int length,
+               bool bohren, bool cartesian,
+               cuFloatComplex * e1,
+               cuFloatComplex * e2,
+               cuFloatComplex * e3) {
 
     for (int idx=threadIdx.x + blockDim.x * blockIdx.x;
          idx < length;
