@@ -1,5 +1,4 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
-from pylorenzmie.theory import Particle
 import numpy as np
 import cupy as cp
 import logging
