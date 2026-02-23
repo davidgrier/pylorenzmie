@@ -115,7 +115,7 @@ class LorenzMie(LMObject):
             c = self.meshgrid((201, 201))
         ndim, npts = c.shape
         if ndim > 3:
-            raise ValueError(f'Incompatible shape: {coords.shape=}')
+            raise ValueError(f'Incompatible shape: {coordinates.shape=}')
         self._coordinates = np.vstack([c, np.zeros((3-ndim, npts))])
         self._allocate()
 
