@@ -30,23 +30,25 @@ class Optimizer(LMObject):
         Generative model for calculating holograms.
     data : numpy.ndarray
         Target for optimization with model.
+    properties : dict
+        Dictionary of settings for the optimizer as a whole
+    settings : dict
+        Dictionary of settings for the optimization method
+    fixed : list[str]
+        Names of properties of the model that should remain constant
+        during fitting
+    variables : list[str]
+        Names of properties of the model that will be optimized.
+        Default: All model.properties that are not fixed
     robust : bool
         If True, use robust optimization (absolute deviations)
         otherwise use least-squares optimization
         Default: False (least-squares)
-    fixed : list of str
-        Names of properties of the model that should remain constant
-        during fitting
-    variables : list of str
-        Names of properties of the model that will be optimized.
-        Default: All model.properties that are not fixed
-    settings : dict
-        Dictionary of settings for the optimization method
-    properties : dict
-        Dictionary of settings for the optimizer as a whole
     result : pandas.Series
         Optimized values of the variables, together with numerical
         uncertainties.
+    metadata : pandas.Series
+        Fixed properties and settings of the optimization method.
 
     Methods
     -------
@@ -72,33 +74,59 @@ class Optimizer(LMObject):
         self.fixed = fixed
         self._result = None
 
-    #
-    # Properties that control the fitting process
-    #
+    @property
+    def properties(self) -> LorenzMie.Properties:
+        '''Properties of the Optimizer object'''
+        properties = dict(settings=self.settings,
+                          fixed=self.fixed)
+        properties.update(self.model.properties)
+        return properties
+
+    @properties.setter
+    def properties(self, properties: LorenzMie.Properties) -> None:
+        self.model.properties = properties
+        for property, value in properties.items():
+            if hasattr(self, property):
+                setattr(self, property, value)
+
     @property
     def settings(self) -> LorenzMie.Properties:
-        return self._settings
+        ''' Properties that control the fitting process
 
-    @settings.setter
-    def settings(self, settings: LorenzMie.Properties) -> None:
-        '''Dictionary of settings for scipy.optimize.least_squares
+        This is a subset of the properties of the Optimizer object.
+        See scipy.optimize.least_squares for details.
 
-        NOTES:
-        (a) method:
+        NOTES
+        -----
+        method: str
             trf:     Trust Region Reflective
             dogbox:
             lm:      Levenberg-Marquardt
                      NOTE: only supports linear loss
-        (b) loss
+        loss: str
             linear:  default: standard least squares
             soft_l1: robust least squares
             huber:   robust least squares
             cauchy:  strong least squares
             arctan:  limits maximum loss
-        (c) x_scale
+        x_scale: str
             jac:     dynamic rescaling
             x_scale: specify scale for each adjustable variable
+        ftol: float
+            Tolerance for termination: change of the cost function.
+        xtol: float
+            Tolerance for termination: change of the independent variables.
+        gtol: float
+            Tolerance for termination: change of the gradient.
+        diff_step: float
+            Step size for numerical approximation of the Jacobian.
+        max_nfev: int
+            Maximum number of function evaluations.
         '''
+        return self._settings
+
+    @settings.setter
+    def settings(self, settings: LorenzMie.Properties) -> None:
         if settings is None:
             settings = {'method': 'lm',     # (a)
                         'ftol': 1e-4,       # default: 1e-8
@@ -114,19 +142,9 @@ class Optimizer(LMObject):
     def robust(self) -> bool:
         return self.settings['loss'] != 'linear'
 
-    @robust.setter
-    def robust(self, robust: bool) -> None:
-        '''Convenience property for selecting robust fitting'''
-        if robust:
-            self.settings['method'] = 'trf'
-            self.settings['loss'] = 'cauchy'
-        else:
-            self.settings['method'] = 'lm'
-            self.settings['loss'] = 'linear'
-
     @property
     def fixed(self) -> list[str]:
-        '''list of fixed properties'''
+        '''List of fixed properties'''
         return self._fixed
 
     @fixed.setter
@@ -137,7 +155,7 @@ class Optimizer(LMObject):
 
     @property
     def variables(self) -> list[str]:
-        '''list of variable properties'''
+        '''List of variable properties'''
         return self._variables
 
     @variables.setter
@@ -145,6 +163,16 @@ class Optimizer(LMObject):
         self._variables = variables
         self._fixed = [p for p in self.model.properties
                        if p not in variables]
+
+    @robust.setter
+    def robust(self, robust: bool) -> None:
+        '''Convenience property for selecting robust fitting'''
+        if robust:
+            self.settings['method'] = 'trf'
+            self.settings['loss'] = 'cauchy'
+        else:
+            self.settings['method'] = 'lm'
+            self.settings['loss'] = 'linear'
 
     #
     # Properties resulting from optimization
@@ -157,7 +185,7 @@ class Optimizer(LMObject):
         a = self.variables
         b = ['d' + c for c in a]
         keys = list(sum(zip(a, b), ()))
-        keys.extend(['success', 'npix', 'redchi'])
+        keys.extend('success npix redchi'.split())
 
         values = self._result.x
         npix = self.data.size
@@ -174,27 +202,12 @@ class Optimizer(LMObject):
         metadata.update(self.settings)
         return pd.Series(metadata)
 
-    @property
-    def properties(self) -> LorenzMie.Properties:
-        '''Properties of the Optimizer object'''
-        properties = dict(settings=self.settings,
-                          fixed=self.fixed)
-        properties.update(self.model.properties)
-        return properties
-
-    @properties.setter
-    def properties(self, properties: LorenzMie.Properties) -> None:
-        self.model.properties = properties
-        for property, value in properties.items():
-            if hasattr(self, property):
-                setattr(self, property, value)
-
     #
     # Public methods
     #
     def optimize(self) -> pd.Series:
         '''
-        Fit Model to data
+        Fits model to data
 
         Returns
         -------
@@ -255,30 +268,34 @@ class Optimizer(LMObject):
 
         return redchi, uncertainty
 
-
-def test_case() -> None:
-    shape = (201, 201)
-    model = LorenzMie()
-    model.coordinates = model.meshgrid(shape)
-    model.particle.a_p = 0.75
-    model.particle.n_p = 1.42
-    model.particle.r_p = [100., 100., 225.]
-    data = model.hologram()
-    data += model.instrument.noise * np.random.normal(size=shape).flatten()
-
-    fixed = 'wavelength magnification numerical_aperture n_m k_p'.split()
-    a = Optimizer(model=model, fixed=fixed)
-    settings = a.settings
-    settings['method'] = 'trf'
-    settings['loss'] = 'cauchy'
-    settings['ftol'] = 1e-3
-    settings['xtol'] = None
-    settings['gtol'] = None
-    # settings['verbose'] = 2
-    a.data = data
-    a.optimize()
-    print(a.report())
+    @classmethod
+    def example(cls: 'Optimizer') -> None:
+        shape = (201, 201)
+        model = LorenzMie()
+        model.coordinates = model.meshgrid(shape)
+        model.particle.a_p = 0.75
+        model.particle.n_p = 1.42
+        model.particle.r_p = [100., 100., 225.]
+        print(cls.__name__ + ' example:')
+        print('* Ground truth:')
+        print(model.particle)
+        noise = model.instrument.noise * np.random.normal(size=shape)
+        data = model.hologram() + noise.flatten()
+        fixed = '''wavelength magnification
+                   numerical_aperture n_m k_p'''.split()
+        a = Optimizer(model=model, fixed=fixed)
+        settings = a.settings
+        settings['method'] = 'trf'
+        settings['loss'] = 'cauchy'
+        settings['ftol'] = 1e-3
+        settings['xtol'] = None
+        settings['gtol'] = None
+        # settings['verbose'] = 2
+        a.data = data
+        a.optimize()
+        print('* Fitting results:')
+        print(a.report())
 
 
 if __name__ == '__main__':
-    test_case()
+    Optimizer.example()
