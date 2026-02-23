@@ -266,6 +266,8 @@ class LorenzMie(LMObject):
         # storage for scattered field
         Es.fill(0.j)
 
+        factor = 1.
+        
         # COMPUTE field by summing partial waves
         for n in range(1, norders):
             # upward recurrences ...
@@ -294,7 +296,8 @@ class LorenzMie(LMObject):
             Ne1n[2] = π_n * Dn       # ... divided by sinφ/kr
 
             # prefactor, page 93
-            En = 1.j**n * (2.*n + 1.) / (n*n + n)
+            factor *= 1.j
+            En = factor * (2.*n + 1.) / (n*n + n)
 
             # the scattered field in spherical coordinates (4.45)
             Es += (1.j * En * ab[n, 0]) * Ne1n
