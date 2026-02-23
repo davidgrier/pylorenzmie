@@ -15,6 +15,10 @@ class cupyLorenzMie(LorenzMie):
 
     ...
 
+    Inherits
+    --------
+    pylorenzmie.theory.LorenzMie
+
     Properties
     ----------
     double_precision : bool
@@ -101,7 +105,7 @@ class cupyLorenzMie(LorenzMie):
               cartesian: bool = True,
               bohren: bool = True,
               device: bool = False) -> cp.ndarray:
-        '''Returns the field scattered by one particle'''
+        '''Returns the field scattered by a particle'''
         k = self.dtype(self.instrument.wavenumber())
         n_m = self.instrument.n_m
         wavelength = self.instrument.wavelength
