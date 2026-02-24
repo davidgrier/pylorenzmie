@@ -273,7 +273,9 @@ class Optimizer(LMObject):
         return redchi, uncertainty
 
     @classmethod
-    def example(cls: 'Optimizer', **kwargs) -> None:
+    def example(cls: 'Optimizer',
+                verbose: bool = False,
+                **kwargs) -> None:
         from time import perf_counter
 
         shape = (201, 201)
@@ -296,7 +298,8 @@ class Optimizer(LMObject):
         settings['ftol'] = 1e-3
         settings['xtol'] = None
         settings['gtol'] = None
-        # settings['verbose'] = 2
+        if verbose:
+            settings['verbose'] = 2
         a.data = data
         start = perf_counter()
         a.optimize()
