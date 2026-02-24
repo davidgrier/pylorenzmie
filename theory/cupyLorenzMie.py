@@ -1,5 +1,4 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
-import numpy as np
 import cupy as cp
 import logging
 
@@ -26,16 +25,18 @@ class cupyLorenzMie(LorenzMie):
 
     Methods
     -------
-    field(cartesian=True, bohren=True, gpu=False)
+    field(cartesian=True, bohren=True, device=False)
         Returns the complex-valued field at each of the coordinates.
 
-        gpu : bool
-            If True, return gpu variable for field.
-            Default [False]: return cpu field
-
+        device : bool
+            If True, return cupy variable for field.
+            Default [False]: return numpy field
     '''
 
-    method: str = 'cupy'
+    method: str = 'cupy numpy'
+
+    Image = LorenzMie.Image | cp.ndarray
+    Field = LorenzMie.Field | cp.ndarray
 
     def __init__(self,
                  *args,
@@ -78,7 +79,7 @@ class cupyLorenzMie(LorenzMie):
     def hologram(self,
                  cartesian: bool = True,
                  bohren: bool = True,
-                 device: bool = False) -> cp.ndarray:
+                 device: bool = False) -> Image:
         '''Returns the hologram of the particle
 
         Returns
@@ -103,7 +104,7 @@ class cupyLorenzMie(LorenzMie):
     def field(self,
               cartesian: bool = True,
               bohren: bool = True,
-              device: bool = False) -> cp.ndarray:
+              device: bool = False) -> Field:
         '''Returns the field scattered by a particle'''
         k = self.dtype(self.instrument.wavenumber())
         n_m = self.instrument.n_m
