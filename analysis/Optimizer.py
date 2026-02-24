@@ -60,6 +60,8 @@ class Optimizer(LMObject):
         Returns formatted string of fitting results.
     '''
 
+    method: str = 'numpy'
+
     def __init__(self,
                  model: LorenzMie | None = None,
                  data: LorenzMie.Image | None = None,
@@ -68,6 +70,8 @@ class Optimizer(LMObject):
                  settings: LorenzMie.Properties | None = None,
                  **kwargs) -> None:
         self.model = model or LorenzMie(**kwargs)
+        if self.method not in self.model.method:
+            raise TypeError('Model not compatible with Optimizer')
         self.data = data
         self.settings = settings
         self.robust = robust
@@ -269,7 +273,9 @@ class Optimizer(LMObject):
         return redchi, uncertainty
 
     @classmethod
-    def example(cls: 'Optimizer') -> None:
+    def example(cls: 'Optimizer', **kwargs) -> None:
+        from time import perf_counter
+
         shape = (201, 201)
         model = LorenzMie()
         model.coordinates = model.meshgrid(shape)
@@ -283,7 +289,7 @@ class Optimizer(LMObject):
         data = model.hologram() + noise.flatten()
         fixed = '''wavelength magnification
                    numerical_aperture n_m k_p'''.split()
-        a = Optimizer(model=model, fixed=fixed)
+        a = Optimizer(model=model, fixed=fixed, **kwargs)
         settings = a.settings
         settings['method'] = 'trf'
         settings['loss'] = 'cauchy'
@@ -292,7 +298,9 @@ class Optimizer(LMObject):
         settings['gtol'] = None
         # settings['verbose'] = 2
         a.data = data
+        start = perf_counter()
         a.optimize()
+        print(f'Time to optimize: {perf_counter()-start:.1e} s')
         print('* Fitting results:')
         print(a.report())
 
