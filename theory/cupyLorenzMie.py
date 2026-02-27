@@ -1,6 +1,4 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
-from pylorenzmie.theory import Particle
-import numpy as np
 import cupy as cp
 import logging
 
@@ -15,6 +13,10 @@ class cupyLorenzMie(LorenzMie):
 
     ...
 
+    Inherits
+    --------
+    pylorenzmie.theory.LorenzMie
+
     Properties
     ----------
     double_precision : bool
@@ -23,16 +25,18 @@ class cupyLorenzMie(LorenzMie):
 
     Methods
     -------
-    field(cartesian=True, bohren=True, gpu=False)
+    field(cartesian=True, bohren=True, device=False)
         Returns the complex-valued field at each of the coordinates.
 
-        gpu : bool
-            If True, return gpu variable for field.
-            Default [False]: return cpu field
-
+        device : bool
+            If True, return cupy variable for field.
+            Default [False]: return numpy field
     '''
 
-    method: str = 'cupy'
+    method: str = 'cupy numpy'
+
+    Image = LorenzMie.Image | cp.ndarray
+    Field = LorenzMie.Field | cp.ndarray
 
     def __init__(self,
                  *args,
@@ -67,7 +71,7 @@ class cupyLorenzMie(LorenzMie):
         shape = self.coordinates.shape
         self._field = cp.empty(shape, dtype=self.ctype)
         self.buffer = cp.empty(shape, dtype=self.ctype)
-        self.devicecoordinates = cp.asarray(self.coordinates, self.dtype)
+        self.coords = cp.asarray(self.coordinates, self.dtype)
         self.threadsperblock = 32
         self.blockspergrid = ((shape[1] + (self.threadsperblock - 1)) //
                               self.threadsperblock)
@@ -75,7 +79,7 @@ class cupyLorenzMie(LorenzMie):
     def hologram(self,
                  cartesian: bool = True,
                  bohren: bool = True,
-                 device: bool = False) -> cp.ndarray:
+                 device: bool = False) -> Image:
         '''Returns the hologram of the particle
 
         Returns
@@ -100,166 +104,130 @@ class cupyLorenzMie(LorenzMie):
     def field(self,
               cartesian: bool = True,
               bohren: bool = True,
-              device: bool = False) -> cp.ndarray:
-        '''Returns the field scattered by one particle'''
+              device: bool = False) -> Field:
+        '''Returns the field scattered by a particle'''
         k = self.dtype(self.instrument.wavenumber())
         n_m = self.instrument.n_m
         wavelength = self.instrument.wavelength
         self._field.fill(0.+0.j)
         for particle in self.particle:
             ab = particle.ab(n_m, wavelength)
-            ar = ab[:, 0].real.astype(self.dtype)
-            ai = ab[:, 0].imag.astype(self.dtype)
-            br = ab[:, 1].real.astype(self.dtype)
-            bi = ab[:, 1].imag.astype(self.dtype)
-            ar, ai, br, bi = cp.asarray([ar, ai, br, bi])
+            a = cp.asarray(ab[:, 0], dtype=self.ctype)
+            b = cp.asarray(ab[:, 1], dtype=self.ctype)
             r_p = (particle.r_p + particle.r_0).astype(self.dtype)
-            phase = np.exp(-1.j * k * r_p[2], dtype=self.ctype)
             self.lorenzmie((self.blockspergrid,), (self.threadsperblock,),
-                           (*self.devicecoordinates, *r_p, k, phase,
-                            ar, ai, br, bi, ab.shape[0],
-                            self.devicecoordinates.shape[1],
-                            cartesian, bohren,
+                           (*self.coords, self.coords.shape[1],
+                            a, b, ab.shape[0],
+                            *r_p, k, cartesian, bohren,
                             *self.buffer))
             self._field += self.buffer
         return self._field if device else self._field.get()
 
     def culorenzmief(self) -> cp.RawKernel:
         '''Return CUDA kernel for single-precision field computation'''
-        return cp.RawKernel(self._culorenzmie, 'field')
+        return cp.RawKernel(self._cudalorenzmie, 'lorenzmie')
 
     def culorenzmie(self) -> cp.RawKernel:
         '''Return CUDA kernel for double-precision field computation'''
         change = {'f(': '(', 'float': 'double', 'Float': 'Double'}
-        code = self._culorenzmie
+        code = self._cudalorenzmie
         for before, after in change.items():
             code = code.replace(before, after)
-        return cp.RawKernel(code, 'field')
+        return cp.RawKernel(code, 'lorenzmie')
 
-    _culorenzmie = r'''
+    _cudalorenzmie = r'''
 # include <cuComplex.h>
 
 
 extern "C" __global__
-void field(float * coordsx, float * coordsy, float * coordsz,
-           float x_p, float y_p, float z_p, float k,
-           cuFloatComplex phase,
-           float ar[], float ai[],
-           float br[], float bi[],
-           int norders, int length,
-           bool bohren, bool cartesian,
-           cuFloatComplex * e1, cuFloatComplex * e2, cuFloatComplex * e3) {
+void lorenzmie(float * x, float * y, float * z, int length,
+               cuFloatComplex a[], cuFloatComplex b[], int norders,
+               float x_p, float y_p, float z_p, float k,
+               bool bohren, bool cartesian,
+               cuFloatComplex * e1,
+               cuFloatComplex * e2,
+               cuFloatComplex * e3) {
 
-    for (int idx=threadIdx.x + blockDim.x * blockIdx.x;
+    const cuFloatComplex i = make_cuFloatComplex(0.0, 1.0);
+    const cuFloatComplex zero = make_cuFloatComplex(0., 0.);
+    const cuFloatComplex one = make_cuFloatComplex(1., 0.);
+    const cuFloatComplex two = make_cuFloatComplex(2., 0.);
+    const cuFloatComplex phase = make_cuFloatComplex(cos(k*z_p), -sin(k*z_p));
+
+    for (int idx = threadIdx.x + blockDim.x * blockIdx.x;
          idx < length;
          idx += blockDim.x * gridDim.x) {
 
-        float kx, ky, kz, krho, kr, phi, theta;
-        float cosphi, costheta, coskr, sinphi, sintheta, sinkr;
+        float kx = k * (x[idx] - x_p);
+        float ky = k * (y[idx] - y_p);
+        float kz = -k * (z[idx] - z_p);
 
-        kx = k * (coordsx[idx] - x_p);
-        ky = k * (coordsy[idx] - y_p);
-        kz = -k * (coordsz[idx] - z_p);
+        float krho = sqrt(kx*kx + ky*ky);
+        float kr = sqrt(krho*krho + kz*kz);
 
-        krho = sqrt(kx*kx + ky*ky);
-        kr = sqrt(krho*krho + kz*kz);
+        float sinphi, cosphi, sintheta, costheta, sinkr, coskr;
+        float phi = atan2(ky, kx);
+        float theta = atan2(krho, kz);
+        sincos(phi, &sinphi, &cosphi);
+        sincos(theta, &sintheta, &costheta);
+        sincos(kr, &sinkr, &coskr);
+        cuFloatComplex sinp = make_cuFloatComplex(sinphi, 0.);
+        cuFloatComplex cosp = make_cuFloatComplex(cosphi, 0.);
+        cuFloatComplex sint = make_cuFloatComplex(sintheta, 0.);
+        cuFloatComplex cost = make_cuFloatComplex(costheta, 0.);
+        cuFloatComplex sinkrc = make_cuFloatComplex(sinkr, 0.);
+        cuFloatComplex coskrc = make_cuFloatComplex(coskr, 0.);
+        cuFloatComplex krc = make_cuFloatComplex(kr, 0.);
+        cuFloatComplex inv_kr = make_cuFloatComplex(1./kr, 0.);
 
-        phi = atan2(ky, kx);
-        theta = atan2(krho, kz);
-        sincos(phi, & sinphi, & cosphi);
-        sincos(theta, & sintheta, & costheta);
-        sincos(kr, & sinkr, & coskr);
-
-        cuFloatComplex i = make_cuFloatComplex(0.0, 1.0);
-        cuFloatComplex factor, xi_nm2, xi_nm1;
-        cuFloatComplex mo1nr, mo1nt, mo1np, ne1nr, ne1nt, ne1np;
-        cuFloatComplex esr, est, esp;
-
-        if (kz > 0.) {
-            factor = i;
-        }
-        else if (kz < 0.) {
-            factor = make_cuFloatComplex(0., -1.);
-        }
-        else {
-            factor = make_cuFloatComplex(0., 0.);
-        }
-
+        cuFloatComplex factor = make_cuFloatComplex(0., (kz > 0) - (kz < 0));
         if (bohren == false) {
             factor = cuCmulf(factor, make_cuFloatComplex(-1.,  0.));
         }
 
-        xi_nm2 = cuCaddf(make_cuFloatComplex(coskr, 0.),
-                 cuCmulf(factor, make_cuFloatComplex(sinkr, 0.)));
-        xi_nm1 = cuCsubf(make_cuFloatComplex(sinkr, 0.),
-                 cuCmulf(factor, make_cuFloatComplex(coskr, 0.)));
+        cuFloatComplex xi_nm2 = cuCaddf(coskrc, cuCmulf(factor, sinkrc));
+        cuFloatComplex xi_nm1 = cuCsubf(sinkrc, cuCmulf(factor, coskrc));
+        cuFloatComplex xi_n;
 
-        cuFloatComplex pi_nm1 = make_cuFloatComplex(0.0, 0.0);
-        cuFloatComplex pi_n = make_cuFloatComplex(1.0, 0.0);
+        cuFloatComplex pi_nm1 = zero;
+        cuFloatComplex pi_n = one;
 
-        mo1nr = make_cuFloatComplex(0.0, 0.0);
-        mo1nt = make_cuFloatComplex(0.0, 0.0);
-        mo1np = make_cuFloatComplex(0.0, 0.0);
-        ne1nr = make_cuFloatComplex(0.0, 0.0);
-        ne1nt = make_cuFloatComplex(0.0, 0.0);
-        ne1np = make_cuFloatComplex(0.0, 0.0);
+        cuFloatComplex mo1nr, mo1nt, mo1np, ne1nr, ne1nt, ne1np, esr, est, esp;
+        mo1nr = mo1nt = mo1np = zero;
+        ne1nr = ne1nt = ne1np = zero;
+        esr = est = esp = zero;
 
-        esr = make_cuFloatComplex(0.0, 0.0);
-        est = make_cuFloatComplex(0.0, 0.0);
-        esp = make_cuFloatComplex(0.0, 0.0);
+        factor = one;
 
-        cuFloatComplex swisc, twisc, tau_n, xi_n, dn;
+        for (int j = 1; j < norders; j++) {
+            cuFloatComplex n = make_cuFloatComplex(float(j), 0.);
 
-        cuFloatComplex cost, sint, cosp, sinp, krc;
-        cost = make_cuFloatComplex(costheta, 0.);
-        cosp = make_cuFloatComplex(cosphi, 0.);
-        sint = make_cuFloatComplex(sintheta, 0.);
-        sinp = make_cuFloatComplex(sinphi, 0.);
-        krc = make_cuFloatComplex(kr, 0.);
-
-        cuFloatComplex one, two, n, fac, en, a, b;
-        one = make_cuFloatComplex(1., 0.);
-        two = make_cuFloatComplex(2., 0.);
-        int mod;
-
-        for (int j=1; j < norders; j++) {
-            n = make_cuFloatComplex(float(j), 0.);
-
-            swisc = cuCmulf(pi_n, cost);
-            twisc = cuCsubf(swisc, pi_nm1);
-            tau_n = cuCsubf(pi_nm1, cuCmulf(n, twisc));
+            cuFloatComplex swisc = cuCmulf(pi_n, cost);
+            cuFloatComplex twisc = cuCsubf(swisc, pi_nm1);
+            cuFloatComplex tau_n = cuCsubf(pi_nm1, cuCmulf(n, twisc));
 
             xi_n = cuCsubf(cuCmulf(cuCsubf(cuCmulf(two, n), one),
                            cuCdivf(xi_nm1, krc)), xi_nm2);
 
-            dn = cuCsubf(cuCdivf(cuCmulf(n, xi_n), krc), xi_nm1);
+            cuFloatComplex dn = cuCsubf(cuCdivf(cuCmulf(n, xi_n), krc), xi_nm1);
 
             mo1nt = cuCmulf(pi_n, xi_n);
             mo1np = cuCmulf(tau_n, xi_n);
 
-            ne1nr = cuCmulf(cuCmulf(cuCmulf(n, cuCaddf(n, one)),
-                            pi_n), xi_n);
+            ne1nr = cuCmulf(cuCmulf(cuCmulf(n, cuCaddf(n, one)), pi_n), xi_n);
             ne1nt = cuCmulf(tau_n, dn);
             ne1np = cuCmulf(pi_n, dn);
 
-            mod = j % 4;
-            if (mod == 1) {fac = i; }
-            else if (mod == 2) {fac = make_cuFloatComplex(-1., 0.); }
-            else if (mod == 3) {fac = make_cuFloatComplex(0., -1.); }
-            else {fac = one; }
+            factor = cuCmulf(factor, i);
+            cuFloatComplex en = cuCdivf(cuCdivf(cuCmulf(factor,
+                cuCaddf(cuCmulf(two, n), one)), n), cuCaddf(n, one));
 
-            en = cuCdivf(cuCdivf(cuCmulf(fac,
-                    cuCaddf(cuCmulf(two, n), one)), n), cuCaddf(n, one));
-
-            a = make_cuFloatComplex(ar[j], ai[j]);
-            b = make_cuFloatComplex(br[j], bi[j]);
-
-            esr = cuCaddf(esr, cuCmulf(cuCmulf(cuCmulf(i, en), a), ne1nr));
-            est = cuCaddf(est, cuCmulf(cuCmulf(cuCmulf(i, en), a), ne1nt));
-            esp = cuCaddf(esp, cuCmulf(cuCmulf(cuCmulf(i, en), a), ne1np));
-            esr = cuCsubf(esr, cuCmulf(cuCmulf(en, b), mo1nr));
-            est = cuCsubf(est, cuCmulf(cuCmulf(en, b), mo1nt));
-            esp = cuCsubf(esp, cuCmulf(cuCmulf(en, b), mo1np));
+            esr = cuCaddf(esr, cuCmulf(cuCmulf(cuCmulf(i, en), a[j]), ne1nr));
+            est = cuCaddf(est, cuCmulf(cuCmulf(cuCmulf(i, en), a[j]), ne1nt));
+            esp = cuCaddf(esp, cuCmulf(cuCmulf(cuCmulf(i, en), a[j]), ne1np));
+            esr = cuCsubf(esr, cuCmulf(cuCmulf(en, b[j]), mo1nr));
+            est = cuCsubf(est, cuCmulf(cuCmulf(en, b[j]), mo1nt));
+            esp = cuCsubf(esp, cuCmulf(cuCmulf(en, b[j]), mo1np));
 
             pi_nm1 = pi_n;
             pi_n = cuCaddf(swisc,
@@ -269,11 +237,9 @@ void field(float * coordsx, float * coordsy, float * coordsz,
             xi_nm1 = xi_n;
         }
 
-        cuFloatComplex radialfactor = make_cuFloatComplex(1./kr, 0.);
-        cuFloatComplex radialfactorsq = make_cuFloatComplex(1./(kr*kr), 0.);
-        esr = cuCmulf(esr, cuCmulf(cuCmulf(cosp, sint), radialfactorsq));
-        est = cuCmulf(est, cuCmulf(cosp, radialfactor));
-        esp = cuCmulf(esp, cuCmulf(sinp, radialfactor));
+        esr = cuCmulf(esr, cuCmulf(cuCmulf(cosp, inv_kr), cuCmulf(sint, inv_kr)));
+        est = cuCmulf(est, cuCmulf(cosp, inv_kr));
+        esp = cuCmulf(esp, cuCmulf(sinp, inv_kr));
 
         if (cartesian == true) {
             cuFloatComplex ecx, ecy, ecz;
