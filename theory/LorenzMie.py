@@ -342,7 +342,7 @@ class LorenzMie(LMObject):
         from pylorenzmie.theory import (Sphere, Instrument)
         from time import perf_counter
 
-        shape = (201, 201)
+        shape = (1024, 1280)
         c = cls.meshgrid(shape)
         # Place two spheres in the field of view, above the focal plane
         pa = Sphere()
@@ -372,8 +372,8 @@ class LorenzMie(LMObject):
         # Compute hologram from field and show it
         plt.figure(num=f'{cls.__name__} example')
         plt.imshow(hologram.reshape(shape), cmap='gray')
-        plt.show()
-
-
+#        plt.show()
+        plt.savefig('cupyhologram.png')
+            
 if __name__ == '__main__':  # pragma: no cover
     LorenzMie.example()
