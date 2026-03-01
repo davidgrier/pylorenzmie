@@ -176,7 +176,7 @@ class LorenzMie(LMObject):
             self.kdr = k * dr
             ab = particle.ab(n_m, wavelength)
             self._field += self.lorenzmie(ab, **kwargs)
-            self._field *= np.exp(-1j * k * r_p[2])
+            self._field *= np.exp(-1.j * k * r_p[2])
         return self._field
 
     def lorenzmie(self,
@@ -267,7 +267,7 @@ class LorenzMie(LMObject):
         Es.fill(0.j)
 
         factor = 1.
-        
+
         # COMPUTE field by summing partial waves
         for n in range(1, norders):
             # upward recurrences ...
@@ -377,6 +377,7 @@ class LorenzMie(LMObject):
         plt.imshow(hologram.reshape(shape), cmap='gray')
 #        plt.show()
         plt.savefig('cupyhologram.png')
-            
+
+
 if __name__ == '__main__':  # pragma: no cover
     LorenzMie.example()
