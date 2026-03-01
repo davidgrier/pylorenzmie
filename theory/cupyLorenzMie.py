@@ -84,7 +84,7 @@ class cupyLorenzMie(LorenzMie):
 
         Returns
         -------
-        hologram : cp.ndarray
+        hologram : cp.ndarray or numpy.ndarray
             The hologram of the particle on the GPU
 
         Keywords
@@ -95,6 +95,9 @@ class cupyLorenzMie(LorenzMie):
         bohren : bool
             If True, use Bohren's convention for the field.
             Default: True
+        device : bool
+            If True, return cupy variable for hologram.
+            Default [False]: return numpy hologram
         '''
         field = self.field(cartesian=cartesian, bohren=bohren, device=True)
         field[0, :] += 1.
@@ -106,7 +109,7 @@ class cupyLorenzMie(LorenzMie):
               bohren: bool = True,
               device: bool = False) -> Field:
         '''Returns the field scattered by a particle'''
-        k = self.dtype(self.instrument.wavenumber())
+        k = self.instrument.wavenumber()
         n_m = self.instrument.n_m
         wavelength = self.instrument.wavelength
         self._field.fill(0.+0.j)
