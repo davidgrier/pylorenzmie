@@ -340,12 +340,14 @@ class LorenzMie(LMObject):
             return Es
 
     @classmethod
-    def example(cls, **kwargs) -> None:  # pragma: no cover
+    def example(cls,
+                show: bool = True,
+                **kwargs) -> None:  # pragma: no cover
         import matplotlib.pyplot as plt
         from pylorenzmie.theory import (Sphere, Instrument)
         from time import perf_counter
 
-        shape = (1024, 1280)
+        shape = (201, 201)
         c = cls.meshgrid(shape)
         # Place two spheres in the field of view, above the focal plane
         pa = Sphere()
@@ -372,11 +374,11 @@ class LorenzMie(LMObject):
         start = perf_counter()
         hologram = model.hologram()
         print(f'Second pass: {perf_counter()-start:.1e} s')
-        # Compute hologram from field and show it
-        plt.figure(num=f'{cls.__name__} example')
-        plt.imshow(hologram.reshape(shape), cmap='gray')
-#        plt.show()
-        plt.savefig('cupyhologram.png')
+        # Optionally show hologram
+        if show:
+            plt.figure(num=f'{cls.__name__} example')
+            plt.imshow(hologram.reshape(shape), cmap='gray')
+            plt.show()
 
 
 if __name__ == '__main__':  # pragma: no cover
