@@ -109,7 +109,7 @@ class cupyLorenzMie(LorenzMie):
               bohren: bool = True,
               device: bool = False) -> Field:
         '''Returns the field scattered by a particle'''
-        k = self.instrument.wavenumber()
+        k = self.dtype(self.instrument.wavenumber())
         n_m = self.instrument.n_m
         wavelength = self.instrument.wavelength
         self._field.fill(0.+0.j)
