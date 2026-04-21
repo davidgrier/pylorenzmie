@@ -342,6 +342,8 @@ class LorenzMie(LMObject):
     @classmethod
     def example(cls,
                 show: bool = True,
+                save: bool = True,
+                filename: str = None,
                 **kwargs) -> None:  # pragma: no cover
         import matplotlib.pyplot as plt
         from pylorenzmie.theory import (Sphere, Instrument)
@@ -374,12 +376,16 @@ class LorenzMie(LMObject):
         start = perf_counter()
         hologram = model.hologram()
         print(f'Second pass: {perf_counter()-start:.1e} s')
-        # Optionally show hologram
+        
+        # option to save without showing figure
+        plt.figure(num=f'{cls.__name__} example')
+        plt.imshow(hologram.reshape(shape), cmap='gray')
+        if save:
+            fname = f'{cls.__name__}_example.png'
+            plt.savefig(fname)
+            print(f'Saved to {fname}')
         if show:
-            plt.figure(num=f'{cls.__name__} example')
-            plt.imshow(hologram.reshape(shape), cmap='gray')
             plt.show()
-
 
 if __name__ == '__main__':  # pragma: no cover
     LorenzMie.example()

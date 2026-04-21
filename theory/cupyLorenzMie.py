@@ -1,7 +1,7 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import cupy as cp
 import logging
-
+import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -271,4 +271,4 @@ void lorenzmie(float * x, float * y, float * z, int length,
 
 
 if __name__ == '__main__':
-    cupyLorenzMie.example(double_precision=True)
+    cupyLorenzMie.example(double_precision=True, show = False)
