@@ -9,7 +9,7 @@ AberratedTorchBase = Aberrated(TorchLorenzMie)
 class AberratedTorchLorenzMie(AberratedTorchBase):
 
 # Overriding for torch 
-    def scattered_field(self, particle, ab, kdr, cartesian=True, bohren=True):
+    def _scattered_field(self, particle, ab, kdr, cartesian=True, bohren=True):
         field = TorchLorenzMie._scattered_field(self, particle, ab, kdr, cartesian=cartesian, bohren=bohren)
         r_p = particle.r_p + particle.r_0
         aberration = self._aberration(r_p)

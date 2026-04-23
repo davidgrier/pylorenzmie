@@ -66,20 +66,20 @@ class TorchLorenzMie(LorenzMie):
             dr = self._coords - r_p[:, None]
             kdr = k * dr
 
-            particle_field = self._scattered_field(
-                particle, ab, kdr, cartesian=cartesian, bohren=bohren)
+            particle_field = self.lorenzmie(
+                ab, kdr, cartesian=cartesian, bohren=bohren)
 
             phase = torch.exp(torch.tensor(
                 -1j * k * float(r_p[2]),
                 dtype=torch.complex64,
                 device=self._device))
-            particle_field *= phase
             self._field_t += particle_field
+            self._field_t *= phase
 
         return self._field_t
 
-    def _scattered_field(self, particle, ab, kdr, cartesian=True, bohren=True):
-        return self.lorenzmie(ab, kdr, cartesian=cartesian, bohren=bohren)
+#    def _scattered_field(self, particle, ab, kdr, cartesian=True, bohren=True):
+#        return self.lorenzmie(ab, kdr, cartesian=cartesian, bohren=bohren)
 
     def lorenzmie(self,
                   ab: torch.Tensor,
@@ -179,7 +179,7 @@ class TorchLorenzMie(LorenzMie):
 
         return Ec
 
-# BATCHING 
+# BATCHING
 
     def batch_hologram(self,
                        particle_lists: list,
@@ -205,8 +205,7 @@ class TorchLorenzMie(LorenzMie):
         holograms : numpy.ndarray
             [B, npts] hologram intensities.
         '''
-        field = self.batch_field(
-            particle_lists, cartesian=cartesian, bohren=bohren)
+        field = self.batch_field(particle_lists, cartesian=cartesian, bohren=bohren)
         # field: [B, 3, npts]
         field[:, 0, :] += 1.0 + 0j
         return (field.real**2 + field.imag**2).sum(dim=1).cpu().numpy()
@@ -241,11 +240,10 @@ class TorchLorenzMie(LorenzMie):
         P = max(len(pl) for pl in particle_lists)
         npts = self._coords.shape[1]
         
-        # Do the same for norders to pad norders 
-        all_abs = [particle.ab(n_m, wavelength)
-                   for plist in particle_lists
-                   for particle in plist]
-        norders = max(ab.shape[0] for ab in all_abs)
+        # Do the same for norders to pad norders
+        all_abs = [[particle.ab(n_m, wavelength) for particle in plist]
+                   for plist in particle_lists]
+        norders = max(ab.shape[0] for plist_abs in all_abs for ab in plist_abs)
 
         # Build padded ab [B, P, norders, 2] and r_p [B, P, 3] tensors.
         # Dummy particles have ab=0 so they contribute nothing to the field.
@@ -256,7 +254,7 @@ class TorchLorenzMie(LorenzMie):
 
         for b, plist in enumerate(particle_lists):
             for p, particle in enumerate(plist):
-                ab_np = particle.ab(n_m, wavelength)
+                ab_np = all_abs[b][p]
                 n = ab_np.shape[0]
                 ab_batch[b, p, :n, :] = torch.tensor(
                     ab_np, dtype=torch.complex64, device=self._device)
@@ -276,19 +274,24 @@ class TorchLorenzMie(LorenzMie):
         kdr = k * dr  # [N, 3, npts]
 
         # Compute all N fields at once
-        # Added a mask to set all dummy particle fields to 0
         fields = self._batch_lorenzmie(
             ab_flat, kdr, cartesian=cartesian, bohren=bohren)
-        real = (r_p_flat[:, 2] != 0).reshape(N, 1, 1)
-        fields = torch.where(real, fields, torch.zeros_like(fields))
+        # [N, 3, npts] -> [B, P, 3, npts]
+        fields = fields.reshape(B, P, 3, npts)
+
+        # Replicate field()'s loop: after adding particle p, multiply the
+        # running sum by phase_p.  Particle p therefore ends up scaled by
+        # the suffix product φ_p * φ_{p+1} * … * φ_{P-1}.
         phases = torch.exp(
             -1j * k * r_p_flat[:, 2].to(torch.complex64)
-        ).reshape(N, 1, 1)
-        fields *= phases
+        ).reshape(B, P)  # [B, P]
+        phase_suffix = torch.flip(
+            torch.cumprod(torch.flip(phases, dims=[1]), dim=1),
+            dims=[1]
+        )  # [B, P]
 
-        # Reshape back into holograms, sum particles within each hologram
-        fields = fields.reshape(B, P, 3, npts)  # [B, P, 3, npts]
-        return fields.sum(dim=1)                 # [B, 3, npts]
+        fields = fields * phase_suffix.reshape(B, P, 1, 1)
+        return fields.sum(dim=1)  # [B, 3, npts]
 
     def _batch_lorenzmie(self,
                          ab: torch.Tensor,
@@ -408,99 +411,56 @@ class TorchLorenzMie(LorenzMie):
 
     @classmethod
     def batch_example(cls,
-                      batch_size: int = 128,
-                      max_particles: int = 3,
                       show: bool = True,
                       save: bool = False,
                       filename: str = None,
                       **kwargs) -> None:  # pragma: no cover
-        '''Test batch_hologram() and verify it matches hologram().
- 
-        Generates batch_size holograms with random particles using both
-        the single and batched methods, prints timing and max difference,
-        and plots the first 8 holograms from each method side by side.
- 
-        Keywords
-        --------
-        batch_size : int
-            Number of holograms to generate.
-        max_particles : int
-            Maximum particles per hologram.
-        '''
+        '''Demonstrate batch_hologram() with four holograms'''
         import numpy as np
         from pylorenzmie.theory import Sphere, Instrument
         from time import perf_counter
- 
+
         shape = (201, 201)
-        c = cls.meshgrid(shape)
- 
+        coords = cls.meshgrid(shape)
+
         instrument = Instrument()
         instrument.magnification = 0.048
         instrument.numerical_aperture = 1.45
         instrument.wavelength = 0.447
         instrument.n_m = 1.340
- 
-        # Generate random particles
-        def random_particle():
+
+        def sphere(x, y, z, a_p, n_p):
             p = Sphere()
-            p.r_p = [np.random.uniform(20, 180),   # x
-                     np.random.uniform(20, 180),   # y
-                     np.random.uniform(100, 400)]  # z
-            p.a_p = np.random.uniform(0.3, 1.5)
-            p.n_p = np.random.uniform(1.38, 1.60)
+            p.r_p = [x, y, z]
+            p.a_p = a_p
+            p.n_p = n_p
             return p
- 
-        # Each hologram gets between 1 and max_particles random particles
+
+        # Defined holograms
         particle_lists = [
-            [random_particle()
-             for _ in range(np.random.randint(1, max_particles + 1))]
-            for _ in range(batch_size)
+            [sphere(100, 100, 200, 0.5, 1.45)],
+            [sphere(80,  120, 300, 1.0, 1.40)],
+            [sphere(150, 150, 200, 0.5, 1.45), sphere(100, 10, 250, 1., 1.45)],
+            [sphere(60,  60,  200, 0.5, 1.45), sphere(140, 100, 250, 1, 1.45)],
         ]
- 
-        model = cls(coordinates=c, instrument=instrument, **kwargs)
-        
-        # Compute with batch_hologram()
-        start = perf_counter()
+
+        model = cls(coordinates=coords, instrument=instrument, **kwargs)
+
         batch_holos = model.batch_hologram(particle_lists)
-        batch_time = perf_counter() - start
-        print(f'Batch time  ({batch_size} holograms): {batch_time:.1e} s')
 
-        # Using regular hologram method
-        start = perf_counter()
-        single_holos = []
-        for plist in particle_lists:
-            model.particle = plist
-            single_holos.append(model.hologram())
-        single_time = perf_counter() - start
-        print(f'Single time ({batch_size} holograms): {single_time:.1e} s')
-        print(f'Speedup: {single_time / batch_time:.1f}x')
-
-        diff = np.abs(batch_holos - np.stack(single_holos))
-        print(f'Max difference: {diff.max():.2e}')
-        print(f'Mean difference: {diff.mean():.2e}')
-        
-        # Plot first 8 holograms from each method
-        n_plot = min(batch_size, 8)
-        fig, axes = plt.subplots(2, n_plot, figsize=(2 * n_plot, 4))
-        fig.suptitle(f'{cls.__name__} batch_example (B={batch_size})')
-        for i in range(n_plot):
-            axes[0, i].imshow(batch_holos[i].reshape(shape), cmap='gray')
-            axes[0, i].set_title(f'{i+1}', fontsize=8)
-            axes[0, i].axis('off')
-            axes[1, i].imshow(single_holos[i].reshape(shape), cmap='gray')
-            axes[1, i].set_title(f'{i+1}', fontsize=8)
-            axes[1, i].axis('off')
-        axes[0, 0].set_ylabel('batch')
-        axes[1, 0].set_ylabel('single')
+        fig, axes = plt.subplots(1, 4, figsize=(10, 3))
+        for i, ax in enumerate(axes):
+            ax.imshow(batch_holos[i].reshape(shape), cmap='gray')
+            ax.axis('off')
+        fig.suptitle(f'{cls.__name__}.batch_hologram()')
         plt.tight_layout()
- 
+
         if save:
             fname = filename or f'{cls.__name__}_batch_example.png'
             plt.savefig(fname)
             print(f'Saved to {fname}')
         if show:
             plt.show()
- 
 
 if __name__ == '__main__':  # pragma: no cover
     TorchLorenzMie.batch_example()
