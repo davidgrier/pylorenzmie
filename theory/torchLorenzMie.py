@@ -445,8 +445,16 @@ class TorchLorenzMie(LorenzMie):
         ]
 
         model = cls(coordinates=coords, instrument=instrument, **kwargs)
-
+        
+        start = perf_counter() 
         batch_holos = model.batch_hologram(particle_lists)
+
+        print(f'Time to calculate: {perf_counter()-start:.1e} s')
+            
+        start = perf_counter()
+        batch_holos = model.batch_hologram(particle_lists)
+
+        print(f'Second pass: {perf_counter()-start:.1e} s')
 
         fig, axes = plt.subplots(1, 4, figsize=(10, 3))
         for i, ax in enumerate(axes):
@@ -463,5 +471,5 @@ class TorchLorenzMie(LorenzMie):
             plt.show()
 
 if __name__ == '__main__':  # pragma: no cover
-    TorchLorenzMie.batch_example()
+    TorchLorenzMie.batch_example(save = True)
 
