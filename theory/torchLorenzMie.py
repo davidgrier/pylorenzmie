@@ -66,8 +66,8 @@ class TorchLorenzMie(LorenzMie):
             dr = self._coords - r_p[:, None]
             kdr = k * dr
 
-            particle_field = self.lorenzmie(
-                ab, kdr, cartesian=cartesian, bohren=bohren)
+            particle_field = self._scattered_field(
+                particle, ab, kdr, cartesian=cartesian, bohren=bohren)
 
             phase = torch.exp(torch.tensor(
                 -1j * k * float(r_p[2]),
@@ -77,6 +77,9 @@ class TorchLorenzMie(LorenzMie):
             self._field_t += particle_field
 
         return self._field_t
+
+    def _scattered_field(self, particle, ab, kdr, cartesian=True, bohren=True):
+        return self.lorenzmie(ab, kdr, cartesian=cartesian, bohren=bohren)
 
     def lorenzmie(self,
                   ab: torch.Tensor,
@@ -273,9 +276,11 @@ class TorchLorenzMie(LorenzMie):
         kdr = k * dr  # [N, 3, npts]
 
         # Compute all N fields at once
+        # Added a mask to set all dummy particle fields to 0
         fields = self._batch_lorenzmie(
             ab_flat, kdr, cartesian=cartesian, bohren=bohren)
-        
+        real = (r_p_flat[:, 2] != 0).reshape(N, 1, 1)
+        fields = torch.where(real, fields, torch.zeros_like(fields))
         phases = torch.exp(
             -1j * k * r_p_flat[:, 2].to(torch.complex64)
         ).reshape(N, 1, 1)
@@ -404,7 +409,7 @@ class TorchLorenzMie(LorenzMie):
     @classmethod
     def batch_example(cls,
                       batch_size: int = 128,
-                      max_particles: int = 10,
+                      max_particles: int = 3,
                       show: bool = True,
                       save: bool = False,
                       filename: str = None,
@@ -453,7 +458,7 @@ class TorchLorenzMie(LorenzMie):
         ]
  
         model = cls(coordinates=c, instrument=instrument, **kwargs)
- 
+        
         # Compute with batch_hologram()
         start = perf_counter()
         batch_holos = model.batch_hologram(particle_lists)
@@ -470,6 +475,10 @@ class TorchLorenzMie(LorenzMie):
         print(f'Single time ({batch_size} holograms): {single_time:.1e} s')
         print(f'Speedup: {single_time / batch_time:.1f}x')
 
+        diff = np.abs(batch_holos - np.stack(single_holos))
+        print(f'Max difference: {diff.max():.2e}')
+        print(f'Mean difference: {diff.mean():.2e}')
+        
         # Plot first 8 holograms from each method
         n_plot = min(batch_size, 8)
         fig, axes = plt.subplots(2, n_plot, figsize=(2 * n_plot, 4))
@@ -494,5 +503,5 @@ class TorchLorenzMie(LorenzMie):
  
 
 if __name__ == '__main__':  # pragma: no cover
-    TorchLorenzMie.batch_example(show=False)
+    TorchLorenzMie.batch_example()
 

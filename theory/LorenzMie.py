@@ -372,6 +372,7 @@ class LorenzMie(LMObject):
         start = perf_counter()
         model.particle = particle
         hologram = model.hologram()
+        print(f'min: {hologram.min():.3f}, max: {hologram.max():.3f}')
         print(f'Time to calculate: {perf_counter()-start:.1e} s')
         start = perf_counter()
         hologram = model.hologram()

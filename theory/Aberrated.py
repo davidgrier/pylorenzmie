@@ -51,12 +51,13 @@ def Aberrated(base_class: LorenzMie):
                         r_p: LorenzMie.Coordinates) -> LorenzMie.Field:
             '''Returns spherical aberration for particle at r_p'''
             omega = self._aperture(r_p[2])
-            x = (self._device_coordinates[0] - r_p[0]) / omega
-            y = (self._device_coordinates[1] - r_p[1]) / omega
+            omega = self._aperture(r_p[2])
+            x = (self.coordinates[0] - r_p[0]) / omega
+            y = (self.coordinates[1] - r_p[1]) / omega
             rhosq = x*x + y*y
             phase = 6.*rhosq * (rhosq - 1.) + 1.
             phase *= -self.spherical
-            return self.to_field(phase)
+            return np.exp(1j * phase)
 
         def scattered_field(self,
                             particle: Particle,
