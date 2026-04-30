@@ -5,16 +5,13 @@
 
 import json
 from pylorenzmie.theory import Sphere
-from pylorenzmie.theory import AberratedLorenzMie as LorenzMie
 from pylorenzmie.lib import LMObject
+from pylorenzmie.theory import AberratedLorenzMie as LorenzMie
 import numpy as np
 from pathlib import Path
 import cv2
 import shutil
-try: 
-    import cupy as cp
-except (ModuleNotFoundError, ImportError):
-    print('cupy not found, falling back to CPU')
+
 
 def feature_extent(sphere, config, nfringes=20, maxrange=300):
     '''Radius of holographic feature in pixels'''
