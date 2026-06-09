@@ -1,3 +1,23 @@
+'''GPU-accelerated Lorenz-Mie scattering using PyTorch and Triton.
+
+This module provides :class:`TorchLorenzMie`, a drop-in replacement for
+:class:`~pylorenzmie.theory.LorenzMie.LorenzMie` that offloads the field
+computation to a custom Triton CUDA kernel.  Both single-hologram and batched
+(multi-hologram) paths are supported.
+
+Key components
+--------------
+_lorenzmie_kernel
+    Triton kernel — computes the scattered field for a single particle over
+    ``npts`` pixels in parallel.
+_batch_lorenzmie_kernel
+    Triton kernel — 2-D grid variant that handles N particles simultaneously.
+TorchLorenzMie
+    High-level class with the same API as ``LorenzMie`` plus
+    :meth:`batch_hologram` and :meth:`batch_field` for generating many
+    holograms in a single GPU call.
+'''
+
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import torch
 import triton
@@ -22,6 +42,39 @@ def _lorenzmie_kernel(
         bohren: tl.constexpr,
         cartesian: tl.constexpr,
         BLOCK: tl.constexpr):
+    '''Triton kernel: Lorenz-Mie scattered field for a single particle.
+
+    Each program instance handles a contiguous block of ``BLOCK`` pixels.
+    The Mie series (angular functions pi/tau, Riccati-Bessel functions xi, and
+    the vector field components esr/est/esp) is accumulated entirely inside the
+    kernel with no Python-level loop.
+
+    Parameters
+    ----------
+    kx_ptr, ky_ptr, kz_ptr : pointer to float32[npts]
+        Wavenumber-scaled Cartesian displacements from the particle centre to
+        each pixel.  ``kz`` is negated internally to match the scattering
+        geometry.
+    a_re_ptr, a_im_ptr : pointer to float32[norders]
+        Real and imaginary parts of the Mie ``a_n`` scattering coefficients.
+    b_re_ptr, b_im_ptr : pointer to float32[norders]
+        Real and imaginary parts of the Mie ``b_n`` scattering coefficients.
+    norders : tl.constexpr int
+        Number of Mie orders (loop bound, must be a compile-time constant).
+    e1_re_ptr … e3_im_ptr : pointer to float32[npts]
+        Output buffers for the three field components (real and imaginary).
+        In Cartesian mode these are (Ex, Ey, Ez); in spherical mode (Er, Eθ, Eφ).
+    npts : int
+        Total number of pixels.
+    bohren : tl.constexpr bool
+        Sign convention for the Riccati-Bessel functions.
+        ``True`` follows Bohren & Huffman; ``False`` uses the opposite sign.
+    cartesian : tl.constexpr bool
+        If ``True``, rotate the spherical field components into Cartesian
+        coordinates before writing output.
+    BLOCK : tl.constexpr int
+        Number of pixels processed by each program instance (tile size).
+    '''
     pid = tl.program_id(0)
     idx = pid * BLOCK + tl.arange(0, BLOCK)
     mask = idx < npts
@@ -190,6 +243,35 @@ def _batch_lorenzmie_kernel(
         bohren: tl.constexpr,
         cartesian: tl.constexpr,
         BLOCK: tl.constexpr):
+    '''Triton kernel: batched Lorenz-Mie scattered field for N particles.
+
+    Extends :func:`_lorenzmie_kernel` to a 2-D launch grid:
+    axis-0 iterates over pixel blocks (``pid``), axis-1 over batch slots
+    (``bid``).  Each program instance handles one particle's pixels
+    independently, so all N particles run in parallel.
+
+    Parameters
+    ----------
+    kx_ptr, ky_ptr, kz_ptr : pointer to float32[N*npts]
+        Wavenumber-scaled displacements, stored batch-major (row ``b`` starts
+        at offset ``b * npts``).
+    a_re_ptr, a_im_ptr : pointer to float32[N*norders]
+        Real/imaginary Mie ``a_n`` coefficients, stored batch-major.
+    b_re_ptr, b_im_ptr : pointer to float32[N*norders]
+        Real/imaginary Mie ``b_n`` coefficients, stored batch-major.
+    norders : tl.constexpr int
+        Number of Mie orders (compile-time constant shared across the batch).
+    e1_re_ptr … e3_im_ptr : pointer to float32[N*npts]
+        Output field buffers, stored batch-major.
+    npts : int
+        Number of pixels per particle.
+    bohren : tl.constexpr bool
+        Sign convention (see :func:`_lorenzmie_kernel`).
+    cartesian : tl.constexpr bool
+        Coordinate system for the output field.
+    BLOCK : tl.constexpr int
+        Pixel tile size per program instance.
+    '''
     pid = tl.program_id(0)   # pixel-block index
     bid = tl.program_id(1)   # batch index
 
@@ -338,8 +420,18 @@ def _batch_lorenzmie_kernel(
         tl.store(e3_im_ptr + base + idx, esp_im, mask=mask)
 
 
-# automatically detect and return the best available device
 def get_device() -> torch.device:
+    '''Return the best available compute device.
+
+    Tries CUDA first; falls back to CPU if CUDA is unavailable or raises an
+    error on the first allocation attempt.
+
+    Returns
+    -------
+    torch.device
+        ``torch.device('cuda')`` when a working GPU is present, otherwise
+        ``torch.device('cpu')``.
+    '''
     if torch.cuda.is_available():
         try:
             torch.zeros(1).cuda()
@@ -349,72 +441,131 @@ def get_device() -> torch.device:
             logger.warning(f'CUDA available but failed: {e}. Falling back to CPU.')
     return torch.device('cpu')
 
-# compute scattered light field using pytorch, with optional GPU acceleration
 class TorchLorenzMie(LorenzMie):
+    '''GPU-accelerated Lorenz-Mie hologram calculator built on PyTorch + Triton.
+
+    Inherits the full ``LorenzMie`` interface (``coordinates``, ``instrument``,
+    ``particle``, ``hologram()``, ``field()``) and overrides the inner
+    computation with a custom Triton CUDA kernel.  Falls back to CPU
+    transparently when no GPU is present.
+
+    In addition to the single-hologram API, this class exposes a batched path
+    (:meth:`batch_hologram`, :meth:`batch_field`) that computes B holograms in
+    a single kernel launch, which is substantially faster than calling
+    :meth:`hologram` B times in a loop.
+
+    Attributes
+    ----------
+    method : str
+        Identifies the computation backend (``'torch'``).
+    device : torch.device
+        The device on which all tensors are allocated.
+
+    Examples
+    --------
+    Single hologram::
+
+        from pylorenzmie.theory import Sphere, Instrument
+        from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie
+
+        instrument = Instrument()
+        coords = TorchLorenzMie.meshgrid((201, 201))
+        model = TorchLorenzMie(coordinates=coords, instrument=instrument)
+        model.particle = Sphere(r_p=[100, 100, 200], a_p=0.5, n_p=1.45)
+        holo = model.hologram()   # numpy array, shape (201*201,)
+
+    Batch of holograms::
+
+        holograms = model.batch_hologram(particle_lists)  # shape (B, 201*201)
+    '''
 
     method: str = 'torch'
 
     def __init__(self, *args, device: torch.device | None = None, **kwargs) -> None:
+        '''Initialise TorchLorenzMie.
+
+        Parameters
+        ----------
+        *args
+            Positional arguments forwarded to :class:`LorenzMie`.
+        device : torch.device, optional
+            Target compute device.  Defaults to the result of
+            :func:`get_device` (CUDA when available, CPU otherwise).
+        **kwargs
+            Keyword arguments forwarded to :class:`LorenzMie`.
+        '''
         self._device = device if device is not None else get_device()
         super().__init__(*args, **kwargs)
 
     @property
     def device(self) -> torch.device:
+        '''Compute device used for all tensor allocations.'''
         return self._device
-
-# overwriting the following functions to use torch tensors instead of numpy arrays
 
     def _allocate(self) -> None:
         '''Allocate torch tensors for field computation'''
         logger.debug('Allocating torch buffers')
         shape = self.coordinates.shape
         npts = shape[1]
-        self._coords = torch.tensor(
+        self._coords   = torch.tensor(
             self.coordinates, dtype=torch.float32, device=self._device)
-        self._field_t = torch.zeros(
+        self._field_t  = torch.zeros(
             shape, dtype=torch.complex64, device=self._device)
-        # Pre-allocated lorenzmie() working buffers — reused across calls to
-        # avoid repeated GPU memory allocation in the sequential hot path
-        self._lm_pi_nm1 = torch.zeros(npts, dtype=torch.float32, device=self._device)
-        self._lm_pi_n   = torch.ones(npts, dtype=torch.float32, device=self._device)
-        self._lm_swisc  = torch.empty(npts, dtype=torch.float32, device=self._device)
-        self._lm_twisc  = torch.empty(npts, dtype=torch.float32, device=self._device)
-        self._lm_tau_n  = torch.empty(npts, dtype=torch.float32, device=self._device)
-        self._lm_Es     = torch.zeros(3, npts, dtype=torch.complex64, device=self._device)
-        self._lm_Ec     = torch.zeros(3, npts, dtype=torch.complex64, device=self._device)
-        self._batch_N   = 0
-        self._tri_e_re  = torch.zeros(3, npts, dtype=torch.float32, device=self._device)
-        self._tri_e_im  = torch.zeros(3, npts, dtype=torch.float32, device=self._device)
+        self._tri_e_re = torch.zeros(3, npts, dtype=torch.float32, device=self._device)
+        self._tri_e_im = torch.zeros(3, npts, dtype=torch.float32, device=self._device)
+        self._batch_N  = 0
 
     def _allocate_batch(self, N: int) -> None:
-        '''Allocate [N, npts] working buffers for _batch_lorenzmie'''
+        '''Allocate [N, npts] output buffers for _batch_lorenzmie'''
         npts = self._coords.shape[1]
-        self._batch_N = N
-        d_r, d_c, dev = torch.float32, torch.complex64, self._device
-        self._blm_pi_nm1  = torch.zeros(N, npts, dtype=d_r, device=dev)
-        self._blm_pi_n    = torch.ones( N, npts, dtype=d_r, device=dev)
-        self._blm_swisc   = torch.empty(N, npts, dtype=d_r, device=dev)
-        self._blm_twisc   = torch.empty(N, npts, dtype=d_r, device=dev)
-        self._blm_tau_n   = torch.empty(N, npts, dtype=d_r, device=dev)
-        self._blm_xi_nm2  = torch.empty(N, npts, dtype=d_c, device=dev)
-        self._blm_xi_nm1  = torch.empty(N, npts, dtype=d_c, device=dev)
-        self._blm_xi_n    = torch.empty(N, npts, dtype=d_c, device=dev)
-        self._blm_Dn      = torch.empty(N, npts, dtype=d_c, device=dev)
-        self._blm_pi_n_c  = torch.empty(N, npts, dtype=d_c, device=dev)
-        self._blm_tau_n_c = torch.empty(N, npts, dtype=d_c, device=dev)
-        self._blm_scratch = torch.empty(N, npts, dtype=d_c, device=dev)
-        self._blm_scratch2= torch.empty(N, npts, dtype=d_c, device=dev)
-        self._blm_Es      = torch.zeros(N, 3, npts, dtype=d_c, device=dev)
-        self._blm_Ec      = torch.zeros(N, 3, npts, dtype=d_c, device=dev)
+        self._batch_N      = N
+        d_r, dev           = torch.float32, self._device
         self._blm_tri_e_re = torch.zeros(3, N, npts, dtype=d_r, device=dev)
         self._blm_tri_e_im = torch.zeros(3, N, npts, dtype=d_r, device=dev)
 
     def hologram(self, cartesian: bool = True, bohren: bool = True):
+        '''Compute a hologram intensity image for the current particle set.
+
+        Adds the reference beam (unit amplitude, zero phase) to the scattered
+        field and returns the total intensity as a NumPy array.
+
+        Keywords
+        --------
+        cartesian : bool
+            If ``True`` (default), express the field in Cartesian coordinates
+            before summing intensities.
+        bohren : bool
+            If ``True`` (default), use the Bohren & Huffman sign convention.
+
+        Returns
+        -------
+        numpy.ndarray
+            1-D array of length ``npts`` containing the hologram intensity at
+            each pixel coordinate.
+        '''
         field = self.field(cartesian=cartesian, bohren=bohren)
         field[0] += 1.0 + 0j
         return (field.real**2 + field.imag**2).sum(dim=0).cpu().numpy() # convert final output to numpy array 
 
     def field(self, cartesian: bool = True, bohren: bool = True) -> torch.Tensor:
+        '''Compute the total scattered field for all particles in the scene.
+
+        Iterates over :attr:`particle`, calls :meth:`lorenzmie` for each one,
+        and accumulates the fields with the appropriate propagation phase.
+
+        Keywords
+        --------
+        cartesian : bool
+            If ``True`` (default), return field components in (x, y, z).
+            If ``False``, return spherical components (r, θ, φ).
+        bohren : bool
+            Sign convention for the Riccati-Bessel recurrence.
+
+        Returns
+        -------
+        torch.Tensor
+            Complex tensor of shape ``(3, npts)`` on :attr:`device`.
+        '''
         k = float(self.instrument.wavenumber())
         n_m = self.instrument.n_m
         wavelength = self.instrument.wavelength
@@ -446,14 +597,38 @@ class TorchLorenzMie(LorenzMie):
 
         return self._field_t
 
-#    def _scattered_field(self, particle, ab, kdr, cartesian=True, bohren=True):
-#        return self.lorenzmie(ab, kdr, cartesian=cartesian, bohren=bohren)
-
     def lorenzmie(self,
                   ab: torch.Tensor,
                   kdr: torch.Tensor,
                   cartesian: bool = True,
                   bohren: bool = True) -> torch.Tensor:
+        '''Compute the scattered field for a single particle via the Triton kernel.
+
+        Wraps :func:`_lorenzmie_kernel`, handling grid sizing, output buffer
+        reuse, and complex-tensor assembly.
+
+        Arguments
+        ---------
+        ab : torch.Tensor
+            ``(norders, 2)`` complex64 tensor of Mie coefficients.
+            Column 0 is ``a_n``, column 1 is ``b_n``.
+        kdr : torch.Tensor
+            ``(3, npts)`` float32 tensor of wavenumber-scaled displacements
+            from the particle centre to each pixel.
+
+        Keywords
+        --------
+        cartesian : bool
+            Output coordinate system (Cartesian if ``True``, spherical otherwise).
+        bohren : bool
+            Riccati-Bessel sign convention.
+
+        Returns
+        -------
+        torch.Tensor
+            ``(3, npts)`` complex64 tensor of the scattered field on
+            :attr:`device`.
+        '''
         norders = ab.shape[0]
         npts    = kdr.shape[1]
 
@@ -476,112 +651,6 @@ class TorchLorenzMie(LorenzMie):
             BLOCK=BLOCK,
         )
         return torch.complex(self._tri_e_re, self._tri_e_im)
-
-#    def lorenzmie(self,
-#                  ab: torch.Tensor,
-#                  kdr: torch.Tensor,
-#                  cartesian: bool = True,
-#                  bohren: bool = True) -> torch.Tensor:
-#
-#        dtype_r = torch.float32
-#        dtype_c = torch.complex64
-#
-#        norders = ab.shape[0]
-#        npts = kdr.shape[1]
-#
-#        kx = kdr[0]
-#        ky = kdr[1]
-#        kz = -kdr[2]
-#
-#        krho = torch.hypot(kx, ky)
-#        kr = torch.hypot(krho, kz)
-#        sinkr = torch.sin(kr)
-#        coskr = torch.cos(kr)
-#
-#        phi = torch.atan2(ky, kx)
-#        cos_phi = torch.cos(phi)
-#        sin_phi = torch.sin(phi)
-#        theta = torch.atan2(krho, kz)
-#        cos_theta = torch.cos(theta)
-#        sin_theta = torch.sin(theta)
-#
-#        sign_kz = torch.sign(kz).to(dtype_c)
-#        factor = (1j * sign_kz) if bohren else (-1j * sign_kz)
-#
-#        sinkr_c = sinkr.to(dtype_c)
-#        coskr_c = coskr.to(dtype_c)
-#        xi_nm2 = coskr_c + factor * sinkr_c   # xi_{-1}(kr)
-#        xi_nm1 = sinkr_c - factor * coskr_c   # xi_0(kr)
-#
-#        pi_nm1 = self._lm_pi_nm1
-#        pi_n   = self._lm_pi_n
-#        swisc  = self._lm_swisc
-#        twisc  = self._lm_twisc
-#        tau_n  = self._lm_tau_n
-#        Es     = self._lm_Es
-#        pi_nm1.zero_()
-#        pi_n.fill_(1.)
-#        Es.zero_()
-#        kr_c = kr.to(dtype_c)
-#
-#        for n in range(1, norders):
-#
-#            torch.mul(pi_n, cos_theta, out=swisc)
-#            torch.sub(swisc, pi_nm1, out=twisc)
-#            torch.mul(twisc, float(n), out=tau_n)
-#            torch.sub(pi_nm1, tau_n, out=tau_n)
-#
-#            xi_n = (2. * n - 1.) * (xi_nm1 / kr_c) - xi_nm2
-#
-#            Dn = n * (xi_n / kr_c) - xi_nm1
-#
-#            En = (1j ** n) * (2. * n + 1.) / (n * n + n)
-#
-#            pi_n_c = pi_n.to(dtype_c)
-#            tau_n_c = tau_n.to(dtype_c)
-#
-#            Mo1n_1 = pi_n_c * xi_n
-#            Mo1n_2 = tau_n_c * xi_n
-#            Ne1n_0 = (n * n + n) * pi_n_c * xi_n
-#            Ne1n_1 = tau_n_c * Dn
-#            Ne1n_2 = pi_n_c * Dn
-#
-#            En_a = En * ab[n, 0]
-#            En_b = En * ab[n, 1]
-#
-#            Es[0] += 1j * En_a * Ne1n_0
-#            Es[1] += 1j * En_a * Ne1n_1 - En_b * Mo1n_1
-#            Es[2] += 1j * En_a * Ne1n_2 - En_b * Mo1n_2
-#
-#            pi_nm1.copy_(pi_n)
-#            torch.add(swisc, twisc, alpha=(1. + 1. / n), out=pi_n)
-#            xi_nm2 = xi_nm1
-#            xi_nm1 = xi_n
-#
-#        cos_phi_c = cos_phi.to(dtype_c)
-#        sin_phi_c = sin_phi.to(dtype_c)
-#        cos_theta_c = cos_theta.to(dtype_c)
-#        sin_theta_c = sin_theta.to(dtype_c)
-#
-#        Es[0] *= cos_phi_c * sin_theta_c / (kr_c * kr_c)
-#        Es[1] *= cos_phi_c / kr_c
-#        Es[2] *= sin_phi_c / kr_c
-#
-#        if not cartesian:
-#            return Es
-#
-#        Ec = self._lm_Ec
-#        Ec[0] = (Es[0] * sin_theta_c * cos_phi_c
-#                 + Es[1] * cos_theta_c * cos_phi_c
-#                 - Es[2] * sin_phi_c)
-#        Ec[1] = (Es[0] * sin_theta_c * sin_phi_c
-#                 + Es[1] * cos_theta_c * sin_phi_c
-#                 + Es[2] * cos_phi_c)
-#        Ec[2] = Es[0] * cos_theta_c - Es[1] * sin_theta_c
-#
-#        return Ec
-
-# BATCHING
 
     def batch_hologram(self,
                        particle_lists: list,
@@ -733,169 +802,6 @@ class TorchLorenzMie(LorenzMie):
         )
         # [3, N, npts] → [N, 3, npts] to match the expected output shape
         return torch.complex(e_re, e_im).permute(1, 0, 2)
-
-#    def _batch_lorenzmie(self,
-#                         ab: torch.Tensor,
-#                         kdr: torch.Tensor,
-#                         cartesian: bool = True,
-#                         bohren: bool = True) -> torch.Tensor:
-#        '''
-#        Batched lorenzmie computation over N particles simultaneously.
-#
-#        This is the same computation as lorenzmie() but with an extra
-#        leading N dimension so the GPU processes all particles in parallel.
-#
-#        Arguments
-#        ---------
-#        ab : torch.Tensor
-#            [N, norders, 2] Mie scattering coefficients for all N particles
-#        kdr : torch.Tensor
-#            [N, 3, npts] wavenumber-scaled displacements for all N particles
-#
-#        Returns
-#        -------
-#        field : torch.Tensor
-#            [N, 3, npts] complex scattered field for each particle.
-#        '''
-#        dtype_c = torch.complex64
-#
-#        N = kdr.shape[0]
-#        norders = ab.shape[1]
-#
-#        if self._batch_N != N:
-#            self._allocate_batch(N)
-#
-#        # Geometry — allocated once per call, not in the Mie loop
-#        kx = kdr[:, 0, :]
-#        ky = kdr[:, 1, :]
-#        kz = -kdr[:, 2, :]
-#
-#        krho      = torch.hypot(kx, ky)
-#        kr        = torch.hypot(krho, kz)
-#        sinkr     = torch.sin(kr)
-#        coskr     = torch.cos(kr)
-#        phi       = torch.atan2(ky, kx)
-#        cos_phi   = torch.cos(phi)
-#        sin_phi   = torch.sin(phi)
-#        theta     = torch.atan2(krho, kz)
-#        cos_theta = torch.cos(theta)
-#        sin_theta = torch.sin(theta)
-#        sign_kz   = torch.sign(kz).to(dtype_c)
-#        factor    = 1j * sign_kz if bohren else -1j * sign_kz
-#        sinkr_c   = sinkr.to(dtype_c)
-#        coskr_c   = coskr.to(dtype_c)
-#        kr_c      = kr.to(dtype_c)
-#
-#        # Bind pre-allocated buffers to local names
-#        pi_nm1  = self._blm_pi_nm1
-#        pi_n    = self._blm_pi_n
-#        swisc   = self._blm_swisc
-#        twisc   = self._blm_twisc
-#        tau_n   = self._blm_tau_n
-#        xi_nm2  = self._blm_xi_nm2
-#        xi_nm1  = self._blm_xi_nm1
-#        xi_n    = self._blm_xi_n
-#        Dn      = self._blm_Dn
-#        pi_n_c  = self._blm_pi_n_c
-#        tau_n_c = self._blm_tau_n_c
-#        scratch  = self._blm_scratch
-#        scratch2 = self._blm_scratch2
-#        Es       = self._blm_Es
-#        Ec       = self._blm_Ec
-#
-#        # Initialise state
-#        pi_nm1.zero_()
-#        pi_n.fill_(1.)
-#        Es.zero_()
-#
-#        torch.mul(factor, sinkr_c, out=scratch)
-#        torch.add(coskr_c, scratch, out=xi_nm2)   # xi_{-1}
-#        torch.mul(factor, coskr_c, out=scratch)
-#        torch.sub(sinkr_c, scratch, out=xi_nm1)   # xi_0
-#
-#        for n in range(1, norders):
-#
-#            # pi / tau recurrence (float32, in-place)
-#            torch.mul(pi_n, cos_theta, out=swisc)
-#            torch.sub(swisc, pi_nm1, out=twisc)
-#            torch.mul(twisc, float(n), out=tau_n)
-#            torch.sub(pi_nm1, tau_n, out=tau_n)
-#
-#            # xi recurrence (complex64, in-place)
-#            torch.div(xi_nm1, kr_c, out=xi_n)
-#            xi_n.mul_(2.*n - 1.)
-#            xi_n.sub_(xi_nm2)
-#
-#            # Dn (complex64, in-place)
-#            torch.div(xi_n, kr_c, out=Dn)
-#            Dn.mul_(float(n))
-#            Dn.sub_(xi_nm1)
-#
-#            En = (1j ** n) * (2.*n + 1.) / (n*n + n)
-#
-#            # float → complex without allocation: write into the real view
-#            pi_n_c.real.copy_(pi_n)
-#            pi_n_c.imag.zero_()
-#            tau_n_c.real.copy_(tau_n)
-#            tau_n_c.imag.zero_()
-#
-#            En_a        = En * ab[:, n, 0].unsqueeze(-1)   # [N, 1]
-#            En_b        = En * ab[:, n, 1].unsqueeze(-1)   # [N, 1]
-#            coeff_a0    = ((n*n + n) * 1j) * En_a          # [N, 1]
-#            coeff_1j_a  = 1j * En_a                        # [N, 1]
-#
-#            # Es[:, 0, :] += (n²+n)·1j·En_a · pi_n_c·xi_n
-#            torch.mul(pi_n_c, xi_n, out=scratch)           # scratch  = pi_n_c * xi_n
-#            torch.mul(scratch, coeff_a0, out=scratch2)     # scratch2 = coeff_a0 * scratch
-#            Es[:, 0, :].add_(scratch2)
-#
-#            # Es[:, 1, :] += -En_b · pi_n_c·xi_n  (partial)
-#            torch.mul(scratch, -En_b, out=scratch2)
-#            Es[:, 1, :].add_(scratch2)
-#
-#            # Es[:, 2, :] += -En_b · tau_n_c·xi_n  (partial)
-#            torch.mul(tau_n_c, xi_n, out=scratch)
-#            torch.mul(scratch, -En_b, out=scratch2)
-#            Es[:, 2, :].add_(scratch2)
-#
-#            # Es[:, 1, :] += 1j·En_a · tau_n_c·Dn  (completes Es[1])
-#            torch.mul(tau_n_c, Dn, out=scratch)
-#            torch.mul(scratch, coeff_1j_a, out=scratch2)
-#            Es[:, 1, :].add_(scratch2)
-#
-#            # Es[:, 2, :] += 1j·En_a · pi_n_c·Dn  (completes Es[2])
-#            torch.mul(pi_n_c, Dn, out=scratch)
-#            torch.mul(scratch, coeff_1j_a, out=scratch2)
-#            Es[:, 2, :].add_(scratch2)
-#
-#            # Advance pi recurrence: swap buffers instead of copying
-#            pi_nm1, pi_n = pi_n, pi_nm1
-#            torch.add(swisc, twisc, alpha=(1. + 1./n), out=pi_n)
-#
-#            # Advance xi recurrence: rotate three buffers, no data copy
-#            xi_nm2, xi_nm1, xi_n = xi_nm1, xi_n, xi_nm2
-#
-#        cos_phi_c   = cos_phi.to(dtype_c)
-#        sin_phi_c   = sin_phi.to(dtype_c)
-#        cos_theta_c = cos_theta.to(dtype_c)
-#        sin_theta_c = sin_theta.to(dtype_c)
-#
-#        Es[:, 0, :] *= cos_phi_c * sin_theta_c / (kr_c * kr_c)
-#        Es[:, 1, :] *= cos_phi_c / kr_c
-#        Es[:, 2, :] *= sin_phi_c / kr_c
-#
-#        if not cartesian:
-#            return Es
-#
-#        Ec[:, 0, :] = (Es[:, 0, :] * sin_theta_c * cos_phi_c
-#                       + Es[:, 1, :] * cos_theta_c * cos_phi_c
-#                       - Es[:, 2, :] * sin_phi_c)
-#        Ec[:, 1, :] = (Es[:, 0, :] * sin_theta_c * sin_phi_c
-#                       + Es[:, 1, :] * cos_theta_c * sin_phi_c
-#                       + Es[:, 2, :] * cos_phi_c)
-#        Ec[:, 2, :] = Es[:, 0, :] * cos_theta_c - Es[:, 1, :] * sin_theta_c
-#
-#        return Ec
 
     @classmethod
     def batch_example(cls,
@@ -1055,6 +961,5 @@ class TorchLorenzMie(LorenzMie):
 
 
 if __name__ == '__main__':  # pragma: no cover
-    TorchLorenzMie.batch_example(save=True)
     TorchLorenzMie.speed_example()
 

@@ -175,8 +175,11 @@ class LorenzMie(LMObject):
             dr = self.coordinates - r_p[:, None]
             self.kdr = k * dr
             ab = particle.ab(n_m, wavelength)
-            self._field += self.lorenzmie(ab, **kwargs)
-            self._field *= np.exp(-1.j * k * r_p[2])
+            # self._field += self.lorenzmie(ab, **kwargs)  # field logic error
+            # self._field *= np.exp(-1.j * k * r_p[2])
+            particle_field = self.lorenzmie(ab, **kwargs)
+            particle_field *= np.exp(-1.j * k * r_p[2])
+            self._field += particle_field
         return self._field
 
     def lorenzmie(self,
