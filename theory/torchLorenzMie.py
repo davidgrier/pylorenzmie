@@ -803,12 +803,16 @@ class TorchLorenzMie(LorenzMie):
         # [3, N, npts] → [N, 3, npts] to match the expected output shape
         return torch.complex(e_re, e_im).permute(1, 0, 2)
 
+#---------------------------------------------------------------------------
+#TESTS
+
     @classmethod
     def batch_example(cls,
                       show: bool = True,
                       save: bool = False,
                       filename: str = None,
                       **kwargs) -> None:  # pragma: no cover
+
         '''Demonstrate batch_hologram() with four holograms'''
         import numpy as np
         from pylorenzmie.theory import Sphere, Instrument
@@ -864,16 +868,26 @@ class TorchLorenzMie(LorenzMie):
         if show:
             plt.show()
 
+#------------------------------------------------------------------------------
     @classmethod
     def speed_example(cls, **kwargs) -> None:  # pragma: no cover
-        '''Compare time to compute 128 identical holograms across four methods:
-        numpy sequential, cupy sequential, torch sequential, torch batch'''
+
+        ''' 
+        Compare time to compute 128 identical holograms across four methods:
+        numpy sequential, cupy sequential, torch sequential, torch batch
+        '''
         from pylorenzmie.theory import Sphere, Instrument
         from pylorenzmie.theory.LorenzMie import LorenzMie
         from pylorenzmie.theory.cupyLorenzMie import cupyLorenzMie
         import cupy as cp
         from time import perf_counter
-
+        
+        '''
+        Setup: Creates a 201x201 coordinate grid. Defines a list of 4 
+        particles as particles. Creates a list of 128 of 'particles' i.e
+        128 identical holograms, each with 4 particles (multiple particles
+        to properly test batching time speedup)
+        '''
         N = 128
         shape = (201, 201)
         coords = cls.meshgrid(shape)
@@ -897,13 +911,20 @@ class TorchLorenzMie(LorenzMie):
             sphere(150,  50, 250, 0.75, 1.42),
             sphere(60,  160, 350, 1.2,  1.43),
         ]
-        particle_lists = [particles for _ in range(N)]
 
+        particle_lists = [particles for _ in range(N)]
+        
+        '''
+        Sync timer to gpu time for accurate counter results.
+        '''
         def gpu_sync():
             if torch.cuda.is_available():
                 torch.cuda.synchronize()
 
-        # ---- 1. numpy sequential ----
+        '''
+        NumPy Sequential: Create a plain lorenzmie model, then 
+        loop over the 128 holograms one at a time. Baseline model. 
+        '''
         numpy_model = LorenzMie(coordinates=coords, instrument=instrument)
         numpy_model.particle = particle_lists[0]
         numpy_model.hologram()  # warm-up
@@ -913,7 +934,9 @@ class TorchLorenzMie(LorenzMie):
             numpy_model.hologram()
         numpy_time = perf_counter() - t0
 
-        # ---- 2. cupy sequential ----
+        '''
+        CuPy Sequential: same as above but using cupyLorenzMie.
+        '''
         cupy_model = cupyLorenzMie(coordinates=coords, instrument=instrument)
         cupy_model.particle = particle_lists[0]
         cupy_model.hologram()  # warm-up
@@ -925,7 +948,9 @@ class TorchLorenzMie(LorenzMie):
         cp.cuda.Device().synchronize()
         cupy_time = perf_counter() - t0
 
-        # ---- 3. torch sequential ----
+        '''
+        Torch sequential: same as above but using torchLorenzmie.
+        '''
         torch_model = cls(coordinates=coords, instrument=instrument, **kwargs)
         torch_model.particle = particle_lists[0]
         torch_model.hologram()  # warm-up
@@ -937,7 +962,10 @@ class TorchLorenzMie(LorenzMie):
         gpu_sync()
         torch_seq_time = perf_counter() - t0
 
-        # ---- 4. torch batch ----
+        '''
+        Torch batch: now uses batch capabilities. Processes all 128 holograms
+        at once rather than serially. 
+        '''
         torch_model.batch_hologram(particle_lists)  # warm-up
         gpu_sync()
         t0 = perf_counter()
@@ -945,9 +973,13 @@ class TorchLorenzMie(LorenzMie):
         gpu_sync()
         torch_batch_time = perf_counter() - t0
 
+        '''
+        Print table with times
+        '''
         print(f'\n{N} holograms ({shape[0]}x{shape[1]}), device: {torch_model.device}')
         print(f'{"Method":<25} {"Time (s)":>10}  {"vs numpy":>10}  {"vs prev":>10}')
         print('-' * 60)
+
         results = [
             ('numpy sequential',  numpy_time),
             ('cupy sequential',   cupy_time),
@@ -955,6 +987,7 @@ class TorchLorenzMie(LorenzMie):
             ('torch batch',       torch_batch_time),
         ]
         prev = numpy_time
+
         for name, t in results:
             print(f'{name:<25} {t:>10.3e}  {numpy_time/t:>9.1f}x  {prev/t:>9.1f}x')
             prev = t
