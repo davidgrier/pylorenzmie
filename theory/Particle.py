@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 from dataclasses import dataclass, field
 import numpy as np
 from pylorenzmie.lib import LMObject
@@ -8,41 +5,37 @@ from pylorenzmie.lib import LMObject
 
 @dataclass
 class Particle(LMObject):
+    '''Abstract base for a scattering particle in Lorenz-Mie microscopy.
 
-    '''
-    Abstraction of a particle for Lorenz-Mie microscopy
+    Holds the particle's 3-D position and the origin of the local
+    coordinate system.  Subclasses add the physical parameters needed
+    to compute Mie scattering coefficients via :meth:`ab`.
 
-    ...
+    ``Particle`` implements the sequence protocol (``__len__``,
+    ``__iter__``, ``__getitem__``) so that a single particle and a list
+    of particles are interchangeable in :meth:`LorenzMie.field`.
 
-    Inherits
-    --------
-    pylorenzmie.lib.LMObject
-
-    Properties
+    Attributes
     ----------
-    r_p : LMObject.Coordinates
-        3-dimensional coordinates of particle's center
     x_p : float
-        x coordinate
+        x coordinate of the particle center, in pixels. Default: 0.
     y_p : float
-        y coordinate
+        y coordinate of the particle center, in pixels. Default: 0.
     z_p : float
-        z coordinate
-    r_0: LMObject.Coordinates
-        3-dimensional origin of coordinate system
+        z coordinate of the particle center, in pixels. Default: 100.
     x_0 : float
-        x coordinate of origin
+        x coordinate of the local origin, in pixels. Default: 0.
     y_0 : float
-        y coordinate of origin
+        y coordinate of the local origin, in pixels. Default: 0.
     z_0 : float
-        z coordinate of origin
+        z coordinate of the local origin, in pixels. Default: 0.
 
-    NOTE: Coordinates are specified in pixels
-
-    Methods
-    -------
-    ab(n_m, wavelength) : LMObject.Coefficients
-        Returns Mie scattering coefficients
+    Notes
+    -----
+    All coordinates are in pixels.  ``r_0`` is set by :class:`Cluster`
+    to translate each constituent particle into the cluster's local
+    frame; it is not an adjustable parameter and is excluded from
+    ``properties``.
     '''
 
     x_p: float = 0.
@@ -65,7 +58,13 @@ class Particle(LMObject):
 
     @property
     def r_p(self) -> LMObject.Coordinates:
-        '''Three-dimensional coordinates of particle's center'''
+        '''3-D position of the particle center, in pixels.
+
+        Returns
+        -------
+        numpy.ndarray, shape (3,)
+            ``[x_p, y_p, z_p]``.
+        '''
         return np.asarray([self.x_p, self.y_p, self.z_p])
 
     @r_p.setter
@@ -74,7 +73,13 @@ class Particle(LMObject):
 
     @property
     def r_0(self) -> LMObject.Coordinates:
-        '''Three-dimensional coordinates of origin'''
+        '''Origin of the local coordinate system, in pixels.
+
+        Returns
+        -------
+        numpy.ndarray, shape (3,)
+            ``[x_0, y_0, z_0]``.
+        '''
         return np.asarray([self.x_0, self.y_0, self.z_0])
 
     @r_0.setter
@@ -90,22 +95,24 @@ class Particle(LMObject):
     def ab(self,
            n_m: float | complex = 1.+0.j,
            wavelength: float = 0.532) -> LMObject.Coefficients:
-        '''Returns the Mie scattering coefficients
+        '''Mie scattering coefficients for this particle.
 
-        Subclasses of Particle should override this
-        method.
+        The base-class implementation returns ``[1, 1]`` as a trivial
+        placeholder.  Subclasses must override this method with a
+        physically meaningful calculation.
 
         Parameters
         ----------
-        n_m : complex
-            Refractive index of medium
-        wavelength: float
-            Vacuum wavelength of light [um]
+        n_m : float or complex
+            Refractive index of the surrounding medium. Default: 1+0j.
+        wavelength : float
+            Vacuum wavelength of the illuminating light, in μm.
+            Default: 0.532.
 
         Returns
         -------
-        ab : numpy.ndarray
-            Mie AB scattering coefficients
+        ab : numpy.ndarray, shape (2, n_terms), dtype complex
+            Mie scattering coefficients.
         '''
         return np.asarray([1, 1], dtype=complex)
 
