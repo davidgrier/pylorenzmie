@@ -167,15 +167,15 @@ class LorenzMie(LMObject):
         self._field.fill(0.+0.j)
         for particle in self.particle:
             r_p = particle.r_p + particle.r_0
-            dr = self.coordinates - r_p[:, None]
-            self.kdr = k * dr
+            kdr = k * (self.coordinates - r_p[:, None])
             ab = particle.ab(n_m, wavelength)
-            self._field += (self.lorenzmie(ab, **kwargs) *
+            self._field += (self.lorenzmie(ab, kdr, **kwargs) *
                             np.exp(-1.j * k * r_p[2]))
         return self._field
 
     def lorenzmie(self,
                   ab: LMObject.Coefficients,
+                  kdr: LMObject.Coordinates,
                   cartesian: bool = True,
                   bohren: bool = True) -> LMObject.Field:
         '''Returns the field described by ab coefficients
@@ -183,16 +183,16 @@ class LorenzMie(LMObject):
         Parameters
         ----------
         ab : numpy.ndarray, shape (n_orders, 2)
-            Mie scattering coefficients
-
-        Keywords
-        --------
+            Mie scattering coefficients.
+        kdr : numpy.ndarray, shape (3, npts)
+            Wave-number-scaled displacement from particle to each
+            coordinate point.
         cartesian : bool
             If True, return field projected onto Cartesian coordinates.
-            Otherwise, return polar projection.
+            Default: True.
         bohren : bool
             If True, use sign convention from Bohren and Huffman.
-            Otherwise, use opposite sign convention.
+            Default: True.
 
         Returns
         -------
@@ -213,9 +213,9 @@ class LorenzMie(LMObject):
         # Accounting for this by flipping the axial coordinate
         # is equivalent to using a mirrored (left-handed)
         # coordinate system.
-        kx = self.kdr[0, :]
-        ky = self.kdr[1, :]
-        kz = -self.kdr[2, :]
+        kx = kdr[0, :]
+        ky = kdr[1, :]
+        kz = -kdr[2, :]
         shape = kx.shape
 
         # 2. geometric factors
