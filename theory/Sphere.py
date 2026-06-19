@@ -1,64 +1,43 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 from dataclasses import dataclass
 from pylorenzmie.theory import Particle
+from pylorenzmie.lib.types import Coefficients, Properties
 import numpy as np
 
 
 @dataclass
 class Sphere(Particle):
+    '''Homogeneous spherical scatterer for Lorenz-Mie microscopy.
 
-    '''
-    Abstraction of a spherical scatterer for Lorenz-Mie micrsocopy
+    Extends :class:`Particle` with the physical parameters needed to
+    compute Mie scattering coefficients for an isotropic homogeneous
+    sphere illuminated by a coherent plane wave polarized along x and
+    propagating along z.
 
-    ...
-
-    Inherits
-    --------
-    pylorenzmie.theory.Particle
-
-    Properties
+    Attributes
     ----------
-    a_p: float
-        radius of particle [um]
-    n_p: float | complex
-        refractive index of particle
-    k_p: float
-        absorption coefficient of particle
-
-    Methods
-    -------
-    ab(n_m, wavelength): Particle.Coefficients
-        returns the Mie scattering coefficients for the sphere
-
-        Arguments
-        ---------
-        n_m: float | complex
-            refractive index of medium
-        wavelength: float
-            vacuum wavelength of light [micrometers]
+    a_p : float
+        Radius of the sphere, in μm. Default: 1.
+    n_p : float
+        Refractive index of the sphere. Default: 1.5.
+    k_p : float
+        Absorption coefficient of the sphere. Default: 0.
 
     References
     ----------
-    1. Adapted from Chapter 8 in
-       C. F. Bohren and D. R. Huffman,
-       Absorption and Scattering of Light by Small Particles,
-       (New York, Wiley, 1983).
-    2. W. Yang,
-       Improved recursive algorithm for light scattering
-       by a multilayered sphere,
-       Applied Optics 42, 1710--1720 (2003).
-    3. O. Pena, U. Pal,
-       Scattering of electromagnetic radiation by a multilayered sphere,
-       Computer Physics Communications 180, 2348--2354 (2009).
-       NB: Equation numbering follows this reference.
-    4. W. J. Wiscombe,
-       Improved Mie scattering algorithms,
-       Applied Optics 19, 1505-1509 (1980).
-    5. A. A. R. Neves and D. Pisignano,
-       Effect of finite terms on the truncation error of Mie series,
-       Optics Letters 37, 2481-2420 (2012).
+    .. [1] C. F. Bohren and D. R. Huffman, *Absorption and Scattering
+       of Light by Small Particles* (Wiley, 1983), Chapter 8.
+    .. [2] W. Yang, "Improved recursive algorithm for light scattering
+       by a multilayered sphere," *Applied Optics* **42**, 1710–1720
+       (2003).
+    .. [3] O. Pena and U. Pal, "Scattering of electromagnetic radiation
+       by a multilayered sphere," *Computer Physics Communications*
+       **180**, 2348–2354 (2009).  Equation numbering follows this
+       reference.
+    .. [4] W. J. Wiscombe, "Improved Mie scattering algorithms,"
+       *Applied Optics* **19**, 1505–1509 (1980).
+    .. [5] A. A. R. Neves and D. Pisignano, "Effect of finite terms on
+       the truncation error of Mie series," *Optics Letters* **37**,
+       2481–2483 (2012).
     '''
 
     a_p: float = 1.
@@ -67,15 +46,15 @@ class Sphere(Particle):
 
     @property
     def d_p(self) -> float:
-        '''Diameter of sphere [um]'''
-        return 2.*self.a_p
+        '''Diameter of the sphere, in μm.'''
+        return 2. * self.a_p
 
     @d_p.setter
     def d_p(self, d_p: float) -> None:
-        self.a_p = d_p/2.
+        self.a_p = d_p / 2.
 
     @Particle.properties.getter
-    def properties(self) -> Particle.Properties:
+    def properties(self) -> Properties:
         return {**super().properties,
                 'a_p': self.a_p,
                 'n_p': self.n_p,
@@ -83,47 +62,44 @@ class Sphere(Particle):
 
     def ab(self,
            n_m: float | complex = 1.42,
-           wavelength: float = 0.532) -> Particle.Coefficients:
-        '''Returns the Mie scattering coefficients
+           wavelength: float = 0.532) -> Coefficients:
+        '''Mie scattering coefficients for the sphere.
 
-        Arguments
-        ---------
-        n_m: float | complex
-            Refractive index of medium
-        wavelength: float
-            Vacuum wavelength of light [micrometers]
+        Parameters
+        ----------
+        n_m : float or complex
+            Refractive index of the medium. Default: 1.42.
+        wavelength : float
+            Vacuum wavelength of the illuminating light, in μm.
+            Default: 0.532.
 
         Returns
         -------
-        ab : Particle.Coefficients
-            Mie AB scattering coefficients
+        ab : numpy.ndarray, shape (n_terms, 2), dtype complex
+            Mie scattering coefficients.
         '''
-        return Sphere.mie_coefficients(self.a_p,
-                                       self.n_p,
-                                       self.k_p,
+        return Sphere.mie_coefficients(self.a_p, self.n_p, self.k_p,
                                        n_m, wavelength)
 
     @staticmethod
     def wiscombe_yang(x: float, m: float | complex) -> int:
-        '''Return the number of terms to keep in partial wave expansion
+        '''Number of terms to retain in the partial-wave expansion.
 
-        Equation numbers refer to Wiscombe (1980) and Yang (2003).
+        Implements the truncation criterion of Wiscombe (1980) with the
+        extension for multilayered spheres from Yang (2003) Eq. (30).
 
-        ...
-
-        Arguments
-        ---------
-        x : complex
-            size parameters for sphere
-        m : float | complex
-            relative refractive index of sphere
+        Parameters
+        ----------
+        x : float
+            Size parameter of the sphere (or outermost layer).
+        m : float or complex
+            Refractive index of the sphere relative to the medium.
 
         Returns
         -------
-        ns : int
-            Number of terms to retain in the partial-wave expansion
+        nstop : int
+            Number of terms to retain.
         '''
-
         # Wiscombe (1980)
         xl = np.abs(x)
         if xl <= 8.:
@@ -141,48 +117,58 @@ class Sphere(Particle):
 
     @staticmethod
     def neves_pisignano(x: float,
-                        precision: float | complex = 6.) -> int:
-        nstop = x + 0.76 * np.cbrt(precision*precision*x) - 4.1
+                        precision: float = 6.) -> int:
+        '''Number of terms to retain, after Neves and Pisignano (2012).
+
+        Alternative termination criterion to :meth:`wiscombe_yang`.
+
+        Parameters
+        ----------
+        x : float
+            Size parameter of the sphere.
+        precision : float
+            Desired decimal digits of precision. Default: 6.
+
+        Returns
+        -------
+        nstop : int
+            Number of terms to retain.
+        '''
+        nstop = x + 0.76 * np.cbrt(precision * precision * x) - 4.1
         return int(nstop)
 
     @staticmethod
     def mie_coefficients(a_p: float,
                          n_p: float,
                          k_p: float,
-                         n_m: complex,
-                         wavelength: float) -> Particle.Coefficients:
-        '''Returns the Mie scattering coefficients for a sphere
+                         n_m: float | complex,
+                         wavelength: float) -> Coefficients:
+        '''Mie scattering coefficients for a homogeneous sphere.
 
-        This works for an isotropic homogeneous sphere illuminated by
-        a coherent plane wave linearly polarized along x
-        and propagating along z.
-        ...
-
-        Arguments
-        ---------
+        Parameters
+        ----------
         a_p : float
-            radius of the sphere [um]
+            Radius of the sphere, in μm.
         n_p : float
-            refractive index of the sphere
+            Refractive index of the sphere.
         k_p : float
-            absorption coefficient of sphere
-        n_m : float | complex
-            refractive index of medium
+            Absorption coefficient of the sphere.
+        n_m : float or complex
+            Refractive index of the medium.
         wavelength : float
-            wavelength of light [um]
+            Vacuum wavelength of the illuminating light, in μm.
 
         Returns
         -------
-        ab : Particle.Coefficients
-            Mie AB coefficients
+        ab : numpy.ndarray, shape (n_terms, 2), dtype complex
+            Mie scattering coefficients.
         '''
-
         # size parameters for layers
-        k = 2.*np.pi/wavelength    # wave number in vacuum [um^-1]
-        k *= np.real(n_m)          # wave number in medium
+        k = 2. * np.pi / wavelength   # wave number in vacuum [um^-1]
+        k *= np.real(n_m)             # wave number in medium
 
-        x = k * a_p                # size parameter
-        m = (n_p + 1.j*k_p) / n_m  # relative refractive index
+        x = k * a_p                   # size parameter
+        m = (n_p + 1.j * k_p) / n_m  # relative refractive index
 
         nmax = Sphere.wiscombe_yang(x, m)
 
@@ -200,7 +186,7 @@ class Sphere(Particle):
         # iterate outward from the sphere's core
         z = x * m
         for n in range(nmax, 0, -1):
-            D1[n-1] = n/z - 1./(D1[n] + n/z)         # Eq. (16b)
+            D1[n-1] = n/z - 1./(D1[n] + n/z)        # Eq. (16b)
         Ha = D1.copy()                               # Eq. (7a)
         Hb = D1.copy()                               # Eq. (8a)
 
@@ -208,17 +194,17 @@ class Sphere(Particle):
         z = x
         # downward recurrence for D1 (D1[nmax] = 0)
         for n in range(nmax, 0, -1):
-            D1[n-1] = n/z - (1./(D1[n] + n/z))       # Eq. (16b)
+            D1[n-1] = n/z - (1./(D1[n] + n/z))      # Eq. (16b)
 
         # upward recurrence for Ψ, ζ, Ψζ and D3
-        Ψ[0] = np.sin(z)                             # Eq. 20a)
-        ζ[0] = -1.j * np.exp(1.j * z)                # Eq. (21a)
-        Ψζ = 0.5 * (1. - np.exp(2.j * z))            # Eq. (18a)
+        Ψ[0] = np.sin(z)                             # Eq. (20a)
+        ζ[0] = -1.j * np.exp(1.j * z)               # Eq. (21a)
+        Ψζ = 0.5 * (1. - np.exp(2.j * z))           # Eq. (18a)
         for n in range(1, nmax+1):
-            Ψ[n] = Ψ[n-1] * (n/z - D1[n-1])          # Eq. (20b)
-            ζ[n] = ζ[n-1] * (n/z - D3[n-1])          # Eq. (21b)
-            Ψζ *= (n/z - D1[n-1]) * (n/z - D3[n-1])  # Eq. (18c)
-            D3[n] = D1[n] + 1.j/Ψζ                   # Eq. (18d)
+            Ψ[n] = Ψ[n-1] * (n/z - D1[n-1])         # Eq. (20b)
+            ζ[n] = ζ[n-1] * (n/z - D3[n-1])         # Eq. (21b)
+            Ψζ *= (n/z - D1[n-1]) * (n/z - D3[n-1]) # Eq. (18c)
+            D3[n] = D1[n] + 1.j/Ψζ                  # Eq. (18d)
 
         # scattering coefficients
         n = np.arange(nmax+1)
