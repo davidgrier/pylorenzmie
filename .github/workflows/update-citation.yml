@@ -1,0 +1,31 @@
+name: Update CITATION.cff
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  update-citation:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Update version and date in CITATION.cff
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          DATE="$(date -u +%Y-%m-%d)"
+          sed -i "s/^version: .*/version: \"${VERSION}\"/" CITATION.cff
+          sed -i "s/^date-released: .*/date-released: \"${DATE}\"/" CITATION.cff
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CITATION.cff
+          git diff --staged --quiet || git commit -m "Update CITATION.cff for ${GITHUB_REF_NAME}"
+          git push

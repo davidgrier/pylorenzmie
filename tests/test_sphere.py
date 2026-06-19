@@ -1,7 +1,10 @@
 import unittest
 import numpy as np
 
-from pylorenzmie.theory.Sphere import (Sphere, wiscombe_yang, mie_coefficients)
+from pylorenzmie.theory.Sphere import Sphere
+
+wiscombe_yang = Sphere.wiscombe_yang
+mie_coefficients = Sphere.mie_coefficients
 
 
 class TestSphere(unittest.TestCase):

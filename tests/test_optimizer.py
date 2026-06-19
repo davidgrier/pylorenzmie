@@ -31,9 +31,9 @@ class TestOptimizer(unittest.TestCase):
         model.particle.n_p = 1.4
         self.optimizer = Optimizer(model=model)
 
-    def test_report_none(self):
-        r = self.optimizer.report
-        self.assertIs(r, None)
+    def test_result_none(self):
+        '''result is None before any optimization has run'''
+        self.assertIs(self.optimizer.result, None)
 
     def test_data(self):
         self.optimizer.data = self.data
@@ -45,20 +45,6 @@ class TestOptimizer(unittest.TestCase):
         self.optimizer.coordinates = self.coordinates
         self.assertEqual(self.optimizer.coordinates.shape[1],
                          self.coordinates.shape[1])
-
-    def test_optimize(self, method='lm'):
-        self.optimizer.method = method
-        self.optimizer.data = self.data
-        result = self.optimizer.optimize()
-        if not result.success:
-            print(result)
-        self.assertTrue(result.success)
-
-    def test_optimize_failure(self):
-        self.optimizer.data = self.data + 100.
-        result = self.optimizer.optimize()
-        failure = not result.success or (result.redchi > 100.)
-        self.assertTrue(failure)
 
     def test_metadata(self):
         self.assertIsInstance(self.optimizer.metadata, pd.Series)

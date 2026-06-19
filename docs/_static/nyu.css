@@ -1,0 +1,17 @@
+/* NYU brand colours for pylorenzmie documentation.
+   NYU purple #57068c (primary), NYU violet #8900e1 (accent).
+*/
+
+:root {
+    --pst-color-primary: #57068c;
+    --pst-color-secondary: #8900e1;
+    --pst-color-link: #57068c;
+    --pst-color-link-hover: #8900e1;
+    --pst-color-inline-code: #57068c;
+}
+
+/* Active sidebar entry */
+.bd-sidenav .current > a {
+    color: #57068c !important;
+    border-left: 3px solid #57068c;
+}

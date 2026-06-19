@@ -35,8 +35,12 @@ class cupyLorenzMie(LorenzMie):
 
     method: str = 'cupy numpy'
 
-    Image = LorenzMie.Image | cp.ndarray
-    Field = LorenzMie.Field | cp.ndarray
+    try:
+        Image = LorenzMie.Image | cp.ndarray
+        Field = LorenzMie.Field | cp.ndarray
+    except TypeError:
+        Image = LorenzMie.Image
+        Field = LorenzMie.Field
 
     def __init__(self,
                  *args,

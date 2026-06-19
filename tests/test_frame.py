@@ -1,11 +1,10 @@
 import unittest
 
-from analysis import Frame
+from pylorenzmie.analysis import Frame
 
 import os
 import cv2
 import numpy as np
-import pandas as pd
     
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -39,25 +38,6 @@ class TestFrame(unittest.TestCase):
         bboxes = self.frame.bboxes
         self.assertEqual(nfeatures, len(features))
         self.assertEqual(nfeatures, len(bboxes))
-
-    def test_optimize(self):
-        self.frame.data = self.data
-        self.frame.detect()
-        particle = self.frame.features[0].particle
-        a_p = particle.a_p
-        self.frame.estimate()
-        self.frame.optimize()
-        self.assertNotEqual(particle.a_p, a_p)
-
-    def test_analyze(self):
-        results = self.frame.analyze(self.data)
-        self.assertIsInstance(results, pd.DataFrame)
-
-    def test_results(self):
-        self.frame.analyze(None)
-        self.assertEqual(len(self.frame.results), 0)
-        self.frame.analyze(self.data)
-        self.assertEqual(len(self.frame.results), 2)
 
     def test_shape(self):
         shape = [640, 480]

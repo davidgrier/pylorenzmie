@@ -1,3 +1,5 @@
+'''Azimuthal statistics for 2-D images.'''
+
 import numpy as np
 from numpy.typing import NDArray
 from functools import wraps
@@ -10,6 +12,11 @@ Average = NDArray[float]
 
 
 def azimuthaloperator(func):
+    '''Decorator that converts a (d, r) function to a (data, center) function.
+
+    The wrapped function receives the raveled data array and the integer
+    radius array computed from the image and center coordinates.
+    '''
     @wraps(func)
     def wrappedoperator(data: Data,
                         center: Center | None = None,
@@ -18,7 +25,6 @@ def azimuthaloperator(func):
         x_p, y_p = (nx/2., ny/2.) if center is None else center
         x = np.arange(nx) - x_p
         y = np.arange(ny) - y_p
-
         d = data.ravel()
         r = np.hypot.outer(y, x).astype(int).ravel()
         return func(d, r, *args, **kwargs)
@@ -26,75 +32,96 @@ def azimuthaloperator(func):
     return wrappedoperator
 
 
-def docstring(purpose: str) -> str:
-    parameters = '''
+@azimuthaloperator
+def avg(d: Data, r: Radii) -> Average:
+    '''Azimuthal average of a 2-D image.
+
     Parameters
     ----------
-    data: numpy.ndarray
-        Two-dimensional data set
-    center: Optional[Tuple(float, float)]
-        (x, y) center of azimuthal average
-        Default: center of data
+    data : numpy.ndarray
+        Two-dimensional data set.
+    center : array-like, optional
+        (x, y) center for the azimuthal average.
+        Default: center of data.
 
     Returns
-    -------'''
-
-    def _doc(func):
-        outcome = func.__doc__
-        func.__doc__ = f'{purpose}\n{parameters}{outcome}'
-        return func
-    return _doc
-
-
-@azimuthaloperator
-@docstring('Azimuthal average')
-def avg(d: Data, r: Radii) -> Average:
-    '''
-    avg: ndarray
-        Average value of data as a function of distance from center
+    -------
+    avg : numpy.ndarray
+        Average value of data as a function of distance from center.
     '''
     nr = np.bincount(r)
     return np.bincount(r, d) / nr
 
 
 @azimuthaloperator
-@docstring('Azimuthal standard deviation')
 def std(d: Data, r: Radii) -> tuple[Average, Average]:
-    '''
-    avg, std: tuple of numpy.ndarray
-        Azimuthal average and
-        azimuthal standard deviation
-        as functions of distance from center
+    '''Azimuthal standard deviation of a 2-D image.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Two-dimensional data set.
+    center : array-like, optional
+        (x, y) center for the azimuthal average.
+        Default: center of data.
+
+    Returns
+    -------
+    avg : numpy.ndarray
+        Azimuthal average as a function of distance from center.
+    std : numpy.ndarray
+        Azimuthal standard deviation as a function of distance from center.
     '''
     nr = np.bincount(r)
-    avg = np.bincount(r, d) / nr
-    std = np.sqrt(np.bincount(r, (d - avg[r])**2) / nr)
-    return avg, std
+    a = np.bincount(r, d) / nr
+    s = np.sqrt(np.bincount(r, (d - a[r])**2) / nr)
+    return a, s
 
 
 @azimuthaloperator
-@docstring('Azimuthal median')
 def med(d: Data, r: Radii) -> Average:
-    '''
-    med: numpy.ndarray
-        Median value as a function of distance from center
+    '''Azimuthal median of a 2-D image.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Two-dimensional data set.
+    center : array-like, optional
+        (x, y) center for the azimuthal median.
+        Default: center of data.
+
+    Returns
+    -------
+    med : numpy.ndarray
+        Median value as a function of distance from center.
     '''
     nmax = r.max() + 1
-    med = [np.median(d[np.where(r == n)]) for n in np.arange(nmax)]
-    return np.array(med)
+    return np.array([np.median(d[np.where(r == n)])
+                     for n in np.arange(nmax)])
 
 
 @azimuthaloperator
-@docstring('Azimuthal median absolute deviation')
 def mad(d: Data, r: Radii) -> tuple[Average, Average]:
-    '''
-    med, mad: tuple of numpy.ndarray
-        Azimuthal median and
-        azimuthal median absolute deviation
-        as functions of distance from center
+    '''Azimuthal median absolute deviation of a 2-D image.
+
+    Parameters
+    ----------
+    data : numpy.ndarray
+        Two-dimensional data set.
+    center : array-like, optional
+        (x, y) center for the azimuthal median.
+        Default: center of data.
+
+    Returns
+    -------
+    med : numpy.ndarray
+        Azimuthal median as a function of distance from center.
+    mad : numpy.ndarray
+        Azimuthal median absolute deviation as a function of distance
+        from center.
     '''
     nmax = r.max() + 1
-    med = [np.median(d[np.where(r == n)]) for n in np.arange(nmax)]
-    dev = [np.median(np.abs(d[np.where(r == n)] - med[n]))
+    m = [np.median(d[np.where(r == n)]) for n in np.arange(nmax)]
+    dev = [np.median(np.abs(d[np.where(r == n)] - m[n]))
            for n in np.arange(nmax)]
-    return np.array(med), np.array(dev)
+    return np.array(m), np.array(dev)

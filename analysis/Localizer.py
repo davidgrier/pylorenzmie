@@ -1,3 +1,4 @@
+from pathlib import Path
 from pylorenzmie.lib import (LMObject, Azimuthal, CircleTransform)
 import numpy as np
 import trackpy as tp
@@ -48,7 +49,7 @@ class Localizer(LMObject):
         self._circletransform = CircleTransform()
         self.detect = self.localize
 
-    @LMObject.properties.fget
+    @property
     def properties(self) -> LMObject.Properties:
         keys = 'nfringes diameter'.split()
         return {k: getattr(self, k) for k in keys}
@@ -124,7 +125,7 @@ class Localizer(LMObject):
         return image[y0:y0+h, x0:x0+w]
 
     @classmethod
-    def example(cls: 'Localizer') -> None:
+    def example(cls: 'Localizer') -> None:  # pragma: no cover
         import cv2
         import matplotlib
         from matplotlib import pyplot as plt
@@ -135,7 +136,7 @@ class Localizer(LMObject):
         localizer = cls()
 
         # Normalized hologram
-        basedir = localizer.directory.parent
+        basedir = Path(__file__).parent.parent
         filename = str(basedir / 'docs' / 'tutorials' / 'image0010.png')
         b = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float) / 100.
         print(filename)

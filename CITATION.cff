@@ -1,0 +1,52 @@
+cff-version: 1.2.0
+message: 'If you use this software, please cite it as below.'
+type: software
+title: pylorenzmie
+abstract: >-
+  Python tools for tracking and characterizing colloidal particles
+  with in-line holographic video microscopy. Provides generative
+  light-scattering models based on Lorenz-Mie theory, GPU-accelerated
+  hologram computation, and a complete analysis pipeline for particle
+  detection, localization, and characterization.
+authors:
+  - family-names: Grier
+    given-names: David G.
+    orcid: https://orcid.org/0000-0002-4382-5139
+    affiliation: New York University
+  - family-names: Altman
+    given-names: Lauren
+    affiliation: New York University
+  - family-names: Cheong
+    given-names: Fook Chiong
+    affiliation: New York University
+  - family-names: Hannel
+    given-names: Mark D.
+    affiliation: New York University
+  - family-names: Lee
+    given-names: Sanghyuk
+    affiliation: New York University
+  - family-names: O'Brien
+    given-names: Michael
+    affiliation: New York University
+  - family-names: Snyder
+    given-names: Kaitlynn
+    affiliation: New York University
+  - family-names: Sustiel
+    given-names: Jackie
+    affiliation: New York University
+  - family-names: Odeh
+    given-names: Sarah
+    affiliation: New York University
+repository-code: https://github.com/davidgrier/pylorenzmie
+license: GPL-3.0-or-later
+url: https://pylorenzmie.readthedocs.io
+version: "1.0.0"
+date-released: "2026-06-19"
+keywords:
+  - holography
+  - microscopy
+  - Lorenz-Mie
+  - light scattering
+  - colloids
+  - particle tracking
+  - scientific

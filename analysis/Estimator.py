@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from pathlib import Path
 from pylorenzmie.lib import (LMObject, Azimuthal)
 from pylorenzmie.theory import Instrument
 import pandas as pd
@@ -93,8 +94,10 @@ class Estimator(LMObject):
         '''
         if self.a_p is not None:
             return
-        minima = argrelmin(self.profile)
-        alpha_n = np.sqrt(np.square(self.z_p/minima) + 1.)
+        minima = argrelmin(self.profile)[0].astype(float)
+        if len(minima) == 0:
+            return
+        alpha_n = np.sqrt(np.square(self.z_p / minima) + 1.)
         a_p = np.median(jn_zeros(1, len(alpha_n)) * alpha_n) / self.k
         self.a_p = 2. * self.magnification * a_p
 
@@ -111,11 +114,11 @@ class Estimator(LMObject):
         return pd.Series(self.properties)
 
     @classmethod
-    def example(cls) -> None:
+    def example(cls) -> None:  # pragma: no cover
         import cv2
 
         estimator = cls(Instrument())
-        basedir = estimator.directory.parent
+        basedir = Path(__file__).parent.parent
         filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
         hologram = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
         hologram /= 100.

@@ -26,8 +26,9 @@ screen" width="30%"/>
 screen" width="30%"/>
 
 ## Authors
-David G. Grier (New York University), Lauren Altman, Fook Chiong Cheong, 
-Mark D. Hannel, Sanghyuk Lee, Michael O'Brien, Kaitlynn Snyder, Jackie Sustiel
+David G. Grier (New York University), Lauren Altman, Fook Chiong Cheong,
+Mark D. Hannel, Sanghyuk Lee, Michael O'Brien, Sarah Odeh, Kaitlynn Snyder,
+Jackie Sustiel
 
 ## Licensing.
 [GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)

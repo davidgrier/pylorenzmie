@@ -1,59 +1,110 @@
-from abc import (ABC, abstractmethod)
+'''Base class and shared type aliases for pylorenzmie objects.'''
+
+from abc import ABC, abstractmethod
 import json
-import pandas as pd
+import logging
 import numpy as np
+import pandas as pd
 from numpy.typing import NDArray
-from pathlib import Path
+
+
+# Module-level type aliases — importable without going through LMObject.
+Property = bool | int | float | str | None
+Properties = dict[str, Property]
+Image = NDArray[float] | NDArray[int]
+Images = Image | list[Image]
+Coordinates = NDArray[float]
+Coefficients = NDArray[complex]
+Field = NDArray[complex]
+Result = pd.Series | pd.DataFrame
+Results = Result | list[Result]
+
+
+def meshgrid(shape: tuple[int, int],
+             corner: tuple[float, float] = (0., 0.),
+             flatten: bool = True,
+             dtype: type = float) -> Coordinates:
+    '''Pixel coordinate grid for holographic microscopy images.
+
+    Parameters
+    ----------
+    shape : tuple[int, int]
+        (ny, nx) dimensions of the grid.
+    corner : tuple[float, float]
+        (left, top) origin of the coordinate system in pixels.
+        Default: (0., 0.).
+    flatten : bool
+        If True (default), return shape (2, ny*nx).
+        If False, return shape (2, ny, nx).
+    dtype : type
+        Numeric type for the coordinate arrays.
+        Default: float.
+
+    Returns
+    -------
+    xy : numpy.ndarray
+        Coordinate grid.
+    '''
+    ny, nx = shape
+    left, top = corner
+    x = np.arange(left, left + nx, dtype=dtype)
+    y = np.arange(top, top + ny, dtype=dtype)
+    xy = np.array(np.meshgrid(x, y))
+    return xy.reshape((2, -1)) if flatten else xy
 
 
 class LMObject(ABC):
-    '''
-    Base class for pylorenzmie objects
+    '''Base class for pylorenzmie objects.
 
-    ...
+    Provides the ``properties`` protocol (used for both serialization and
+    optimization), JSON and pandas I/O, equality comparison, and a
+    class-scoped logger.
 
     Attributes
     ----------
-    properties: dict
-        Dictionary of object properties
+    properties : dict
+        Dictionary of adjustable object properties.  Concrete subclasses
+        must override the getter; the base-class setter applies any key
+        that matches an existing attribute and logs a debug message for
+        unknown keys.
 
-    directory: str
-        Fully resolved directory to object definition
+    Notes
+    -----
+    ``LMObject`` instances are mutable and therefore unhashable
+    (``__hash__`` is explicitly ``None``).
 
-    Methods
-    -------
-    to_json(**kwargs): str
-        Returns JSON string of object properties and values
-        Accepts keywords for json.dumps
-
-    from_json(s: str): None
-        Load JSON string of properties
-
-    to_pandas(**kwargs): pandas.Series
-        Returns pandas Series of object properties and values.
-        Accepts keywords for pandas.Series.
-
-    from_pandas(s: pandas.Series): None
-        Loads properties from pandas Series
-
-    meshgrid(shape, corner, flatten, dtype): numpy.ndarray
-        Returns coordinate system for Lorenz-Mie microscopy images
-
+    The type aliases below are re-exported at class scope for backward
+    compatibility.  Prefer importing them directly from
+    ``pylorenzmie.lib``.
     '''
 
-    Property = bool | int | float
-    Properties = dict[str, Property]
-    Image = NDArray[float] | NDArray[int]
-    Images = Image | list[Image]
-    Coordinates = NDArray[float]
-    Coefficients = NDArray[complex]
-    Field = NDArray[complex]
-    Result = pd.Series | pd.DataFrame
-    Results = Result | list[Result]
+    # Type aliases re-exported at class scope for backward compatibility.
+    Property = Property
+    Properties = Properties
+    Image = Image
+    Images = Images
+    Coordinates = Coordinates
+    Coefficients = Coefficients
+    Field = Field
+    Result = Result
+    Results = Results
 
-    def __eq__(self, other) -> bool:
-        if isinstance(other, self.__class__):
-            return False
+    # Module-level meshgrid re-exported at class scope for backward
+    # compatibility.  Import from pylorenzmie.lib directly instead.
+    meshgrid = staticmethod(meshgrid)
+
+    # Mutable objects should not be hashable.
+    __hash__ = None
+
+    @property
+    def logger(self) -> logging.Logger:
+        '''Logger named after the concrete class.'''
+        return logging.getLogger(
+            f'{self.__class__.__module__}.{self.__class__.__qualname__}')
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, self.__class__):
+            return NotImplemented
         return self.properties == other.properties
 
     @property
@@ -66,18 +117,21 @@ class LMObject(ABC):
         for name, value in properties.items():
             if hasattr(self, name):
                 setattr(self, name, value)
+            else:
+                self.logger.debug('Ignoring unknown property: %s', name)
 
     def to_json(self, **kwargs) -> str:
-        '''Returns JSON string of adjustable properties
+        '''Serialize properties to a JSON string.
 
         Parameters
         ----------
-        Accepts all keywords of json.dumps()
+        **kwargs
+            Passed through to ``json.dumps``.
 
         Returns
         -------
-        str : string
-            JSON-encoded string of properties
+        str
+            JSON-encoded properties.
         '''
         def np_encoder(obj):
             if isinstance(obj, np.generic):
@@ -86,80 +140,39 @@ class LMObject(ABC):
         return json.dumps(self.properties, default=np_encoder, **kwargs)
 
     def from_json(self, s: str) -> None:
-        '''Loads JSON string of adjustable properties
+        '''Load properties from a JSON string.
 
         Parameters
         ----------
         s : str
-            JSON-encoded string of properties
+            JSON-encoded properties.
         '''
         self.properties = json.loads(s)
 
     def to_pandas(self, **kwargs) -> pd.Series:
-        '''Returns pandas Series of adjustable properties
+        '''Serialize properties to a pandas Series.
 
         Parameters
         ----------
-        Accepts all keywords of pandas.Series
+        **kwargs
+            Passed through to ``pandas.Series``.
 
         Returns
         -------
-        series: pandas Series
+        pandas.Series
         '''
         return pd.Series(self.properties, **kwargs)
 
     def from_pandas(self, series: pd.Series) -> None:
-        '''Loads adjustable properties from pandas Series
+        '''Load properties from a pandas Series.
 
         Parameters
         ----------
-        series: pandas Series
+        series : pandas.Series
         '''
         self.properties = series.to_dict()
 
-    @property
-    def directory(self) -> Path:
-        '''Returns fully-qualified path to source file'''
-        return Path(__file__).parent.resolve()
-
-    @staticmethod
-    def meshgrid(shape: tuple[int, int],
-                 corner: tuple[int, int] = (0., 0.),
-                 flatten: bool = True,
-                 dtype=float) -> Coordinates:
-        '''Returns coordinate system for Lorenz-Mie microscopy images
-
-        Parameters
-        ----------
-        shape : tuple[int, int]
-            (nx, ny) shape of the coordinate system
-
-        Keywords
-        --------
-        corner : tuple[int, int]
-            (left, top) starting coordinates for x and y, respectively
-        flatten : bool
-            If False, coordinates shape is (2, nx, ny)
-            If True, coordinates are flattened to (2, nx*ny)
-            Default: True
-        dtype : type
-            Data type.
-            Default: float
-
-        Returns
-        -------
-        xy : numpy.ndarray
-            Coordinate system
-        '''
-        ny, nx = shape
-        left, top = corner
-        x = np.arange(left, left + nx, dtype=dtype)
-        y = np.arange(top, top + ny, dtype=dtype)
-        xy = np.array(np.meshgrid(x, y))
-        return xy.reshape((2, -1)) if flatten else xy
-
     @classmethod
-    def example(cls) -> None:
-        '''Minimal example for subclasses of LMObject'''
+    def example(cls) -> None:  # pragma: no cover
         a = cls()
         print(a)

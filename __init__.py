@@ -1,3 +1,6 @@
-#__all__ = ['detection', 'fitting', 'analysis', 'utilities', 'theory', 'lmtool']
+from importlib.metadata import version, PackageNotFoundError
 
-#from . import detection, fitting, utilities, theory, lmtool, analysis
+try:
+    __version__ = version('pylorenzmie')
+except PackageNotFoundError:
+    __version__ = '0.0.0'

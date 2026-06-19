@@ -109,10 +109,10 @@ class LorenzMie(LMObject):
     def coordinates(self, coordinates: LMObject.Coordinates) -> None:
         '''Ensure coordinates have shape (3, npts)'''
         logger.debug('Setting coordinates')
-        if coordinates is not None:
-            c = np.atleast_2d(coordinates)
-        else:
+        if coordinates is None:
             c = self.meshgrid((201, 201))
+        else:
+            c = np.atleast_2d(coordinates)
         ndim, npts = c.shape
         if ndim > 3:
             raise ValueError(f'Incompatible shape: {coordinates.shape=}')
@@ -341,13 +341,13 @@ class LorenzMie(LMObject):
 
     @classmethod
     def example(cls,
+                shape: tuple[int, int] = (201, 201),
                 show: bool = True,
                 **kwargs) -> None:  # pragma: no cover
         import matplotlib.pyplot as plt
         from pylorenzmie.theory import (Sphere, Instrument)
         from time import perf_counter
 
-        shape = (201, 201)
         c = cls.meshgrid(shape)
         # Place two spheres in the field of view, above the focal plane
         pa = Sphere()

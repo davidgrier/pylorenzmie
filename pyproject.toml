@@ -1,0 +1,93 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pylorenzmie"
+version = "1.0.0"
+description = "Python tools for Lorenz-Mie holographic microscopy"
+readme = "README.md"
+license = { text = "GPL-3.0-or-later" }
+requires-python = ">=3.10"
+authors = [
+    { name = "David G. Grier", email = "david.grier@nyu.edu" },
+]
+keywords = [
+    "holography", "microscopy", "Lorenz-Mie", "light scattering",
+    "colloids", "particle tracking", "scientific",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "numpy",
+    "scipy",
+    "pandas",
+    "opencv-python",
+    "trackpy",
+]
+
+[project.urls]
+Homepage = "https://github.com/davidgrier/pylorenzmie"
+Repository = "https://github.com/davidgrier/pylorenzmie"
+Documentation = "https://pylorenzmie.readthedocs.io"
+"Bug Tracker" = "https://github.com/davidgrier/pylorenzmie/issues"
+
+[project.optional-dependencies]
+gpu     = ["cupy-cuda12x"]
+numba   = ["numba"]
+torch   = ["torch"]
+lmtool  = ["pyqtgraph"]
+dev     = ["pytest", "pytest-cov", "opencv-python"]
+docs    = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints"]
+
+[tool.setuptools]
+packages = [
+    "pylorenzmie",
+    "pylorenzmie.lib",
+    "pylorenzmie.theory",
+    "pylorenzmie.analysis",
+    "pylorenzmie.utilities",
+    "pylorenzmie.lmtool",
+]
+
+[tool.setuptools.package-data]
+"pylorenzmie.lmtool" = ["*.ui", "*.json"]
+
+[tool.setuptools.package-dir]
+"pylorenzmie"            = "."
+"pylorenzmie.lib"        = "lib"
+"pylorenzmie.theory"     = "theory"
+"pylorenzmie.analysis"   = "analysis"
+"pylorenzmie.utilities"  = "utilities"
+"pylorenzmie.lmtool"     = "lmtool"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--ignore=tests/slow"
+
+[tool.coverage.run]
+source = ["pylorenzmie"]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/docs/*",
+    "*/obsolete/*",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "if __name__ == .__main__.:",
+    "@classmethod",
+]
+show_missing = true

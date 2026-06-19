@@ -77,9 +77,15 @@ class Frame(LMObject):
         self.instrument = instrument or Instrument()
         self.localizer = localizer or Localizer()
         self._shape = (0, 0)
-        self._data = data
+        self._features = []
+        self._bboxes = []
+        self._results = pd.DataFrame()
+        self._coordinates = np.empty((2, 0, 0))
+        self._data = None
+        if data is not None:
+            self.data = data
 
-    @LMObject.properties.fget
+    @property
     def properties(self) -> dict:
         return dict()
 
@@ -89,10 +95,11 @@ class Frame(LMObject):
         return self._shape
 
     @shape.setter
-    def shape(self, shape: tuple[int, int]) -> None:
-        if shape != self._shape:
-            self._coordinates = self.meshgrid(shape, flatten=False)
-            self._shape = shape
+    def shape(self, shape: tuple[int, int] | None) -> None:
+        if shape is None or shape == self._shape:
+            return
+        self._coordinates = self.meshgrid(shape, flatten=False)
+        self._shape = shape
 
     @property
     def coordinates(self) -> np.ndarray:
@@ -106,11 +113,10 @@ class Frame(LMObject):
 
     @data.setter
     def data(self, data: LMObject.Image | None) -> None:
-        if data is None:
-            data = np.ndarray([])
         self._features = []
         self._results = pd.DataFrame()
-        self.shape = data.shape
+        if data is not None:
+            self.shape = data.shape
         self._data = data
 
     @property
@@ -123,11 +129,46 @@ class Frame(LMObject):
         '''List of objects of type Feature'''
         return self._features
 
+    @property
+    def bboxes(self) -> list:
+        '''Bounding boxes of current features as list of ((x0, y0), w, h)'''
+        return self._bboxes
+
+    @bboxes.setter
+    def bboxes(self,
+               bboxes: tuple | list) -> None:
+        '''Set features from bounding boxes
+
+        Parameters
+        ----------
+        bboxes : tuple | list
+            Single bounding box ((x0, y0), w, h) or list of bounding boxes.
+        '''
+        if (isinstance(bboxes, tuple) and len(bboxes) == 3
+                and isinstance(bboxes[0], tuple)):
+            bboxes = [bboxes]
+        self._bboxes = list(bboxes)
+        self._features = []
+        for bbox in self._bboxes:
+            (x0, y0), w, h = bbox
+            dim = min(w, h)
+            d = self.data[y0:y0+dim, x0:x0+dim]
+            c = self.coordinates[:, y0:y0+dim, x0:x0+dim].reshape((2, -1))
+            this = Feature(data=d, coordinates=c)
+            this.particle.x_p = x0 + dim / 2.
+            this.particle.y_p = y0 + dim / 2.
+            self._features.append(this)
+
     def detect(self) -> int:
         '''Detect and localize features in data
         '''
+        if self.data is None:
+            self._features = []
+            self._bboxes = []
+            return 0
         self._results = self.localizer.detect(self.data)
         self._features = []
+        self._bboxes = []
         for _, feature in self._results.iterrows():
             (x0, y0), w, h = feature.bbox
             dim = min(w, h)
@@ -138,6 +179,7 @@ class Frame(LMObject):
             this.particle.x_p = feature.x_p
             this.particle.y_p = feature.y_p
             self._features.append(this)
+            self._bboxes.append(feature.bbox)
         return len(self._features)
 
     def estimate(self) -> None:
