@@ -1,54 +1,53 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
+from pylorenzmie.lib.types import Coefficients, Coordinates, Field
 from pylorenzmie.theory.LorenzMie import LorenzMie
-import numba as nb
 import numpy as np
 
+try:
+    from numba import njit
+except ImportError:
+    from pylorenzmie.utilities.numba import njit
 
-@nb.jit(nopython=True, fastmath=True, cache=True, parallel=True)
-def compute_field_jit(kdr, buffers, ab, cartesian, bohren):
-    '''Returns the field scattered by the particle at each coordinate
 
-    Arguments
+@njit(fastmath=True, cache=True)
+def compute_field_jit(kdr, buffers, scratch, ab, cartesian, bohren):
+    '''Numba-compiled scattered field sum over Mie partial waves.
+
+    Parameters
     ----------
-    ab : numpy.ndarray
-        [2, norders] Mie scattering coefficients
-
-    Keywords
-    --------
+    kdr : numpy.ndarray, shape (3, npts)
+        Wave-number-scaled displacement from particle to each
+        coordinate point.
+    buffers : tuple of numpy.ndarray, each shape (3, npts), dtype complex
+        Pre-allocated working arrays (Mo1n, Ne1n, Es, Ec).
+    scratch : numpy.ndarray, shape (2, npts), dtype float
+        Pre-allocated real scratch arrays (swisc, twisc) for the
+        Legendre upward recurrence.
+    ab : numpy.ndarray, shape (n_orders, 2), dtype complex
+        Mie scattering coefficients.
     cartesian : bool
-        If set, return field projected onto Cartesian coordinates.
-        Otherwise, return polar projection.
+        If True, return field projected onto Cartesian coordinates.
     bohren : bool
-        If set, use sign convention from Bohren and Huffman.
-        Otherwise, use opposite sign convention.
+        If True, use sign convention from Bohren and Huffman.
 
     Returns
     -------
-    field : numpy.ndarray
-        [3, npts] array of complex vector values of the
-        scattered field at each coordinate.
+    field : numpy.ndarray, shape (3, npts), dtype complex
+        Complex scattered field at each coordinate.
     '''
-
-    norders = ab.shape[0]  # number of partial waves in sum
+    norders = ab.shape[0]
     Mo1n, Ne1n, Es, Ec = buffers
+    swisc = scratch[0]
+    twisc = scratch[1]
 
     # GEOMETRY
-    # 1. particle displacement [pixel]
-    # Note: The sign convention used here is appropriate
-    # for illumination propagating in the -z direction.
-    # This means that a particle forming an image in the
-    # focal plane (z = 0) is located at positive z.
-    # Accounting for this by flipping the axial coordinate
-    # is equivalent to using a mirrored (left-handed)
-    # coordinate system.
+    # Sign convention: illumination propagates along -z, so a particle
+    # above the focal plane (z > 0) produces a diverging wave.
+    # Flipping kz is equivalent to working in a mirrored coordinate system.
     kx = kdr[0, :]
     ky = kdr[1, :]
     kz = -kdr[2, :]
-    shape = kx.shape
+    npts = kx.shape[0]
 
-    # 2. geometric factors
     kρ = np.hypot(kx, ky)
     kr = np.hypot(kρ, kz)
     sinkr = np.sin(kr)
@@ -62,95 +61,70 @@ def compute_field_jit(kdr, buffers, ab, cartesian, bohren):
     sinθ = np.sin(θ)
 
     # SPECIAL FUNCTIONS
-    # starting points for recursive function evaluation ...
-    # 1. Riccati-Bessel radial functions, page 478.
-    # Particles above the focal plane create diverging waves
-    # described by Eq. (4.13) for $h_n^{(1)}(kr)$. These have z > 0.
-    # Those below the focal plane appear to be converging from the
-    # perspective of the camera. They are described by Eq. (4.14)
-    # for $h_n^{(2)}(kr)$, and have z < 0. We can select the
-    # appropriate case by applying the correct sign of the imaginary
-    # part of the starting functions...
-    factor = 1.j * np.sign(kz) if bohren else -1.j * np.sign(kz)
-    ξ_nm2 = coskr + factor * sinkr  # \xi_{-1}(kr)
-    ξ_nm1 = sinkr - factor * coskr  # \xi_0(kr)
+    # Riccati-Bessel starting values, page 478.
+    # Sign of imaginary part selects h_n^(1) (z>0) or h_n^(2) (z<0).
+    if bohren:
+        sign = 1.j * np.sign(kz)
+    else:
+        sign = -1.j * np.sign(kz)
+    ξ_nm2 = coskr + sign * sinkr   # ξ_{-1}(kr)
+    ξ_nm1 = sinkr - sign * coskr   # ξ_0(kr)
 
-    # 2. Angular functions (4.47), page 95
-    # \pi_0(\cos\theta)
-    π_nm1 = np.zeros(shape)
-    # \pi_1(\cos\theta)
-    π_n = np.ones(shape)
+    # Angular function starting values (4.47), page 95
+    π_nm1 = np.zeros(npts)   # π_0(cosθ)
+    π_n = np.ones(npts)       # π_1(cosθ)
 
-    # 3. Vector spherical harmonics: (r, θ, φ)
-    Mo1n[0].fill(0.j)            # no radial component
-
-    # storage for scattered field
     Es.fill(0.j)
+
+    En_factor = 1. + 0.j   # tracks 1.j**n iteratively
 
     # COMPUTE field by summing partial waves
     for n in range(1, norders):
-        # upward recurrences ...
-        # 4. Legendre factor (4.47)
-        # Method described by Wiscombe (1980)
+        # Legendre upward recurrence — Wiscombe (1980)
+        swisc[:] = π_n * cosθ
+        twisc[:] = swisc - π_nm1
+        τ_n = π_nm1 - n * twisc      # -τ_n(cosθ)
 
-        swisc = π_n * cosθ
-        twisc = swisc - π_nm1
-        # np.multiply(π_n, cosθ, out=swisc)
-        # np.subtract(swisc, π_nm1, out=twisc)
-        τ_n = π_nm1 - n * twisc  # -\tau_n(\cos\theta)
+        # Riccati-Bessel upward recurrence, page 478
+        ξ_n = (2.*n - 1.) * (ξ_nm1 / kr) - ξ_nm2
 
-        # ... Riccati-Bessel function, page 478
-        ξ_n = (2.*n - 1.) * (ξ_nm1 / kr) - ξ_nm2  # \xi_n(kr)
-
-        # ... Deirmendjian's derivative
+        # Deirmendjian's derivative
         Dn = n * (ξ_n / kr) - ξ_nm1
 
         # vector spherical harmonics (4.50)
-        Mo1n[1] = π_n * ξ_n      # ... divided by cosφ/kr
-        Mo1n[2] = τ_n * ξ_n      # ... divided by sinφ/kr
-
-        # ... divided by cosφ sinθ/kr^2
-        Ne1n[0] = (n*n + n) * π_n * ξ_n
-        Ne1n[1] = τ_n * Dn       # ... divided by cosφ/kr
-        Ne1n[2] = π_n * Dn       # ... divided by sinφ/kr
+        Mo1n[1] = π_n * ξ_n      # divided by cosφ/kr
+        Mo1n[2] = τ_n * ξ_n      # divided by sinφ/kr
+        Ne1n[0] = (n*n + n) * Mo1n[1]   # do not recompute π_n*ξ_n
+        Ne1n[1] = τ_n * Dn       # divided by cosφ/kr
+        Ne1n[2] = π_n * Dn       # divided by sinφ/kr
 
         # prefactor, page 93
-        En = 1.j**n * (2.*n + 1.) / (n*n + n)
+        En_factor *= 1.j
+        En = En_factor * (2.*n + 1.) / (n*n + n)
+        an = 1.j * En * ab[n, 0]
+        bn = En * ab[n, 1]
 
-        # the scattered field in spherical coordinates (4.45)
-        Es += (1.j * En * ab[n, 0]) * Ne1n
-        Es -= (En * ab[n, 1]) * Mo1n
+        # scattered field in spherical coordinates (4.45)
+        # Mo1n[0] == 0 always; Es[0] has no Mo1n contribution
+        Es[0] += an * Ne1n[0]
+        Es[1] += an * Ne1n[1] - bn * Mo1n[1]
+        Es[2] += an * Ne1n[2] - bn * Mo1n[2]
 
-        # upward recurrences ...
-        # ... angular functions (4.47)
-        # Method described by Wiscombe (1980)
+        # upward recurrences
         π_nm1 = π_n
         π_n = swisc + (1. + 1./n) * twisc
-
-        # ... Riccati-Bessel function
         ξ_nm2 = ξ_nm1
         ξ_nm1 = ξ_n
-        # n: multipole sum
 
-    # geometric factors were divided out of the vector
-    # spherical harmonics for accuracy and efficiency ...
-    # ... put them back at the end.
+    # restore geometric factors divided out of VSH for accuracy
     Es[0] *= cosφ * sinθ / (kr * kr)
     Es[1] *= cosφ / kr
     Es[2] *= sinφ / kr
 
-    # By default, the scattered wave is returned in spherical
-    # coordinates.  Project components onto Cartesian coordinates.
-    # Assumes that the incident wave propagates along z and
-    # is linearly polarized along x
+    # project to Cartesian (incident wave along z, polarized along x)
     if cartesian:
-        Ec[0] = Es[0] * sinθ * cosφ
-        Ec[0] += Es[1] * cosθ * cosφ
-        Ec[0] -= Es[2] * sinφ
-
-        Ec[1] = Es[0] * sinθ * sinφ
-        Ec[1] += Es[1] * cosθ * sinφ
-        Ec[1] += Es[2] * cosφ
+        Ec[0] = Es[0] * sinθ * cosφ + Es[1] * cosθ * cosφ - Es[2] * sinφ
+        Ec[1] = Es[0] * sinθ * sinφ + Es[1] * cosθ * sinφ + Es[2] * cosφ
         Ec[2] = Es[0] * cosθ - Es[1] * sinθ
         return Ec
     else:
@@ -158,14 +132,31 @@ def compute_field_jit(kdr, buffers, ab, cartesian, bohren):
 
 
 class numbaLorenzMie(LorenzMie):
+    '''LorenzMie accelerated with Numba JIT compilation.
+
+    Overrides :meth:`lorenzmie` with a Numba-compiled kernel that runs
+    the partial-wave sum in native code.  The first call triggers JIT
+    compilation (warm-up); subsequent calls use the cached compiled
+    function.
+
+    The class attribute ``method = 'numba'`` allows :class:`Optimizer`
+    to select a compatible model.
+    '''
 
     method: str = 'numba'
 
-    def compute(self,
-                ab: LorenzMie.Coefficients,
-                cartesian: bool = True,
-                bohren: bool = True) -> LorenzMie.Field:
-        return compute_field_jit(self.kdr, self.buffers, ab, cartesian, bohren)
+    def _allocate(self) -> None:
+        super()._allocate()
+        npts = self.coordinates.shape[1]
+        self._scratch = np.empty((2, npts))
+
+    def lorenzmie(self,
+                  ab: Coefficients,
+                  kdr: Coordinates,
+                  cartesian: bool = True,
+                  bohren: bool = True) -> Field:
+        return compute_field_jit(kdr, tuple(self.buffers), self._scratch,
+                                 ab, cartesian, bohren)
 
 
 if __name__ == '__main__':  # pragma: no cover
