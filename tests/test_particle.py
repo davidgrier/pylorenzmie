@@ -71,16 +71,16 @@ class TestParticle(unittest.TestCase):
 
     def test_ab_shape(self) -> None:
         ab = self.particle.ab()
-        self.assertEqual(ab.shape, (2, 1))
+        self.assertEqual(ab.shape, (1, 2))
         self.assertEqual(ab.dtype, complex)
 
     def test_ab_values(self) -> None:
         np.testing.assert_array_equal(self.particle.ab(),
-                                      np.ones((2, 1), dtype=complex))
+                                      np.ones((1, 2), dtype=complex))
 
     def test_ab_accepts_parameters(self) -> None:
         ab = self.particle.ab(n_m=1.33 + 0.01j, wavelength=0.447)
-        self.assertEqual(ab.shape, (2, 1))
+        self.assertEqual(ab.shape, (1, 2))
 
     def test_len(self) -> None:
         self.assertEqual(len(self.particle), 1)
