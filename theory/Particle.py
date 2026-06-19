@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 import numpy as np
 from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.types import (Coordinates, Coefficients, Properties)
 
 
 @dataclass
@@ -57,7 +58,7 @@ class Particle(LMObject):
         return self
 
     @property
-    def r_p(self) -> LMObject.Coordinates:
+    def r_p(self) -> Coordinates:
         '''3-D position of the particle center, in pixels.
 
         Returns
@@ -68,11 +69,11 @@ class Particle(LMObject):
         return np.asarray([self.x_p, self.y_p, self.z_p])
 
     @r_p.setter
-    def r_p(self, r_p: LMObject.Coordinates) -> None:
+    def r_p(self, r_p: Coordinates) -> None:
         self.x_p, self.y_p, self.z_p = r_p
 
     @property
-    def r_0(self) -> LMObject.Coordinates:
+    def r_0(self) -> Coordinates:
         '''Origin of the local coordinate system, in pixels.
 
         Returns
@@ -83,18 +84,18 @@ class Particle(LMObject):
         return np.asarray([self.x_0, self.y_0, self.z_0])
 
     @r_0.setter
-    def r_0(self, r_0: LMObject.Coordinates) -> None:
+    def r_0(self, r_0: Coordinates) -> None:
         self.x_0, self.y_0, self.z_0 = r_0
 
     @LMObject.properties.getter
-    def properties(self) -> LMObject.Properties:
+    def properties(self) -> Properties:
         return {'x_p': self.x_p,
                 'y_p': self.y_p,
                 'z_p': self.z_p}
 
     def ab(self,
            n_m: float | complex = 1.+0.j,
-           wavelength: float = 0.532) -> LMObject.Coefficients:
+           wavelength: float = 0.532) -> Coefficients:
         '''Mie scattering coefficients for this particle.
 
         The base-class implementation returns ``[1, 1]`` as a trivial

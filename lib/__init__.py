@@ -1,8 +1,4 @@
 from .meshgrid import meshgrid
-from .types import (Property, Properties,
-                    Image, Images,
-                    Coordinates, Coefficients, Field,
-                    Result, Results)
 from .LMObject import LMObject
 from .CircleTransform import (CircleTransform, circletransform)
 from . import Azimuthal
@@ -18,9 +14,5 @@ def coordinates(*args, **kwargs):
 
 
 __all__ = ['LMObject', 'meshgrid',
-           'Property', 'Properties',
-           'Image', 'Images',
-           'Coordinates', 'Coefficients', 'Field',
-           'Result', 'Results',
            'Azimuthal', 'CircleTransform', 'circletransform',
            'coordinates']
