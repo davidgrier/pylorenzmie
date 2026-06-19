@@ -73,6 +73,12 @@ class LMObject(ABC):
             f'{self.__class__.__module__}.{self.__class__.__qualname__}')
 
     def __eq__(self, other: object) -> bool:
+        '''Compare by properties dict rather than identity.
+
+        Returns ``NotImplemented`` for objects of a different type so
+        that Python can try the reflected operation; this is preferable
+        to returning ``False`` outright.
+        '''
         if not isinstance(other, self.__class__):
             return NotImplemented
         return self.properties == other.properties
@@ -80,6 +86,25 @@ class LMObject(ABC):
     @property
     @abstractmethod
     def properties(self) -> Properties:
+        '''Adjustable parameters of this object.
+
+        Returns a flat ``dict`` mapping parameter names to their current
+        values.  Only parameters included here are visible to the
+        serialization methods and to ``Optimizer`` during fitting.
+
+        Subclasses must override the getter using::
+
+            @ParentClass.properties.getter
+            def properties(self) -> Properties:
+                props = super().properties
+                props.update(...)
+                return props
+
+        The base-class getter returns an empty dict; the base-class
+        setter iterates over the supplied dict and calls ``setattr`` for
+        every key that already exists as an attribute.  Unknown keys are
+        silently ignored and logged at DEBUG level.
+        '''
         return dict()
 
     @properties.setter
@@ -92,6 +117,9 @@ class LMObject(ABC):
 
     def to_json(self, **kwargs) -> str:
         '''Serialize properties to a JSON string.
+
+        NumPy scalars are automatically converted to native Python types
+        before serialization.
 
         Parameters
         ----------
@@ -110,12 +138,14 @@ class LMObject(ABC):
         return json.dumps(self.properties, default=np_encoder, **kwargs)
 
     def from_json(self, s: str) -> None:
-        '''Load properties from a JSON string.
+        '''Update properties from a JSON string.
+
+        Mutates the object in place by assigning to ``self.properties``.
 
         Parameters
         ----------
         s : str
-            JSON-encoded properties.
+            JSON-encoded properties, as produced by ``to_json``.
         '''
         self.properties = json.loads(s)
 
@@ -130,15 +160,19 @@ class LMObject(ABC):
         Returns
         -------
         pandas.Series
+            Index is the property names; values are the property values.
         '''
         return pd.Series(self.properties, **kwargs)
 
     def from_pandas(self, series: pd.Series) -> None:
-        '''Load properties from a pandas Series.
+        '''Update properties from a pandas Series.
+
+        Mutates the object in place by assigning to ``self.properties``.
 
         Parameters
         ----------
         series : pandas.Series
+            As produced by ``to_pandas``.
         '''
         self.properties = series.to_dict()
 
