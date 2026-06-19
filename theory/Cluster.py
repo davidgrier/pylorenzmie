@@ -22,7 +22,6 @@ class Cluster(Particle):
     _index: int = field(init=False, repr=False, default=0)
 
     def __post_init__(self) -> None:
-        super().__post_init__()
         self.update()
 
     def __setattr__(self, key: str, value: Particle.Property) -> None:

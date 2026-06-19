@@ -45,7 +45,6 @@ class Dimer(Cluster):
             self.update_positions()
 
     def __post_init__(self) -> None:
-        super().__post_init__()
         p = {'a_p': self.a_p, 'n_p': self.n_p, 'k_p': self.k_p}
         self.particles = [Sphere(**p), Sphere(**p)]
         self.update_positions()

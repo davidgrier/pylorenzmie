@@ -52,9 +52,6 @@ class Particle(LMObject):
     y_0: float = field(repr=False, default=0.)
     z_0: float = field(repr=False, default=0.)
 
-    def __post_init__(self) -> None:
-        pass
-
     def __len__(self) -> int:
         return 1
 
