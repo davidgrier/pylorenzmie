@@ -46,7 +46,14 @@ class Sphere(Particle):
 
     @property
     def d_p(self) -> float:
-        '''Diameter of the sphere, in μm.'''
+        '''Diameter of the sphere, in μm.
+
+        Equivalent to ``2 * a_p``.  Setting ``d_p`` updates ``a_p``.
+
+        Returns
+        -------
+        float
+        '''
         return 2. * self.a_p
 
     @d_p.setter
@@ -168,7 +175,7 @@ class Sphere(Particle):
         k *= np.real(n_m)             # wave number in medium
 
         x = k * a_p                   # size parameter
-        m = (n_p + 1.j * k_p) / n_m  # relative refractive index
+        m = (n_p + 1.j * k_p) / n_m   # relative refractive index
 
         nmax = Sphere.wiscombe_yang(x, m)
 
@@ -186,7 +193,7 @@ class Sphere(Particle):
         # iterate outward from the sphere's core
         z = x * m
         for n in range(nmax, 0, -1):
-            D1[n-1] = n/z - 1./(D1[n] + n/z)        # Eq. (16b)
+            D1[n-1] = n/z - 1./(D1[n] + n/z)         # Eq. (16b)
         Ha = D1.copy()                               # Eq. (7a)
         Hb = D1.copy()                               # Eq. (8a)
 
@@ -194,17 +201,17 @@ class Sphere(Particle):
         z = x
         # downward recurrence for D1 (D1[nmax] = 0)
         for n in range(nmax, 0, -1):
-            D1[n-1] = n/z - (1./(D1[n] + n/z))      # Eq. (16b)
+            D1[n-1] = n/z - (1./(D1[n] + n/z))       # Eq. (16b)
 
         # upward recurrence for Ψ, ζ, Ψζ and D3
         Ψ[0] = np.sin(z)                             # Eq. (20a)
-        ζ[0] = -1.j * np.exp(1.j * z)               # Eq. (21a)
-        Ψζ = 0.5 * (1. - np.exp(2.j * z))           # Eq. (18a)
+        ζ[0] = -1.j * np.exp(1.j * z)                # Eq. (21a)
+        Ψζ = 0.5 * (1. - np.exp(2.j * z))            # Eq. (18a)
         for n in range(1, nmax+1):
-            Ψ[n] = Ψ[n-1] * (n/z - D1[n-1])         # Eq. (20b)
-            ζ[n] = ζ[n-1] * (n/z - D3[n-1])         # Eq. (21b)
-            Ψζ *= (n/z - D1[n-1]) * (n/z - D3[n-1]) # Eq. (18c)
-            D3[n] = D1[n] + 1.j/Ψζ                  # Eq. (18d)
+            Ψ[n] = Ψ[n-1] * (n/z - D1[n-1])          # Eq. (20b)
+            ζ[n] = ζ[n-1] * (n/z - D3[n-1])          # Eq. (21b)
+            Ψζ *= (n/z - D1[n-1]) * (n/z - D3[n-1])  # Eq. (18c)
+            D3[n] = D1[n] + 1.j/Ψζ                   # Eq. (18d)
 
         # scattering coefficients
         n = np.arange(nmax+1)
