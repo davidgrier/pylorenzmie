@@ -99,9 +99,9 @@ class Particle(LMObject):
            wavelength: float = 0.532) -> Coefficients:
         '''Mie scattering coefficients for this particle.
 
-        The base-class implementation returns ``[1, 1]`` as a trivial
-        placeholder.  Subclasses must override this method with a
-        physically meaningful calculation.
+        The base-class implementation returns ``ones((2, 1))`` as a
+        trivial placeholder.  Subclasses must override this method with
+        a physically meaningful calculation.
 
         Parameters
         ----------
@@ -116,7 +116,7 @@ class Particle(LMObject):
         ab : numpy.ndarray, shape (2, n_terms), dtype complex
             Mie scattering coefficients.
         '''
-        return np.asarray([1, 1], dtype=complex)
+        return np.ones((2, 1), dtype=complex)
 
 
 if __name__ == '__main__':  # pragma: no cover
