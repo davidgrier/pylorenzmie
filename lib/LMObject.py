@@ -10,7 +10,7 @@ from .meshgrid import meshgrid
 
 
 # Module-level type aliases — importable without going through LMObject.
-Property = bool | int | float | str | None
+Property = bool | int | float | str
 Properties = dict[str, Property]
 Image = NDArray[float] | NDArray[int]
 Images = Image | list[Image]
