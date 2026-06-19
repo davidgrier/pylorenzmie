@@ -1,76 +1,66 @@
-# /usr/bin/env python
-# -*- coding: utf-8 -*-
-
 from dataclasses import dataclass
 from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.types import Properties
 import numpy as np
 
 
 @dataclass
 class Instrument(LMObject):
-    '''
-    Abstraction of an in-line holographic microscope
+    '''In-line holographic microscope for Lorenz-Mie microscopy.
 
-    The instrument forms an image of the light scattering
-    pattern for Lorenz-Mie microscopy
+    Encapsulates the optical parameters of the instrument.  The four
+    adjustable parameters (``n_m``, ``wavelength``, ``magnification``,
+    ``numerical_aperture``, ``noise``) are exposed via ``properties``
+    and are therefore available to :class:`Optimizer` during fitting.
 
-    ...
-
-    Properties
+    Attributes
     ----------
     wavelength : float
-        Vacuum wavelength of light [um]
+        Vacuum wavelength of the illuminating light, in μm.
+        Default: 0.447.
     magnification : float
-        System magnification [um/pixel]
+        Effective pixel size (object-space), in μm/pixel.
+        Default: 0.048.
     numerical_aperture : float
-        Numerical aperture (NA) of objective lens
+        Numerical aperture of the objective lens. Default: 1.45.
     noise : float
-        Estimated camera noise as a percentage of the mean intensity
-    dark_count : float
-        Dark count of camera
+        Camera noise as a fraction of the mean intensity. Default: 0.05.
     n_m : float
-        Refractive index of medium
-    properties : dict
-        Adjustable properties of the instrument model
-
-    Methods
-    -------
-    wavenumber(in_medium=True, scaled=True) : float
-        Wavenumber of light
+        Refractive index of the medium. Default: 1.340.
     '''
 
     wavelength: float = 0.447
     magnification: float = 0.048
     numerical_aperture: float = 1.45
     noise: float = 0.05
-    darkcount: float = 0.
     n_m: float = 1.340
 
     @LMObject.properties.getter
-    def properties(self) -> LMObject.Properties:
+    def properties(self) -> Properties:
         return {'n_m': self.n_m,
                 'wavelength': self.wavelength,
                 'magnification': self.magnification,
-                'numerical_aperture': self.numerical_aperture}
+                'numerical_aperture': self.numerical_aperture,
+                'noise': self.noise}
 
     def wavenumber(self,
                    in_medium: bool = True,
                    scaled: bool = True) -> float:
-        '''Return the wave number of light
+        '''Wave number of the illuminating light.
 
         Parameters
         ----------
         in_medium : bool
-            If True (default) return the wave number in the medium
-            Otherwise, return the wave number in vacuum
+            If True (default), return the wave number in the medium.
+            If False, return the wave number in vacuum.
         scaled : bool
-            If True (default) return the scaled value [radian/pixel]
-            Otherwise, return SI value [radian/um]
+            If True (default), return in rad/pixel.
+            If False, return in rad/μm.
 
         Returns
         -------
         k : float
-            Wave number
+            Wave number.
         '''
         k = 2. * np.pi / self.wavelength  # wave number in vacuum
         if in_medium:

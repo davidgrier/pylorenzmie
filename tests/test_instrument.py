@@ -48,15 +48,13 @@ class TestInstrument(unittest.TestCase):
         self.instrument.from_json(s)
         self.assertEqual(self.instrument.n_m, n_0)
 
-    def test_dark_count(self):
-        value = 10.
-        self.instrument.dark_count = value
-        self.assertEqual(self.instrument.dark_count, value)
+    def test_noise(self):
+        value = 0.1
+        self.instrument.noise = value
+        self.assertEqual(self.instrument.noise, value)
 
-    def test_background(self):
-        value = 10.
-        self.instrument.background = value
-        self.assertEqual(self.instrument.background, value)
+    def test_noise_in_properties(self):
+        self.assertIn('noise', self.instrument.properties)
 
 
 if __name__ == '__main__':
