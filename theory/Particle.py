@@ -1,3 +1,4 @@
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 import numpy as np
 from pylorenzmie.lib import LMObject
@@ -49,7 +50,7 @@ class Particle(LMObject):
     def __len__(self) -> int:
         return 1
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator['Particle']:
         return iter([self])
 
     def __getitem__(self, index: int) -> 'Particle':
