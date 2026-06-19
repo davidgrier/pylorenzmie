@@ -1,11 +1,6 @@
 from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 import numpy as np
-import logging
-
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 class LorenzMie(LMObject):
@@ -108,7 +103,7 @@ class LorenzMie(LMObject):
     @coordinates.setter
     def coordinates(self, coordinates: LMObject.Coordinates) -> None:
         '''Ensure coordinates have shape (3, npts)'''
-        logger.debug('Setting coordinates')
+        self.logger.debug('Setting coordinates')
         if coordinates is None:
             c = self.meshgrid((201, 201))
         else:
@@ -123,7 +118,7 @@ class LorenzMie(LMObject):
         '''Allocate buffers for calculation
 
         This should be overridden by subclasses'''
-        logger.debug('Allocating buffers')
+        self.logger.debug('Allocating buffers')
         shape = self.coordinates.shape
         self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
         self._field = np.empty(shape, dtype=complex)
