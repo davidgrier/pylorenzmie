@@ -9,6 +9,8 @@ from numpy.typing import NDArray
 from .meshgrid import meshgrid
 
 
+# TODO: after a complete code review, double-check whether these type aliases
+# belong at module level or as class attributes of LMObject.
 # Module-level type aliases — importable without going through LMObject.
 Property = bool | int | float | str
 Properties = dict[str, Property]
