@@ -185,10 +185,10 @@ class LorenzMie(LMObject):
                   bohren: bool = True) -> LMObject.Field:
         '''Returns the field described by ab coefficients
 
-        Arguments
+        Parameters
         ----------
-        ab : numpy.ndarray
-            [2, norders] Mie scattering coefficients
+        ab : numpy.ndarray, shape (n_orders, 2)
+            Mie scattering coefficients
 
         Keywords
         --------
