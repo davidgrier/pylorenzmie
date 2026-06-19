@@ -5,22 +5,11 @@ import json
 import logging
 import numpy as np
 import pandas as pd
-from numpy.typing import NDArray
 from .meshgrid import meshgrid
-
-
-# TODO: after a complete code review, double-check whether these type aliases
-# belong at module level or as class attributes of LMObject.
-# Module-level type aliases — importable without going through LMObject.
-Property = bool | int | float | str
-Properties = dict[str, Property]
-Image = NDArray[float] | NDArray[int]
-Images = Image | list[Image]
-Coordinates = NDArray[float]
-Coefficients = NDArray[complex]
-Field = NDArray[complex]
-Result = pd.Series | pd.DataFrame
-Results = Result | list[Result]
+from .types import (Property, Properties,
+                    Image, Images,
+                    Coordinates, Coefficients, Field,
+                    Result, Results)
 
 
 class LMObject(ABC):

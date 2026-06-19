@@ -1,9 +1,9 @@
 from .meshgrid import meshgrid
-from .LMObject import (LMObject,
-                       Property, Properties,
-                       Image, Images,
-                       Coordinates, Coefficients, Field,
-                       Result, Results)
+from .types import (Property, Properties,
+                    Image, Images,
+                    Coordinates, Coefficients, Field,
+                    Result, Results)
+from .LMObject import LMObject
 from .CircleTransform import (CircleTransform, circletransform)
 from . import Azimuthal
 from warnings import warn
