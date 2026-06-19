@@ -1,72 +1,56 @@
 from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.types import (Coordinates, Coefficients, Field,
+                                   Image, Properties)
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 import numpy as np
 
 
 class LorenzMie(LMObject):
-    '''
-    Compute scattered light field with Generalized Lorenz-Mie theory
+    '''Scattered light field computed with Generalized Lorenz-Mie theory.
 
-    LorenzMie uses generalized Lorenz-Mie theory to compute the
-    electric field scattered by a particle with specified Lorenz-Mie
-    scattering coefficients. The field is calculated at specified
-    three-dimensional coordinates under the assumption that the
-    incident illumination is a plane wave that is linearly polarized
-    along x and is propagating along -z.
+    Computes the electric field scattered by one or more particles,
+    then forms a synthetic hologram by interfering the scattered field
+    with the incident plane wave.  The incident illumination is assumed
+    to be a plane wave linearly polarized along x and propagating
+    along -z.
 
-    ...
+    The class attribute ``method`` is used by :class:`Optimizer` to
+    select a compatible calculator.
 
-    Inherits
-    --------
-    pylorenzmie.lib.LMObject
-
-    Properties
+    Attributes
     ----------
-    coordinates: LMObject.Coordinates
-        [3, npts] array of x, y and z coordinates where field
-        is calculated
-    particle : Particle | list[Particle]
-        Object representing the particle scattering light
+    coordinates : numpy.ndarray, shape (3, npts)
+        Pixel coordinates at which the field is evaluated.
+        Defaults to a 201×201 grid if not supplied.
+    particle : Particle or list of Particle
+        Scattering particle(s).  Defaults to a :class:`Sphere`.
     instrument : Instrument
-        Object resprenting the light-scattering instrument
-
-    Methods
-    -------
-    field(cartesian=True, bohren=True)
-        Returns the complex-valued field at each of the coordinates.
-    hologram(cartesian=True, bohren=True)
-        Returns the hologram of the particle at the coordinates.
+        Optical parameters of the microscope.
 
     References
     ----------
-    1. Adapted from Chapter 4 in
-    C. F. Bohren and D. R. Huffman,
-    Absorption and Scattering of Light by Small Particles,
-    (New York, Wiley, 1983).
-
-    2. W. J. Wiscombe, "Improved Mie scattering algorithms,"
-    Appl. Opt. 19, 1505-1509 (1980).
-
-    3. W. J. Lentz, "Generating Bessel function in Mie scattering
-    calculations using continued fractions," Appl. Opt. 15,
-    668-671 (1976).
-
-    4. S. H. Lee, Y. Roichman, G. R. Yi, S. H. Kim, S. M. Yang,
-    A. van Blaaderen, P. van Oostrum and D. G. Grier,
-    "Characterizing and tracking single colloidal particles with
-    video holographic microscopy," Opt. Express 15, 18275-18282
-    (2007).
-
-    5. F. C. Cheong, B. Sun, R. Dreyfus, J. Amato-Grill, K. Xiao,
-    L. Dixon and D. G. Grier,
-    "Flow visualization and flow cytometry with holographic video
-    microscopy," Opt. Express 17, 13071-13079 (2009).
+    .. [1] C. F. Bohren and D. R. Huffman, *Absorption and Scattering
+       of Light by Small Particles* (Wiley, 1983), Chapter 4.
+    .. [2] W. J. Wiscombe, "Improved Mie scattering algorithms,"
+       *Appl. Opt.* **19**, 1505–1509 (1980).
+    .. [3] W. J. Lentz, "Generating Bessel functions in Mie scattering
+       calculations using continued fractions,"
+       *Appl. Opt.* **15**, 668–671 (1976).
+    .. [4] S.-H. Lee, Y. Roichman, G.-R. Yi, S.-H. Kim, S.-M. Yang,
+       A. van Blaaderen, P. van Oostrum and D. G. Grier,
+       "Characterizing and tracking single colloidal particles with
+       video holographic microscopy,"
+       *Opt. Express* **15**, 18275–18282 (2007).
+    .. [5] F. C. Cheong, B. Sun, R. Dreyfus, J. Amato-Grill, K. Xiao,
+       L. Dixon and D. G. Grier,
+       "Flow visualization and flow cytometry with holographic video
+       microscopy," *Opt. Express* **17**, 13071–13079 (2009).
     '''
 
     method: str = 'numpy'
 
     def __init__(self,
-                 coordinates: LMObject.Coordinates | None = None,
+                 coordinates: Coordinates | None = None,
                  particle: Particle | list[Particle] | None = None,
                  instrument: Instrument | None = None) -> None:
         super().__init__()
@@ -82,12 +66,12 @@ class LorenzMie(LMObject):
         return '\n    '.join([r, inst, part])
 
     @property
-    def properties(self) -> LMObject.Properties:
+    def properties(self) -> Properties:
         return {**self.particle.properties,
                 **self.instrument.properties}
 
     @properties.setter
-    def properties(self, properties: LMObject.Properties) -> None:
+    def properties(self, properties: Properties) -> None:
         for name, value in properties.items():
             if hasattr(self.particle, name):
                 setattr(self.particle, name, value)
@@ -97,12 +81,17 @@ class LorenzMie(LMObject):
                 setattr(self, name, value)
 
     @property
-    def coordinates(self) -> LMObject.Coordinates:
+    def coordinates(self) -> Coordinates:
+        '''Pixel coordinates at which the field is evaluated.
+
+        Shape is always ``(3, npts)``.  If assigned a ``(2, npts)``
+        array, the z-coordinates are set to zero.  Assigning ``None``
+        creates a default 201×201 grid.
+        '''
         return self._coordinates
 
     @coordinates.setter
-    def coordinates(self, coordinates: LMObject.Coordinates) -> None:
-        '''Ensure coordinates have shape (3, npts)'''
+    def coordinates(self, coordinates: Coordinates | None) -> None:
         self.logger.debug('Setting coordinates')
         if coordinates is None:
             c = self.meshgrid((201, 201))
@@ -115,51 +104,51 @@ class LorenzMie(LMObject):
         self._allocate()
 
     def _allocate(self) -> None:
-        '''Allocate buffers for calculation
-
-        This should be overridden by subclasses'''
+        '''Allocate working buffers.  Subclasses should override this.'''
         self.logger.debug('Allocating buffers')
         shape = self.coordinates.shape
         self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
         self._field = np.empty(shape, dtype=complex)
 
-    def hologram(self, **kwargs) -> LMObject.Image:
-        '''Returns hologram of particle
+    def hologram(self, **kwargs) -> Image:
+        '''Hologram of the particle at the current coordinates.
+
+        Parameters
+        ----------
+        cartesian : bool
+            If True (default), project the field onto Cartesian
+            coordinates. If False, return the field in spherical
+            polar coordinates.
+        bohren : bool
+            If True (default), use +z along the propagation direction.
+            If False, flip the orientation of z.
 
         Returns
         -------
-        hologram : LMObject.Image
-            Computed hologram.
-
-        Keywords
-        --------
-        cartesian: bool
-            If True (default), project field onto Cartesian coordinates
-            Otherwise, field is returned in spherical polar coordinates
-        bohren: bool
-            If True (default), +z along the propagation direction
-            Otherwise, flip the orientation of z.
+        hologram : numpy.ndarray, shape (npts,)
+            Computed hologram intensity at each coordinate.
         '''
         field = self.field(**kwargs)
         field[0, :] += 1.0
         return np.sum(field.real**2 + field.imag**2, axis=0)
 
-    def field(self, **kwargs) -> LMObject.Field:
-        '''Returns field scattered particle
+    def field(self, **kwargs) -> Field:
+        '''Electric field scattered by the particle(s).
 
-        Keywords
-        --------
-        cartesian: bool
-            If True (default), project field onto Cartesian coordinates
-            Otherwise, field is returned in spherical polar coordinates
-        bohren: bool
-            If True (default), +z along the propagation direction
-            Otherwise, flip the orientation of z.
+        Parameters
+        ----------
+        cartesian : bool
+            If True (default), project the field onto Cartesian
+            coordinates. If False, return the field in spherical
+            polar coordinates.
+        bohren : bool
+            If True (default), use +z along the propagation direction.
+            If False, flip the orientation of z.
 
         Returns
         -------
-        field : LMObject.Field
-            complex-valued electric field scattered by the particle
+        field : numpy.ndarray, shape (3, npts), dtype complex
+            Complex electric field scattered by the particle.
         '''
         k = self.instrument.wavenumber()
         n_m = self.instrument.n_m
@@ -174,11 +163,11 @@ class LorenzMie(LMObject):
         return self._field
 
     def lorenzmie(self,
-                  ab: LMObject.Coefficients,
-                  kdr: LMObject.Coordinates,
+                  ab: Coefficients,
+                  kdr: Coordinates,
                   cartesian: bool = True,
-                  bohren: bool = True) -> LMObject.Field:
-        '''Returns the field described by ab coefficients
+                  bohren: bool = True) -> Field:
+        '''Scattered field for given Mie coefficients and geometry.
 
         Parameters
         ----------
@@ -196,11 +185,9 @@ class LorenzMie(LMObject):
 
         Returns
         -------
-        field : numpy.ndarray
-            [3, npts] array of complex vector values of the
-            scattered field at each coordinate.
+        field : numpy.ndarray, shape (3, npts), dtype complex
+            Complex scattered field at each coordinate.
         '''
-
         norders = ab.shape[0]  # number of partial waves in sum
         Mo1n, Ne1n, Es, Ec = self.buffers
 
@@ -284,9 +271,7 @@ class LorenzMie(LMObject):
             # vector spherical harmonics (4.50)
             Mo1n[1] = π_n * ξ_n      # ... divided by cosφ/kr
             Mo1n[2] = τ_n * ξ_n      # ... divided by sinφ/kr
-
-            # ... divided by cosφ sinθ/kr^2
-            Ne1n[0] = (n*n + n) * π_n * ξ_n
+            Ne1n[0] = (n*n + n) * Mo1n[1]   # do not recompute π_n*ξ_n
             Ne1n[1] = τ_n * Dn       # ... divided by cosφ/kr
             Ne1n[2] = π_n * Dn       # ... divided by sinφ/kr
 
@@ -295,8 +280,12 @@ class LorenzMie(LMObject):
             En = factor * (2.*n + 1.) / (n*n + n)
 
             # the scattered field in spherical coordinates (4.45)
-            Es += (1.j * En * ab[n, 0]) * Ne1n
-            Es -= (En * ab[n, 1]) * Mo1n
+            # Mo1n[0] == 0 always, so Es[0] has no Mo1n contribution
+            an = 1.j * En * ab[n, 0]
+            bn = En * ab[n, 1]
+            Es[0] += an * Ne1n[0]
+            Es[1] += an * Ne1n[1] - bn * Mo1n[1]
+            Es[2] += an * Ne1n[2] - bn * Mo1n[2]
 
             # upward recurrences ...
             # ... angular functions (4.47)
