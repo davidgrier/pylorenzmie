@@ -40,6 +40,17 @@ class TestMask(unittest.TestCase):
         self.mask.exclude = exclude
         self.assertEqual(np.sum(self.mask()), 0)
 
+    def test_properties(self):
+        self.assertIn('fraction', self.mask.properties)
+        self.assertEqual(self.mask.properties['fraction'], self.mask.fraction)
+
+    def test_json_roundtrip(self):
+        self.mask.fraction = 0.3
+        s = self.mask.to_json()
+        self.mask.fraction = 0.1
+        self.mask.from_json(s)
+        self.assertAlmostEqual(self.mask.fraction, 0.3)
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

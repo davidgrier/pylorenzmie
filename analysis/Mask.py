@@ -1,16 +1,20 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
+from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.types import Properties
 
 
 @dataclass
-class Mask:
+class Mask(LMObject):
     '''Pixel selection mask for subsampling a hologram during fitting.
 
     Randomly selects a fraction of pixels for analysis, with optional
     exclusion of saturated, NaN, or infinite pixels.  Regenerates
     automatically whenever :attr:`shape`, :attr:`fraction`, or
     :attr:`exclude` is changed.
+
+    Inherits from :class:`pylorenzmie.lib.LMObject`.
 
     Parameters
     ----------
@@ -46,6 +50,11 @@ class Mask:
 
     def __call__(self) -> NDArray[bool]:
         return self._mask
+
+    @LMObject.properties.getter
+    def properties(self) -> Properties:
+        '''Mask configuration: fraction of pixels to sample.'''
+        return dict(fraction=self.fraction)
 
     def _select(self) -> None:
         '''Randomly select pixels according to :attr:`fraction`.

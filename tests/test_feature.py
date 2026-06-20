@@ -78,6 +78,18 @@ class TestFeature(unittest.TestCase):
         residuals = self.feature.residuals()
         self.assertEqual(residuals.shape, self.data.shape)
 
+    def test_properties(self):
+        self.assertIn('fraction', self.feature.properties)
+        self.assertEqual(self.feature.properties['fraction'],
+                         self.feature.mask.fraction)
+
+    def test_json_roundtrip(self):
+        self.feature.fraction = 0.3
+        s = self.feature.to_json()
+        self.feature.fraction = 0.1
+        self.feature.from_json(s)
+        self.assertAlmostEqual(self.feature.fraction, 0.3)
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

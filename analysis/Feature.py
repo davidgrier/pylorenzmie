@@ -2,10 +2,11 @@ import numpy as np
 import pandas as pd
 from pylorenzmie.analysis import Mask, Estimator, Optimizer
 from pylorenzmie.theory import LorenzMie, Particle
-from pylorenzmie.lib.types import Image, Coordinates
+from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.types import Image, Coordinates, Properties
 
 
-class Feature:
+class Feature(LMObject):
     '''A holographic feature associated with a single particle.
 
     Bundles image data, pixel coordinates, a pixel mask, a generative
@@ -33,6 +34,7 @@ class Feature:
                  mask: Mask | None = None,
                  model: LorenzMie | None = None,
                  fixed: list[str] | None = None) -> None:
+        super().__init__()
         self._coordinates = None
         self._data = None
         self.mask = mask or Mask()
@@ -100,6 +102,20 @@ class Feature:
     @model.setter
     def model(self, model: LorenzMie) -> None:
         self._model = model
+
+    @property
+    def fraction(self) -> float:
+        '''Fraction of pixels passed to the optimizer.'''
+        return self.mask.fraction
+
+    @fraction.setter
+    def fraction(self, fraction: float) -> None:
+        self.mask.fraction = fraction
+
+    @LMObject.properties.getter
+    def properties(self) -> Properties:
+        '''Feature pipeline configuration.'''
+        return dict(fraction=self.mask.fraction)
 
     def estimate(self) -> pd.Series:
         '''Estimate initial particle parameters from the hologram crop.
