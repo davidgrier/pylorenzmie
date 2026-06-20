@@ -6,7 +6,7 @@ from pylorenzmie.lib.types import Image, Coordinates
 
 
 class Feature:
-    '''A holographic feature associated with a single scattering particle.
+    '''A holographic feature associated with a single particle.
 
     Bundles image data, pixel coordinates, a pixel mask, a generative
     scattering model, an initial-parameter estimator, and an optimizer
@@ -158,14 +158,10 @@ class Feature:
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
-        import cv2
         from time import perf_counter
-        from pathlib import Path
+        from pylorenzmie.utilities import example_hologram
 
-        basedir = Path(__file__).parent.parent.resolve()
-        filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
-        data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
-        data /= 100.
+        data = example_hologram()
 
         feature = cls()
         feature.data = data

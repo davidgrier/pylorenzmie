@@ -216,14 +216,10 @@ class Frame(LMObject):
 
 
 def example() -> None:
-    from pathlib import Path
-    import cv2
+    from pylorenzmie.utilities import example_hologram
 
-    basedir = Path(__file__).parent.parent.resolve()
-    filename = str(basedir / 'docs' / 'tutorials' / 'image0010.png')
-    data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
     frame = Frame()
-    frame.data = data/100.
+    frame.data = example_hologram('image0010.png')
     frame.detect()
     frame.estimate()
     print(frame.features)

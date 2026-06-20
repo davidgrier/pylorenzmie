@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from pathlib import Path
 from pylorenzmie.lib import LMObject, Azimuthal
 from pylorenzmie.lib.types import Image, Images, Properties, Results
 from pylorenzmie.theory import Instrument
@@ -130,14 +129,10 @@ class Estimator(LMObject):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
-        import cv2
+        from pylorenzmie.utilities import example_hologram
 
         estimator = cls(Instrument())
-        basedir = Path(__file__).parent.parent
-        filename = str(basedir / 'docs' / 'tutorials' / 'crop.png')
-        hologram = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
-        hologram /= 100.
-        print(estimator.estimate(hologram))
+        print(estimator.estimate(example_hologram()))
 
 
 if __name__ == '__main__':  # pragma: no cover
