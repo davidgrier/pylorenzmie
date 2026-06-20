@@ -23,12 +23,12 @@ class Dimer(Cluster):
         Refractive index of each sphere. Default: 1.45.
     k_p : float, optional
         Imaginary part of the refractive index. Default: 0.
-    θ : float, optional
-        Elevation angle (θ) of the dimer axis above the xy-plane [rad].
-        ``θ = 0`` → axis in the xy-plane; ``θ = π/2`` → axis along z.
-        Default: π/4.
-    φ : float, optional
-        Azimuthal angle (φ) of the dimer axis in the xy-plane [rad].
+    theta : float, optional
+        Elevation angle of the dimer axis above the xy-plane [rad].
+        ``theta = 0`` → axis in the xy-plane; ``theta = pi/2`` → axis
+        along z.  Default: pi/4.
+    phi : float, optional
+        Azimuthal angle of the dimer axis in the xy-plane [rad].
         Default: 0.
     magnification : float, optional
         Instrument magnification [μm/pixel], used to convert the sphere
@@ -38,8 +38,8 @@ class Dimer(Cluster):
     a_p: float = 0.75
     n_p: float = 1.45
     k_p: float = 0.
-    θ: float = np.pi / 4.
-    φ: float = 0.
+    theta: float = np.pi / 4.
+    phi: float = 0.
     magnification: float = 0.048
 
     def __post_init__(self) -> None:
@@ -52,14 +52,14 @@ class Dimer(Cluster):
         if key in ('a_p', 'n_p', 'k_p'):
             for p in self.particles:
                 setattr(p, key, value)
-        if key in ('a_p', 'θ', 'φ', 'magnification'):
+        if key in ('a_p', 'theta', 'phi', 'magnification'):
             self.update_positions()
 
     @Cluster.properties.getter
     def properties(self) -> Properties:
         return {'x_p': self.x_p, 'y_p': self.y_p, 'z_p': self.z_p,
                 'a_p': self.a_p, 'n_p': self.n_p, 'k_p': self.k_p,
-                'θ': self.θ, 'φ': self.φ}
+                'theta': self.theta, 'phi': self.phi}
 
     def update_positions(self) -> None:
         '''Set sphere positions from current orientation and radius.
@@ -69,9 +69,9 @@ class Dimer(Cluster):
         '''
         if len(self.particles) != 2:
             return
-        axis = np.array([np.cos(self.θ) * np.cos(self.φ),
-                         np.cos(self.θ) * np.sin(self.φ),
-                         np.sin(self.θ)])
+        axis = np.array([np.cos(self.theta) * np.cos(self.phi),
+                         np.cos(self.theta) * np.sin(self.phi),
+                         np.sin(self.theta)])
         offset = (self.a_p / self.magnification) * axis
         self.particles[0].r_p = offset
         self.particles[1].r_p = -offset
@@ -92,8 +92,8 @@ class Dimer(Cluster):
         dimer.a_p = 0.5
         dimer.n_p = 1.42
         dimer.r_p = [150., 150., 250.]
-        dimer.θ = np.pi / 4.
-        dimer.φ = np.pi / 4.
+        dimer.theta = np.pi / 4.
+        dimer.phi = np.pi / 4.
         model = LorenzMie(coordinates=coordinates,
                           particle=dimer,
                           instrument=instrument)

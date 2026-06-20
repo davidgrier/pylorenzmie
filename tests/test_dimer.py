@@ -18,18 +18,19 @@ class TestDimer(unittest.TestCase):
 
     def test_update_positions(self) -> None:
         a_p = 1.0
-        θ = np.pi / 3
-        φ = np.pi / 4
+        theta = np.pi / 3
+        phi = np.pi / 4
         magnification = 0.05
 
         self.dimer.a_p = a_p
-        self.dimer.θ = θ
-        self.dimer.φ = φ
+        self.dimer.theta = theta
+        self.dimer.phi = phi
         self.dimer.magnification = magnification
 
-        r_p = (a_p / magnification) * np.array([np.cos(θ) * np.cos(φ),
-                                                 np.cos(θ) * np.sin(φ),
-                                                 np.sin(θ)])
+        r_p = (a_p / magnification) * np.array([
+            np.cos(theta) * np.cos(phi),
+            np.cos(theta) * np.sin(phi),
+            np.sin(theta)])
         self.assertTrue(np.allclose(self.dimer.particles[0].r_p, r_p))
         self.assertTrue(np.allclose(self.dimer.particles[1].r_p, -r_p))
 
@@ -48,11 +49,10 @@ class TestDimer(unittest.TestCase):
             self.assertEqual(particle.k_p, new_k_p)
 
     def test_invalid_particle_count(self) -> None:
-        # Manually set particles to an invalid count
         self.dimer.particles = [Sphere(a_p=0.75, n_p=1.45, k_p=0.)]
-        self.dimer.update_positions()  # Should not raise an error
+        self.dimer.update_positions()
         self.assertEqual(len(self.dimer), 1)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()
