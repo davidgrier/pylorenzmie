@@ -1,176 +1,117 @@
-# -*- coding: utf-8 -*-
-
 from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.types import Image, Properties
 from pylorenzmie.theory import LorenzMie
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 from scipy.linalg import svd
 import pandas as pd
-import logging
-
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 class Optimizer(LMObject):
-    '''
-    Fit generative light-scattering model to data
+    '''Fit a generative light-scattering model to holographic data.
 
-    ...
+    Wraps :func:`scipy.optimize.least_squares`.  The ``method`` class
+    attribute must appear as a substring of the model's ``method`` string
+    for the pairing to be valid (e.g. ``'numpy'`` matches both
+    ``'numpy'`` and ``'cupy numpy'``).
 
-    Inherits
-    --------
-    pylorenzmie.lib.LMObject
-
-    Properties
+    Parameters
     ----------
-    model : LorenzMie
-        Generative model for calculating holograms.
-    data : numpy.ndarray
-        Target for optimization with model.
-    properties : dict
-        Dictionary of settings for the optimizer as a whole
-    settings : dict
-        Dictionary of settings for the optimization method
-    fixed : list[str]
-        Names of properties of the model that should remain constant
-        during fitting
-    variables : list[str]
-        Names of properties of the model that will be optimized.
-        Default: All model.properties that are not fixed
-    robust : bool
-        If True, use robust optimization (absolute deviations)
-        otherwise use least-squares optimization
-        Default: False (least-squares)
-    result : pandas.Series
-        Optimized values of the variables, together with numerical
-        uncertainties.
+    model : LorenzMie, optional
+        Generative scattering model.  Default: ``LorenzMie()``.
+    data : numpy.ndarray, optional
+        Target intensities for optimization.
+    robust : bool, optional
+        Use robust Cauchy loss instead of standard least squares.
+        Default: ``False``.
+    fixed : list[str], optional
+        Names of model properties held constant during fitting.
+        Default: ``['noise', 'numerical_aperture']``.
+    settings : dict, optional
+        Keyword arguments forwarded to ``scipy.optimize.least_squares``.
+        Defaults to sensible values for holographic particle fitting.
+    **kwargs
+        Forwarded to ``LorenzMie()`` when ``model`` is not supplied.
+
+    Attributes
+    ----------
+    result : pandas.Series or None
+        Fitted values and uncertainties after :meth:`optimize` has run;
+        ``None`` before the first call.
     metadata : pandas.Series
-        Fixed properties and settings of the optimization method.
-
-    Methods
-    -------
-    optimize() : pandas.Series
-        Optimizes model parameters to fit the model to the data.
-        Returns result.
-
-    report() : str
-        Returns formatted string of fitting results.
+        Fixed model properties and optimizer settings.
     '''
 
     method: str = 'numpy'
 
     def __init__(self,
                  model: LorenzMie | None = None,
-                 data: LorenzMie.Image | None = None,
+                 data: Image | None = None,
                  robust: bool = False,
-                 fixed: list[str] = [],
-                 settings: LorenzMie.Properties | None = None,
+                 fixed: list[str] | None = None,
+                 settings: Properties | None = None,
                  **kwargs) -> None:
         self.model = model or LorenzMie(**kwargs)
         if self.method not in self.model.method:
             raise TypeError('Model not compatible with Optimizer')
         self.data = data
         self.settings = settings
+        self.fixed = fixed if fixed is not None else ['noise', 'numerical_aperture']
         self.robust = robust
-        self.fixed = fixed
         self._result = None
 
     @property
-    def properties(self) -> LorenzMie.Properties:
-        '''Properties of the Optimizer object'''
-        properties = dict(settings=self.settings,
-                          fixed=self.fixed)
+    def properties(self) -> Properties:
+        '''Optimizer settings merged with model properties.'''
+        properties = dict(settings=self.settings, fixed=self.fixed)
         properties.update(self.model.properties)
         return properties
 
     @properties.setter
-    def properties(self, properties: LorenzMie.Properties) -> None:
+    def properties(self, properties: Properties) -> None:
         self.model.properties = properties
-        for property, value in properties.items():
-            if hasattr(self, property):
-                setattr(self, property, value)
+        for name, value in properties.items():
+            if hasattr(self, name):
+                setattr(self, name, value)
 
     @property
-    def settings(self) -> LorenzMie.Properties:
-        ''' Properties that control the fitting process
+    def settings(self) -> Properties:
+        '''Settings forwarded to ``scipy.optimize.least_squares``.
 
-        This is a subset of the properties of the Optimizer object.
-        See scipy.optimize.least_squares for details.
-
-        NOTES
+        Notes
         -----
-        method: str
-            trf:     Trust Region Reflective
-            dogbox:
-            lm:      Levenberg-Marquardt
-                     NOTE: only supports linear loss
-        loss: str
-            linear:  default: standard least squares
-            soft_l1: robust least squares
-            huber:   robust least squares
-            cauchy:  strong least squares
-            arctan:  limits maximum loss
-        x_scale: str
-            jac:     dynamic rescaling
-            x_scale: specify scale for each adjustable variable
-        ftol: float
-            Tolerance for termination: change of the cost function.
-        xtol: float
-            Tolerance for termination: change of the independent variables.
-        gtol: float
-            Tolerance for termination: change of the gradient.
-        diff_step: float
-            Step size for numerical approximation of the Jacobian.
-        max_nfev: int
-            Maximum number of function evaluations.
+        ``method``: ``'lm'`` (Levenberg-Marquardt, default), ``'trf'``,
+        or ``'dogbox'``.  Only ``'lm'`` supports ``loss='linear'``.
+
+        ``loss``: ``'linear'`` (standard LS), ``'cauchy'``, ``'huber'``,
+        ``'soft_l1'``, or ``'arctan'``.
+
+        ``x_scale``: ``'jac'`` for dynamic rescaling, or an explicit
+        array of scales matched to the free parameters.
         '''
         return self._settings
 
     @settings.setter
-    def settings(self, settings: LorenzMie.Properties) -> None:
+    def settings(self, settings: Properties | None) -> None:
         if settings is None:
-            settings = {'method': 'lm',     # (a)
-                        'ftol': 1e-4,       # default: 1e-8
-                        'xtol': 1e-6,       # default: 1e-8
-                        'gtol': 1e-6,       # default: 1e-8
-                        'loss': 'linear',   # (b)
-                        'max_nfev': 2000,   # max function evaluations
-                        'diff_step': 1e-5,  # default: machine epsilon
-                        'x_scale': 'jac'}   # (c)
+            settings = {'method': 'lm',
+                        'ftol': 1e-4,
+                        'xtol': 1e-6,
+                        'gtol': 1e-6,
+                        'loss': 'linear',
+                        'max_nfev': 2000,
+                        'diff_step': 1e-5,
+                        'x_scale': 'jac'}
         self._settings = settings
 
     @property
     def robust(self) -> bool:
+        '''True if using robust (non-linear loss) optimization.'''
         return self.settings['loss'] != 'linear'
-
-    @property
-    def fixed(self) -> list[str]:
-        '''List of fixed properties'''
-        return self._fixed
-
-    @fixed.setter
-    def fixed(self, fixed: list[str]) -> None:
-        self._fixed = fixed
-        self._variables = [p for p in self.model.properties
-                           if p not in fixed]
-
-    @property
-    def variables(self) -> list[str]:
-        '''List of variable properties'''
-        return self._variables
-
-    @variables.setter
-    def variables(self, variables: list[str]) -> None:
-        self._variables = variables
-        self._fixed = [p for p in self.model.properties
-                       if p not in variables]
 
     @robust.setter
     def robust(self, robust: bool) -> None:
-        '''Convenience property for selecting robust fitting'''
         if robust:
             self.settings['method'] = 'trf'
             self.settings['loss'] = 'cauchy'
@@ -178,20 +119,44 @@ class Optimizer(LMObject):
             self.settings['method'] = 'lm'
             self.settings['loss'] = 'linear'
 
-    #
-    # Properties resulting from optimization
-    #
     @property
-    def result(self) -> pd.Series:
-        '''Optimized properties formatted as a pandas.Series'''
+    def fixed(self) -> list[str]:
+        '''Model properties held constant during fitting.'''
+        return self._fixed
+
+    @fixed.setter
+    def fixed(self, fixed: list[str]) -> None:
+        self._fixed = list(fixed)
+        self._variables = [p for p in self.model.properties
+                           if p not in fixed]
+
+    @property
+    def variables(self) -> list[str]:
+        '''Model properties that will be optimized.'''
+        return self._variables
+
+    @variables.setter
+    def variables(self, variables: list[str]) -> None:
+        self._variables = list(variables)
+        self._fixed = [p for p in self.model.properties
+                       if p not in variables]
+
+    @property
+    def result(self) -> pd.Series | None:
+        '''Fitted values, uncertainties, and statistics.
+
+        Returns ``None`` before :meth:`optimize` has been called.
+        Each fitted parameter ``p`` appears alongside ``d``+``p`` (its
+        uncertainty).  Also includes ``success``, ``npix``, and
+        ``redchi``.
+        '''
         if self._result is None:
             return None
         a = self.variables
-        b = ['d' + c for c in a]
+        b = ['d' + v for v in a]
         keys = list(sum(zip(a, b), ()))
         keys.extend('success npix redchi'.split())
-
-        values = self._result.x
+        values = list(self._result.x)
         npix = self.data.size
         redchi, uncertainties = self._statistics()
         values = list(sum(zip(values, uncertainties), ()))
@@ -200,82 +165,78 @@ class Optimizer(LMObject):
 
     @property
     def metadata(self) -> pd.Series:
-        '''Fixed properties and fit settings'''
+        '''Fixed model properties and optimizer settings.'''
         metadata = {key: self.model.properties[key] for key in self.fixed
                     if key in self.model.properties}
         metadata.update(self.settings)
         return pd.Series(metadata)
 
-    #
-    # Public methods
-    #
     def optimize(self) -> pd.Series:
-        '''
-        Fits model to data
+        '''Fit model to data.
 
         Returns
         -------
         result : pandas.Series
-            Values, uncertainties and statistics from fit
+            Fitted values, uncertainties, and goodness-of-fit statistics.
         '''
         p0 = np.array([self.model.properties[p] for p in self.variables])
         self._result = least_squares(self._residuals, p0, **self.settings)
         return self.result
 
     def report(self) -> str:
-        '''Returns formatted string of fitting results'''
+        '''Format fitting results as a human-readable string.
+
+        Returns
+        -------
+        str
+            One line per fitted parameter showing value ± uncertainty,
+            followed by pixel count and reduced chi-squared.
+        '''
         result = self.result
-        s = [f'x\u209a = {result.x_p:.2f} ± {result.dx_p:.2f} pixels',
-             f'y\u209a = {result.y_p:.2f} ± {result.dy_p:.2f} pixels',
-             f'z\u209a = {result.z_p:.2f} ± {result.dz_p:.2f} pixels',
-             f'a\u209a = {result.a_p:.3f} ± {result.da_p:.3f} μm',
-             f'n\u209a = {result.n_p:.4f} ± {result.dn_p:.4f}']
+        if result is None:
+            raise RuntimeError('optimize() must be called before report()')
+        units = {'x_p': 'pixels', 'y_p': 'pixels', 'z_p': 'pixels',
+                 'a_p': 'μm'}
+        fmt = {'x_p': '.2f', 'y_p': '.2f', 'z_p': '.2f',
+               'a_p': '.3f'}
+        lines = []
+        for p in self.variables:
+            val = result[p]
+            err = result['d' + p]
+            f = fmt.get(p, '.4f')
+            suffix = f' {units[p]}' if p in units else ''
+            lines.append(f'{p} = {val:{f}} ± {err:{f}}{suffix}')
+        lines += [f'npixels = {result.npix:.0f}',
+                  f'χ² = {result.redchi:.2f}']
+        return '\n'.join(lines)
 
-        standard = 'x_p y_p z_p a_p n_p'.split()
-        extra = list(set(self.variables).difference(standard))
-        for p in extra:
-            s.append(f'{p} = {result[p]:.4f} ± {result["d"+p]:.4f}')
-
-        s += [f'npixels = {result.npix}',
-              f'𝜒\u00b2 = {result.redchi:.2f}']
-
-        return '\n'.join(s)
-
-    #
-    # Private methods
-    #
-    def _residuals(self, values: list[float]) -> LorenzMie.Image:
-        '''Updates properties and returns residuals'''
+    def _residuals(self, values: NDArray[float]) -> Image:
         self.model.properties = dict(zip(self.variables, values))
         noise = self.model.instrument.noise
         return (self.model.hologram() - self.data) / noise
 
-    def _statistics(self) -> tuple[NDArray[float], NDArray[float]]:
-        '''return reduced chi-squared and standard uncertainties
+    def _statistics(self) -> tuple[float, NDArray[float]]:
+        '''Reduced chi-squared and parameter uncertainties.
 
-        Uncertainties are the square roots of the diagonal
-        elements of the covariance matrix. The covariance matrix
-        is obtained from the Jacobian of the fit by singular
-        value decomposition, using the Moore-Penrose inverse
-        after discarding small singular values.
+        Uncertainties are square roots of the diagonal of the covariance
+        matrix, estimated from the Jacobian via Moore-Penrose SVD with
+        small singular values discarded.
         '''
         res = self._result
-        ndeg = self.data.size - res.x.size  # number of degrees of freedom
-        redchi = 2.*res.cost / ndeg         # reduced chi-squared
-
+        ndeg = self.data.size - res.x.size
+        redchi = 2. * res.cost / ndeg
         _, s, VT = svd(res.jac, full_matrices=False)
         threshold = np.finfo(float).eps * max(res.jac.shape) * s[0]
         s = s[s > threshold]
         VT = VT[:s.size]
         pcov = np.dot(VT.T / s**2, VT)
         uncertainty = np.sqrt(redchi * np.diag(pcov))
-
         return redchi, uncertainty
 
     @classmethod
-    def example(cls: 'Optimizer',
+    def example(cls,
                 verbose: bool = False,
-                **kwargs) -> None:
+                **kwargs) -> None:  # pragma: no cover
         from time import perf_counter
 
         shape = (201, 201)
@@ -289,9 +250,8 @@ class Optimizer(LMObject):
         print(model.particle)
         noise = model.instrument.noise * np.random.normal(size=shape)
         data = model.hologram() + noise.flatten()
-        fixed = '''wavelength magnification
-                   numerical_aperture n_m k_p'''.split()
-        a = Optimizer(model=model, fixed=fixed, **kwargs)
+        fixed = 'wavelength magnification numerical_aperture n_m noise k_p'.split()
+        a = cls(model=model, fixed=fixed, **kwargs)
         settings = a.settings
         settings['method'] = 'trf'
         settings['loss'] = 'cauchy'
@@ -308,5 +268,5 @@ class Optimizer(LMObject):
         print(a.report())
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     Optimizer.example()
