@@ -8,7 +8,6 @@ from pylorenzmie.analysis.Localizer import Localizer
 
 THIS_DIR = Path(__file__).parent
 TEST_IMAGE = THIS_DIR / 'data' / 'image0010.png'
-TEST_CROP = THIS_DIR / 'data' / 'crop.png'
 
 
 class TestLocalizer(unittest.TestCase):
@@ -18,8 +17,6 @@ class TestLocalizer(unittest.TestCase):
         self.localizer = Localizer()
         data = cv2.imread(str(TEST_IMAGE), cv2.IMREAD_GRAYSCALE)
         self.data = data.astype(float) / 100.
-        crop = cv2.imread(str(TEST_CROP), cv2.IMREAD_GRAYSCALE)
-        self.crop = crop.astype(float) / 100.
 
     def test_properties(self):
         props = self.localizer.properties
@@ -27,6 +24,13 @@ class TestLocalizer(unittest.TestCase):
         self.assertIn('nfringes', props)
         self.assertEqual(props['diameter'], 31)
         self.assertEqual(props['nfringes'], 20)
+
+    def test_json_roundtrip(self):
+        self.localizer.diameter = 41
+        s = self.localizer.to_json()
+        self.localizer.diameter = 31
+        self.localizer.from_json(s)
+        self.assertEqual(self.localizer.diameter, 41)
 
     def test_detect_alias(self):
         '''detect() is a backward-compatibility alias for localize()'''
@@ -60,10 +64,9 @@ class TestLocalizer(unittest.TestCase):
             self.assertEqual(cropped.ndim, 2)
 
     def test_crop_shape(self):
-        (x0, y0), w, h = ((10, 20), 50, 60)
-        bbox = ((x0, y0), w, h)
+        bbox = ((10, 20), 50, 60)
         cropped = self.localizer.crop(self.data, bbox)
-        self.assertEqual(cropped.shape, (h, w))
+        self.assertEqual(cropped.shape, (60, 50))
 
     def test_custom_diameter(self):
         result = self.localizer.localize(self.data, diameter=41)
@@ -74,5 +77,5 @@ class TestLocalizer(unittest.TestCase):
         self.assertIsInstance(result, pd.DataFrame)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()
