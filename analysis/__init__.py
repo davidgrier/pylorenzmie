@@ -5,7 +5,6 @@ from .Mask import Mask
 from .Feature import Feature
 from .Frame import Frame
 from .Trajectory import Trajectory
-# from .Video import Video
 
-__all__ = 'Localizer, Estimator Optimizer ' \
-          'Mask Feature Frame Trajectory'.split()
+__all__ = ['Localizer', 'Estimator', 'Optimizer',
+           'Mask', 'Feature', 'Frame', 'Trajectory']

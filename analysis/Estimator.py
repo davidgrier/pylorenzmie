@@ -90,19 +90,23 @@ class Estimator(LMObject):
         self.z_p = float(np.median(zn))
 
     def _estimate_a(self) -> None:
-        '''Estimate radius from positions of scattering minima.
+        '''Estimate radius from the first scattering minimum.
 
-        Uses the Fraunhofer approximation: minima of the azimuthal
-        profile occur where the size parameter equals zeros of J_1.
+        Uses the Fraunhofer approximation: the innermost minimum of the
+        azimuthal profile approximates the first zero of J_1, giving a
+        rough estimate of the particle radius.  The estimate is typically
+        accurate to within a factor of two; the optimizer refines it.
         '''
-        minima = argrelmin(self._profile)[0].astype(float)
+        minima = argrelmin(self._profile, order=5)[0]
+        minima = minima[minima > 5]  # skip noise near the image center
         if len(minima) == 0:
             self.logger.warning(
                 'No intensity minima found; a_p could not be estimated')
             return
-        alpha_n = np.sqrt(np.square(self.z_p / minima) + 1.)
-        a_p = np.median(jn_zeros(1, len(alpha_n)) * alpha_n) / self._k
-        self.a_p = float(2. * self._magnification * a_p)
+        r_1 = float(minima[0])
+        alpha_1 = np.sqrt((self.z_p / r_1) ** 2 + 1.)
+        a_p = jn_zeros(1, 1)[0] * alpha_1 / self._k
+        self.a_p = float(self._magnification * a_p)
 
     def estimate(self, feature: Images) -> Results:
         '''Estimate particle properties from a holographic crop.

@@ -194,6 +194,7 @@ class Frame(LMObject):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        from time import perf_counter
         from pylorenzmie.utilities import example_hologram
 
         frame = cls()
@@ -201,9 +202,18 @@ class Frame(LMObject):
         frame.instrument.magnification = 0.048
         frame.instrument.n_m = 1.34
         frame.data = example_hologram('image0010.png')
-        frame.detect()
+
+        n = frame.detect()
+        print(f'Detected {n} feature(s)')
+
         frame.estimate()
-        print(frame.features)
+        for i, feature in enumerate(frame.features):
+            print(f'Feature {i}: {feature.particle}')
+
+        start = perf_counter()
+        results = frame.optimize()
+        print(f'Optimized in {perf_counter() - start:.3f} s')
+        print(results)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -1,88 +1,83 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
-import json
-from .Feature import Feature
+from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.types import Properties, Results
+import pandas as pd
 
 
-class Trajectory(object):
+class Trajectory(LMObject):
+    '''Accumulate per-frame characterization results over time.
 
-    def __init__(self, features=[], framenumbers=[],
-                 info=None, instrument=None):
-        self._features = []
-        self._framenumbers = []
-        self._instrument = instrument
-        if features is not None:
-            for idx, feature in enumerate(features):
-                if isinstance(feature, dict):
-                    f = Feature(info=feature)
-                elif type(feature) is Feature:
-                    f = feature
-                self.add([f], [framenumbers[idx]])
-        if info is not None:
-            self.deserialize(info)
+    Each call to :meth:`append` stores one frame's worth of
+    :class:`~pylorenzmie.analysis.Frame` output.  :attr:`data`
+    returns the combined time series as a single
+    :class:`pandas.DataFrame`.
 
-    @property
-    def instrument(self):
-        return self._instrument
+    Inherits from :class:`pylorenzmie.lib.LMObject`.
+    '''
 
-    @instrument.setter
-    def instrument(self, instrument):
-        self._instrument = instrument
+    def __init__(self) -> None:
+        super().__init__()
+        self._frames: list[pd.DataFrame] = []
+
+    @LMObject.properties.getter
+    def properties(self) -> Properties:
+        return dict()
 
     @property
-    def features(self):
-        return self._features
+    def data(self) -> pd.DataFrame:
+        '''All results concatenated into a single DataFrame.'''
+        if not self._frames:
+            return pd.DataFrame()
+        return pd.concat(self._frames, ignore_index=True)
 
-    @property
-    def framenumbers(self):
-        return self._framenumbers
+    def append(self, results: Results) -> None:
+        '''Append one frame of results.
 
-    def add(self, features, framenumbers):
-        if len(features) != len(framenumbers):
-            msg = "features and framenumbers must be same length."
-            raise(ValueError(msg))
-        for idx, feature in enumerate(features):
-            if self.instrument is not None:
-                feature.instrument = self.instrument
-            self._features.append(feature)
-            self._framenumbers.append(framenumbers[idx])
+        Parameters
+        ----------
+        results : pandas.DataFrame or pandas.Series
+            Output from :meth:`Frame.optimize` or
+            :meth:`Frame.analyze`.
+        '''
+        if isinstance(results, pd.Series):
+            results = results.to_frame().T
+        self._frames.append(results)
 
-    def serialize(self, filename=None, omit=[], omit_feat=[]):
-        features = []
-        framenumbers = []
-        for idx, feature in enumerate(self.features):
-            if 'features' not in omit:
-                out = feature.serialize(exclude=omit_feat)
-                features.append(out)
-            if 'framenumbers' not in omit:
-                framenumbers.append(int(self.framenumbers[idx]))
-        info = {'features': features,
-                'framenumbers': framenumbers}
-        for k in omit:
-            if k in info.keys():
-                info.pop()
-        if filename is not None:
-            with open(filename, 'w') as f:
-                json.dump(out, f)
-        return info
+    def clear(self) -> None:
+        '''Remove all stored results.'''
+        self._frames = []
 
-    def deserialize(self, info):
-        if info is None:
-            return
-        if isinstance(info, str):
-            with open(info, 'rb') as f:
-                info = json.load(f)
-        if 'features' in info.keys():
-            features = info['features']
-            self._features = []
-            for d in features:
-                self._features.append(Feature(info=d))
-        if 'framenumbers' in info.keys():
-            self._framenumbers = info['framenumbers']
+    def to_csv(self, path: str, **kwargs) -> None:
+        '''Write accumulated results to a CSV file.
 
-    def optimize(self, report=True, **kwargs):
-        for idx, feature in enumerate(self.features):
-            result = feature.optimize(**kwargs)
-            if report:
-                print(result)
+        Parameters
+        ----------
+        path : str
+            Destination file path.
+        **kwargs
+            Additional keyword arguments passed to
+            :func:`pandas.DataFrame.to_csv`.
+        '''
+        self.data.to_csv(path, **kwargs)
+
+    @classmethod
+    def example(cls) -> None:  # pragma: no cover
+        import cv2
+        from pathlib import Path
+        from pylorenzmie.analysis import Frame
+        from pylorenzmie.utilities import example_hologram
+
+        frame = Frame()
+        frame.instrument.wavelength = 0.447
+        frame.instrument.magnification = 0.048
+        frame.instrument.n_m = 1.34
+
+        trajectory = cls()
+        for _ in range(3):
+            results = frame.analyze(example_hologram('image0010.png'))
+            trajectory.append(results)
+
+        print(trajectory.data)
+
+
+if __name__ == '__main__':  # pragma: no cover
+    Trajectory.example()
