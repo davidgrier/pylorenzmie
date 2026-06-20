@@ -1,118 +1,93 @@
-from pylorenzmie.theory import Instrument
-from pylorenzmie.analysis import (Localizer, Feature)
+from pylorenzmie.theory import Instrument, LorenzMie
+from pylorenzmie.analysis import Localizer, Feature
 from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.types import Image, Properties, Results
 import pandas as pd
 import numpy as np
 
 
 class Frame(LMObject):
-    '''
-    Abstraction of a holographic microscopy video frame.
-    ...
+    '''Full-frame holographic microscopy analysis pipeline.
 
-    Properties
+    Manages detection, estimation, and optimization of all particle
+    features in a single normalized hologram.  Instrument settings
+    are shared across all features detected in the frame.
+
+    Inherits from :class:`pylorenzmie.lib.LMObject`.
+
+    Parameters
     ----------
-    instrument : pylorenzmie.theory.Instrument
-        All of the features in a holographic image are interpreted
-        in the context of the properties of the instrument that
-        recorded the frame.
-    data : numpy.ndarray
-        (w, h) normalized holographic microscopy image
-    shape : tuple
-        dimensions of image data, updated to reflect most recent image
+    instrument : Instrument, optional
+        Microscope parameters shared by all features.
+        Default: ``Instrument()``.
+    localizer : Localizer, optional
+        Feature detection backend.  Default: ``Localizer()``.
+    data : numpy.ndarray, optional
+        Normalized hologram.  Setting data clears any previous
+        detection results.
+
+    Attributes
+    ----------
+    shape : tuple[int, int]
+        Height × width of the most recently assigned image.
     coordinates : numpy.ndarray
-        [3, w, h] of pixel coordinates for most recent image
-    features : list
-        List of Feature objects identified in data by detect()
-        or analyze()
+        Pixel coordinate grid of shape ``(2, height, width)``.
+    features : list[Feature]
+        Feature objects created by the most recent :meth:`detect` call.
+    bboxes : list
+        Bounding boxes ``((x0, y0), w, h)`` for current features.
     results : pandas.DataFrame
-        Summary of tracking and characterization data from estimate(),
-        optimize() or analyze()
-
-    Methods
-    -------
-    detect() :
-        Detect and localize features in data. Sets features.
-
-        Returns
-        -------
-        self
-
-    estimate() :
-        Estimate particle position and characteristics for each feature.
-
-        Returns
-        -------
-        self
-
-    optimize() :
-        Refine estimates for particle positions and characteristics
-
-        Returns
-        -------
-        results: pandas.DataFrame
-            Summary of tracking and characterization results from data
-
-    analyze([image]) :
-        Identify features in image that are associated with
-        particles and optimize the parameters of those features.
-        Results are obtained by running detect(), estimate() and optimize()
-
-        Arguments
-        ---------
-        image : [optional] numpy.ndarray
-            Image data to analyze. Sets self.data if provided.
-            Default: self.data
-
-        Returns
-        -------
-        results: pandas.DataFrame
-            Summary of tracking and characterization results from data
+        Tracking and characterization results from the most recent
+        :meth:`optimize` or :meth:`analyze` call.
     '''
 
     def __init__(self,
                  instrument: Instrument | None = None,
                  localizer: Localizer | None = None,
-                 data: LMObject.Image | None = None) -> None:
+                 data: Image | None = None) -> None:
+        super().__init__()
         self.instrument = instrument or Instrument()
         self.localizer = localizer or Localizer()
-        self._shape = (0, 0)
-        self._features = []
-        self._bboxes = []
-        self._results = pd.DataFrame()
-        self._coordinates = np.empty((2, 0, 0))
-        self._data = None
+        self._shape: tuple[int, int] = (0, 0)
+        self._features: list[Feature] = []
+        self._bboxes: list = []
+        self._results: pd.DataFrame = pd.DataFrame()
+        self._coordinates: np.ndarray = np.empty((2, 0, 0))
+        self._data: Image | None = None
         if data is not None:
             self.data = data
 
-    @property
-    def properties(self) -> dict:
+    @LMObject.properties.getter
+    def properties(self) -> Properties:
         return dict()
 
     @property
     def shape(self) -> tuple[int, int]:
-        '''image shape'''
+        '''Height × width of the current image.'''
         return self._shape
 
     @shape.setter
     def shape(self, shape: tuple[int, int] | None) -> None:
-        if shape is None or shape == self._shape:
+        if shape is None:
+            return
+        shape = tuple(shape)
+        if shape == self._shape:
             return
         self._coordinates = self.meshgrid(shape, flatten=False)
         self._shape = shape
 
     @property
     def coordinates(self) -> np.ndarray:
-        '''Coordinates of pixels in image data'''
+        '''Pixel coordinate grid, shape ``(2, height, width)``.'''
         return self._coordinates
 
     @property
-    def data(self) -> np.ndarray:
-        '''image data'''
+    def data(self) -> Image | None:
+        '''Normalized hologram intensity.'''
         return self._data
 
     @data.setter
-    def data(self, data: LMObject.Image | None) -> None:
+    def data(self, data: Image | None) -> None:
         self._features = []
         self._results = pd.DataFrame()
         if data is not None:
@@ -120,30 +95,22 @@ class Frame(LMObject):
         self._data = data
 
     @property
-    def results(self) -> LMObject.Results:
-        '''DataFrame containing tracking and characterization results'''
+    def results(self) -> Results:
+        '''Tracking and characterization results from the most recent fit.'''
         return self._results
 
     @property
     def features(self) -> list[Feature]:
-        '''List of objects of type Feature'''
+        '''Features detected in the current frame.'''
         return self._features
 
     @property
     def bboxes(self) -> list:
-        '''Bounding boxes of current features as list of ((x0, y0), w, h)'''
+        '''Bounding boxes of current features, each ``((x0, y0), w, h)``.'''
         return self._bboxes
 
     @bboxes.setter
-    def bboxes(self,
-               bboxes: tuple | list) -> None:
-        '''Set features from bounding boxes
-
-        Parameters
-        ----------
-        bboxes : tuple | list
-            Single bounding box ((x0, y0), w, h) or list of bounding boxes.
-        '''
+    def bboxes(self, bboxes: tuple | list) -> None:
         if (isinstance(bboxes, tuple) and len(bboxes) == 3
                 and isinstance(bboxes[0], tuple)):
             bboxes = [bboxes]
@@ -152,78 +119,92 @@ class Frame(LMObject):
         for bbox in self._bboxes:
             (x0, y0), w, h = bbox
             dim = min(w, h)
-            d = self.data[y0:y0+dim, x0:x0+dim]
-            c = self.coordinates[:, y0:y0+dim, x0:x0+dim].reshape((2, -1))
-            this = Feature(data=d, coordinates=c)
+            d = self.data[y0:y0 + dim, x0:x0 + dim]
+            c = self.coordinates[:, y0:y0 + dim, x0:x0 + dim].reshape((2, -1))
+            this = Feature(data=d, coordinates=c,
+                           model=LorenzMie(instrument=self.instrument))
             this.particle.x_p = x0 + dim / 2.
             this.particle.y_p = y0 + dim / 2.
             self._features.append(this)
 
     def detect(self) -> int:
-        '''Detect and localize features in data
+        '''Detect and localize features in :attr:`data`.
+
+        Returns
+        -------
+        nfeatures : int
+            Number of features found.
         '''
         if self.data is None:
             self._features = []
             self._bboxes = []
             return 0
-        self._results = self.localizer.detect(self.data)
+        self._results = self.localizer.localize(self.data)
         self._features = []
         self._bboxes = []
-        for _, feature in self._results.iterrows():
-            (x0, y0), w, h = feature.bbox
+        for _, row in self._results.iterrows():
+            (x0, y0), w, h = row.bbox
             dim = min(w, h)
-            d = self.data[y0:y0+dim, x0:x0+dim]
-            c = self.coordinates[:, y0:y0+dim, x0:x0+dim].reshape((2, -1))
-            this = Feature(data=d, coordinates=c)
-            this.properties = self.properties
-            this.particle.x_p = feature.x_p
-            this.particle.y_p = feature.y_p
+            d = self.data[y0:y0 + dim, x0:x0 + dim]
+            c = self.coordinates[:, y0:y0 + dim, x0:x0 + dim].reshape((2, -1))
+            this = Feature(data=d, coordinates=c,
+                           model=LorenzMie(instrument=self.instrument))
+            this.particle.x_p = row.x_p
+            this.particle.y_p = row.y_p
             self._features.append(this)
-            self._bboxes.append(feature.bbox)
+            self._bboxes.append(row.bbox)
         return len(self._features)
 
     def estimate(self) -> None:
-        '''Estimate parameters for current features
-        '''
+        '''Estimate parameters for all current features.'''
         for feature in self.features:
             feature.estimate()
 
-    def optimize(self) -> LMObject.Results:
-        '''Optimize parameters for current features
+    def optimize(self) -> Results:
+        '''Optimize parameters for all current features.
+
+        Returns
+        -------
+        results : pandas.DataFrame
+            Fitted values, uncertainties, and goodness-of-fit for each
+            feature.
         '''
         results = [feature.optimize() for feature in self.features]
         self._results = pd.DataFrame(results)
         return self._results
 
-    def analyze(self,
-                data: LMObject.Image | None = None) -> LMObject.Results:
-        '''Detect features, estimate parameters, and fit
+    def analyze(self, data: Image | None = None) -> Results:
+        '''Detect features, estimate parameters, and optimize fits.
 
         Parameters
         ----------
-        data: numpy.ndarray
-            Normalized holographic microscopy data.
+        data : numpy.ndarray, optional
+            Normalized hologram.  Updates :attr:`data` if provided.
 
         Returns
         -------
-        results: pandas.DataFrame
-            Optimized parameters of generative model for each feature
+        results : pandas.DataFrame
+            Optimized parameters of the generative model for each
+            detected feature.
         '''
         self.data = data
         self.detect()
         self.estimate()
         return self.optimize()
 
+    @classmethod
+    def example(cls) -> None:  # pragma: no cover
+        from pylorenzmie.utilities import example_hologram
 
-def example() -> None:
-    from pylorenzmie.utilities import example_hologram
+        frame = cls()
+        frame.instrument.wavelength = 0.447
+        frame.instrument.magnification = 0.048
+        frame.instrument.n_m = 1.34
+        frame.data = example_hologram('image0010.png')
+        frame.detect()
+        frame.estimate()
+        print(frame.features)
 
-    frame = Frame()
-    frame.data = example_hologram('image0010.png')
-    frame.detect()
-    frame.estimate()
-    print(frame.features)
 
-
-if __name__ == '__main__':
-    example()
+if __name__ == '__main__':  # pragma: no cover
+    Frame.example()
