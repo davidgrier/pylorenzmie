@@ -1,73 +1,76 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import numpy as np
 from numpy.typing import NDArray
 
 
 @dataclass
-class Mask(object):
-    '''
-    Mask for selecting pixels to analyze
+class Mask:
+    '''Pixel selection mask for subsampling a hologram during fitting.
 
-    ...
+    Randomly selects a fraction of pixels for analysis, with optional
+    exclusion of saturated, NaN, or infinite pixels.  Regenerates
+    automatically whenever :attr:`shape`, :attr:`fraction`, or
+    :attr:`exclude` is changed.
 
-    Properties
+    Parameters
     ----------
-    shape: tuple(int, int)
-        (w, h) shape of the mask
-    fraction : float
-        percentage of pixels to sample
-    exclude : numpy.ndarray
-        boolean mask of pixels to exclude from mask
+    shape : tuple[int, int], optional
+        ``(height, width)`` of the image.  Default: ``None``.
+    fraction : float, optional
+        Fraction of pixels to include.  Default: 0.1.
+    exclude : numpy.ndarray of bool, optional
+        Boolean array of pixels to force-exclude.  Default: ``None``.
 
-    Methods
-    -------
-    update():
-        Create new random mask
+    Notes
+    -----
+    Call :meth:`update` to resample the mask without changing any
+    parameter.  Subclasses may override :meth:`_select` to implement
+    non-uniform sampling strategies.
     '''
 
     shape: tuple[int, int] | None = None
     fraction: float = 0.1
-    exclude: NDArray[int] | None = None
+    exclude: NDArray[bool] | None = None
+
+    def __post_init__(self) -> None:
+        self._initialized = False
+        self._mask: NDArray[bool] = np.empty((0, 0), dtype=bool)
+        self.update()
+        self._initialized = True
 
     def __setattr__(self, prop: str, value: object) -> None:
         super().__setattr__(prop, value)
-        if prop in ['shape', 'fraction', 'exclude']:
-            self.update()
+        if prop in ('shape', 'fraction', 'exclude'):
+            if getattr(self, '_initialized', False):
+                self.update()
 
     def __call__(self) -> NDArray[bool]:
         return self._mask
 
-    @property
-    def mask(self) -> NDArray[bool]:
-        return self._mask
-
     def _select(self) -> None:
-        '''Selects pixels for analysis
+        '''Randomly select pixels according to :attr:`fraction`.
 
-        Randomly chooses a proportion of pixels to include
-        set by self.fraction.
-
-        Subclasses can override this to implement other distributions
+        Subclasses can override this to implement other sampling
+        distributions.
         '''
-        choice = np.random.choice
-        self._mask = choice([True, False],
-                            size=self.shape,
-                            p=[self.fraction, 1.-self.fraction])
+        if self.shape is None:
+            return
+        self._mask = np.random.rand(*self.shape) < self.fraction
 
     def update(self) -> None:
+        '''Regenerate the mask with the current parameters.'''
+        if self.shape is None:
+            return
         self._select()
         if self.exclude is not None:
             self._mask[self.exclude] = False
 
     @classmethod
-    def example(cls) -> None:
+    def example(cls) -> None:  # pragma: no cover
         import matplotlib.pyplot as plt
 
-        shape = (201, 201)
-        mask = cls()
-        mask.shape = shape
-        mask.fraction = 0.2
-        print(f'fraction = {np.sum(mask())/mask().size:.2f}')
+        mask = cls(shape=(201, 201), fraction=0.2)
+        print(f'fraction = {np.sum(mask()) / mask().size:.2f}')
         plt.imshow(mask(), cmap='gray')
         plt.show()
 
