@@ -132,6 +132,31 @@ class LorenzMie(LMObject):
         field[0, :] += 1.0
         return np.sum(field.real**2 + field.imag**2, axis=0)
 
+    def scattered_field(self,
+                        particle: 'Particle',
+                        **kwargs) -> Field:
+        '''Electric field scattered by a single particle.
+
+        Parameters
+        ----------
+        particle : Particle
+            The scattering particle.
+        **kwargs
+            Passed to :meth:`lorenzmie` (``cartesian``, ``bohren``).
+
+        Returns
+        -------
+        field : numpy.ndarray, shape (3, npts), dtype complex
+            Complex scattered field, including the propagation phase
+            ``exp(-i k z_p)``.
+        '''
+        k = self.instrument.wavenumber()
+        r_p = particle.r_p + particle.r_0
+        kdr = k * (self.coordinates - r_p[:, None])
+        ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
+        return (self.lorenzmie(ab, kdr, **kwargs) *
+                np.exp(-1.j * k * r_p[2]))
+
     def field(self, **kwargs) -> Field:
         '''Electric field scattered by the particle(s).
 
@@ -150,16 +175,9 @@ class LorenzMie(LMObject):
         field : numpy.ndarray, shape (3, npts), dtype complex
             Complex electric field scattered by the particle.
         '''
-        k = self.instrument.wavenumber()
-        n_m = self.instrument.n_m
-        wavelength = self.instrument.wavelength
         self._field.fill(0.+0.j)
         for particle in self.particle:
-            r_p = particle.r_p + particle.r_0
-            kdr = k * (self.coordinates - r_p[:, None])
-            ab = particle.ab(n_m, wavelength)
-            self._field += (self.lorenzmie(ab, kdr, **kwargs) *
-                            np.exp(-1.j * k * r_p[2]))
+            self._field += self.scattered_field(particle, **kwargs)
         return self._field
 
     def lorenzmie(self,

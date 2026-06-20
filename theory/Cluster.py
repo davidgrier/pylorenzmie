@@ -1,58 +1,61 @@
-from pylorenzmie.theory import Particle
+from pylorenzmie.theory.Particle import Particle
+from pylorenzmie.lib.types import Properties
 from dataclasses import dataclass, field
 
 
 @dataclass
 class Cluster(Particle):
+    '''A cluster of particles for Lorenz-Mie microscopy.
 
-    '''
-    Abstraction of a cluster of particles for Lorenz-Mie microscopy
+    Groups a list of :class:`Particle` objects into a single
+    scatterer.  The cluster position ``r_p`` sets the origin of each
+    constituent particle's coordinate system via :attr:`Particle.r_0`.
 
-    Inherits
-    --------
-    pylorenzmie.theory.Particle
+    Inherits from :class:`~pylorenzmie.theory.Particle`.
 
-    Properties
+    Parameters
     ----------
-    particles : list of Particle
-        List of Particle objects in the cluster
+    particles : list of Particle, optional
+        Constituent particles.  Default: empty list.
+
+    Notes
+    -----
+    Setting ``x_p``, ``y_p``, ``z_p``, or ``particles`` automatically
+    calls :meth:`update` to propagate the new cluster center to each
+    constituent particle's ``r_0``.
     '''
 
-    particles: list[Particle] = field(repr=False, default_factory=list)
-    _index: int = field(init=False, repr=False, default=0)
+    particles: list = field(repr=False, default_factory=list)
 
     def __post_init__(self) -> None:
         self.update()
 
-    def __setattr__(self, key: str, value: Particle.Property) -> None:
+    def __setattr__(self, key: str, value: object) -> None:
         super().__setattr__(key, value)
-        if key in ['x_p', 'y_p', 'z_p', 'particles']:
+        if key in ('x_p', 'y_p', 'z_p', 'particles'):
             self.update()
-            return
 
     def __len__(self) -> int:
         return len(self.particles)
 
     def __iter__(self):
-        return self
-
-    def __next__(self) -> Particle:
-        if self._index < len(self.particles):
-            result = self.particles[self._index]
-            self._index += 1
-            return result
-        else:
-            self._index = 0
-            raise StopIteration
+        return iter(self.particles)
 
     def __getitem__(self, index: int) -> Particle:
         if index < 0 or index >= len(self):
             raise IndexError('Particle index out of range')
         return self.particles[index]
 
+    @Particle.properties.getter
+    def properties(self) -> Properties:
+        return {'x_p': self.x_p,
+                'y_p': self.y_p,
+                'z_p': self.z_p}
+
     def update(self) -> None:
+        '''Propagate cluster position to each constituent particle's origin.'''
         try:
-            for particle in self:
+            for particle in self.particles:
                 particle.r_0 = self.r_p
         except AttributeError:
             pass

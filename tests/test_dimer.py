@@ -18,20 +18,18 @@ class TestDimer(unittest.TestCase):
 
     def test_update_positions(self) -> None:
         a_p = 1.0
-        theta = np.pi / 3
-        phi = np.pi / 4
+        θ = np.pi / 3
+        φ = np.pi / 4
         magnification = 0.05
 
         self.dimer.a_p = a_p
-        self.dimer.theta = theta
-        self.dimer.phi = phi
+        self.dimer.θ = θ
+        self.dimer.φ = φ
         self.dimer.magnification = magnification
 
-        x_p = np.cos(theta) * np.cos(phi)
-        y_p = np.cos(theta) * np.sin(phi)
-        z_p = np.sin(theta)
-        r_p = (a_p / magnification) * np.array([x_p, y_p, z_p])
-
+        r_p = (a_p / magnification) * np.array([np.cos(θ) * np.cos(φ),
+                                                 np.cos(θ) * np.sin(φ),
+                                                 np.sin(θ)])
         self.assertTrue(np.allclose(self.dimer.particles[0].r_p, r_p))
         self.assertTrue(np.allclose(self.dimer.particles[1].r_p, -r_p))
 
