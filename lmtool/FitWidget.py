@@ -1,22 +1,20 @@
-import pyqtgraph as pg
-from pylorenzmie.analysis import Optimizer
-from pylorenzmie.theory import LorenzMie
-from pyqtgraph.Qt.QtCore import (pyqtProperty, QRectF, pyqtSlot)
-from pyqtgraph.Qt.QtWidgets import QFileDialog
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
+import warnings
+
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
+import pyqtgraph as pg
+from pyqtgraph.Qt.QtCore import (pyqtProperty, QRectF, pyqtSlot)
+from pyqtgraph.Qt.QtWidgets import QFileDialog
 
-
-# Suppress pytables warnings while saving metadata strings
-import warnings
-warnings.filterwarnings('ignore',
-                        category=pd.io.pytables.PerformanceWarning)
+from pylorenzmie.analysis import Optimizer
+from pylorenzmie.theory import LorenzMie
 
 
 class FitWidget(pg.GraphicsLayoutWidget):
+    '''Three-panel widget showing the ROI, model fit, and normalized residuals.'''
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -25,6 +23,8 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.fraction = 0.25
         self.datafile = None
         self.result = None
+        self._data = None
+        self.rect = None
 
     def _configurePlot(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -49,6 +49,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         plots[2].setXLink(plots[0])
         plots[1].setYLink(plots[0])
         plots[2].setYLink(plots[0])
+        self._regionPlot = plots[0]
         cm = pg.colormap.get('CET-D1')
         self.residuals.setColorMap(cm)
         self.residuals.setLevels((-10, 10))
@@ -75,19 +76,61 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.optimizer.model.coordinates = coords[:, mask]
         self.result = self.optimizer.optimize()
         self.optimizer.model.coordinates = coords
-        hologram = self.optimizer.model.hologram().reshape(data.shape)
-        hologram = np.clip(hologram, np.min(data), np.max(data))
-        self.fit.setImage(hologram)
-        noise = self.optimizer.model.instrument.noise
-        self.residuals.setImage((data - hologram)/noise)
-        self.fit.setRect(self.rect)
-        self.residuals.setRect(self.rect)
+        self._data = data
+        self._updateFitDisplay()
         return self.result
 
-    def setData(self, data: NDArray[float], rect: QRectF) -> None:
+    def setData(self, data: NDArray[float], rect: QRectF,
+                coordinates: NDArray[float]) -> None:
+        '''Display data, compute and show the current model prediction.
+
+        Parameters
+        ----------
+        data : ndarray
+            Cropped hologram region.
+        rect : QRectF
+            Screen rectangle for positioning the images.
+        coordinates : ndarray, shape (2, npts)
+            Pixel coordinates for the cropped region.
+        '''
+        self._data = data
+        self.rect = rect
+        self.optimizer.model.coordinates = coordinates.reshape(2, -1)
         self.region.setImage(data)
         self.region.setRect(rect)
-        self.rect = rect
+        self._updateFitDisplay()
+
+    def showEvent(self, event) -> None:
+        super().showEvent(event)
+        self._updateFitDisplay()
+
+    def _updateFitDisplay(self) -> None:
+        if self._data is None or self.rect is None:
+            return
+        if not self.isVisible():
+            return
+        hologram = self.optimizer.model.hologram().reshape(self._data.shape)
+        hologram = np.clip(hologram, np.min(self._data), np.max(self._data))
+        self.fit.setImage(hologram)
+        noise = self.optimizer.model.instrument.noise
+        self.residuals.setImage((self._data - hologram) / noise)
+        self.fit.setRect(self.rect)
+        self.residuals.setRect(self.rect)
+        self._regionPlot.autoRange()
+
+    def refreshPreview(self, properties: dict | None = None) -> None:
+        '''Recompute and redisplay the model prediction without re-optimizing.
+
+        Parameters
+        ----------
+        properties : dict, optional
+            Model properties to apply before recomputing the hologram.
+        '''
+        if self._data is None:
+            return
+        if properties:
+            self.optimizer.model.properties = properties
+        self._updateFitDisplay()
 
     @pyqtProperty(LorenzMie)
     def model(self) -> LorenzMie:
@@ -120,13 +163,20 @@ class FitWidget(pg.GraphicsLayoutWidget):
 
     @pyqtSlot()
     def saveResult(self, filename: str | None = None) -> None:
+        if self.result is None:
+            return
         filename = filename or self.filename()
-        self.result.to_hdf(filename, 'result', mode='w')
-        metadata = self.optimizer.metadata
-        metadata['datafile'] = self.datafile
-        metadata.to_hdf(filename, 'metadata')
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore', category=pd.io.pytables.PerformanceWarning)
+            self.result.to_hdf(filename, 'result', mode='w')
+            metadata = self.optimizer.metadata
+            metadata['datafile'] = self.datafile
+            metadata.to_hdf(filename, 'metadata')
 
     def saveJson(self, filename: str) -> None:
+        if self.result is None:
+            return
         s = pd.concat([self.result, self.optimizer.metadata])
         s['datafile'] = self.datafile
         s.to_json(filename, indent=4)
@@ -137,7 +187,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         filename, _ = get(self, 'Save Results',
                           self.filename(),
                           'HDF5 (*.h5);;JSON (*.json)')
-        if filename is None:
+        if not filename:
             return
         if '.h5' in filename:
             self.saveResult(filename)

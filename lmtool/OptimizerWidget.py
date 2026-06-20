@@ -1,14 +1,20 @@
-from pylorenzmie.lib import LMObject
+import logging
+
 from pyqtgraph.parametertree import (Parameter, ParameterTree)
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, pyqtSignal)
-import logging
+
+from pylorenzmie.lib import LMObject
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 class OptimizerWidget(ParameterTree):
+    '''Parameter-tree widget for configuring scipy least_squares settings.
+
+    Emits :attr:`settingChanged` (name, value) whenever any setting changes.
+    Enforces the constraint that Levenberg-Marquardt requires ``loss='linear'``.
+    '''
 
     settingChanged = pyqtSignal(str, object)
 
@@ -21,18 +27,18 @@ class OptimizerWidget(ParameterTree):
     def _buildTree(self) -> None:
         p = [
             {'name': 'fraction', 'type': 'float',
-             'value': 0.5, 'limits': (0, 1), 'step': 0.01,
+             'value': 0.25, 'limits': (0.01, 1), 'step': 0.01,
              'tip': 'fraction of pixels to fit'},
             {'name': 'method', 'type': 'list',
              'values': {'Levenberg-Marquardt': 'lm',
                         'Dogbox': 'dogbox',
                         'Trust Region Reflective': 'trf'},
-             'default': 'trf'},
+             'default': 'lm'},
             {'name': 'loss', 'type': 'list',
              'values': 'linear soft_l1 huber cauchy arctan'.split(),
-             'default': 'soft_l1'},
+             'default': 'linear'},
             {'name': 'ftol', 'type': 'float',
-             'value': 1e-3, 'limits': [1e-8, 1e-2], 'default': 1e-3},
+             'value': 1e-4, 'limits': [1e-8, 1e-2], 'default': 1e-4},
             {'name': 'xtol', 'type': 'float',
              'value': 1e-6, 'limits': [1e-8, 1e-2], 'default': 1e-6},
             {'name': 'gtol', 'type': 'float',
@@ -94,5 +100,5 @@ class OptimizerWidget(ParameterTree):
         app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     OptimizerWidget.example()

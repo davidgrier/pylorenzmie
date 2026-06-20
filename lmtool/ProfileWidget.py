@@ -1,11 +1,13 @@
-import pyqtgraph as pg
-from pyqtgraph.Qt.QtCore import (Qt, pyqtProperty, pyqtSlot)
-from pylorenzmie.theory import LorenzMie
 import numpy as np
 from numpy.typing import NDArray
+import pyqtgraph as pg
+from pyqtgraph.Qt.QtCore import (Qt, pyqtProperty, pyqtSlot)
+
+from pylorenzmie.theory import LorenzMie
 
 
 class ProfileWidget(pg.PlotWidget):
+    '''Radial-profile plot showing experimental data and model prediction.'''
 
     def __init__(self,
                  *args,
@@ -14,7 +16,7 @@ class ProfileWidget(pg.PlotWidget):
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._configurePlot()
-        self.model = model or LorenzMie()
+        self.model = LorenzMie() if model is None else model
         self._data = None
         self.radius = radius
 
@@ -48,10 +50,8 @@ class ProfileWidget(pg.PlotWidget):
 
     @properties.setter
     def properties(self, properties: dict[str, LorenzMie.Property]) -> None:
-        if 'x_p' in properties:
-            properties.pop('x_p')
-        if 'y_p' in properties:
-            properties.pop('y_p')
+        properties = {k: v for k, v in properties.items()
+                      if k not in ('x_p', 'y_p')}
         if len(properties) == 0:
             return
         self.model.properties = properties
@@ -116,5 +116,5 @@ class ProfileWidget(pg.PlotWidget):
         app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     ProfileWidget.example()

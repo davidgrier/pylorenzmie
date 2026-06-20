@@ -1,6 +1,9 @@
+from pathlib import Path
 from pyqtgraph.Qt.QtWidgets import QFrame
 from pyqtgraph.Qt import uic
 from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
+
+_DIR = Path(__file__).parent
 
 
 class ParameterWidget(QFrame):
@@ -9,7 +12,7 @@ class ParameterWidget(QFrame):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        uic.loadUi('ParameterWidget.ui', self)
+        uic.loadUi(_DIR / 'ParameterWidget.ui', self)
         self._addMethods()
         self._connectSignals()
 
@@ -84,5 +87,5 @@ class ParameterWidget(QFrame):
         app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     ParameterWidget.example()

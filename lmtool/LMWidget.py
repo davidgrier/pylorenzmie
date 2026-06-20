@@ -1,12 +1,23 @@
-from pyqtgraph.Qt.QtWidgets import QFrame
+import json
+from pathlib import Path
+
 from pyqtgraph.Qt import uic
 from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
+from pyqtgraph.Qt.QtWidgets import QFrame
+
 from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
 from pylorenzmie.theory import LorenzMie
-import json
+
+_DIR = Path(__file__).parent
 
 
 class LMWidget(QFrame):
+    '''Parameter-control panel for a LorenzMie model.
+
+    Loads its layout from ``uiFile`` and its parameter configuration
+    from ``configFile`` (both relative to the lmtool package directory).
+    Emits :attr:`propertyChanged` whenever any parameter value changes.
+    '''
 
     cls = LorenzMie
     uiFile = 'LMWidget.ui'
@@ -16,14 +27,14 @@ class LMWidget(QFrame):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        uic.loadUi(self.uiFile, self)
+        uic.loadUi(_DIR / self.uiFile, self)
         self.model = self.cls()
         self._loadConfig()
         self._connectSignals()
         self.model.properties = self.properties
 
     def _loadConfig(self) -> None:
-        with open(self.configFile) as f:
+        with open(_DIR / self.configFile) as f:
             config = json.load(f)
         self.setConfig(config)
 
@@ -49,7 +60,7 @@ class LMWidget(QFrame):
     @fixed.setter
     def fixed(self, fixed: list[str]) -> None:
         for control in self.controls:
-            control.setFixed(control.objectName in fixed)
+            control.setFixed(control.objectName() in fixed)
 
     @pyqtSlot(float)
     def _handleChange(self, value: float) -> None:
@@ -84,5 +95,5 @@ class LMWidget(QFrame):
         app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     LMWidget.example()

@@ -3,7 +3,7 @@ from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
 
 
 class DoubleSpinBox(QDoubleSpinBox):
-    '''QDoubleSpinBox with buttonClicked signal'''
+    '''QDoubleSpinBox extended with float-valued editingFinished and buttonClicked signals.'''
 
     buttonClicked = pyqtSignal(float)
     editingFinished = pyqtSignal(float)
@@ -36,5 +36,5 @@ class DoubleSpinBox(QDoubleSpinBox):
         app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     DoubleSpinBox.example()

@@ -1,44 +1,57 @@
-# /usr/bin/env python
+#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+import json
+import logging
+from pathlib import Path
 
 import cv2
 import numpy as np
 from numpy.typing import NDArray
+from pyqtgraph.Qt import uic
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QRectF)
+from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog)
+
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lmtool.LMWidget import LMWidget
-import json
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot)
-from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog)
-from pyqtgraph.Qt import uic
-import logging
+from pylorenzmie.utilities import Normalizer
 
+_DIR = Path(__file__).parent
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
-
-'''
-To do
-* interactive residuals (currently only updates after fits)
-* support for cuda-accelerated kernels.
-* reorganize: subdirectory for widget implementations
-* toml config file
-* support for gamma
-* estimator
-'''
+# TODO: interactive residuals (currently only updates after fits)
+# TODO: support for cuda-accelerated kernels
+# TODO: toml config file
+# TODO: support for gamma correction
+# TODO: wire up estimator
 
 
 class LMTool(QMainWindow):
+    '''Main window for the LMTool hologram-fitting application.
+
+    Parameters
+    ----------
+    controls : type[LMWidget]
+        Uninstantiated LMWidget subclass providing parameter controls.
+    filename : str, optional
+        Path to a hologram image to load on startup.
+    normalizer : Normalizer, optional
+        Background normalization strategy. Defaults to median-filter
+        normalization with a 51-pixel kernel.
+    '''
 
     uiFile = 'LMTool.ui'
 
     def __init__(self,
                  controls: LMWidget,
                  filename: str | None = None,
-                 background: float | None = None):
+                 normalizer: Normalizer | None = None):
         super().__init__()
-        uic.loadUi(self.uiFile, self)
-        self.background = background or 100.
+        uic.loadUi(_DIR / self.uiFile, self)
+        self.normalizer = normalizer if normalizer is not None else Normalizer()
+        self._raw = None
+        self._data = None
         self._setupTheory(controls())
         self.readHologram(filename)
         self._connectSignals()
@@ -60,6 +73,7 @@ class LMTool(QMainWindow):
         self.imageWidget.radiusChanged.connect(self._handleRadiusChanged)
         self.controls.propertyChanged.connect(self._handlePropertyChanged)
         self.actionOpen.triggered.connect(self.readHologram)
+        self.actionOpenBackground.triggered.connect(self.readBackground)
         self.actionSaveParameters.triggered.connect(self.saveParameters)
         self.saveResult.triggered.connect(self.fitWidget.saveResult)
         self.saveResultAs.triggered.connect(self.fitWidget.saveResultAs)
@@ -74,29 +88,44 @@ class LMTool(QMainWindow):
 
     @data.setter
     def data(self, data: NDArray[float]) -> None:
-        self._data = data / self.background
+        self._raw = data
+        self._data = self.normalizer(data)
         self.coordinates = LMObject.meshgrid(data.shape, flatten=False)
         self.controls.x_p.setRange((0, data.shape[1]-1))
         self.controls.y_p.setRange((0, data.shape[0]-1))
         self.imageWidget.data = self._data
         self._updateProfile()
+        self.fitWidget.setData(*self.crop())
 
     @pyqtSlot()
     def readHologram(self, filename: str | None = None) -> None:
-        if filename is None:
+        if not filename:
             get = QFileDialog.getOpenFileName
             filename, _ = get(self, 'Open Hologram', '', 'Images (*.png)')
-        self.fitWidget.datafile = filename
-        if filename is None:
+        if not filename:
             return
-        self.data = cv2.imread(filename, 0).astype(float)
+        self.fitWidget.datafile = filename
+        self.data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+
+    @pyqtSlot()
+    def readBackground(self, filename: str | None = None) -> None:
+        if not filename:
+            get = QFileDialog.getOpenFileName
+            filename, _ = get(self, 'Open Background', '', 'Images (*.png)')
+        if not filename:
+            return
+        bg = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+        self.normalizer.method = 'reference'
+        self.normalizer.reference = bg
+        if self._raw is not None:
+            self.data = self._raw
 
     @pyqtSlot()
     def saveParameters(self, filename: str | None = None) -> None:
-        if filename is None:
+        if not filename:
             get = QFileDialog.getSaveFileName
             filename, _ = get(self, 'Save Parameters', '', 'JSON (*.json)')
-        if filename is None:
+        if not filename:
             return
         properties = self.controls.properties
         with open(filename, 'w') as f:
@@ -109,16 +138,21 @@ class LMTool(QMainWindow):
 
     @pyqtSlot(float, float)
     def _handleROIChanged(self, x_p: float, y_p: float) -> None:
+        if self._data is None:
+            return
         self.controls.blockSignals(True)
         self.controls.properties = dict(x_p=x_p, y_p=y_p)
         self.controls.blockSignals(False)
         self._updateProfile()
-        self.fitWidget.setData(*self.crop(True))
+        self.fitWidget.properties = dict(x_p=x_p, y_p=y_p)
+        self.fitWidget.setData(*self.crop())
 
     @pyqtSlot(int)
     def _handleRadiusChanged(self, radius: int) -> None:
+        if self._data is None:
+            return
         self.profileWidget.radius = radius
-        self.fitWidget.setData(*self.crop(True))
+        self.fitWidget.setData(*self.crop())
 
     @pyqtSlot(str, float)
     def _handlePropertyChanged(self, name: str, value: float) -> None:
@@ -127,14 +161,14 @@ class LMTool(QMainWindow):
         elif name == 'y_p':
             self.imageWidget.y_p = value
         self.profileWidget.properties = {name: value}
+        self.fitWidget.refreshPreview({name: value})
 
-    def crop(self, rect: bool = False) -> tuple[NDArray[float], NDArray[float]]:
+    def crop(self) -> tuple[NDArray[float], QRectF, NDArray[float]]:
         get = self.imageWidget.roi.getArraySlice
         (sy, sx), _ = get(self._data, self.imageWidget.image)
-        if rect:
-            return self.data[sy, sx], self.imageWidget.rect()
-        else:
-            return self.data[sy, sx], self.coordinates[:, sy, sx]
+        return (self._data[sy, sx],
+                self.imageWidget.rect(),
+                self.coordinates[:, sy, sx])
 
     @pyqtSlot(bool)
     def setRobust(self, state: bool) -> None:
@@ -149,7 +183,8 @@ class LMTool(QMainWindow):
         optimizer.model.properties = self.controls.properties
         optimizer.fixed = self.controls.fixed
         optimizer.robust = self.actionRobust.isChecked()
-        result = self.fitWidget.optimize(*self.crop())
+        data, _, coords = self.crop()
+        result = self.fitWidget.optimize(data, coords)
         self.controls.properties = optimizer.model.properties
         logger.info(f'Finished!\n{result}')
         self.statusBar().showMessage('Optimization complete', 2000)
@@ -158,32 +193,44 @@ class LMTool(QMainWindow):
 def lmtool() -> None:
     from pylorenzmie.lmtool.ALMWidget import ALMWidget
     from pyqtgraph.Qt.QtWidgets import QApplication
-    from pathlib import Path
     import sys
     import argparse
 
-    basedir = Path(__file__).parent.parent.resolve()
-    filename = basedir / 'docs' / 'tutorials' / 'crop.png'
-    filename = str(filename)
+    logging.basicConfig(level=logging.WARNING,
+                        format='%(name)s: %(levelname)s: %(message)s')
+
+    default_file = str(_DIR.parent / 'docs' / 'tutorials' / 'crop.png')
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('filename', type=str, default=filename,
+    parser.add_argument('filename', type=str, default=default_file,
                         nargs='?', action='store')
     parser.add_argument('-b', '--background', dest='background',
                         default=None, action='store',
-                        help='background value or file name')
+                        help='background: image path or intensity value')
     args, unparsed = parser.parse_known_args()
     qt_args = sys.argv[:1] + unparsed
 
-    background = args.background
-    if background is not None and background.isdigit():
-        background = float(background)
+    normalizer = Normalizer()
+    if args.background is not None:
+        try:
+            value = float(args.background)
+            normalizer = Normalizer(method='reference', reference=value)
+        except ValueError:
+            bg_path = Path(args.background)
+            if bg_path.exists():
+                bg = cv2.imread(str(bg_path),
+                                cv2.IMREAD_GRAYSCALE).astype(float)
+                normalizer = Normalizer(method='reference', reference=bg)
+            else:
+                logger.warning(
+                    f'Background not found: {args.background!r}; '
+                    'using median filter')
 
     app = QApplication(qt_args)
-    lmtool = LMTool(ALMWidget, args.filename, background)
-    lmtool.show()
+    tool = LMTool(ALMWidget, args.filename, normalizer)
+    tool.show()
     sys.exit(app.exec())
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     lmtool()

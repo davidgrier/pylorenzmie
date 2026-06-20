@@ -33,6 +33,7 @@ dependencies = [
     "scipy",
     "pandas",
     "opencv-python",
+    "pyqtgraph",
     "trackpy",
 ]
 
@@ -42,12 +43,14 @@ Repository = "https://github.com/davidgrier/pylorenzmie"
 Documentation = "https://pylorenzmie.readthedocs.io"
 "Bug Tracker" = "https://github.com/davidgrier/pylorenzmie/issues"
 
+[project.scripts]
+lmtool = "pylorenzmie.lmtool.LMTool:lmtool"
+
 [project.optional-dependencies]
-gpu     = ["cupy-cuda12x"]
-numba   = ["numba"]
-torch   = ["torch"]
-lmtool  = ["pyqtgraph"]
-dev     = ["pytest", "pytest-cov", "opencv-python"]
+gpu   = ["cupy-cuda12x"]
+numba = ["numba"]
+torch = ["torch"]
+dev   = ["pytest", "pytest-cov", "opencv-python"]
 docs    = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints"]
 
 [tool.setuptools]

@@ -1,11 +1,11 @@
-from pyqtgraph.Qt.QtWidgets import QSlider
-from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
 import logging
+
 import numpy as np
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
+from pyqtgraph.Qt.QtWidgets import QSlider
 
 
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
 
 class DoubleSlider(QSlider):
@@ -49,7 +49,6 @@ class DoubleSlider(QSlider):
         super().setMaximum(self._imax)
         self._minimum = 0.
         self._maximum = 100.
-        self._value = 0.
         super().valueChanged[int].connect(self._valueChanged)
 
     def _i2f(self, ivalue: int) -> float:
@@ -72,9 +71,9 @@ class DoubleSlider(QSlider):
 
         Returns
         -------
-        value : floateditingFinished
+        value : float
         '''
-        return self._i2f(self._value)
+        return self._i2f(super().value())
 
     @pyqtSlot(float)
     def setValue(self, value: float) -> None:
@@ -84,7 +83,7 @@ class DoubleSlider(QSlider):
         ----------
         value : float
         '''
-        self._value = np.clip(value, self._minimum, self._maximum)
+        value = float(np.clip(value, self._minimum, self._maximum))
         super().setValue(self._f2i(value))
 
     def minimum(self) -> float:
@@ -98,10 +97,10 @@ class DoubleSlider(QSlider):
         minimum : float
         '''
         if minimum > self._maximum:
-            logger.warn(f'{minimum} > maximum ({self._max})')
+            logger.warning(f'{minimum} > maximum ({self._maximum})')
             return
         self._minimum = minimum
-        self.setValue(self._value)
+        self.setValue(self.value())
 
     def maximum(self) -> float:
         return self._maximum
@@ -114,10 +113,10 @@ class DoubleSlider(QSlider):
         maximum : float
         '''
         if maximum < self._minimum:
-            logger.warn(f'{maximum} < minimum ({self._min})')
+            logger.warning(f'{maximum} < minimum ({self._minimum})')
             return
         self._maximum = maximum
-        self.setValue(self._value)
+        self.setValue(self.value())
 
     def setRange(self, minimum: float, maximum: float) -> None:
         '''Set minimum and maximum of slider range
@@ -153,5 +152,5 @@ class DoubleSlider(QSlider):
         app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     DoubleSlider.example()

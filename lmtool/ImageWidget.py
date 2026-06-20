@@ -5,6 +5,7 @@ from numpy.typing import NDArray
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):
+    '''Image display with a circular ROI for selecting a particle region.'''
 
     roiChanged = pyqtSignal(float, float)
     radiusChanged = pyqtSignal(int)
@@ -17,7 +18,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self._radius = 100
         self._configurePlot()
         self._connectSignals()
-        self.data = data or np.ones((480, 640))
+        self.data = np.ones((480, 640)) if data is None else data
 
     def _configurePlot(self) -> None:
         self.setBackground('w')
@@ -36,7 +37,6 @@ class ImageWidget(pg.GraphicsLayoutWidget):
                                 hoverPen=hpen, handleHoverPen=hpen,
                                 radius=self._radius,
                                 parent=self.image)
-        pen = pg.mkPen('w', width=3)
 
     def _connectSignals(self) -> None:
         self.roi.sigRegionChangeFinished.connect(self.handleChange)
@@ -110,5 +110,5 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         app.exec()
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     ImageWidget.example()
