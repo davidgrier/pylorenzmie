@@ -1,114 +1,114 @@
 from dataclasses import dataclass
 from pathlib import Path
-from pylorenzmie.lib import (LMObject, Azimuthal)
+from pylorenzmie.lib import LMObject, Azimuthal
+from pylorenzmie.lib.types import Image, Images, Properties, Results
 from pylorenzmie.theory import Instrument
 import pandas as pd
 import numpy as np
-from scipy.signal import (argrelmin, argrelmax)
+from scipy.signal import argrelmin, argrelmax
 from scipy.special import jn_zeros
 
 
 @dataclass
 class Estimator(LMObject):
-    '''Estimate parameters of a holographic feature
+    '''Estimate initial parameters of a holographic feature.
 
-    Inherits
-    --------
-    pylorenzmie.lib.LMObject
+    Uses the azimuthal average of a cropped hologram to estimate the
+    axial position and radius of the scattering particle, providing
+    initial values for :class:`Optimizer`.
 
-    Properties
+    Inherits from :class:`pylorenzmie.lib.LMObject`.
+
+    Parameters
     ----------
-    z_p : float
-        Axial particle position [pixels]
-    a_p : float
-        Particle radius [um]
-    n_p : float
-        Particle refractive index
+    instrument : Instrument
+        Optical parameters of the microscope.
+    n_p : float, optional
+        Particle refractive index. Default: 1.5. Cannot be estimated
+        from the azimuthal profile; serves as an initial value for
+        the optimizer.
+    k_p : float, optional
+        Imaginary part of the refractive index. Default: 0.
 
-    Methods
-    -------
-    estimate(data, center): LMObject.Result
+    Notes
+    -----
+    Call :meth:`estimate` to populate all particle parameters.
+    Results are available via :attr:`properties` afterwards.
 
-        Arguments
-        ---------
-        data : LMObject.Image
-
-        center : list-like
-
-    predict :
-        synonum for estimate for backward compatibility
+    :meth:`predict` is a backward-compatibility alias for
+    :meth:`estimate`.
     '''
+
     instrument: Instrument
-    x_p: float | None = None
-    y_p: float | None = None
-    z_p: float | None = None
-    a_p: float | None = None
     n_p: float = 1.5
     k_p: float = 0.
 
     def __post_init__(self) -> None:
         self.predict = self.estimate
+        self.x_p: float | None = None
+        self.y_p: float | None = None
+        self.z_p: float | None = None
+        self.a_p: float | None = None
 
-    @property
-    def properties(self) -> LMObject.Properties:
-        return dict(x_p=self.x_p,
-                    y_p=self.y_p,
-                    z_p=self.z_p,
-                    a_p=self.a_p,
-                    n_p=self.n_p,
-                    k_p=self.k_p)
+    @LMObject.properties.getter
+    def properties(self) -> Properties:
+        '''Estimated particle properties.'''
+        return dict(x_p=self.x_p, y_p=self.y_p,
+                    z_p=self.z_p, a_p=self.a_p,
+                    n_p=self.n_p, k_p=self.k_p)
 
-    def _initialize(self, data: LMObject.Image) -> None:
-        '''Prepare for estimation
-
-        self.k: wavenumber in the medium [radian/pixels]
-        self.noise: noise estimate from instrument
-        self.profile: aximuthal average of data
-        '''
-        self.k = self.instrument.wavenumber()
-        self.noise = self.instrument.noise
-        self.magnification = self.instrument.magnification
-        # NOTE: Allow to pass in profile without aziavg
-        self.profile = Azimuthal.avg(data)
+    def _initialize(self, data: Image) -> None:
+        self._k = self.instrument.wavenumber()
+        self._magnification = self.instrument.magnification
+        self._profile = Azimuthal.avg(data)
 
     def _estimate_z(self) -> None:
-        '''Estimate axial position of particle
+        '''Estimate axial position from fringe spacing.
 
-        Particle is assumed to be at the center of curvature
-        of spherical waves interfering with a plane wave.
+        Uses the paraxial approximation: consecutive extrema at radii
+        r_n satisfy Δ(r²) = 2π z_p / k.
         '''
-        if self.z_p is not None:
-            return
-        b = self.profile
+        b = self._profile
         nmax = argrelmax(b, order=5)
         nmin = argrelmin(b, order=5)
         rn = np.sort(np.concatenate(nmax + nmin))
-        zn = self.k / (2.*np.pi) * (rn[1:]**2 - rn[:-1]**2)
-        self.z_p = np.median(zn)
+        zn = self._k / (2. * np.pi) * (rn[1:]**2 - rn[:-1]**2)
+        self.z_p = float(np.median(zn))
 
     def _estimate_a(self) -> None:
-        '''Estimate radius of particle
+        '''Estimate radius from positions of scattering minima.
 
-        Model interference pattern as spherical wave
-        eminating from z_p and interfering with a plane wave.
+        Uses the Fraunhofer approximation: minima of the azimuthal
+        profile occur where the size parameter equals zeros of J_1.
         '''
-        if self.a_p is not None:
-            return
-        minima = argrelmin(self.profile)[0].astype(float)
+        minima = argrelmin(self._profile)[0].astype(float)
         if len(minima) == 0:
+            self.logger.warning(
+                'No intensity minima found; a_p could not be estimated')
             return
         alpha_n = np.sqrt(np.square(self.z_p / minima) + 1.)
-        a_p = np.median(jn_zeros(1, len(alpha_n)) * alpha_n) / self.k
-        self.a_p = 2. * self.magnification * a_p
+        a_p = np.median(jn_zeros(1, len(alpha_n)) * alpha_n) / self._k
+        self.a_p = float(2. * self._magnification * a_p)
 
-    def estimate(self, feature: LMObject.Images) -> LMObject.Result:
-        '''Estimate particle properties'''
+    def estimate(self, feature: Images) -> Results:
+        '''Estimate particle properties from a holographic crop.
+
+        Parameters
+        ----------
+        feature : numpy.ndarray or list of numpy.ndarray
+            Normalized hologram crop(s).
+
+        Returns
+        -------
+        result : pandas.Series or list of pandas.Series
+            Estimated particle properties.
+        '''
         if isinstance(feature, list):
-            return [self.estimate(this) for this in feature]
+            return [self.estimate(f) for f in feature]
         self._initialize(feature)
         h, w = feature.shape
-        self.x_p = w / 2.
-        self.y_p = h / 2.
+        self.x_p = float(w / 2.)
+        self.y_p = float(h / 2.)
         self._estimate_z()
         self._estimate_a()
         return pd.Series(self.properties)
@@ -125,5 +125,5 @@ class Estimator(LMObject):
         print(estimator.estimate(hologram))
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     Estimator.example()

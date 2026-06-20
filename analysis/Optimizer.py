@@ -82,7 +82,7 @@ class Optimizer(LMObject):
         Notes
         -----
         ``method``: ``'lm'`` (Levenberg-Marquardt, default), ``'trf'``,
-        or ``'dogbox'``.  Only ``'lm'`` supports ``loss='linear'``.
+        or ``'dogbox'``. Only ``'lm'`` supports ``loss='linear'``.
 
         ``loss``: ``'linear'`` (standard LS), ``'cauchy'``, ``'huber'``,
         ``'soft_l1'``, or ``'arctan'``.
