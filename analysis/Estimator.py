@@ -37,6 +37,21 @@ class Estimator(LMObject):
 
     :meth:`predict` is a backward-compatibility alias for
     :meth:`estimate`.
+
+    This class provides a lightweight conventional-algorithm baseline.
+    For higher-quality initial estimates — including ``n_p`` — use the
+    CATCH deep neural network model [1]_ [2]_.
+
+    References
+    ----------
+    .. [1] L. E. Altman and D. G. Grier,
+       "CATCH: Characterizing and Tracking Colloids Holographically
+       Using Deep Neural Networks,"
+       J. Phys. Chem. B **124**, 1602 (2020).
+    .. [2] L. E. Altman and D. G. Grier,
+       "Machine learning enables precise holographic characterization
+       of colloidal materials in real time,"
+       Soft Matter **19**, 3002 (2023).
     '''
 
     instrument: Instrument
