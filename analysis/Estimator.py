@@ -90,22 +90,29 @@ class Estimator(LMObject):
         self.z_p = float(np.median(zn))
 
     def _estimate_a(self) -> None:
-        '''Estimate radius from the first scattering minimum.
+        '''Estimate radius from scattering minima.
 
-        Uses the Fraunhofer approximation: the innermost minimum of the
-        azimuthal profile approximates the first zero of J_1, giving a
-        rough estimate of the particle radius.  The estimate is typically
-        accurate to within a factor of two; the optimizer refines it.
+        Uses the Fraunhofer approximation: minima of the azimuthal
+        profile approximate zeros of J_1.  The approximation is
+        inherently rough (~factor of two) because the profile minima
+        are holographic fringe minima rather than true Fraunhofer zeros.
+        The optimizer refines the estimate.  For higher-quality initial
+        estimates use the CATCH neural network model cited in the class
+        docstring.
+
+        Taking the minimum of j_{1,n} alpha_n over the first few minima
+        (rather than the median over all or just minima[0]) is more
+        robust: spurious near-center minima produce large products and
+        are automatically excluded by the minimum.
         '''
-        minima = argrelmin(self._profile, order=5)[0]
-        minima = minima[minima > 5]  # skip noise near the image center
+        minima = argrelmin(self._profile, order=5)[0].astype(float)
+        minima = minima[minima > 5][:5]  # first 5, skip DC noise
         if len(minima) == 0:
             self.logger.warning(
                 'No intensity minima found; a_p could not be estimated')
             return
-        r_1 = float(minima[0])
-        alpha_1 = np.sqrt((self.z_p / r_1) ** 2 + 1.)
-        a_p = jn_zeros(1, 1)[0] * alpha_1 / self._k
+        alpha_n = np.sqrt(np.square(self.z_p / minima) + 1.)
+        a_p = np.min(jn_zeros(1, len(minima)) * alpha_n) / self._k
         self.a_p = float(self._magnification * a_p)
 
     def estimate(self, feature: Images) -> Results:
