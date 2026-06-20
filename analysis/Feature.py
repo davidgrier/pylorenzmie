@@ -177,6 +177,7 @@ class Feature:
         particle.r_p = [data.shape[1] / 2., data.shape[0] / 2., 330.]
         particle.a_p = 1.1
         particle.n_p = 1.4
+        feature.optimizer.variables = 'x_p y_p z_p a_p n_p'.split()
         print(f'Initial estimates:\n{particle}')
 
         feature.model.hologram()  # warm up JIT / caches
