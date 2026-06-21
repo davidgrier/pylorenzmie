@@ -8,9 +8,36 @@ import pandas as pd
 from scipy.optimize import differential_evolution
 
 
+class _DEObjective:
+    '''Picklable objective function for differential evolution.
+
+    Using a top-level callable class rather than a closure allows
+    ``differential_evolution(workers=-1)`` to distribute candidate
+    evaluations across CPU cores via ``multiprocessing``.
+    '''
+
+    def __init__(self,
+                 model: LorenzMie,
+                 de_data: np.ndarray,
+                 de_coords: np.ndarray,
+                 de_vars: list[str],
+                 noise: float) -> None:
+        self._model = model
+        self._de_data = de_data
+        self._de_coords = de_coords
+        self._de_vars = de_vars
+        self._noise = noise
+
+    def __call__(self, values: np.ndarray) -> float:
+        self._model.properties = dict(zip(self._de_vars, values))
+        with np.errstate(over='ignore', invalid='ignore'):
+            diff = (self._model.hologram() - self._de_data) / self._noise
+            return float(np.nansum(diff ** 2))
+
+
 DEFAULT_BOUNDS: Properties = {
     'z_p': (10., 600.),
-    'a_p': (0.05, 5.0),
+    'a_p': (0.25, 10.0),
     'n_p': (1.0, 3.0),
 }
 
@@ -33,16 +60,16 @@ class DEEstimator(LMObject):
         The particle parameters on this model are updated in-place.
     bounds : dict, optional
         Mapping of parameter name to ``(min, max)`` search range.
-        Default: ``z_p`` (10, 600) pixels, ``a_p`` (0.05, 5.0) μm,
+        Default: ``z_p`` (10, 600) pixels, ``a_p`` (0.25, 10.0) μm,
         ``n_p`` (1.0, 3.0).
     de_fraction : float, optional
         Fraction of pixels used for the DE objective function.
-        Default: 0.05.  A fixed random subsample is drawn once per
+        Default: 0.02.  A fixed random subsample is drawn once per
         call and held constant throughout the search so the objective
         is deterministic.
     popsize : int, optional
         DE population size multiplier (population = popsize ×
-        len(bounds)).  Default: 15.
+        len(bounds)).  Default: 10.
     seed : int or None, optional
         Random seed passed to :func:`scipy.optimize.differential_evolution`
         for reproducibility.  Default: ``None``.
@@ -53,8 +80,25 @@ class DEEstimator(LMObject):
     the search begins; only the parameters listed in ``bounds`` are
     varied.
 
+    For large particles (``a_p`` ≳ 1 μm) the hologram fringe pattern
+    is dense and the coarsely-sampled objective function becomes
+    multi-modal.  In that regime increase ``de_fraction`` (e.g. 0.05)
+    and ``popsize`` (e.g. 15) at the cost of longer run time, or supply
+    tighter ``bounds`` to reduce the search volume.
+
     The model coordinates are temporarily overridden during the search
     and restored on exit, even if an exception occurs.
+
+    By default ``settings['workers'] = -1`` distributes candidate
+    evaluations across all CPU cores via ``multiprocessing``.  On Linux
+    (``fork`` start method) the speedup is near-linear with core count
+    at negligible overhead.  On macOS (``spawn`` start method) each
+    :meth:`estimate` call pays a process-pool startup cost; on machines
+    with many cores this is still a net win (~2× on a 10-core Mac).
+    Set ``workers=1`` to disable parallelism, e.g. when using
+    ``cupyLorenzMie`` (which holds GPU memory and is not picklable).
+    The companion setting ``updating='deferred'`` (also the default) is
+    required for ``workers != 1`` and suppresses a SciPy warning.
 
     Use :class:`Estimator` for a fast conventional estimate when the
     fringe pattern is clean.  Use :class:`DEEstimator` when the
@@ -64,11 +108,13 @@ class DEEstimator(LMObject):
 
     model: LorenzMie
     bounds: dict = field(default_factory=lambda: DEFAULT_BOUNDS.copy())
-    de_fraction: float = 0.05
-    popsize: int = 15
+    de_fraction: float = 0.02
+    popsize: int = 10
     seed: int | None = None
     settings: dict = field(default_factory=lambda: {'tol': 0.01,
-                                                     'polish': False})
+                                                     'polish': False,
+                                                     'updating': 'deferred',
+                                                     'workers': -1})
 
     @LMObject.properties.getter
     def properties(self) -> Properties:
@@ -105,7 +151,7 @@ class DEEstimator(LMObject):
             raise ValueError(
                 'DEEstimator.estimate() requires pixel coordinates')
 
-        # Pin x_p, y_p to the ROI centre; DE searches the remaining params
+        # Pin x_p, y_p to the ROI center; DE searches the remaining params
         self.model.particle.x_p = float(coordinates[0].mean())
         self.model.particle.y_p = float(coordinates[1].mean())
 
@@ -120,22 +166,19 @@ class DEEstimator(LMObject):
         de_vars = list(self.bounds.keys())
         bounds_list = [self.bounds[v] for v in de_vars]
 
-        def _objective(values: np.ndarray) -> float:
-            self.model.properties = dict(zip(de_vars, values))
-            with np.errstate(over='ignore', invalid='ignore'):
-                diff = (self.model.hologram() - de_data) / noise
-                return float(np.nansum(diff ** 2))
-
         saved_coords = self.model.coordinates
         self.model.coordinates = de_coords
+        objective = _DEObjective(self.model, de_data, de_coords,
+                                 de_vars, noise)
         try:
-            result = differential_evolution(
-                _objective,
-                bounds_list,
-                popsize=self.popsize,
-                seed=self.seed,
-                **self.settings,
-            )
+            with np.errstate(over='ignore', invalid='ignore'):
+                result = differential_evolution(
+                    objective,
+                    bounds_list,
+                    popsize=self.popsize,
+                    seed=self.seed,
+                    **self.settings,
+                )
         finally:
             self.model.coordinates = saved_coords
 

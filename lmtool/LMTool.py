@@ -10,11 +10,11 @@ import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
 from pyqtgraph.Qt import uic
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QRectF,
-                                  QSignalBlocker)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
+                                  QObject, QRectF, QSignalBlocker, QThread)
 from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog, QProgressBar)
 
-from pylorenzmie.analysis import Estimator
+from pylorenzmie.analysis import DEEstimator
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lmtool.LMWidget import LMWidget
 from pylorenzmie.utilities import Normalizer
@@ -22,6 +22,30 @@ from pylorenzmie.utilities import Normalizer
 _DIR = Path(__file__).parent
 
 logger = logging.getLogger(__name__)
+
+
+class _EstimateWorker(QObject):
+    '''Runs DEEstimator in a background thread.'''
+
+    finished = pyqtSignal(object)  # pd.Series
+    error = pyqtSignal(str)
+
+    def __init__(self, estimator: DEEstimator,
+                 data: NDArray[float],
+                 coordinates: NDArray[float]) -> None:
+        super().__init__()
+        self._estimator = estimator
+        self._data = data
+        self._coordinates = coordinates
+
+    @pyqtSlot()
+    def run(self) -> None:
+        try:
+            self.finished.emit(
+                self._estimator.estimate(self._data, self._coordinates))
+        except Exception as e:
+            self.error.emit(str(e))
+
 
 # TODO: interactive residuals (currently only updates after fits)
 # TODO: support for cuda-accelerated kernels
@@ -57,6 +81,8 @@ class LMTool(QMainWindow):
         self._raw = None
         self._data = None
         self._pre_estimate = None
+        self._est_worker = None
+        self._est_thread = None
         self._setupTheory(controls())
         self._setupStatusBar()
         self.readHologram(filename)
@@ -192,20 +218,65 @@ class LMTool(QMainWindow):
     def estimate(self) -> None:
         if self._data is None:
             return
+        if self._est_thread is not None and self._est_thread.isRunning():
+            return
         props = self.controls.properties
-        self._pre_estimate = {k: props[k] for k in ('z_p', 'a_p')
+        self._pre_estimate = {k: props[k] for k in ('z_p', 'a_p', 'n_p')
                               if k in props}
         self.actionUndoEstimate.setEnabled(True)
-        data, _, _ = self.crop()
-        instrument = self.fitWidget.optimizer.model.instrument
-        result = Estimator(instrument=instrument).estimate(data)
-        updates = {k: float(result[k]) for k in ('z_p', 'a_p')
-                   if result[k] is not None and np.isfinite(result[k])}
+        data, _, coordinates = self.crop()
+        model = self.fitWidget.optimizer.model
+        estimator = DEEstimator(model=model)
+        worker = _EstimateWorker(estimator, data, coordinates.reshape(2, -1))
+        thread = QThread()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._onEstimationFinished)
+        worker.error.connect(self._onEstimationError)
+        worker.finished.connect(thread.quit)
+        worker.error.connect(thread.quit)
+        thread.finished.connect(self._onEstThreadFinished)
+        self._est_worker = worker
+        self._est_thread = thread
+        thread.start()
+        self.actionEstimate.setEnabled(False)
+        self.actionOptimize.setEnabled(False)
+        self.controls.setEnabled(False)
+        self.imageWidget.setEnabled(False)
+        self._progress.setVisible(True)
+        self.statusBar().showMessage('Estimating...')
+
+    @pyqtSlot(object)
+    def _onEstimationFinished(self, result: pd.Series) -> None:
+        self._progress.setVisible(False)
+        self.controls.setEnabled(True)
+        self.imageWidget.setEnabled(True)
+        self.actionOptimize.setEnabled(True)
+        self.actionEstimate.setEnabled(True)
+        updates = {k: float(result[k]) for k in ('z_p', 'a_p', 'n_p')
+                   if k in result
+                   and result[k] is not None
+                   and np.isfinite(result[k])}
         if updates:
             self.controls.properties = updates
             self.fitWidget.refreshPreview()
         logger.info(f'Estimate: {result}')
         self.statusBar().showMessage('Estimation complete', 2000)
+
+    @pyqtSlot(str)
+    def _onEstimationError(self, message: str) -> None:
+        self._progress.setVisible(False)
+        self.controls.setEnabled(True)
+        self.imageWidget.setEnabled(True)
+        self.actionOptimize.setEnabled(True)
+        self.actionEstimate.setEnabled(True)
+        logger.error(f'Estimation failed: {message}')
+        self.statusBar().showMessage(f'Estimation failed: {message}', 5000)
+
+    @pyqtSlot()
+    def _onEstThreadFinished(self) -> None:
+        self._est_worker = None
+        self._est_thread = None
 
     @pyqtSlot()
     def undoEstimate(self) -> None:
@@ -223,6 +294,9 @@ class LMTool(QMainWindow):
         self.optimizerWidget.settings = optimizer.settings
 
     def closeEvent(self, event) -> None:
+        if self._est_thread is not None and self._est_thread.isRunning():
+            self._est_thread.quit()
+            self._est_thread.wait()
         self.fitWidget.shutdown()
         super().closeEvent(event)
 

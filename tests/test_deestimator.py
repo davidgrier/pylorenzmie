@@ -20,6 +20,7 @@ class TestDEEstimator(unittest.TestCase):
         self.data = self.model.hologram().reshape(shape)
         self.estimator = DEEstimator(model=self.model, seed=0)
         self.estimator.settings['maxiter'] = 1
+        self.estimator.settings['workers'] = 1
 
     def test_default_bounds_keys(self):
         '''DEFAULT_BOUNDS covers z_p, a_p, and n_p.'''
@@ -89,6 +90,7 @@ class TestDEEstimator(unittest.TestCase):
             bounds={'z_p': (150., 250.)},
             seed=0)
         custom.settings['maxiter'] = 1
+        custom.settings['workers'] = 1
         result = custom.estimate(self.data, self.coordinates)
         self.assertGreaterEqual(result['z_p'], 150.)
         self.assertLessEqual(result['z_p'], 250.)
