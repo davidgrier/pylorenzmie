@@ -34,11 +34,11 @@ class Mask(LMObject):
 
     shape: tuple[int, int] | None = None
     fraction: float = 0.1
-    exclude: NDArray[bool] | None = None
+    exclude: NDArray[np.bool_] | None = None
 
     def __post_init__(self) -> None:
         self._initialized = False
-        self._mask: NDArray[bool] = np.empty((0, 0), dtype=bool)
+        self._mask: NDArray[np.bool_] = np.empty((0, 0), dtype=bool)
         self.update()
         self._initialized = True
 
@@ -48,7 +48,7 @@ class Mask(LMObject):
             if getattr(self, '_initialized', False):
                 self.update()
 
-    def __call__(self) -> NDArray[bool]:
+    def __call__(self) -> NDArray[np.bool_]:
         return self._mask
 
     @LMObject.properties.getter
