@@ -42,9 +42,14 @@
 - [ ] lmtool logic: headless tests for `crop()`, normalization, estimate/undo
       state, and `_handleROIChanged` (pytest-qt)
 
-## utilities
+## api
 
-- [ ] Review `utilities/` for production quality (normalizer, geometry, h5video, …)
+- [ ] `Hologram` class: pair normalized image data with pixel coordinates so that
+      cropping always yields a consistent (data, coordinates) pair. Implement
+      `__getitem__` for coordinate-aware slicing (`hologram[y0:y1, x0:x1]`).
+      Would simplify `Feature`, `Frame`, and `FitWidget` by collapsing every
+      `(data, coordinates)` argument pair into a single object. Sketch in
+      `devel/Hologram.py`; revisit when the public API is stabilized.
 
 ## infrastructure
 
