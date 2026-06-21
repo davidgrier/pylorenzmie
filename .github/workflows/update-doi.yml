@@ -1,0 +1,64 @@
+name: Update DOI in CITATION.cff
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-doi:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Pull latest commits
+        run: git pull origin master
+
+      - name: Poll Zenodo for DOI
+        id: zenodo
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          URL="https://github.com/${{ github.repository }}/tree/${TAG}"
+          echo "Polling Zenodo for record linked to ${URL} ..."
+          for i in $(seq 1 10); do
+            DOI=$(curl -s \
+              "https://zenodo.org/api/records?q=related.identifier:\"${URL}\"&sort=mostrecent&size=1" \
+              | python3 -c "
+import sys, json
+hits = json.load(sys.stdin).get('hits', {}).get('hits', [])
+print(hits[0]['doi'] if hits else '', end='')
+")
+            if [ -n "$DOI" ]; then
+              echo "Found DOI: $DOI"
+              echo "doi=$DOI" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            echo "Attempt $i: not yet available, retrying in 30s..."
+            sleep 30
+          done
+          if [ -z "$DOI" ]; then
+            echo "DOI not found after 5 minutes" >&2
+            exit 1
+          fi
+
+      - name: Write DOI to CITATION.cff
+        run: |
+          DOI="${{ steps.zenodo.outputs.doi }}"
+          if grep -q "^doi:" CITATION.cff; then
+            sed -i "s|^doi:.*|doi: ${DOI}|" CITATION.cff
+          else
+            sed -i "/^date-released:/a doi: ${DOI}" CITATION.cff
+          fi
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add CITATION.cff
+          git diff --staged --quiet || \
+            git commit -m "Update DOI in CITATION.cff for ${{ github.ref_name }}"
+          git push
