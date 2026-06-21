@@ -53,6 +53,8 @@ def Aberrated(base_class: type) -> type:
         def _aberration(self, r_p: Coordinates) -> Field:
             '''Zernike spherical-aberration phase mask for particle at r_p.'''
             omega = self._aperture(r_p[2])
+            if omega == 0. or self.spherical == 0.:
+                return 1.
             x = (self.coordinates[0] - r_p[0]) / omega
             y = (self.coordinates[1] - r_p[1]) / omega
             rhosq = x * x + y * y
@@ -62,9 +64,9 @@ def Aberrated(base_class: type) -> type:
 
         def scattered_field(self,
                             particle: Particle,
-                            *args) -> Field:
+                            **kwargs) -> Field:
             '''Scattered field including spherical aberration.'''
-            field = super().scattered_field(particle, *args)
+            field = super().scattered_field(particle, **kwargs)
             r_p = particle.r_p + particle.r_0
             return field * self._aberration(r_p)
 
