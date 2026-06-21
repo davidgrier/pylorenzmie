@@ -30,6 +30,13 @@ class Mask(LMObject):
     Call :meth:`update` to resample the mask without changing any
     parameter.  Subclasses may override :meth:`_select` to implement
     non-uniform sampling strategies.
+
+    References
+    ----------
+    1. T. G. Dimiduk, R. W. Perry, J. Fung and V. N. Manoharan,
+       "Random-subset fitting of digital holograms for fast
+       three-dimensional particle tracking,"
+       *Applied Optics* **53**, G177–G183 (2014).
     '''
 
     shape: tuple[int, int] | None = None
