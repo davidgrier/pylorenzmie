@@ -8,8 +8,8 @@ import numpy as np
 class Instrument(LMObject):
     '''In-line holographic microscope for Lorenz-Mie microscopy.
 
-    Encapsulates the optical parameters of the instrument.  The four
-    adjustable parameters (``n_m``, ``wavelength``, ``magnification``,
+    Encapsulates the optical parameters of the instrument.  All five
+    attributes (``n_m``, ``wavelength``, ``magnification``,
     ``numerical_aperture``, ``noise``) are exposed via ``properties``
     and are therefore available to :class:`Optimizer` during fitting.
 
