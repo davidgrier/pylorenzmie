@@ -67,7 +67,7 @@ class LMTool(QMainWindow):
         self.profileWidget.model = self.controls.cls()
         self.profileWidget.properties = self.controls.properties
         self.profileWidget.radius = self.imageWidget.radius
-        self.fitWidget.model = self.controls.cls()
+        self.fitWidget.model = controls.model
         self.fitWidget.properties = self.controls.properties
         self.optimizerWidget.settings = self.fitWidget.optimizer.settings
 
@@ -167,7 +167,7 @@ class LMTool(QMainWindow):
         elif name == 'y_p':
             self.imageWidget.y_p = value
         self.profileWidget.properties = {name: value}
-        self.fitWidget.refreshPreview({name: value})
+        self.fitWidget.refreshPreview()
 
     def crop(self) -> tuple[NDArray[float], QRectF, NDArray[float]]:
         get = self.imageWidget.roi.getArraySlice
@@ -191,7 +191,7 @@ class LMTool(QMainWindow):
                    if result[k] is not None and np.isfinite(result[k])}
         if updates:
             self.controls.properties = updates
-            self.fitWidget.refreshPreview(updates)
+            self.fitWidget.refreshPreview()
         logger.info(f'Estimate: {result}')
         self.statusBar().showMessage('Estimation complete', 2000)
 
@@ -200,7 +200,7 @@ class LMTool(QMainWindow):
         if self._pre_estimate is None:
             return
         self.controls.properties = self._pre_estimate
-        self.fitWidget.refreshPreview(self._pre_estimate)
+        self.fitWidget.refreshPreview()
         self._pre_estimate = None
         self.actionUndoEstimate.setEnabled(False)
 

@@ -7,31 +7,19 @@ _DIR = Path(__file__).parent
 
 
 class ParameterWidget(QFrame):
+    '''Compound widget combining a label, spinbox, slider, and lock checkbox.
+
+    Exposes a unified interface for reading and setting a single floating-point
+    parameter value.  The slider and spinbox are kept in sync via Qt Designer
+    connections in ``ParameterWidget.ui``.
+    '''
 
     valueChanged = pyqtSignal(float)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         uic.loadUi(_DIR / 'ParameterWidget.ui', self)
-        self._addMethods()
         self._connectSignals()
-
-    def _addMethods(self) -> None:
-        self.value = self.spinbox.value
-        self.setValue = self.slider.setValue
-        self.minimum = self.slider.minimum
-        self.maximum = self.slider.maximum
-        self.decimals = self.spinbox.decimals
-        self.setDecimals = self.spinbox.setDecimals
-        self.step = self.spinbox.singleStep
-        self.prefix = self.spinbox.prefix
-        self.setPrefix = self.spinbox.setPrefix
-        self.suffix = self.spinbox.suffix
-        self.setSuffix = self.spinbox.setSuffix
-        self.text = self.label.text
-        self.setText = self.label.setText
-        self.fixed = self.checkbox.isChecked
-        self.setFixed = self.checkbox.setChecked
 
     def _connectSignals(self) -> None:
         self.slider.valueChanged.connect(self._reportChange)
@@ -40,6 +28,26 @@ class ParameterWidget(QFrame):
     def _reportChange(self, value: float) -> None:
         self.valueChanged.emit(value)
 
+    # ------------------------------------------------------------------
+    # Value interface
+    # ------------------------------------------------------------------
+
+    def value(self) -> float:
+        return self.spinbox.value()
+
+    def setValue(self, value: float) -> None:
+        self.slider.setValue(value)
+
+    # ------------------------------------------------------------------
+    # Range / step
+    # ------------------------------------------------------------------
+
+    def minimum(self) -> float:
+        return self.slider.minimum()
+
+    def maximum(self) -> float:
+        return self.slider.maximum()
+
     def range(self) -> list[float]:
         return [self.minimum(), self.maximum()]
 
@@ -47,11 +55,56 @@ class ParameterWidget(QFrame):
         self.slider.setRange(*range)
         self.spinbox.setRange(*range)
 
+    def step(self) -> float:
+        return self.spinbox.singleStep()
+
     def setStep(self, value: float) -> None:
         self.slider.setSingleStep(value)
         self.spinbox.setSingleStep(value)
 
-    def settings(self) -> dict[str, float]:
+    # ------------------------------------------------------------------
+    # Display formatting
+    # ------------------------------------------------------------------
+
+    def decimals(self) -> int:
+        return self.spinbox.decimals()
+
+    def setDecimals(self, decimals: int) -> None:
+        self.spinbox.setDecimals(decimals)
+
+    def prefix(self) -> str:
+        return self.spinbox.prefix()
+
+    def setPrefix(self, prefix: str) -> None:
+        self.spinbox.setPrefix(prefix)
+
+    def suffix(self) -> str:
+        return self.spinbox.suffix()
+
+    def setSuffix(self, suffix: str) -> None:
+        self.spinbox.setSuffix(suffix)
+
+    def text(self) -> str:
+        return self.label.text()
+
+    def setText(self, text: str) -> None:
+        self.label.setText(text)
+
+    # ------------------------------------------------------------------
+    # Lock (fix parameter during optimization)
+    # ------------------------------------------------------------------
+
+    def fixed(self) -> bool:
+        return self.checkbox.isChecked()
+
+    def setFixed(self, fixed: bool) -> None:
+        self.checkbox.setChecked(fixed)
+
+    # ------------------------------------------------------------------
+    # Serialization
+    # ------------------------------------------------------------------
+
+    def settings(self) -> dict:
         s = dict(text=self.text(),
                  range=self.range(),
                  value=self.value(),
@@ -64,13 +117,11 @@ class ParameterWidget(QFrame):
             s['suffix'] = self.suffix()
         return s
 
-    def setSettings(self, settings: dict[str, float]) -> None:
+    def setSettings(self, settings: dict) -> None:
         for setting, value in settings.items():
-            if hasattr(self, setting):
-                method = f'set{setting.capitalize()}'
-                if hasattr(self, method):
-                    setter = getattr(self, method)
-                    setter(value)
+            setter = f'set{setting.capitalize()}'
+            if hasattr(self, setter):
+                getattr(self, setter)(value)
 
     @classmethod
     def example(cls) -> None:

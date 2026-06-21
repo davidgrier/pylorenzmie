@@ -44,12 +44,11 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     @pyqtSlot(object)
     def _handleChange(self, roi) -> None:
         radius = int(self.roi.size()[0]) // 2
-        if radius == self._radius:
-            x0, y0 = roi.pos()
-            self.roiChanged.emit(x0+radius, y0+radius)
-        else:
+        x0, y0 = roi.pos()
+        if radius != self._radius:
             self._radius = radius
             self.radiusChanged.emit(radius)
+        self.roiChanged.emit(x0 + radius, y0 + radius)
 
     @pyqtProperty(np.ndarray)
     def data(self) -> NDArray[float]:
