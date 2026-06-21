@@ -27,6 +27,8 @@ logger = logging.getLogger(__name__)
 # TODO: support for cuda-accelerated kernels
 # TODO: toml config file
 # TODO: support for gamma correction
+# TODO: use Localizer to detect candidate particles; let user toggle through
+#       candidates, running Estimator and Optimizer on each
 
 
 class LMTool(QMainWindow):
