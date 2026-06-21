@@ -47,6 +47,9 @@ Jackie Sustiel
    "Characterizing and tracking single colloidal particles with video
    holographic microscopy,"
    _Optics Express_ **15**, 18275-18282 (2007).
+1. C. Martin, L. E. Altman, S. Rawat, A. Wang, D. G. Grier and V. N. Manoharan,
+   "In-line holographic microscopy with model-based analysis,"
+   _Nature Reviews Methods Primers_ **2**, 83 (2022).
 
 ### Lorenz-Mie theory of light scattering
 1. C. F. Bohren and D. R. Huffman, Absorption and Scattering of Light
