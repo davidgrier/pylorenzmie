@@ -1,6 +1,9 @@
 Utilities (``pylorenzmie.utilities``)
 =======================================
 
+.. automodule:: pylorenzmie.utilities.normalizer
+   :members:
+
 .. automodule:: pylorenzmie.utilities.normalize_image
    :members:
 

@@ -1,6 +1,9 @@
 LMTool GUI (``pylorenzmie.lmtool``)
 =====================================
 
+For a user-oriented guide to launching and using the application, see
+:doc:`/lmtool`.
+
 .. automodule:: pylorenzmie.lmtool.LMTool
    :members:
 
@@ -20,4 +23,7 @@ LMTool GUI (``pylorenzmie.lmtool``)
    :members:
 
 .. automodule:: pylorenzmie.lmtool.OptimizerWidget
+   :members:
+
+.. automodule:: pylorenzmie.lmtool.ResultWidget
    :members:

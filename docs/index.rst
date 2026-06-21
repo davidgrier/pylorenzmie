@@ -26,6 +26,7 @@ Lorenz-Mie theory.
    :caption: Contents
 
    quickstart
+   lmtool
    api/lib
    api/theory
    api/analysis

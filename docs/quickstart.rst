@@ -12,9 +12,10 @@ For GPU-accelerated hologram computation (requires CUDA 12)::
 
     pip install pylorenzmie[gpu]
 
-For the interactive GUI tool::
+The interactive GUI tool (:doc:`lmtool`) is included in the standard
+install and can be launched immediately::
 
-    pip install pylorenzmie[lmtool]
+    lmtool
 
 Computing a hologram
 --------------------
@@ -54,8 +55,9 @@ Fitting a hologram
    from pylorenzmie.analysis import Feature
    from pylorenzmie.theory import LorenzMie
 
-   # Load a normalized hologram
-   data = cv2.imread('crop.png', cv2.IMREAD_GRAYSCALE).astype(float) / 100.
+   # Load and normalize a hologram (divide by background level)
+   data = cv2.imread('crop.png', cv2.IMREAD_GRAYSCALE).astype(float)
+   data /= data.mean()
 
    # Set up the model
    model = LorenzMie()
@@ -82,6 +84,7 @@ Analyzing a full frame
    from pylorenzmie.analysis import Frame
 
    frame = Frame()
-   data = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE).astype(float) / 100.
+   data = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE).astype(float)
+   data /= data.mean()
    results = frame.analyze(data)
    print(results)   # pandas.DataFrame with one row per particle
