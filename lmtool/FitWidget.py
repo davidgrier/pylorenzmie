@@ -6,15 +6,38 @@ import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
 import pyqtgraph as pg
-from pyqtgraph.Qt.QtCore import (pyqtProperty, QRectF, pyqtSlot)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
+                                  QObject, QRectF, QThread)
 from pyqtgraph.Qt.QtWidgets import QFileDialog
 
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.theory import LorenzMie
 
 
+class _OptimizeWorker(QObject):
+    '''Runs scipy optimization in a background thread.'''
+
+    finished = pyqtSignal(object)  # pd.Series
+    error = pyqtSignal(str)
+
+    def __init__(self, optimizer: Optimizer) -> None:
+        super().__init__()
+        self._optimizer = optimizer
+
+    @pyqtSlot()
+    def run(self) -> None:
+        try:
+            self.finished.emit(self._optimizer.optimize())
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 class FitWidget(pg.GraphicsLayoutWidget):
     '''Three-panel widget showing the ROI, model fit, and normalized residuals.'''
+
+    optimizationStarted = pyqtSignal()
+    optimizationFinished = pyqtSignal(object)   # pd.Series
+    optimizationError = pyqtSignal(str)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -25,6 +48,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.result = None
         self._data = None
         self.rect = None
+        self._thread = None
 
     def _configurePlot(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -108,6 +132,67 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self._data = data
         self._updateFitDisplay()
         return self.result
+
+    def optimizeAsync(self,
+                      data: NDArray[float],
+                      coordinates: NDArray[float]) -> None:
+        '''Start optimization in a background thread.
+
+        Returns immediately. Emits :attr:`optimizationStarted` on entry,
+        then :attr:`optimizationFinished` (or :attr:`optimizationError`)
+        when the thread completes. Use :meth:`optimize` for synchronous
+        (blocking) operation.
+
+        Parameters
+        ----------
+        data : ndarray
+            Normalized hologram crop.
+        coordinates : ndarray, shape (2, npts)
+            Pixel coordinates for the crop.
+        '''
+        if self._thread is not None and self._thread.isRunning():
+            return
+        mask = self.mask(data)
+        coordinates = coordinates.reshape((2, -1))
+        self.optimizer.data = data.flatten()[mask]
+        self.optimizer.model.coordinates = coordinates[:, mask]
+        self._full_coordinates = coordinates
+        self._data = data
+        worker = _OptimizeWorker(self.optimizer)
+        thread = QThread()
+        worker.moveToThread(thread)
+        thread.started.connect(worker.run)
+        worker.finished.connect(self._onWorkerFinished)
+        worker.error.connect(self._onWorkerError)
+        worker.finished.connect(thread.quit)
+        worker.error.connect(thread.quit)
+        thread.finished.connect(self._onThreadFinished)
+        self._worker = worker
+        self._thread = thread
+        thread.start()
+        self.optimizationStarted.emit()
+
+    @pyqtSlot(object)
+    def _onWorkerFinished(self, result: pd.Series) -> None:
+        self.result = result
+        self.optimizer.model.coordinates = self._full_coordinates
+        self._updateFitDisplay()
+        self.optimizationFinished.emit(result)
+
+    @pyqtSlot(str)
+    def _onWorkerError(self, message: str) -> None:
+        self.optimizationError.emit(message)
+
+    @pyqtSlot()
+    def _onThreadFinished(self) -> None:
+        self._worker = None
+        self._thread = None
+
+    def shutdown(self) -> None:
+        '''Stop any running optimization thread and wait for it to finish.'''
+        if self._thread is not None and self._thread.isRunning():
+            self._thread.quit()
+            self._thread.wait()
 
     def setData(self, data: NDArray[float], rect: QRectF,
                 coordinates: NDArray[float]) -> None:

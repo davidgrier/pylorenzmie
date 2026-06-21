@@ -8,10 +8,11 @@ from pathlib import Path
 import cv2
 import numpy as np
 from numpy.typing import NDArray
+import pandas as pd
 from pyqtgraph.Qt import uic
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QRectF,
                                   QSignalBlocker)
-from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog)
+from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog, QProgressBar)
 
 from pylorenzmie.analysis import Estimator
 from pylorenzmie.lib import (Azimuthal, LMObject)
@@ -26,7 +27,6 @@ logger = logging.getLogger(__name__)
 # TODO: support for cuda-accelerated kernels
 # TODO: toml config file
 # TODO: support for gamma correction
-# TODO: wire up estimator
 
 
 class LMTool(QMainWindow):
@@ -56,6 +56,7 @@ class LMTool(QMainWindow):
         self._data = None
         self._pre_estimate = None
         self._setupTheory(controls())
+        self._setupStatusBar()
         self.readHologram(filename)
         self._connectSignals()
 
@@ -70,6 +71,13 @@ class LMTool(QMainWindow):
         self.fitWidget.model = controls.model
         self.fitWidget.properties = self.controls.properties
         self.optimizerWidget.settings = self.fitWidget.optimizer.settings
+
+    def _setupStatusBar(self) -> None:
+        self._progress = QProgressBar()
+        self._progress.setRange(0, 0)
+        self._progress.setMaximumWidth(150)
+        self._progress.setVisible(False)
+        self.statusBar().addPermanentWidget(self._progress)
 
     def _connectSignals(self) -> None:
         self.imageWidget.roiChanged.connect(self._handleROIChanged)
@@ -86,6 +94,9 @@ class LMTool(QMainWindow):
         self.actionOptimize.triggered.connect(self.optimize)
         connect = self.optimizerWidget.settingChanged.connect
         connect(self.fitWidget.setSetting)
+        self.fitWidget.optimizationStarted.connect(self._onOptimizationStarted)
+        self.fitWidget.optimizationFinished.connect(self._onOptimizationFinished)
+        self.fitWidget.optimizationError.connect(self._onOptimizationError)
 
     @pyqtProperty(np.ndarray)
     def data(self) -> NDArray[float]:
@@ -209,20 +220,50 @@ class LMTool(QMainWindow):
         optimizer.robust = state
         self.optimizerWidget.settings = optimizer.settings
 
+    def closeEvent(self, event) -> None:
+        self.fitWidget.shutdown()
+        super().closeEvent(event)
+
     @pyqtSlot()
     def optimize(self) -> None:
         if self._data is None:
             return
-        logger.info('Starting optimization...')
         optimizer = self.fitWidget.optimizer
         optimizer.model.properties = self.controls.properties
         optimizer.fixed = self.controls.fixed
         optimizer.robust = self.actionRobust.isChecked()
         data, _, coordinates = self.crop()
-        result = self.fitWidget.optimize(data, coordinates)
-        self.controls.properties = optimizer.model.properties
-        logger.info(f'Finished!\n{result}')
+        self.fitWidget.optimizeAsync(data, coordinates)
+
+    @pyqtSlot()
+    def _onOptimizationStarted(self) -> None:
+        self.actionOptimize.setEnabled(False)
+        self.actionEstimate.setEnabled(False)
+        self.controls.setEnabled(False)
+        self.imageWidget.setEnabled(False)
+        self._progress.setVisible(True)
+        self.statusBar().showMessage('Optimizing...')
+
+    @pyqtSlot(object)
+    def _onOptimizationFinished(self, result: pd.Series) -> None:
+        self._progress.setVisible(False)
+        self.controls.setEnabled(True)
+        self.imageWidget.setEnabled(True)
+        self.actionOptimize.setEnabled(True)
+        self.actionEstimate.setEnabled(True)
+        self.controls.properties = self.fitWidget.optimizer.model.properties
+        logger.info(f'Optimization complete\n{result}')
         self.statusBar().showMessage('Optimization complete', 2000)
+
+    @pyqtSlot(str)
+    def _onOptimizationError(self, message: str) -> None:
+        self._progress.setVisible(False)
+        self.controls.setEnabled(True)
+        self.imageWidget.setEnabled(True)
+        self.actionOptimize.setEnabled(True)
+        self.actionEstimate.setEnabled(True)
+        logger.error(f'Optimization failed: {message}')
+        self.statusBar().showMessage(f'Optimization failed: {message}', 5000)
 
 
 def lmtool() -> None:
