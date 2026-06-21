@@ -92,13 +92,10 @@ def circletransform(image: NDArray[float]) -> NDArray[float]:
 
 
 def example() -> None:  # pragma: no cover
-    from pathlib import Path
-    import cv2
     import matplotlib.pyplot as plt
+    from pylorenzmie.utilities import example_hologram
 
-    directory = Path(__file__).parent.parent.resolve()
-    filename = directory / 'docs' / 'tutorials' / 'image0400.png'
-    a = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+    a = example_hologram('image0400.png')
     b = circletransform(a)
     fig, (axa, axb) = plt.subplots(nrows=2, sharex=True, sharey=True)
     axa.imshow(a, cmap='gray')
