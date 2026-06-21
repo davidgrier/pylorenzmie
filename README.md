@@ -4,7 +4,7 @@
 [![Python versions](https://img.shields.io/pypi/pyversions/pylorenzmie)](https://pypi.org/project/pylorenzmie/)
 [![License](https://img.shields.io/pypi/l/pylorenzmie)](https://www.gnu.org/licenses/gpl-3.0.html)
 [![Documentation](https://readthedocs.org/projects/pylorenzmie/badge/?version=latest)](https://pylorenzmie.readthedocs.io)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20784724.svg)](https://doi.org/10.5281/zenodo.20784724)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20784723.svg)](https://doi.org/10.5281/zenodo.20784723)
 [![Tests](https://github.com/davidgrier/pylorenzmie/actions/workflows/test.yml/badge.svg)](https://github.com/davidgrier/pylorenzmie/actions/workflows/test.yml)
 
 Python routines for tracking and characterizing colloidal particles
@@ -58,7 +58,7 @@ Jackie Sustiel
    (Springer, 2011).
 
 ### Computational methods
-1. W. Yang, "Improved recurstive algorithm for light scattering
+1. W. Yang, "Improved recursive algorithm for light scattering
    by a multilayered sphere," _Applied Optics_ **42**, 1710--1720 (2003).
 1. O. Pena and U. Pal, "Scattering of electromagnetic radiation
    by a multilayered sphere," _Computer Physics Communications_
@@ -68,3 +68,8 @@ Jackie Sustiel
 1. A. A. R. Neves and D. Pisignano, "Effect of finite terms on the
    truncation error of Mie series," _Optics Letters_ **37**,
    2481-2420 (2012).
+
+## Acknowledgements
+Work on this project at New York University is supported by the
+National Science Foundation of the United States
+under award number DMR-2428983.
