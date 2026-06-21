@@ -169,6 +169,7 @@
      <string>Optimization</string>
     </property>
     <addaction name="actionEstimate"/>
+    <addaction name="actionUndoEstimate"/>
     <addaction name="actionOptimize"/>
     <addaction name="actionRobust"/>
     <addaction name="saveResult"/>
@@ -229,11 +230,16 @@
    </property>
   </action>
   <action name="actionEstimate">
+   <property name="text">
+    <string>Estimate</string>
+   </property>
+  </action>
+  <action name="actionUndoEstimate">
    <property name="enabled">
     <bool>false</bool>
    </property>
    <property name="text">
-    <string>Estimate</string>
+    <string>Undo Estimate</string>
    </property>
   </action>
   <action name="saveResult">

@@ -9,9 +9,11 @@ import cv2
 import numpy as np
 from numpy.typing import NDArray
 from pyqtgraph.Qt import uic
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QRectF)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, QRectF,
+                                  QSignalBlocker)
 from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog)
 
+from pylorenzmie.analysis import Estimator
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lmtool.LMWidget import LMWidget
 from pylorenzmie.utilities import Normalizer
@@ -52,6 +54,7 @@ class LMTool(QMainWindow):
         self.normalizer = normalizer if normalizer is not None else Normalizer()
         self._raw = None
         self._data = None
+        self._pre_estimate = None
         self._setupTheory(controls())
         self.readHologram(filename)
         self._connectSignals()
@@ -74,6 +77,8 @@ class LMTool(QMainWindow):
         self.controls.propertyChanged.connect(self._handlePropertyChanged)
         self.actionOpen.triggered.connect(self.readHologram)
         self.actionOpenBackground.triggered.connect(self.readBackground)
+        self.actionEstimate.triggered.connect(self.estimate)
+        self.actionUndoEstimate.triggered.connect(self.undoEstimate)
         self.actionSaveParameters.triggered.connect(self.saveParameters)
         self.saveResult.triggered.connect(self.fitWidget.saveResult)
         self.saveResultAs.triggered.connect(self.fitWidget.saveResultAs)
@@ -101,7 +106,8 @@ class LMTool(QMainWindow):
     def readHologram(self, filename: str | None = None) -> None:
         if not filename:
             get = QFileDialog.getOpenFileName
-            filename, _ = get(self, 'Open Hologram', '', 'Images (*.png)')
+            filename, _ = get(self, 'Open Hologram', '',
+                              'Images (*.png *.tif *.tiff)')
         if not filename:
             return
         self.fitWidget.datafile = filename
@@ -111,7 +117,8 @@ class LMTool(QMainWindow):
     def readBackground(self, filename: str | None = None) -> None:
         if not filename:
             get = QFileDialog.getOpenFileName
-            filename, _ = get(self, 'Open Background', '', 'Images (*.png)')
+            filename, _ = get(self, 'Open Background', '',
+                              'Images (*.png *.tif *.tiff)')
         if not filename:
             return
         bg = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
@@ -140,9 +147,8 @@ class LMTool(QMainWindow):
     def _handleROIChanged(self, x_p: float, y_p: float) -> None:
         if self._data is None:
             return
-        self.controls.blockSignals(True)
-        self.controls.properties = dict(x_p=x_p, y_p=y_p)
-        self.controls.blockSignals(False)
+        with QSignalBlocker(self.controls):
+            self.controls.properties = dict(x_p=x_p, y_p=y_p)
         self._updateProfile()
         self.fitWidget.properties = dict(x_p=x_p, y_p=y_p)
         self.fitWidget.setData(*self.crop())
@@ -170,6 +176,34 @@ class LMTool(QMainWindow):
                 self.imageWidget.rect(),
                 self.coordinates[:, sy, sx])
 
+    @pyqtSlot()
+    def estimate(self) -> None:
+        if self._data is None:
+            return
+        props = self.controls.properties
+        self._pre_estimate = {k: props[k] for k in ('z_p', 'a_p')
+                              if k in props}
+        self.actionUndoEstimate.setEnabled(True)
+        data, _, _ = self.crop()
+        instrument = self.fitWidget.optimizer.model.instrument
+        result = Estimator(instrument=instrument).estimate(data)
+        updates = {k: float(result[k]) for k in ('z_p', 'a_p')
+                   if result[k] is not None and np.isfinite(result[k])}
+        if updates:
+            self.controls.properties = updates
+            self.fitWidget.refreshPreview(updates)
+        logger.info(f'Estimate: {result}')
+        self.statusBar().showMessage('Estimation complete', 2000)
+
+    @pyqtSlot()
+    def undoEstimate(self) -> None:
+        if self._pre_estimate is None:
+            return
+        self.controls.properties = self._pre_estimate
+        self.fitWidget.refreshPreview(self._pre_estimate)
+        self._pre_estimate = None
+        self.actionUndoEstimate.setEnabled(False)
+
     @pyqtSlot(bool)
     def setRobust(self, state: bool) -> None:
         optimizer = self.fitWidget.optimizer
@@ -183,8 +217,8 @@ class LMTool(QMainWindow):
         optimizer.model.properties = self.controls.properties
         optimizer.fixed = self.controls.fixed
         optimizer.robust = self.actionRobust.isChecked()
-        data, _, coords = self.crop()
-        result = self.fitWidget.optimize(data, coords)
+        data, _, coordinates = self.crop()
+        result = self.fitWidget.optimize(data, coordinates)
         self.controls.properties = optimizer.model.properties
         logger.info(f'Finished!\n{result}')
         self.statusBar().showMessage('Optimization complete', 2000)

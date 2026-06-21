@@ -39,10 +39,10 @@ class ImageWidget(pg.GraphicsLayoutWidget):
                                 parent=self.image)
 
     def _connectSignals(self) -> None:
-        self.roi.sigRegionChangeFinished.connect(self.handleChange)
+        self.roi.sigRegionChangeFinished.connect(self._handleChange)
 
     @pyqtSlot(object)
-    def handleChange(self, roi) -> None:
+    def _handleChange(self, roi) -> None:
         radius = int(self.roi.size()[0]) // 2
         if radius == self._radius:
             x0, y0 = roi.pos()
@@ -57,12 +57,14 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
     @data.setter
     def data(self, data: NDArray[float]) -> None:
+        prev_shape = getattr(self, '_data', None)
         self._data = data
         self.image.setImage(data)
         h, w = data.shape
         self.image.setRect(QRectF(0, 0, w, h))
-        self.roi.setPos([0, 0])
-        self.roi.setSize([200, 200])
+        if prev_shape is None or prev_shape.shape != data.shape:
+            self.roi.setPos([0, 0])
+            self.roi.setSize([200, 200])
 
     @pyqtProperty(float)
     def x_p(self) -> float:

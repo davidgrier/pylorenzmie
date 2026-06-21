@@ -61,6 +61,21 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.addItem(cb)
 
     def mask(self, data: NDArray[float]) -> NDArray[bool]:
+        '''Return a random boolean mask selecting pixels for fitting.
+
+        A fresh random subset is drawn on every call, which prevents
+        the optimizer from overfitting to a fixed pixel pattern.
+        Saturated pixels (equal to the image maximum) are always excluded.
+
+        Parameters
+        ----------
+        data : ndarray
+            Hologram pixel values (any shape).
+
+        Returns
+        -------
+        mask : ndarray of bool, shape (data.size,)
+        '''
         data = data.flatten()
         mask = np.random.choice([True, False], data.size,
                                 p=[self.fraction, 1-self.fraction])
@@ -69,13 +84,27 @@ class FitWidget(pg.GraphicsLayoutWidget):
 
     def optimize(self,
                  data: NDArray[float],
-                 coords: NDArray[float]) -> pd.Series:
+                 coordinates: NDArray[float]) -> pd.Series:
+        '''Fit the model to data and update the display.
+
+        Parameters
+        ----------
+        data : ndarray
+            Normalized hologram crop.
+        coordinates : ndarray, shape (2, npts)
+            Pixel coordinates for the crop.
+
+        Returns
+        -------
+        result : pandas.Series
+            Fitted parameters and uncertainties.
+        '''
         mask = self.mask(data)
-        coords = coords.reshape((2, -1))
+        coordinates = coordinates.reshape((2, -1))
         self.optimizer.data = data.flatten()[mask]
-        self.optimizer.model.coordinates = coords[:, mask]
+        self.optimizer.model.coordinates = coordinates[:, mask]
         self.result = self.optimizer.optimize()
-        self.optimizer.model.coordinates = coords
+        self.optimizer.model.coordinates = coordinates
         self._data = data
         self._updateFitDisplay()
         return self.result
@@ -105,6 +134,10 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self._updateFitDisplay()
 
     def _updateFitDisplay(self) -> None:
+        '''Recompute the model hologram and refresh all three display panels.
+
+        No-op when data has not been loaded or the widget is not visible.
+        '''
         if self._data is None or self.rect is None:
             return
         if not self.isVisible():
