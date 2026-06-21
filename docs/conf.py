@@ -61,6 +61,16 @@ intersphinx_mapping = {
 
 exclude_patterns = ['_build']
 
+# Suppress warnings that cannot be fixed in source
+suppress_warnings = [
+    'sphinx_autodoc_typehints.local_function',   # AberratedLorenzMie factory
+    'sphinx_autodoc_typehints.forward_reference', # numpy internal type
+]
+
+nitpick_ignore = [
+    ('py:class', '_SeriesLikeCoef_co'),  # numpy internal type, not our code
+]
+
 
 def setup(app):
     '''Suppress duplicate-object warnings from Sphinx 8.x.'''

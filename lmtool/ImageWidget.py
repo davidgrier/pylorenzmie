@@ -7,7 +7,9 @@ from numpy.typing import NDArray
 class ImageWidget(pg.GraphicsLayoutWidget):
     '''Image display with a circular ROI for selecting a particle region.'''
 
+    #: Emitted with ``(x, y)`` centre coordinates when the ROI moves.
     roiChanged = pyqtSignal(float, float)
+    #: Emitted with the new radius in pixels when the ROI is resized.
     radiusChanged = pyqtSignal(int)
 
     def __init__(self,

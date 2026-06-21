@@ -1,7 +1,6 @@
 from datetime import datetime
 from pathlib import Path
 import warnings
-
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
@@ -9,7 +8,6 @@ import pyqtgraph as pg
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
                                   QObject, QRectF, QThread)
 from pyqtgraph.Qt.QtWidgets import QFileDialog
-
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.theory import LorenzMie
 
@@ -35,8 +33,11 @@ class _OptimizeWorker(QObject):
 class FitWidget(pg.GraphicsLayoutWidget):
     '''Three-panel widget showing the ROI, model fit, and normalized residuals.'''
 
+    #: Emitted when an optimization thread is launched.
     optimizationStarted = pyqtSignal()
-    optimizationFinished = pyqtSignal(object)   # pd.Series
+    #: Emitted with the ``pd.Series`` result when optimization succeeds.
+    optimizationFinished = pyqtSignal(object)
+    #: Emitted with an error message string when optimization fails.
     optimizationError = pyqtSignal(str)
 
     def __init__(self, *args, **kwargs) -> None:

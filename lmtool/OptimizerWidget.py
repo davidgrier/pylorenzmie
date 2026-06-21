@@ -16,6 +16,7 @@ class OptimizerWidget(ParameterTree):
     Enforces the constraint that Levenberg-Marquardt requires ``loss='linear'``.
     '''
 
+    #: Emitted with ``(name, value)`` whenever a solver setting changes.
     settingChanged = pyqtSignal(str, object)
 
     def __init__(self, *args, **kwargs) -> None:

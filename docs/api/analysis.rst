@@ -7,6 +7,12 @@ Mask
 .. automodule:: pylorenzmie.analysis.Mask
    :members:
 
+RadialMask
+----------
+
+.. automodule:: pylorenzmie.analysis.RadialMask
+   :members:
+
 Localizer
 ---------
 
@@ -23,6 +29,12 @@ Optimizer
 ---------
 
 .. automodule:: pylorenzmie.analysis.Optimizer
+   :members:
+
+cupyOptimizer
+-------------
+
+.. automodule:: pylorenzmie.analysis.cupyOptimizer
    :members:
 
 Feature

@@ -24,18 +24,18 @@ class Sphere(Particle):
 
     References
     ----------
-    .. [1] C. F. Bohren and D. R. Huffman, *Absorption and Scattering
+    1. C. F. Bohren and D. R. Huffman, *Absorption and Scattering
        of Light by Small Particles* (Wiley, 1983), Chapter 8.
-    .. [2] W. Yang, "Improved recursive algorithm for light scattering
+    2. W. Yang, "Improved recursive algorithm for light scattering
        by a multilayered sphere," *Applied Optics* **42**, 1710–1720
        (2003).
-    .. [3] O. Pena and U. Pal, "Scattering of electromagnetic radiation
+    3. O. Pena and U. Pal, "Scattering of electromagnetic radiation
        by a multilayered sphere," *Computer Physics Communications*
        **180**, 2348–2354 (2009).  Equation numbering follows this
        reference.
-    .. [4] W. J. Wiscombe, "Improved Mie scattering algorithms,"
+    4. W. J. Wiscombe, "Improved Mie scattering algorithms,"
        *Applied Optics* **19**, 1505–1509 (1980).
-    .. [5] A. A. R. Neves and D. Pisignano, "Effect of finite terms on
+    5. A. A. R. Neves and D. Pisignano, "Effect of finite terms on
        the truncation error of Mie series," *Optics Letters* **37**,
        2481–2483 (2012).
     '''

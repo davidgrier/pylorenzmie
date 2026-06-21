@@ -19,9 +19,9 @@ class LorenzMie(LMObject):
 
     Attributes
     ----------
-    coordinates : numpy.ndarray, shape (3, npts)
-        Pixel coordinates at which the field is evaluated.
-        Defaults to a 201×201 grid if not supplied.
+    coordinates : numpy.ndarray
+        Pixel coordinates at which the field is evaluated,
+        shape ``(3, npts)``. Defaults to a 201×201 grid if not supplied.
     particle : Particle or list of Particle
         Scattering particle(s).  Defaults to a :class:`Sphere`.
     instrument : Instrument
@@ -29,19 +29,19 @@ class LorenzMie(LMObject):
 
     References
     ----------
-    .. [1] C. F. Bohren and D. R. Huffman, *Absorption and Scattering
+    1. C. F. Bohren and D. R. Huffman, *Absorption and Scattering
        of Light by Small Particles* (Wiley, 1983), Chapter 4.
-    .. [2] W. J. Wiscombe, "Improved Mie scattering algorithms,"
+    2. W. J. Wiscombe, "Improved Mie scattering algorithms,"
        *Appl. Opt.* **19**, 1505–1509 (1980).
-    .. [3] W. J. Lentz, "Generating Bessel functions in Mie scattering
+    3. W. J. Lentz, "Generating Bessel functions in Mie scattering
        calculations using continued fractions,"
        *Appl. Opt.* **15**, 668–671 (1976).
-    .. [4] S.-H. Lee, Y. Roichman, G.-R. Yi, S.-H. Kim, S.-M. Yang,
+    4. S.-H. Lee, Y. Roichman, G.-R. Yi, S.-H. Kim, S.-M. Yang,
        A. van Blaaderen, P. van Oostrum and D. G. Grier,
        "Characterizing and tracking single colloidal particles with
        video holographic microscopy,"
        *Opt. Express* **15**, 18275–18282 (2007).
-    .. [5] F. C. Cheong, B. Sun, R. Dreyfus, J. Amato-Grill, K. Xiao,
+    5. F. C. Cheong, B. Sun, R. Dreyfus, J. Amato-Grill, K. Xiao,
        L. Dixon and D. G. Grier,
        "Flow visualization and flow cytometry with holographic video
        microscopy," *Opt. Express* **17**, 13071–13079 (2009).
