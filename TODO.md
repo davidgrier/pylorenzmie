@@ -16,7 +16,7 @@
 
 - [ ] `Cluster` and `Dimer`: review and bring up to production quality
 - [ ] `cupyLorenzMie`: expose in lmtool
-- [ ] `torchLorenzMie`: review or retire if superseded
+- [ ] `torchLorenzMie`: merge from Improvements branch
 
 ## optimizer
 
