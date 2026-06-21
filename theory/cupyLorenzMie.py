@@ -34,7 +34,7 @@ class cupyLorenzMie(LorenzMie):
 
     '''
 
-    method: str = 'cupy'
+    method: str = 'cupy numpy'
 
     def __init__(self,
                  *args,
