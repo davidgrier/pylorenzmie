@@ -15,8 +15,17 @@
 ## theory
 
 - [ ] `Cluster` and `Dimer`: review and bring up to production quality
-- [ ] `cupyLorenzMie`: review; expose in lmtool
+- [ ] `cupyLorenzMie`: expose in lmtool
 - [ ] `torchLorenzMie`: review or retire if superseded
+
+## optimizer
+
+- [ ] Backend-native Optimizer: implement an `Optimizer` subclass that works
+      natively with CuPy (and Torch, and any future backend) so that residuals
+      and Jacobians never leave the GPU. Enable `cupyLorenzMie` to return CuPy
+      holograms (`device=True`) for fully on-GPU fitting. Track via the `method`
+      string convention: a `'cupy'` Optimizer would accept models whose `method`
+      contains `'cupy'`.
 
 ## tests
 
