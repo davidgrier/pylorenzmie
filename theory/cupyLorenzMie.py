@@ -55,8 +55,8 @@ class cupyLorenzMie(LorenzMie):
                 self.dtype = cp.float64
                 self.ctype = cp.complex128
             except cp.cuda.runtime.CUDARuntimeError:
-                logger.warning('GPU not capable of double precision'
-                               'Falling back to single precision')
+                logger.warning('GPU not capable of double precision. '
+                               'Falling back to single precision.')
                 double_precision = False
         if not double_precision:
             self.lorenzmie = self.culorenzmief()
