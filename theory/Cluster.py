@@ -25,7 +25,7 @@ class Cluster(Particle):
     constituent particle's ``r_0``.
     '''
 
-    particles: list = field(repr=False, default_factory=list)
+    particles: list[Particle] = field(repr=False, default_factory=list)
 
     def __post_init__(self) -> None:
         self.update()
@@ -42,8 +42,6 @@ class Cluster(Particle):
         return iter(self.particles)
 
     def __getitem__(self, index: int) -> Particle:
-        if index < 0 or index >= len(self):
-            raise IndexError('Particle index out of range')
         return self.particles[index]
 
     @Particle.properties.getter
