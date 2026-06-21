@@ -26,6 +26,14 @@
       holograms (`device=True`) for fully on-GPU fitting. Track via the `method`
       string convention: a `'cupy'` Optimizer would accept models whose `method`
       contains `'cupy'`.
+- [ ] JAX end-to-end implementation: a JAX-based `LorenzMie` subclass would
+      provide automatic differentiation (exact Jacobians via `jax.jacfwd`),
+      JIT-compiled field computation, and cross-platform GPU support (CUDA,
+      ROCm, TPU) without separate backends. Pair with `jaxopt.LevenbergMarquardt`
+      for a fully on-device fitting pipeline. Would eventually supersede the
+      separate numpy/cupy/torch implementations. Requires refactoring the
+      multipole loop to `jax.lax.scan` and adopting a functional (non-mutating)
+      coding style.
 
 ## tests
 
