@@ -6,12 +6,13 @@ class RadialMask(Mask):
     '''Pixel selection mask with radially-weighted sampling probability.
 
     Overrides :meth:`Mask._select` to sample pixels with a probability
-    that varies linearly with distance from the image center.
+    that varies with radial distance from the image center.
 
-    When ``fraction < 0.5`` the sampling probability decreases toward
-    the edges (center-weighted). When ``fraction >= 0.5`` it increases
-    toward the edges (edge-weighted), which emphasizes the outer fringes
-    of a holographic ring pattern.
+    When ``fraction < 0.5`` the image center has probability zero of
+    being selected; probability increases toward the edges, emphasizing
+    the outer ring fringes of a holographic pattern. When
+    ``fraction >= 0.5`` all pixels have a nonzero selection probability;
+    the distribution becomes more uniform as ``fraction`` → 1.
 
     Inherits all parameters from :class:`Mask`.
     '''

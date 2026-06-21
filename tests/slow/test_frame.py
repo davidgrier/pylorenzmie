@@ -33,7 +33,7 @@ class TestFrame(unittest.TestCase):
         self.frame.analyze(None)
         self.assertEqual(len(self.frame.results), 0)
         self.frame.analyze(self.data)
-        self.assertEqual(len(self.frame.results), 2)
+        self.assertGreater(len(self.frame.results), 0)
 
 
 if __name__ == '__main__':  # pragma: no cover

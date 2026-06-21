@@ -1,13 +1,6 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import unittest
 import numpy as np
-import sys
-
-
-mods = ['cupy', 'LorenzMie']
-for mod in mods:
-    if mod in sys.modules:
-        sys.modules.pop(mod)
 
 
 class TestLorenzMie(unittest.TestCase):
@@ -24,12 +17,12 @@ class TestLorenzMie(unittest.TestCase):
         self.assertEqual(self.method.method, 'numpy')
 
     def test_meshgrid(self) -> None:
-        nx = 32
-        ny = 24
-        xy = self.method.meshgrid((nx, ny), flatten=False)
-        self.assertTupleEqual(xy.shape, (2, nx, ny))
-        xy = self.method.meshgrid((nx, ny), flatten=True)
-        self.assertTupleEqual(xy.shape, (2, nx*ny))
+        nrows = 32
+        ncols = 24
+        xy = self.method.meshgrid((nrows, ncols), flatten=False)
+        self.assertTupleEqual(xy.shape, (2, nrows, ncols))
+        xy = self.method.meshgrid((nrows, ncols), flatten=True)
+        self.assertTupleEqual(xy.shape, (2, nrows * ncols))
 
     def test_coordinates_none(self) -> None:
         self.method.coordinates = None
@@ -107,5 +100,5 @@ class TestLorenzMie(unittest.TestCase):
         self.assertEqual(holo.size, c.shape[1])
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

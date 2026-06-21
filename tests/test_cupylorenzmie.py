@@ -7,9 +7,6 @@ try:
 except ImportError:
     HAS_CUPY = False
 
-if 'LorenzMie' in sys.modules:
-    sys.modules.pop('LorenzMie')
-
 import numpy as np
 from pylorenzmie.theory.LorenzMie import LorenzMie as numpyLorenzMie
 from pylorenzmie.lib import LMObject
@@ -58,7 +55,7 @@ class TestCupyLorenzMie(unittest.TestCase):
         self.test_field(bohren=True, cartesian=True)
 
     def test_compare_methods(self):
-        '''Check that numpy and cupy pipelines yield consistent results.'''
+        '''CUDA and numpy pipelines must produce identical holograms.'''
         shape = [128, 128]
         c = LMObject.meshgrid(shape)
         self.method.coordinates = c
@@ -70,11 +67,9 @@ class TestCupyLorenzMie(unittest.TestCase):
         p.r_p = [64, 64, 100]
         self.nmethod.particle = p
 
-        field = self.method.field()
-        nfield = self.nmethod.field()
-        inten = np.sum(np.abs(field), axis=0).reshape(shape)
-        ninten = np.sum(np.abs(nfield), axis=0).reshape(shape)
-        self.assertTrue(np.allclose(inten, ninten))
+        holo = self.method.hologram().reshape(shape)
+        nholo = self.nmethod.hologram().reshape(shape)
+        self.assertTrue(np.allclose(holo, nholo, rtol=1e-5))
 
 
 if __name__ == '__main__':  # pragma: no cover
