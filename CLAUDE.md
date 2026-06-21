@@ -8,6 +8,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 # Install in editable mode with test dependencies
 pip install -e ".[dev]"
 
+# Install the post-merge git hook (one-time per clone); auto-updates
+# ~/texmf/bibtex/bib/grier.bib after every git pull
+ln -sf ../../scripts/update_bib.py .git/hooks/post-merge
+chmod +x .git/hooks/post-merge
+
 # Run all tests
 python -m pytest
 
