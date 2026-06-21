@@ -24,6 +24,3 @@ For a user-oriented guide to launching and using the application, see
 
 .. automodule:: pylorenzmie.lmtool.OptimizerWidget
    :members:
-
-.. automodule:: pylorenzmie.lmtool.ResultWidget
-   :members:
