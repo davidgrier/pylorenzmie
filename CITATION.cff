@@ -42,6 +42,7 @@ license: GPL-3.0-or-later
 url: https://pylorenzmie.readthedocs.io
 version: "1.0.0"
 date-released: "2026-06-21"
+doi: 10.5281/zenodo.20784724
 keywords:
   - holography
   - microscopy
