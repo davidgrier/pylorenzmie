@@ -2,14 +2,12 @@ from .meshgrid import meshgrid
 from .LMObject import LMObject
 from .CircleTransform import (CircleTransform, circletransform)
 from . import Azimuthal
-from warnings import warn
 
 
 def coordinates(*args, **kwargs):
-    warn('''
-    coordinates() is deprecated and will be removed in a future release.
-    Use meshgrid() from pylorenzmie.lib instead.
-    ''', DeprecationWarning, 2)
+    from warnings import warn
+    warn('coordinates() is deprecated; use meshgrid() from pylorenzmie.lib.',
+         DeprecationWarning, stacklevel=2)
     return meshgrid(*args, **kwargs)
 
 
