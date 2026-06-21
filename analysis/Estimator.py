@@ -115,13 +115,17 @@ class Estimator(LMObject):
         a_p = np.min(jn_zeros(1, len(minima)) * alpha_n) / self._k
         self.a_p = float(self._magnification * a_p)
 
-    def estimate(self, feature: Images) -> Results:
+    def estimate(self, feature: Images,
+                 coordinates: object = None) -> Results:
         '''Estimate particle properties from a holographic crop.
 
         Parameters
         ----------
         feature : numpy.ndarray or list of numpy.ndarray
             Normalized hologram crop(s).
+        coordinates : ignored
+            Accepted for interface compatibility with
+            :class:`DEEstimator`; not used by this class.
 
         Returns
         -------

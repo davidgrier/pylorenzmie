@@ -1,5 +1,6 @@
 from .Localizer import Localizer
 from .Estimator import Estimator
+from .DEEstimator import DEEstimator
 from .Optimizer import Optimizer
 try:
     from .cupyOptimizer import cupyOptimizer
@@ -11,5 +12,6 @@ from .Feature import Feature
 from .Frame import Frame
 from .Trajectory import Trajectory
 
-__all__ = ['Localizer', 'Estimator', 'Optimizer', 'cupyOptimizer',
-           'Mask', 'RadialMask', 'Feature', 'Frame', 'Trajectory']
+__all__ = ['Localizer', 'Estimator', 'DEEstimator', 'Optimizer',
+           'cupyOptimizer', 'Mask', 'RadialMask', 'Feature', 'Frame',
+           'Trajectory']

@@ -129,7 +129,7 @@ class Feature(LMObject):
         properties : pandas.Series
             Estimated particle properties.
         '''
-        properties = self.estimator.estimate(self.data)
+        properties = self.estimator.estimate(self.data, self.coordinates)
         self.particle.properties = properties
         if self.coordinates is not None:
             self.particle.x_p = float(self.coordinates[0].mean())
