@@ -17,7 +17,7 @@ jobs:
       - name: Pull latest commits
         run: git pull origin master
 
-      - name: Poll Zenodo for DOI
+      - name: Poll Zenodo for DOIs
         id: zenodo
         env:
           TAG: ${{ github.ref_name }}
@@ -25,16 +25,23 @@ jobs:
           URL="https://github.com/${{ github.repository }}/tree/${TAG}"
           echo "Polling Zenodo for record linked to ${URL} ..."
           for i in $(seq 1 10); do
-            DOI=$(curl -s \
-              "https://zenodo.org/api/records?q=related.identifier:\"${URL}\"&sort=mostrecent&size=1" \
-              | python3 -c "
+            RECORD=$(curl -s \
+              "https://zenodo.org/api/records?q=related.identifier:\"${URL}\"&sort=mostrecent&size=1")
+            DOI=$(echo "$RECORD" | python3 -c "
 import sys, json
 hits = json.load(sys.stdin).get('hits', {}).get('hits', [])
-print(hits[0]['doi'] if hits else '', end='')
+print(hits[0].get('doi', '') if hits else '', end='')
 ")
             if [ -n "$DOI" ]; then
-              echo "Found DOI: $DOI"
+              CONCEPT_DOI=$(echo "$RECORD" | python3 -c "
+import sys, json
+hits = json.load(sys.stdin).get('hits', {}).get('hits', [])
+print(hits[0].get('conceptdoi', '') if hits else '', end='')
+")
+              echo "Found version DOI:  $DOI"
+              echo "Found concept DOI: $CONCEPT_DOI"
               echo "doi=$DOI" >> "$GITHUB_OUTPUT"
+              echo "concept_doi=$CONCEPT_DOI" >> "$GITHUB_OUTPUT"
               break
             fi
             echo "Attempt $i: not yet available, retrying in 30s..."
@@ -45,13 +52,19 @@ print(hits[0]['doi'] if hits else '', end='')
             exit 1
           fi
 
-      - name: Write DOI to CITATION.cff
+      - name: Write DOIs to CITATION.cff
         run: |
           DOI="${{ steps.zenodo.outputs.doi }}"
+          CONCEPT_DOI="${{ steps.zenodo.outputs.concept_doi }}"
           if grep -q "^doi:" CITATION.cff; then
             sed -i "s|^doi:.*|doi: ${DOI}|" CITATION.cff
           else
             sed -i "/^date-released:/a doi: ${DOI}" CITATION.cff
+          fi
+          if grep -q "^concept-doi:" CITATION.cff; then
+            sed -i "s|^concept-doi:.*|concept-doi: ${CONCEPT_DOI}|" CITATION.cff
+          else
+            sed -i "/^doi:/a concept-doi: ${CONCEPT_DOI}" CITATION.cff
           fi
 
       - name: Commit and push

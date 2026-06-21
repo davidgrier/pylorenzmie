@@ -43,6 +43,7 @@ url: https://pylorenzmie.readthedocs.io
 version: "1.0.0"
 date-released: "2026-06-21"
 doi: 10.5281/zenodo.20784724
+concept-doi: 10.5281/zenodo.20784723
 keywords:
   - holography
   - microscopy

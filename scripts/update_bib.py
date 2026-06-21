@@ -31,7 +31,7 @@ def _parse_citation(path: Path) -> dict:
     text = path.read_text()
     fields = {}
 
-    for key in ('version', 'date-released', 'doi'):
+    for key in ('version', 'date-released', 'doi', 'concept-doi'):
         m = re.search(rf'^{key}:\s*["\']?([^"\'\n]+)["\']?', text, re.MULTILINE)
         if m:
             fields[key] = m.group(1).strip()
@@ -47,7 +47,7 @@ def _parse_citation(path: Path) -> dict:
 
 def _make_entry(fields: dict) -> str:
     version = fields.get('version', '')
-    doi = fields.get('doi', '')
+    doi = fields.get('concept-doi') or fields.get('doi', '')
     abstract = fields.get('abstract', '')
     date_str = fields.get('date-released', '')
     dt = datetime.fromisoformat(date_str) if date_str else datetime.now()
