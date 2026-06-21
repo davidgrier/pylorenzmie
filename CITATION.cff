@@ -41,7 +41,7 @@ repository-code: https://github.com/davidgrier/pylorenzmie
 license: GPL-3.0-or-later
 url: https://pylorenzmie.readthedocs.io
 version: "1.0.0"
-date-released: "2026-06-19"
+date-released: "2026-06-21"
 keywords:
   - holography
   - microscopy
