@@ -1,8 +1,8 @@
+'''Physical properties of water'''
+
 import numpy as np
 from numpy.polynomial import Polynomial
 from numpy.typing import NDArray
-
-'''Physical properties of water'''
 
 
 Value = float | NDArray[float]
@@ -16,16 +16,15 @@ def density(temperature: float = 24.) -> float:
     Source: CRC Handbook of Chemistry and Physics:
     Thermophysical properties of water and steam.
 
-    Arguments
-    ---------
-    temperature: float
-        Temperature [celsius]
-        Default: 24 C
+    Parameters
+    ----------
+    temperature : float
+        Temperature [celsius]. Default: 24.
 
     Returns
     -------
-    density: float
-        Density of water [kg/m^3]
+    density : float
+        Density of water [kg/m^3].
     '''
     p = Polynomial([999.83952, 16.945176, -7.9870401e-3,
                     46.170461e-6, 105.56302e-9, -280.54235e-12])
@@ -44,21 +43,18 @@ def refractiveindex(wavelength: Value = 0.589,
     as a Function of Wavelength, Temperature and Pressure (1997)
     http://www.iapws.org/relguide/rindex.pdf
 
-    Arguments
-    ---------
-    wavelength: float
-        Wavelength of light [um]
-        Default: 0.589 (sodium D line)
-
-    temperature: float
-        Temperature of water [celsius]
-        Default: 24 C
+    Parameters
+    ----------
+    wavelength : float or ndarray
+        Wavelength of light [μm]. Default: 0.589 (sodium D line).
+    temperature : float
+        Temperature of water [celsius]. Default: 24.
 
     Returns
     -------
-    refractive index: float
-        Refractive index of water at the specified temperature
-        and wavelength
+    n : float or ndarray
+        Refractive index of water at the specified wavelength and
+        temperature.
     '''
 
     Tref = 273.15      # [K] freezing point of water

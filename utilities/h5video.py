@@ -1,94 +1,119 @@
+'''HDF5 video reader for files created by QVideo.'''
+
+import logging
+
 import h5py
 import numpy as np
 from numpy.typing import NDArray
-import logging
 
 
-logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-
 
 Image = NDArray[np.uint8]
 
 
-class h5video(object):
-    '''Class for reading HDF5 videos created by pyfab'''
+class h5video:
+    '''Reader for HDF5 videos created by QVideo.
+
+    Use as a context manager.  Frames are stored under the ``images/``
+    group, keyed by timestamp strings.  Keys are sorted lexicographically
+    on open.
+
+    Parameters
+    ----------
+    filename : str
+        Path to the HDF5 file.
+
+    Examples
+    --------
+    >>> with h5video('recording.h5') as vid:
+    ...     for frame in vid:
+    ...         process(frame)
+    '''
 
     def __init__(self, filename: str) -> None:
         self.filename = filename
-        self.image = None
-        self.index = None
-        self.shape = None
-        self.nframes = 0
-        self.eof = False
+        self._file = None
+        self._keys: list[str] = []
+        self.index = 0
 
-    def __enter__(self):
-        self.h5file = h5py.File(self.filename, 'r')
-        self.keys = self.h5file['images/'].keys()
-        self.frames = self.h5file['images/'].values()
-        self.nframes = len(self.frames)
-        self.image = self.rewind()
-        self.shape = self.h5file['images/' + self.keys[0]].shape
+    def __enter__(self) -> 'h5video':
+        self._file = h5py.File(self.filename, 'r')
+        self._keys = sorted(self._file['images/'].keys())
+        self.index = 0
         return self
 
     def __exit__(self, *args) -> None:
-        self.h5file.close()
+        self._file.close()
+        self._file = None
+
+    def __len__(self) -> int:
+        return len(self._keys)
+
+    def __iter__(self) -> 'h5video':
+        self.index = 0
+        return self
+
+    def __next__(self) -> Image:
+        if self.index >= len(self):
+            raise StopIteration
+        image = self._read(self.index)
+        self.index += 1
+        return image
+
+    def _read(self, index: int) -> Image:
+        return np.array(self._file['images/' + self._keys[index]])
+
+    @property
+    def nframes(self) -> int:
+        '''Total number of frames in the video.'''
+        return len(self)
+
+    @property
+    def shape(self) -> tuple:
+        '''Shape of a single frame, or ``()`` if the file is empty.'''
+        if not self._keys:
+            return ()
+        return self._read(0).shape
 
     def get_image(self) -> Image:
-        try:
-            self.image = self.frames[self.index]
-            return self.image
-        except IndexError:
-            msg = f'Index {self.index} is out of range ({self.nframes})'
-            logger.warn(msg)
-            raise IndexError
+        '''Return the frame at the current index.
 
-    def get_time(self) -> float:
-        return self.keys[self.index]
+        Returns
+        -------
+        image : ndarray
+
+        Raises
+        ------
+        IndexError
+            If the current index is out of range.
+        '''
+        if self.index < 0 or self.index >= len(self):
+            raise IndexError(
+                f'Index {self.index} out of range ({len(self)})')
+        return self._read(self.index)
+
+    def get_time(self) -> str:
+        '''Return the timestamp key for the current frame.'''
+        return self._keys[self.index]
 
     def rewind(self) -> Image:
+        '''Reset to the first frame and return it.'''
         self.index = 0
-        self.eof = False
         return self.get_image()
 
-    def next(self) -> Image:
-        if self.eof:
+    def next(self) -> Image | None:
+        '''Advance to the next frame and return it, or None at end.'''
+        if self.index >= len(self) - 1:
             return None
-        if self.index == self.nframes-2:
-            self.eof = True
         self.index += 1
         return self.get_image()
 
     def goto(self, index: int) -> None:
+        '''Set the current frame index.
+
+        Parameters
+        ----------
+        index : int
+        '''
         self.index = index
-
-
-def example() -> None:
-    import matplotlib.pyplot as plt
-
-    filename = 'example.h5'
-    bg = np.load('example_bg.npy')
-
-    with h5video(filename) as vid:
-        plt.imshow(vid.frames[-30]/bg)
-        plt.gray()
-        plt.show()
-
-        plt.imshow(vid.get_image()/bg)
-        plt.gray()
-        plt.show()
-
-        vid.goto(220)
-
-        plt.imshow(vid.get_image()/bg)
-        plt.gray()
-        plt.show()
-
-        print(f'Example timestamp: {vid.get_time()}')
-        print(f'Dimension of image: {vid.shape}')
-        print(f'Number of frames: {vid.nframes}')
-
-
-if __name__ == '__main__':
-    example()

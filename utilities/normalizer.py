@@ -16,14 +16,14 @@ class Normalizer:
     method : str
         Normalization method:
 
-        ``'filter'`` (default)
+        ``'median'`` (default)
+            Divide by the scalar median of the image. Assumes spatially
+            uniform illumination.
+
+        ``'filter'``
             Estimate the background with a large-kernel median filter.
             Suppresses the rapidly-oscillating fringe pattern while
             preserving slow illumination variation. Requires no reference.
-
-        ``'median'``
-            Divide by the scalar median of the image. Assumes spatially
-            uniform illumination.
 
         ``'reference'``
             Divide by a prerecorded reference image or a scalar value.
