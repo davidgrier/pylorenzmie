@@ -201,7 +201,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         filename = filename or self.filename()
         with warnings.catch_warnings():
             warnings.filterwarnings(
-                'ignore', category=pd.io.pytables.PerformanceWarning)
+                'ignore', category=pd.errors.PerformanceWarning)
             self.result.to_hdf(filename, 'result', mode='w')
             metadata = self.optimizer.metadata
             metadata['datafile'] = self.datafile

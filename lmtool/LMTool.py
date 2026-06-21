@@ -35,7 +35,7 @@ class LMTool(QMainWindow):
     Parameters
     ----------
     controls : type[LMWidget]
-        Uninstantiated LMWidget subclass providing parameter controls.
+        LMWidget subclass (not an instance) providing parameter controls.
     filename : str, optional
         Path to a hologram image to load on startup.
     normalizer : Normalizer, optional
@@ -46,7 +46,7 @@ class LMTool(QMainWindow):
     uiFile = 'LMTool.ui'
 
     def __init__(self,
-                 controls: LMWidget,
+                 controls: type[LMWidget],
                  filename: str | None = None,
                  normalizer: Normalizer | None = None):
         super().__init__()
@@ -150,7 +150,6 @@ class LMTool(QMainWindow):
         with QSignalBlocker(self.controls):
             self.controls.properties = dict(x_p=x_p, y_p=y_p)
         self._updateProfile()
-        self.fitWidget.properties = dict(x_p=x_p, y_p=y_p)
         self.fitWidget.setData(*self.crop())
 
     @pyqtSlot(int)
@@ -212,6 +211,8 @@ class LMTool(QMainWindow):
 
     @pyqtSlot()
     def optimize(self) -> None:
+        if self._data is None:
+            return
         logger.info('Starting optimization...')
         optimizer = self.fitWidget.optimizer
         optimizer.model.properties = self.controls.properties

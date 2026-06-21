@@ -136,7 +136,9 @@ class DoubleSlider(QSlider):
         ----------
         value : float
         '''
-        super().setSingleStep(self._f2i(value))
+        span = self._maximum - self._minimum
+        int_step = max(1, int(value / span * (self._imax - self._imin)))
+        super().setSingleStep(int_step)
 
     @classmethod
     def example(cls) -> None:
