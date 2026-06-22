@@ -73,7 +73,7 @@ class Trajectory(LMObject):
 
         trajectory = cls()
         for _ in range(3):
-            results = frame.analyze(example_hologram('image0010.png'))
+            results = frame.analyze(example_hologram('image0010.png').data)
             trajectory.append(results)
 
         print(trajectory.data)
