@@ -2,6 +2,7 @@ import unittest
 import numpy as np
 
 from pylorenzmie.analysis.DEEstimator import DEEstimator
+from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie
 from pylorenzmie.lib import LMObject
 
@@ -25,7 +26,7 @@ class TestDEEstimatorConvergence(unittest.TestCase):
         self.model.particle.r_p = [50., 50., 200.]
         self.model.particle.a_p = 0.75
         self.model.particle.n_p = 1.45
-        self.data = self.model.hologram().reshape(shape)
+        self.hologram = Hologram(self.model.hologram().reshape(shape))
 
     def test_recovers_from_bad_z(self):
         '''DE recovers z_p from a starting point 2× the true value.'''
@@ -34,7 +35,7 @@ class TestDEEstimatorConvergence(unittest.TestCase):
         self.model.particle.n_p = 1.6    # true: 1.45
 
         estimator = DEEstimator(model=self.model, seed=0)
-        result = estimator.estimate(self.data, self.coordinates)
+        result = estimator.estimate(self.hologram)
 
         self.assertAlmostEqual(result['z_p'], 200., delta=20.)
         self.assertAlmostEqual(result['a_p'], 0.75, delta=0.15)
@@ -48,7 +49,7 @@ class TestDEEstimatorConvergence(unittest.TestCase):
         self.model.particle.n_p = 2.0
 
         estimator = DEEstimator(model=self.model, seed=0)
-        result = estimator.estimate(self.data, self.coordinates)
+        result = estimator.estimate(self.hologram)
 
         err_de = (abs(result['z_p'] - z_true)
                   + abs(result['a_p'] - a_true) * 100.
