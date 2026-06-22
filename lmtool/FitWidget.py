@@ -2,13 +2,15 @@ from datetime import datetime
 from pathlib import Path
 import warnings
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
 import pyqtgraph as pg
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
                                   QObject, QRectF, QThread)
 from pyqtgraph.Qt.QtWidgets import QFileDialog
 from pylorenzmie.analysis import Optimizer
+from pylorenzmie.analysis.Hologram import Hologram
+from pylorenzmie.analysis.Mask import Mask
+from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.theory import LorenzMie
 
 
@@ -18,14 +20,15 @@ class _OptimizeWorker(QObject):
     finished = pyqtSignal(object)  # pd.Series
     error = pyqtSignal(str)
 
-    def __init__(self, optimizer: Optimizer) -> None:
+    def __init__(self, optimizer: Optimizer, hologram: Hologram) -> None:
         super().__init__()
         self._optimizer = optimizer
+        self._hologram = hologram
 
     @pyqtSlot()
     def run(self) -> None:
         try:
-            self.finished.emit(self._optimizer.optimize())
+            self.finished.emit(self._optimizer.optimize(self._hologram))
         except Exception as e:
             self.error.emit(str(e))
 
@@ -44,7 +47,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         super().__init__(*args, **kwargs)
         self._configurePlot()
         self.optimizer = Optimizer()
-        self.fraction = 0.25
+        self.optimizer.fraction = 0.25
         self.datafile = None
         self.result = None
         self._data = None
@@ -85,31 +88,9 @@ class FitWidget(pg.GraphicsLayoutWidget):
                              pen=pen)
         self.addItem(cb)
 
-    def mask(self, data: NDArray[float]) -> NDArray[bool]:
-        '''Return a random boolean mask selecting pixels for fitting.
-
-        A fresh random subset is drawn on every call, which prevents
-        the optimizer from overfitting to a fixed pixel pattern.
-        Saturated pixels (equal to the image maximum) are always excluded.
-
-        Parameters
-        ----------
-        data : ndarray
-            Hologram pixel values (any shape).
-
-        Returns
-        -------
-        mask : ndarray of bool, shape (data.size,)
-        '''
-        data = data.flatten()
-        mask = np.random.choice([True, False], data.size,
-                                p=[self.fraction, 1-self.fraction])
-        mask[data == np.max(data)] = False
-        return mask
-
     def optimize(self,
-                 data: NDArray[float],
-                 coordinates: NDArray[float]) -> pd.Series:
+                 data: Image,
+                 coordinates: Coordinates) -> pd.Series:
         '''Fit the model to data and update the display.
 
         Parameters
@@ -124,19 +105,17 @@ class FitWidget(pg.GraphicsLayoutWidget):
         result : pandas.Series
             Fitted parameters and uncertainties.
         '''
-        mask = self.mask(data)
-        coordinates = coordinates.reshape((2, -1))
-        self.optimizer.data = data.flatten()[mask]
-        self.optimizer.model.coordinates = coordinates[:, mask]
-        self.result = self.optimizer.optimize()
-        self.optimizer.model.coordinates = coordinates
+        hologram = Hologram._from_slice(data, coordinates)
+        self.optimizer.mask.exclude = (data == np.max(data))
+        self.result = self.optimizer.optimize(hologram)
+        self.optimizer.model.coordinates = hologram.flat_coordinates
         self._data = data
         self._updateFitDisplay()
         return self.result
 
     def optimizeAsync(self,
-                      data: NDArray[float],
-                      coordinates: NDArray[float]) -> None:
+                      data: Image,
+                      coordinates: Coordinates) -> None:
         '''Start optimization in a background thread.
 
         Returns immediately. Emits :attr:`optimizationStarted` on entry,
@@ -153,13 +132,11 @@ class FitWidget(pg.GraphicsLayoutWidget):
         '''
         if self._thread is not None and self._thread.isRunning():
             return
-        mask = self.mask(data)
-        coordinates = coordinates.reshape((2, -1))
-        self.optimizer.data = data.flatten()[mask]
-        self.optimizer.model.coordinates = coordinates[:, mask]
-        self._full_coordinates = coordinates
+        hologram = Hologram._from_slice(data, coordinates)
+        self.optimizer.mask.exclude = (data == np.max(data))
+        self._opt_hologram = hologram
         self._data = data
-        worker = _OptimizeWorker(self.optimizer)
+        worker = _OptimizeWorker(self.optimizer, hologram)
         thread = QThread()
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
@@ -176,7 +153,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
     @pyqtSlot(object)
     def _onWorkerFinished(self, result: pd.Series) -> None:
         self.result = result
-        self.optimizer.model.coordinates = self._full_coordinates
+        self.optimizer.model.coordinates = self._opt_hologram.flat_coordinates
         self._updateFitDisplay()
         self.optimizationFinished.emit(result)
 
@@ -195,8 +172,8 @@ class FitWidget(pg.GraphicsLayoutWidget):
             self._thread.quit()
             self._thread.wait()
 
-    def setData(self, data: NDArray[float], rect: QRectF,
-                coordinates: NDArray[float]) -> None:
+    def setData(self, data: Image, rect: QRectF,
+                coordinates: Coordinates) -> None:
         '''Display data, compute and show the current model prediction.
 
         Parameters
@@ -270,7 +247,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
     @pyqtSlot(str, object)
     def setSetting(self, name: str, value: LorenzMie.Property) -> None:
         if name == 'fraction':
-            self.fraction = value
+            self.optimizer.fraction = value
         else:
             self.optimizer.settings[name] = value
 

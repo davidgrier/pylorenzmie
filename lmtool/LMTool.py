@@ -7,7 +7,6 @@ from pathlib import Path
 
 import cv2
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
 from pyqtgraph.Qt import uic
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
@@ -17,6 +16,7 @@ from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog, QProgressBar)
 from pylorenzmie.analysis import DEEstimator
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib import (Azimuthal, LMObject)
+from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.lmtool.LMWidget import LMWidget
 from pylorenzmie.utilities import Normalizer
 
@@ -124,11 +124,11 @@ class LMTool(QMainWindow):
         self.fitWidget.optimizationError.connect(self._onOptimizationError)
 
     @pyqtProperty(np.ndarray)
-    def data(self) -> NDArray[float]:
+    def data(self) -> Image:
         return self._data
 
     @data.setter
-    def data(self, data: NDArray[float]) -> None:
+    def data(self, data: Image) -> None:
         self._raw = data
         self._data = self.normalizer(data)
         self.coordinates = LMObject.meshgrid(data.shape, flatten=False)
@@ -204,7 +204,7 @@ class LMTool(QMainWindow):
         self.profileWidget.properties = {name: value}
         self.fitWidget.refreshPreview()
 
-    def crop(self) -> tuple[NDArray[float], QRectF, NDArray[float]]:
+    def crop(self) -> tuple[Image, QRectF, Coordinates]:
         get = self.imageWidget.roi.getArraySlice
         (sy, sx), _ = get(self._data, self.imageWidget.image)
         return (self._data[sy, sx],
