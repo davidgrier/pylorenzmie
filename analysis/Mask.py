@@ -2,7 +2,8 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.lmtypes import Properties
+from pylorenzmie.lib.lmtypes import Properties, Image, Coordinates
+from .Hologram import Hologram
 
 
 @dataclass
@@ -81,7 +82,7 @@ class Mask(LMObject):
         if self.exclude is not None:
             self._mask[self.exclude] = False
 
-    def apply(self, hologram: 'Hologram') -> tuple[NDArray[float], NDArray[float]]:
+    def apply(self, hologram: Hologram) -> tuple[Image, Coordinates]:
         '''Apply mask to a hologram, returning flat data and coordinates.
 
         This is the explicit 2D-to-flat boundary for numerical solvers.
