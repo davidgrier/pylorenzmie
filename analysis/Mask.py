@@ -3,7 +3,7 @@ import numpy as np
 from numpy.typing import NDArray
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import Properties, Image, Coordinates
-from .Hologram import Hologram
+from pylorenzmie.analysis.Hologram import Hologram
 
 
 @dataclass
