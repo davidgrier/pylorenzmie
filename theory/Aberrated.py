@@ -1,6 +1,6 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Particle import Particle
-from pylorenzmie.lib.types import Coordinates, Field, Properties
+from pylorenzmie.lib.lmtypes import Coordinates, Field, Properties
 import numpy as np
 
 

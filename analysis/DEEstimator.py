@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from pylorenzmie.lib import LMObject, meshgrid
-from pylorenzmie.lib.types import Image, Coordinates, Properties, Result
+from pylorenzmie.lib.lmtypes import Image, Coordinates, Properties, Result
 from pylorenzmie.theory import LorenzMie
 from pylorenzmie.analysis.Mask import Mask
 import numpy as np

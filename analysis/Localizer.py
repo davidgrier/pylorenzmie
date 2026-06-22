@@ -1,5 +1,5 @@
 from pylorenzmie.lib import LMObject, Azimuthal, CircleTransform
-from pylorenzmie.lib.types import Image, Properties
+from pylorenzmie.lib.lmtypes import Image, Properties
 import numpy as np
 import trackpy as tp
 import pandas as pd

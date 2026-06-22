@@ -1,4 +1,4 @@
-from pylorenzmie.lib.types import Coefficients, Coordinates, Field
+from pylorenzmie.lib.lmtypes import Coefficients, Coordinates, Field
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
 

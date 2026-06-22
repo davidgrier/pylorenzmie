@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pylorenzmie.theory import Particle
-from pylorenzmie.lib.types import Coefficients, Properties
+from pylorenzmie.lib.lmtypes import Coefficients, Properties
 import numpy as np
 
 

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.types import Properties
+from pylorenzmie.lib.lmtypes import Properties
 import numpy as np
 
 

@@ -3,7 +3,7 @@ import pandas as pd
 from pylorenzmie.analysis import Mask, Estimator, Optimizer
 from pylorenzmie.theory import LorenzMie, Particle
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.types import Image, Coordinates, Properties
+from pylorenzmie.lib.lmtypes import Image, Coordinates, Properties
 
 
 class Feature(LMObject):

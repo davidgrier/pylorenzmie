@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pylorenzmie.lib import LMObject, Azimuthal
-from pylorenzmie.lib.types import Image, Images, Properties, Result
+from pylorenzmie.lib.lmtypes import Image, Images, Properties, Result
 from pylorenzmie.theory import Instrument
 import pandas as pd
 import numpy as np

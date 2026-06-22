@@ -2,7 +2,7 @@ from collections.abc import Iterator
 from dataclasses import dataclass, field
 import numpy as np
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.types import (Coordinates, Coefficients, Properties)
+from pylorenzmie.lib.lmtypes import (Coordinates, Coefficients, Properties)
 
 
 @dataclass

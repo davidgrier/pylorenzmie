@@ -1,5 +1,5 @@
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.types import (Coordinates, Coefficients, Field,
+from pylorenzmie.lib.lmtypes import (Coordinates, Coefficients, Field,
                                    Image, Properties)
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
 import numpy as np

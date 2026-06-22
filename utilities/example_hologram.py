@@ -1,5 +1,5 @@
 from pathlib import Path
-from pylorenzmie.lib.types import Image
+from pylorenzmie.lib.lmtypes import Image
 
 
 _TUTORIALS = Path(__file__).parent.parent / 'docs' / 'tutorials'

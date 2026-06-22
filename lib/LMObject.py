@@ -6,7 +6,7 @@ import logging
 import numpy as np
 import pandas as pd
 from .meshgrid import meshgrid
-from .types import (Property, Properties,
+from .lmtypes import (Property, Properties,
                     Image, Images,
                     Coordinates, Coefficients, Field,
                     Result, Results)

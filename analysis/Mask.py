@@ -2,7 +2,7 @@ from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.types import Properties
+from pylorenzmie.lib.lmtypes import Properties
 
 
 @dataclass

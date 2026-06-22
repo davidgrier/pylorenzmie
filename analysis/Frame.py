@@ -1,7 +1,7 @@
 from pylorenzmie.theory import Instrument, LorenzMie
 from pylorenzmie.analysis import Localizer, Feature
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.types import Image, Properties, Results
+from pylorenzmie.lib.lmtypes import Image, Properties, Results
 import pandas as pd
 import numpy as np
 

@@ -1,5 +1,5 @@
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.types import Properties, Results
+from pylorenzmie.lib.lmtypes import Properties, Results
 import pandas as pd
 
 

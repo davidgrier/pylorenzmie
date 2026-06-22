@@ -1,5 +1,5 @@
 from pylorenzmie.theory.Particle import Particle
-from pylorenzmie.lib.types import Properties
+from pylorenzmie.lib.lmtypes import Properties
 from dataclasses import dataclass, field
 
 

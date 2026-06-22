@@ -1,5 +1,5 @@
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.types import Image, Properties
+from pylorenzmie.lib.lmtypes import Image, Properties
 from pylorenzmie.theory import LorenzMie
 import numpy as np
 from numpy.typing import NDArray
