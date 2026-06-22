@@ -76,6 +76,19 @@ class Hologram:
         '''Pixel coordinates as a 2-D view, shape ``(2, npts)``.'''
         return self._coordinates.reshape(2, -1)
 
+    @staticmethod
+    def _from_slice(data: Image, coordinates: NDArray[float]) -> 'Hologram':
+        '''Create a Hologram from pre-computed coordinates (no meshgrid call).
+
+        The corner is read directly from the coordinate array so that the
+        result is always consistent with the parent frame.
+        '''
+        h = object.__new__(Hologram)
+        h.data = data
+        h.corner = (float(coordinates[0, 0, 0]), float(coordinates[1, 0, 0]))
+        h._coordinates = coordinates
+        return h
+
     def __getitem__(self, key: tuple) -> 'Hologram':
         '''Return a coordinate-aware crop.
 
@@ -88,13 +101,11 @@ class Hologram:
         Returns
         -------
         Hologram
-            Cropped hologram.  The ``corner`` is updated so that its
-            coordinates are consistent with the parent frame.
+            Cropped hologram with coordinates inherited from the parent.
         '''
         sy, sx = key
-        x0 = self.corner[0] + (sx.start if sx.start is not None else 0)
-        y0 = self.corner[1] + (sy.start if sy.start is not None else 0)
-        return Hologram(self.data[key], corner=(x0, y0))
+        return Hologram._from_slice(self.data[key],
+                                    self._coordinates[:, sy, sx])
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

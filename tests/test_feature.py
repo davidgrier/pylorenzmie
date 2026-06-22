@@ -27,13 +27,17 @@ class TestFeature(unittest.TestCase):
         model.particle.r_p = [w / 2., h / 2., 330.]
         model.particle.a_p = 1.1
         model.particle.n_p = 1.4
-        self.hologram = Hologram(data)
-        self.feature = Feature(hologram=self.hologram, model=model)
+        self.data = data
+        self.feature = Feature(Hologram(data), model=model)
         self.feature.mask.fraction = 0.1
 
+    def test_is_hologram(self):
+        '''Feature is-a Hologram.'''
+        self.assertIsInstance(self.feature, Hologram)
+
     def test_hologram(self):
-        '''hologram attribute holds the Hologram passed at construction.'''
-        self.assertIs(self.feature.hologram, self.hologram)
+        '''hologram property returns self.'''
+        self.assertIs(self.feature.hologram, self.feature)
 
     def test_model(self):
         model = LorenzMie()
@@ -67,32 +71,20 @@ class TestFeature(unittest.TestCase):
         self.feature.estimate()
         self.assertAlmostEqual(
             self.feature.particle.x_p,
-            float(self.hologram.coordinates[0].mean()), places=5)
+            float(self.feature.coordinates[0].mean()), places=5)
         self.assertAlmostEqual(
             self.feature.particle.y_p,
-            float(self.hologram.coordinates[1].mean()), places=5)
+            float(self.feature.coordinates[1].mean()), places=5)
 
     def test_predicted_shape(self):
-        '''predicted() returns an array with the same shape as the hologram.'''
+        '''predicted() returns an array with the same shape as the feature.'''
         predicted = self.feature.predicted()
-        self.assertEqual(predicted.shape, self.hologram.shape)
+        self.assertEqual(predicted.shape, self.feature.shape)
 
     def test_residuals_shape(self):
-        '''residuals() has the same shape as the hologram.'''
+        '''residuals() has the same shape as the feature.'''
         residuals = self.feature.residuals()
-        self.assertEqual(residuals.shape, self.hologram.shape)
-
-    def test_properties(self):
-        self.assertIn('fraction', self.feature.properties)
-        self.assertEqual(self.feature.properties['fraction'],
-                         self.feature.mask.fraction)
-
-    def test_json_roundtrip(self):
-        self.feature.fraction = 0.3
-        s = self.feature.to_json()
-        self.feature.fraction = 0.1
-        self.feature.from_json(s)
-        self.assertAlmostEqual(self.feature.fraction, 0.3)
+        self.assertEqual(residuals.shape, self.feature.shape)
 
 
 if __name__ == '__main__':  # pragma: no cover

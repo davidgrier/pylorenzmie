@@ -1,87 +1,66 @@
+import pandas as pd
+from pylorenzmie.lib import meshgrid
 from pylorenzmie.theory import Instrument, LorenzMie
 from pylorenzmie.analysis import Localizer, Feature
 from pylorenzmie.analysis.Hologram import Hologram
-from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.lmtypes import Image, Properties, Results
-import pandas as pd
-import numpy as np
+from pylorenzmie.lib.lmtypes import Image, Results
 
 
-class Frame(LMObject):
+class Frame(Hologram):
     '''Full-frame holographic microscopy analysis pipeline.
 
-    Manages detection, estimation, and optimization of all particle
-    features in a single normalized hologram.  Instrument settings
-    are shared across all features detected in the frame.
-
-    Inherits from :class:`pylorenzmie.lib.LMObject`.
+    A Frame is a Hologram of the full camera field, augmented with a
+    :class:`~pylorenzmie.analysis.Localizer` and a shared
+    :class:`~pylorenzmie.theory.Instrument`.  Slicing a Frame returns
+    a :class:`~pylorenzmie.analysis.Feature` with the correct corner
+    coordinates and instrument already attached.
 
     Parameters
     ----------
+    data : numpy.ndarray, optional
+        Normalized hologram.  Setting data clears previous results.
+        Default: ``None``.
+    corner : tuple[float, float], optional
+        Top-left corner of this image within the full camera frame.
+        Default: ``(0., 0.)``.
     instrument : Instrument, optional
         Microscope parameters shared by all features.
         Default: ``Instrument()``.
     localizer : Localizer, optional
         Feature detection backend.  Default: ``Localizer()``.
-    data : numpy.ndarray, optional
-        Normalized hologram.  Setting data clears any previous
-        detection results.
 
     Attributes
     ----------
-    shape : tuple[int, int]
-        Height × width of the most recently assigned image.
-    coordinates : numpy.ndarray
-        Pixel coordinate grid of shape ``(2, height, width)``.
     features : list[Feature]
         Feature objects created by the most recent :meth:`detect` call.
     bboxes : list
         Bounding boxes ``((x0, y0), w, h)`` for current features.
     results : pandas.DataFrame
-        Tracking and characterization results from the most recent
-        :meth:`optimize` or :meth:`analyze` call.
+        Optimized parameters from the most recent :meth:`optimize` or
+        :meth:`analyze` call.
     '''
 
     def __init__(self,
+                 data: Image | None = None,
+                 corner: tuple[float, float] = (0., 0.),
                  instrument: Instrument | None = None,
-                 localizer: Localizer | None = None,
-                 data: Image | None = None) -> None:
-        super().__init__()
+                 localizer: Localizer | None = None) -> None:
         self.instrument = instrument or Instrument()
         self.localizer = localizer or Localizer()
-        self._shape: tuple[int, int] = (0, 0)
         self._features: list[Feature] = []
         self._bboxes: list = []
         self._results: pd.DataFrame = pd.DataFrame()
-        self._coordinates: np.ndarray = np.empty((2, 0, 0))
+        # Initialize Hologram-level state directly; super().__init__() is
+        # skipped so that data=None is valid before any image is loaded.
+        self.corner = corner
+        self._coordinates = None
         self._data: Image | None = None
         if data is not None:
             self.data = data
 
-    @LMObject.properties.getter
-    def properties(self) -> Properties:
-        return dict()
-
-    @property
-    def shape(self) -> tuple[int, int]:
-        '''Height × width of the current image.'''
-        return self._shape
-
-    @shape.setter
-    def shape(self, shape: tuple[int, int] | None) -> None:
-        if shape is None:
-            return
-        shape = tuple(shape)
-        if shape == self._shape:
-            return
-        self._coordinates = self.meshgrid(shape, flatten=False)
-        self._shape = shape
-
-    @property
-    def coordinates(self) -> np.ndarray:
-        '''Pixel coordinate grid, shape ``(2, height, width)``.'''
-        return self._coordinates
-
+    # Override the dataclass-generated 'data' field with a property so
+    # that assigning frame.data triggers coordinate regeneration and a
+    # reset of any cached features and results.
     @property
     def data(self) -> Image | None:
         '''Normalized hologram intensity.'''
@@ -91,13 +70,24 @@ class Frame(LMObject):
     def data(self, data: Image | None) -> None:
         self._features = []
         self._results = pd.DataFrame()
-        if data is not None:
-            self.shape = data.shape
         self._data = data
+        if data is not None:
+            self._coordinates = meshgrid(data.shape,
+                                         corner=self.corner,
+                                         flatten=False)
+        else:
+            self._coordinates = None
+
+    @property
+    def shape(self) -> tuple[int, int]:
+        '''Image dimensions ``(ny, nx)``, or ``(0, 0)`` if no data.'''
+        if self._data is None:
+            return (0, 0)
+        return self._data.shape
 
     @property
     def results(self) -> Results:
-        '''Tracking and characterization results from the most recent fit.'''
+        '''Optimized parameters from the most recent fit.'''
         return self._results
 
     @property
@@ -117,16 +107,28 @@ class Frame(LMObject):
             bboxes = [bboxes]
         self._bboxes = list(bboxes)
         self._features = []
-        for bbox in self._bboxes:
-            (x0, y0), w, h = bbox
+        for (x0, y0), w, h in self._bboxes:
             dim = min(w, h)
-            d = self.data[y0:y0 + dim, x0:x0 + dim]
-            holo = Hologram(d, corner=(float(x0), float(y0)))
-            this = Feature(hologram=holo,
-                           model=LorenzMie(instrument=self.instrument))
-            this.particle.x_p = x0 + dim / 2.
-            this.particle.y_p = y0 + dim / 2.
-            self._features.append(this)
+            feature = self[y0:y0 + dim, x0:x0 + dim]
+            feature.particle.x_p = x0 + dim / 2.
+            feature.particle.y_p = y0 + dim / 2.
+            self._features.append(feature)
+
+    def __getitem__(self, key: tuple) -> Feature:
+        '''Return a Feature crop with matching corner and instrument.
+
+        Parameters
+        ----------
+        key : tuple[slice, slice]
+            ``(slice_y, slice_x)`` row and column slices.
+
+        Returns
+        -------
+        feature : Feature
+            Cropped Feature with correct corner and shared instrument.
+        '''
+        return Feature(Hologram.__getitem__(self, key),
+                       model=LorenzMie(instrument=self.instrument))
 
     def detect(self) -> int:
         '''Detect and localize features in :attr:`data`.
@@ -136,23 +138,20 @@ class Frame(LMObject):
         nfeatures : int
             Number of features found.
         '''
-        if self.data is None:
+        if self._data is None:
             self._features = []
             self._bboxes = []
             return 0
-        self._results = self.localizer.localize(self.data)
+        df = self.localizer.localize(self._data)
         self._features = []
         self._bboxes = []
-        for _, row in self._results.iterrows():
+        for _, row in df.iterrows():
             (x0, y0), w, h = row.bbox
             dim = min(w, h)
-            d = self.data[y0:y0 + dim, x0:x0 + dim]
-            holo = Hologram(d, corner=(float(x0), float(y0)))
-            this = Feature(hologram=holo,
-                           model=LorenzMie(instrument=self.instrument))
-            this.particle.x_p = row.x_p
-            this.particle.y_p = row.y_p
-            self._features.append(this)
+            feature = self[y0:y0 + dim, x0:x0 + dim]
+            feature.particle.x_p = row.x_p
+            feature.particle.y_p = row.y_p
+            self._features.append(feature)
             self._bboxes.append(row.bbox)
         return len(self._features)
 
@@ -202,7 +201,7 @@ class Frame(LMObject):
         frame.instrument.wavelength = 0.447
         frame.instrument.magnification = 0.048
         frame.instrument.n_m = 1.34
-        frame.data = example_hologram('image0010.png')
+        frame.data = example_hologram('image0010.png').data
 
         n = frame.detect()
         print(f'Detected {n} feature(s)')

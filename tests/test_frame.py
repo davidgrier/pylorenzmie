@@ -4,6 +4,7 @@ from pathlib import Path
 import cv2
 
 from pylorenzmie.analysis import Frame
+from pylorenzmie.analysis.Hologram import Hologram
 
 
 THIS_DIR = Path(__file__).parent
@@ -16,21 +17,23 @@ class TestFrame(unittest.TestCase):
         self.frame = Frame()
         self.data = cv2.imread(str(TEST_IMAGE), cv2.IMREAD_GRAYSCALE).astype(float) / 100.
 
+    def test_is_hologram(self):
+        '''Frame is-a Hologram.'''
+        self.assertIsInstance(self.frame, Hologram)
+
     def test_data(self):
         '''Setting data allocates a coordinate grid matching the image size.'''
         self.frame.data = self.data
         self.assertEqual(self.data.size, self.frame.coordinates.size // 2)
 
-    def test_shape_stored_as_tuple(self):
-        self.frame.shape = [640, 480]
-        self.assertIsInstance(self.frame.shape, tuple)
-        self.assertEqual(self.frame.shape, (640, 480))
+    def test_shape_from_data(self):
+        '''shape reflects the most recently assigned image dimensions.'''
+        self.frame.data = self.data
+        self.assertEqual(self.frame.shape, self.data.shape)
 
-    def test_shape_unchanged_on_repeat(self):
-        self.frame.shape = (640, 480)
-        coords_id = id(self.frame.coordinates)
-        self.frame.shape = (640, 480)
-        self.assertEqual(id(self.frame.coordinates), coords_id)
+    def test_shape_no_data(self):
+        '''shape is (0, 0) when no data has been assigned.'''
+        self.assertEqual(self.frame.shape, (0, 0))
 
     def test_bboxes(self):
         self.frame.data = self.data
@@ -62,6 +65,19 @@ class TestFrame(unittest.TestCase):
         if len(self.frame.features) > 0:
             self.assertAlmostEqual(
                 self.frame.features[0].model.instrument.wavelength, 0.447)
+
+    def test_getitem_returns_feature(self):
+        '''Slicing a Frame returns a Feature.'''
+        from pylorenzmie.analysis import Feature
+        self.frame.data = self.data
+        crop = self.frame[50:150, 50:150]
+        self.assertIsInstance(crop, Feature)
+
+    def test_getitem_corner(self):
+        '''Sliced Feature has corner matching the slice origin.'''
+        self.frame.data = self.data
+        crop = self.frame[50:150, 50:150]
+        self.assertEqual(crop.corner, (50., 50.))
 
 
 if __name__ == '__main__':  # pragma: no cover
