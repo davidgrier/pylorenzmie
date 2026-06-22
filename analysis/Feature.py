@@ -145,12 +145,11 @@ class Feature(LMObject):
         result : pandas.Series
             Fitted values, uncertainties, and goodness-of-fit statistics.
         '''
-        mask = self.mask()
-        self.optimizer.data = self.data[mask]
-        ndx = np.nonzero(mask.ravel())
-        self.model.coordinates = np.take(
-            self.coordinates, ndx, axis=1).squeeze()
-        return self.optimizer.optimize()
+        corner = (float(self.coordinates[0].min()),
+                  float(self.coordinates[1].min()))
+        hologram = Hologram(self.data, corner=corner)
+        self.optimizer.mask = self.mask
+        return self.optimizer.optimize(hologram)
 
     def hologram(self) -> Image:
         '''Hologram predicted by the current model over all pixels.

@@ -1,5 +1,7 @@
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.lmtypes import Image, Properties
+from pylorenzmie.lib.lmtypes import Image, Properties, Result
+from pylorenzmie.analysis.Hologram import Hologram
+from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import LorenzMie
 import numpy as np
 from numpy.typing import NDArray
@@ -20,8 +22,11 @@ class Optimizer(LMObject):
     ----------
     model : LorenzMie, optional
         Generative scattering model.  Default: ``LorenzMie()``.
-    data : numpy.ndarray, optional
-        Target intensities for optimization.
+    mask : Mask or None, optional
+        Pixel-selection mask applied to the hologram before fitting.
+        ``None`` (default) uses all pixels via
+        :attr:`~Hologram.flat_data` and
+        :attr:`~Hologram.flat_coordinates`.
     robust : bool, optional
         Use robust Cauchy loss instead of standard least squares.
         Default: ``False``.
@@ -47,7 +52,7 @@ class Optimizer(LMObject):
 
     def __init__(self,
                  model: LorenzMie | None = None,
-                 data: Image | None = None,
+                 mask: Mask | None = None,
                  robust: bool = False,
                  fixed: list[str] | None = None,
                  settings: Properties | None = None,
@@ -55,10 +60,11 @@ class Optimizer(LMObject):
         self.model = model or LorenzMie(**kwargs)
         if self.method not in self.model.method:
             raise TypeError('Model not compatible with Optimizer')
-        self.data = data
+        self.mask = mask
         self.settings = settings
         self.fixed = fixed if fixed is not None else ['noise', 'numerical_aperture']
         self.robust = robust
+        self._data: Image | None = None
         self._result = None
 
     @property
@@ -157,7 +163,7 @@ class Optimizer(LMObject):
         keys = list(sum(zip(a, b), ()))
         keys.extend('success npix redchi'.split())
         values = list(self._result.x)
-        npix = self.data.size
+        npix = self._data.size
         redchi, uncertainties = self._statistics()
         values = list(sum(zip(values, uncertainties), ()))
         values.extend([self._result.success, npix, redchi])
@@ -171,14 +177,26 @@ class Optimizer(LMObject):
         metadata.update(self.settings)
         return pd.Series(metadata)
 
-    def optimize(self) -> pd.Series:
-        '''Fit model to data.
+    def optimize(self, hologram: Hologram) -> Result:
+        '''Fit model to hologram.
+
+        Parameters
+        ----------
+        hologram : Hologram
+            Normalized hologram to fit.  When :attr:`mask` is ``None``
+            all pixels are used; otherwise the mask subsamples the
+            hologram before fitting.
 
         Returns
         -------
         result : pandas.Series
             Fitted values, uncertainties, and goodness-of-fit statistics.
         '''
+        if self.mask is None:
+            self._data = hologram.flat_data
+            self.model.coordinates = hologram.flat_coordinates
+        else:
+            self._data, self.model.coordinates = self.mask.apply(hologram)
         p0 = np.array([self.model.properties[p] for p in self.variables])
         self._result = least_squares(self._residuals, p0, **self.settings)
         return self.result
@@ -213,7 +231,7 @@ class Optimizer(LMObject):
     def _residuals(self, values: NDArray[float]) -> Image:
         self.model.properties = dict(zip(self.variables, values))
         noise = self.model.instrument.noise
-        return (self.model.hologram() - self.data) / noise
+        return (self.model.hologram() - self._data) / noise
 
     def _statistics(self) -> tuple[float, NDArray[float]]:
         '''Reduced chi-squared and parameter uncertainties.
@@ -223,7 +241,7 @@ class Optimizer(LMObject):
         small singular values discarded.
         '''
         res = self._result
-        ndeg = self.data.size - res.x.size
+        ndeg = self._data.size - res.x.size
         redchi = 2. * res.cost / ndeg
         _, s, VT = svd(res.jac, full_matrices=False)
         threshold = np.finfo(float).eps * max(res.jac.shape) * s[0]
@@ -249,7 +267,8 @@ class Optimizer(LMObject):
         print('* Ground truth:')
         print(model.particle)
         noise = model.instrument.noise * np.random.normal(size=shape)
-        data = model.hologram() + noise.flatten()
+        data = model.hologram().reshape(shape) + noise
+        hologram = Hologram(data)
         fixed = 'wavelength magnification numerical_aperture n_m noise k_p'.split()
         a = cls(model=model, fixed=fixed, **kwargs)
         settings = a.settings
@@ -260,9 +279,8 @@ class Optimizer(LMObject):
         settings['gtol'] = None
         if verbose:
             settings['verbose'] = 2
-        a.data = data
         start = perf_counter()
-        a.optimize()
+        a.optimize(hologram)
         print(f'Time to optimize: {perf_counter()-start:.1e} s')
         print('* Fitting results:')
         print(a.report())

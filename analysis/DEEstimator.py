@@ -1,8 +1,9 @@
 from dataclasses import dataclass, field
-from pylorenzmie.lib import LMObject, meshgrid
-from pylorenzmie.lib.lmtypes import Image, Coordinates, Properties, Result
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.lib.lmtypes import Image, Properties, Result
+from pylorenzmie.analysis.BaseEstimator import BaseEstimator
+from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
+from pylorenzmie.theory import LorenzMie
 import numpy as np
 import pandas as pd
 from scipy.optimize import differential_evolution
@@ -41,7 +42,7 @@ class _DEObjective:
 
 
 @dataclass
-class DEEstimator(LMObject):
+class DEEstimator(BaseEstimator):
     '''Estimate initial particle parameters by global search.
 
     Uses differential evolution (DE) to minimize the sum-squared
@@ -49,7 +50,7 @@ class DEEstimator(LMObject):
     providing robust initial values for :class:`Optimizer` even when
     the conventional :class:`Estimator` fails to converge.
 
-    Inherits from :class:`pylorenzmie.lib.LMObject`.
+    Inherits from :class:`BaseEstimator`.
 
     Parameters
     ----------
@@ -114,7 +115,7 @@ class DEEstimator(LMObject):
                                                      'updating': 'deferred',
                                                      'workers': -1})
 
-    @LMObject.properties.getter
+    @BaseEstimator.properties.getter
     def properties(self) -> Properties:
         '''DEEstimator configuration.'''
         return dict(fraction=self.fraction,
@@ -122,18 +123,13 @@ class DEEstimator(LMObject):
                     bounds=self.bounds,
                     settings=self.settings)
 
-    def estimate(self,
-                 data: Image,
-                 coordinates: Coordinates | None = None) -> Result:
+    def estimate(self, hologram: Hologram) -> Result:
         '''Estimate particle parameters by differential evolution.
 
         Parameters
         ----------
-        data : numpy.ndarray
-            Normalized hologram crop, shape ``(height, width)``.
-        coordinates : numpy.ndarray, optional
-            Pixel coordinates, shape ``(2, npts)``.  Defaults to a
-            grid spanning ``data.shape``.
+        hologram : Hologram
+            Normalized hologram crop to analyze.
 
         Returns
         -------
@@ -141,19 +137,11 @@ class DEEstimator(LMObject):
             Estimated particle properties (same keys as
             :attr:`~pylorenzmie.theory.Particle.properties`).
         '''
-        if coordinates is None:
-            coordinates = meshgrid(data.shape)
+        self.model.particle.x_p = float(hologram.coordinates[0].mean())
+        self.model.particle.y_p = float(hologram.coordinates[1].mean())
 
-        # Pin x_p, y_p to the ROI center; DE searches the remaining params
-        self.model.particle.x_p = float(coordinates[0].mean())
-        self.model.particle.y_p = float(coordinates[1].mean())
-
-        # Analyze a random subsample of the data
-        mask = Mask(shape=data.shape, fraction=self.fraction)
-        m = mask()
-        de_data = data[m]
-        ndx = np.nonzero(m.ravel())
-        de_coords = np.take(coordinates, ndx, axis=1).squeeze()
+        mask = Mask(fraction=self.fraction)
+        de_data, de_coords = mask.apply(hologram)
         noise = self.model.instrument.noise
 
         de_vars = list(self.bounds.keys())
@@ -173,7 +161,6 @@ class DEEstimator(LMObject):
         finally:
             self.model.coordinates = saved_coords
 
-        # Write the best DE solution to the particle
         self.model.properties = dict(zip(de_vars, result.x))
         return pd.Series(self.model.particle.properties)
 
@@ -192,7 +179,7 @@ class DEEstimator(LMObject):
         print(f'{cls.__name__} example')
         start = perf_counter()
         result = estimator.estimate(example_hologram())
-        print(f'Time: {perf_counter() - start:.2f} s')
+        print(f'Time: {perf_counter() - start:.3f} s')
         print(result)
 
 
