@@ -81,6 +81,31 @@ class Mask(LMObject):
         if self.exclude is not None:
             self._mask[self.exclude] = False
 
+    def apply(self, hologram: 'Hologram') -> tuple[NDArray[float], NDArray[float]]:
+        '''Apply mask to a hologram, returning flat data and coordinates.
+
+        This is the explicit 2D-to-flat boundary for numerical solvers.
+
+        Parameters
+        ----------
+        hologram : Hologram
+            Normalized hologram to subsample.
+
+        Returns
+        -------
+        data : numpy.ndarray
+            Selected pixel values, shape ``(nselected,)``.
+        coordinates : numpy.ndarray
+            Selected pixel coordinates, shape ``(2, nselected)``.
+
+        Notes
+        -----
+        Each call draws a fresh random subsample from ``hologram.shape``.
+        '''
+        self.shape = hologram.shape
+        m = self._mask
+        return hologram.data[m], hologram.coordinates[:, m]
+
     @classmethod
     def example(cls) -> None:  # pragma: no cover
         import matplotlib.pyplot as plt

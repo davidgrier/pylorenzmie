@@ -1,7 +1,7 @@
 import unittest
 import numpy as np
 
-from pylorenzmie.analysis import Mask
+from pylorenzmie.analysis import Mask, Hologram
 
 
 class TestMask(unittest.TestCase):
@@ -50,6 +50,43 @@ class TestMask(unittest.TestCase):
         self.mask.fraction = 0.1
         self.mask.from_json(s)
         self.assertAlmostEqual(self.mask.fraction, 0.3)
+
+    # --- apply ---
+
+    def test_apply_returns_tuple(self):
+        '''apply returns a (data, coordinates) tuple.'''
+        hologram = Hologram(np.random.rand(*self.shape))
+        result = self.mask.apply(hologram)
+        self.assertIsInstance(result, tuple)
+        self.assertEqual(len(result), 2)
+
+    def test_apply_data_shape(self):
+        '''apply data has shape (nselected,).'''
+        hologram = Hologram(np.random.rand(*self.shape))
+        data, coords = self.mask.apply(hologram)
+        self.assertEqual(data.ndim, 1)
+        self.assertEqual(data.shape[0], coords.shape[1])
+
+    def test_apply_coords_shape(self):
+        '''apply coordinates have shape (2, nselected).'''
+        hologram = Hologram(np.random.rand(*self.shape))
+        data, coords = self.mask.apply(hologram)
+        self.assertEqual(coords.shape[0], 2)
+
+    def test_apply_sets_shape(self):
+        '''apply updates mask shape to match hologram.'''
+        new_shape = (64, 80)
+        hologram = Hologram(np.random.rand(*new_shape))
+        self.mask.apply(hologram)
+        self.assertEqual(self.mask.shape, new_shape)
+
+    def test_apply_selects_correct_pixels(self):
+        '''apply data matches manual boolean indexing.'''
+        hologram = Hologram(np.random.rand(*self.shape))
+        data, coords = self.mask.apply(hologram)
+        m = self.mask()
+        np.testing.assert_array_equal(data, hologram.data[m])
+        np.testing.assert_array_equal(coords, hologram.coordinates[:, m])
 
 
 if __name__ == '__main__':  # pragma: no cover
