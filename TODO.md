@@ -66,6 +66,18 @@
 
 ## ml
 
+- [ ] MLP estimator: train a small `MLPRegressor` (scikit-learn) on synthetic
+      azimuthal profiles to replace `DEEstimator` as the default fast initializer.
+      Input: 100-point radial average `b(r)` from `Azimuthal.avg`. Output: z_p,
+      a_p, n_p. Training data: millions of synthetic profiles from `LorenzMie` +
+      `Azimuthal.avg`, spanning the full physical bounds used by `DEEstimator`.
+      Inference: < 1 ms (vs. ~2 s for DE), matching the original Yevick et al.
+      (Opt. Express 22, 26884, 2014) SVM approach but with a single multi-output
+      MLP instead of three separate SVMs. Ship pre-trained weights for common
+      instrument configurations (447 nm laser, silica/PS in water, 0.048 μm/px).
+      Provide a `devel/train_mlp_estimator.py` script for retraining on custom
+      ranges. Fall back to `DEEstimator` when the MLP confidence is low or the
+      predicted values fall outside the training domain.
 - [ ] CNN characterization (CATCH revival): re-implement the CATCH compact CNN
       (Altman & Grier 2020/2023) in PyTorch. Input: normalized 201×201 hologram
       crop. Output: a_p, n_p, z_p. Train on synthetic holograms from the existing

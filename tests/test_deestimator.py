@@ -32,10 +32,10 @@ class TestDEEstimator(unittest.TestCase):
         for key, (lo, hi) in DEFAULT_BOUNDS.items():
             self.assertLess(lo, hi, msg=f'{key}: lo >= hi')
 
-    def test_requires_coordinates(self):
-        '''estimate() raises ValueError when coordinates is None.'''
-        with self.assertRaises(ValueError):
-            self.estimator.estimate(self.data)
+    def test_default_coordinates(self):
+        '''estimate() defaults to meshgrid(data.shape) when coordinates omitted.'''
+        result = self.estimator.estimate(self.data)
+        self.assertIsInstance(result, pd.Series)
 
     def test_returns_series(self):
         '''estimate() returns a pandas.Series.'''
@@ -78,9 +78,9 @@ class TestDEEstimator(unittest.TestCase):
             self.model.coordinates, coords_before)
 
     def test_properties_keys(self):
-        '''properties exposes de_fraction, popsize, bounds, and settings.'''
+        '''properties exposes fraction, popsize, bounds, and settings.'''
         props = self.estimator.properties
-        for key in ('de_fraction', 'popsize', 'bounds', 'settings'):
+        for key in ('fraction', 'popsize', 'bounds', 'settings'):
             self.assertIn(key, props)
 
     def test_custom_bounds(self):

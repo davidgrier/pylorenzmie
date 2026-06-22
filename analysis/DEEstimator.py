@@ -1,11 +1,18 @@
 from dataclasses import dataclass, field
-from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.types import Image, Coordinates, Properties
+from pylorenzmie.lib import LMObject, meshgrid
+from pylorenzmie.lib.types import Image, Coordinates, Properties, Result
 from pylorenzmie.theory import LorenzMie
 from pylorenzmie.analysis.Mask import Mask
 import numpy as np
 import pandas as pd
 from scipy.optimize import differential_evolution
+
+
+DEFAULT_BOUNDS: Properties = {
+    'z_p': (10., 600.),
+    'a_p': (0.25, 10.0),
+    'n_p': (1.0, 3.0),
+}
 
 
 class _DEObjective:
@@ -18,28 +25,19 @@ class _DEObjective:
 
     def __init__(self,
                  model: LorenzMie,
-                 de_data: np.ndarray,
-                 de_coords: np.ndarray,
-                 de_vars: list[str],
+                 data: Image,
+                 variables: list[str],
                  noise: float) -> None:
         self._model = model
-        self._de_data = de_data
-        self._de_coords = de_coords
-        self._de_vars = de_vars
+        self._data = data
+        self._variables = variables
         self._noise = noise
 
     def __call__(self, values: np.ndarray) -> float:
-        self._model.properties = dict(zip(self._de_vars, values))
+        self._model.properties = dict(zip(self._variables, values))
         with np.errstate(over='ignore', invalid='ignore'):
-            diff = (self._model.hologram() - self._de_data) / self._noise
+            diff = (self._model.hologram() - self._data) / self._noise
             return float(np.nansum(diff ** 2))
-
-
-DEFAULT_BOUNDS: Properties = {
-    'z_p': (10., 600.),
-    'a_p': (0.25, 10.0),
-    'n_p': (1.0, 3.0),
-}
 
 
 @dataclass
@@ -62,7 +60,7 @@ class DEEstimator(LMObject):
         Mapping of parameter name to ``(min, max)`` search range.
         Default: ``z_p`` (10, 600) pixels, ``a_p`` (0.25, 10.0) μm,
         ``n_p`` (1.0, 3.0).
-    de_fraction : float, optional
+    fraction : float, optional
         Fraction of pixels used for the DE objective function.
         Default: 0.02.  A fixed random subsample is drawn once per
         call and held constant throughout the search so the objective
@@ -82,7 +80,7 @@ class DEEstimator(LMObject):
 
     For large particles (``a_p`` ≳ 1 μm) the hologram fringe pattern
     is dense and the coarsely-sampled objective function becomes
-    multi-modal.  In that regime increase ``de_fraction`` (e.g. 0.05)
+    multi-modal.  In that regime increase ``fraction`` (e.g. 0.05)
     and ``popsize`` (e.g. 15) at the cost of longer run time, or supply
     tighter ``bounds`` to reduce the search volume.
 
@@ -108,7 +106,7 @@ class DEEstimator(LMObject):
 
     model: LorenzMie
     bounds: dict = field(default_factory=lambda: DEFAULT_BOUNDS.copy())
-    de_fraction: float = 0.02
+    fraction: float = 0.02
     popsize: int = 10
     seed: int | None = None
     settings: dict = field(default_factory=lambda: {'tol': 0.01,
@@ -119,44 +117,39 @@ class DEEstimator(LMObject):
     @LMObject.properties.getter
     def properties(self) -> Properties:
         '''DEEstimator configuration.'''
-        return dict(de_fraction=self.de_fraction,
+        return dict(fraction=self.fraction,
                     popsize=self.popsize,
                     bounds=self.bounds,
                     settings=self.settings)
 
     def estimate(self,
                  data: Image,
-                 coordinates: Coordinates | None = None) -> pd.Series:
+                 coordinates: Coordinates | None = None) -> Result:
         '''Estimate particle parameters by differential evolution.
 
         Parameters
         ----------
         data : numpy.ndarray
             Normalized hologram crop, shape ``(height, width)``.
-        coordinates : numpy.ndarray
-            Pixel coordinates, shape ``(2, npts)``.  Required.
+        coordinates : numpy.ndarray, optional
+            Pixel coordinates, shape ``(2, npts)``.  Defaults to a
+            grid spanning ``data.shape``.
 
         Returns
         -------
         result : pandas.Series
             Estimated particle properties (same keys as
             :attr:`~pylorenzmie.theory.Particle.properties`).
-
-        Raises
-        ------
-        ValueError
-            If ``coordinates`` is not provided.
         '''
         if coordinates is None:
-            raise ValueError(
-                'DEEstimator.estimate() requires pixel coordinates')
+            coordinates = meshgrid(data.shape)
 
         # Pin x_p, y_p to the ROI center; DE searches the remaining params
         self.model.particle.x_p = float(coordinates[0].mean())
         self.model.particle.y_p = float(coordinates[1].mean())
 
-        # Draw a fixed random subsample — held constant for the whole search
-        mask = Mask(shape=data.shape, fraction=self.de_fraction)
+        # Analyze a random subsample of the data
+        mask = Mask(shape=data.shape, fraction=self.fraction)
         m = mask()
         de_data = data[m]
         ndx = np.nonzero(m.ravel())
@@ -164,17 +157,15 @@ class DEEstimator(LMObject):
         noise = self.model.instrument.noise
 
         de_vars = list(self.bounds.keys())
-        bounds_list = [self.bounds[v] for v in de_vars]
+        de_bounds = list(self.bounds.values())
 
         saved_coords = self.model.coordinates
         self.model.coordinates = de_coords
-        objective = _DEObjective(self.model, de_data, de_coords,
-                                 de_vars, noise)
+        objective = _DEObjective(self.model, de_data, de_vars, noise)
         try:
             with np.errstate(over='ignore', invalid='ignore'):
                 result = differential_evolution(
-                    objective,
-                    bounds_list,
+                    objective, de_bounds,
                     popsize=self.popsize,
                     seed=self.seed,
                     **self.settings,
@@ -190,22 +181,17 @@ class DEEstimator(LMObject):
     def example(cls) -> None:  # pragma: no cover
         from time import perf_counter
         from pylorenzmie.utilities import example_hologram
-        from pylorenzmie.lib import LMObject
 
-        shape = (201, 201)
         model = LorenzMie()
-        model.coordinates = LMObject.meshgrid(shape)
         model.instrument.wavelength = 0.447
         model.instrument.magnification = 0.048
         model.instrument.n_m = 1.34
 
-        data = example_hologram()
-        coordinates = LMObject.meshgrid(data.shape)
-
         estimator = cls(model=model, seed=0)
-        print('DEEstimator example:')
+
+        print(f'{cls.__name__} example')
         start = perf_counter()
-        result = estimator.estimate(data, coordinates)
+        result = estimator.estimate(example_hologram())
         print(f'Time: {perf_counter() - start:.2f} s')
         print(result)
 

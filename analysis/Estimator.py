@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pylorenzmie.lib import LMObject, Azimuthal
-from pylorenzmie.lib.types import Image, Images, Properties, Results
+from pylorenzmie.lib.types import Image, Images, Properties, Result
 from pylorenzmie.theory import Instrument
 import pandas as pd
 import numpy as np
@@ -116,7 +116,7 @@ class Estimator(LMObject):
         self.a_p = float(self._magnification * a_p)
 
     def estimate(self, feature: Images,
-                 coordinates: object = None) -> Results:
+                 coordinates: object = None) -> Result:
         '''Estimate particle properties from a holographic crop.
 
         Parameters
@@ -144,10 +144,21 @@ class Estimator(LMObject):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        from time import perf_counter
         from pylorenzmie.utilities import example_hologram
 
-        estimator = cls(Instrument())
-        print(estimator.estimate(example_hologram()))
+        instrument = Instrument()
+        instrument.wavelength = 0.447
+        instrument.magnification = 0.048
+        instrument.n_m = 1.34
+
+        estimator = cls(instrument=instrument)
+
+        print(f'{cls.__name__} example')
+        start = perf_counter()
+        result = estimator.estimate(example_hologram())
+        print(f'Time: {perf_counter() - start:.3f} s')
+        print(result)
 
 
 if __name__ == '__main__':  # pragma: no cover
