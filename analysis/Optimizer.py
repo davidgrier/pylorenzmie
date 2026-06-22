@@ -126,6 +126,21 @@ class Optimizer(LMObject):
             self.settings['loss'] = 'linear'
 
     @property
+    def fraction(self) -> float:
+        '''Fraction of pixels used for fitting.
+
+        Setting this creates a :class:`Mask` if one does not exist.
+        ``1.0`` (all pixels) when no mask is set.
+        '''
+        return 1.0 if self.mask is None else self.mask.fraction
+
+    @fraction.setter
+    def fraction(self, fraction: float) -> None:
+        if self.mask is None:
+            self.mask = Mask()
+        self.mask.fraction = fraction
+
+    @property
     def fixed(self) -> list[str]:
         '''Model properties held constant during fitting.'''
         return self._fixed

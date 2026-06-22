@@ -18,35 +18,31 @@ class Feature(Hologram):
         Normalized hologram crop with pixel coordinates.
     model : LorenzMie, optional
         Generative scattering model.  Default: ``LorenzMie()``.
-    mask : Mask, optional
-        Pixel selection mask.  Saturated and invalid pixels are added
-        to the exclusion set regardless.  Default: ``Mask()``.
     fixed : list[str], optional
         Model properties held constant during fitting.
         Default: the Optimizer default.
     '''
 
     def __init__(self,
-                 hologram: 'Hologram',
+                 hologram: Hologram,
                  model: LorenzMie | None = None,
-                 mask: Mask | None = None,
                  fixed: list[str] | None = None) -> None:
         self.data = hologram.data
         self.corner = hologram.corner
         self._coordinates = hologram._coordinates
         self.model = model or LorenzMie()
-        self.estimator = DEEstimator(model=self.model)
-        self.optimizer = Optimizer(model=self.model)
-        if fixed is not None:
-            self.optimizer.fixed = fixed
-        m = mask or Mask()
+        m = Mask()
         m.shape = self.data.shape
+        # TODO: detect bad pixels to exclude from Mask
         m.exclude = (
             (self.data == np.max(self.data))
             | np.isnan(self.data)
             | np.isinf(self.data)
         )
-        self.optimizer.mask = m
+        self.estimator = DEEstimator(model=self.model, mask=m)
+        self.optimizer = Optimizer(model=self.model, mask=m)
+        if fixed is not None:
+            self.optimizer.fixed = fixed
 
     @property
     def hologram(self) -> 'Feature':
@@ -55,11 +51,17 @@ class Feature(Hologram):
 
     @property
     def mask(self) -> Mask:
-        '''Pixel selection mask (the Optimizer's mask).'''
+        '''Shared pixel exclusion mask for estimator and optimizer.
+
+        Bad pixels (saturated, dead) set via :attr:`~Mask.exclude` are
+        excluded from both the DE estimation and the LM optimization.
+        Each component controls its own pixel fraction independently.
+        '''
         return self.optimizer.mask
 
     @mask.setter
     def mask(self, mask: Mask) -> None:
+        self.estimator.mask = mask
         self.optimizer.mask = mask
 
     @property
@@ -79,15 +81,6 @@ class Feature(Hologram):
     @model.setter
     def model(self, model: LorenzMie) -> None:
         self._model = model
-
-    @property
-    def fraction(self) -> float:
-        '''Fraction of pixels passed to the optimizer.'''
-        return self.optimizer.mask.fraction
-
-    @fraction.setter
-    def fraction(self, fraction: float) -> None:
-        self.optimizer.mask.fraction = fraction
 
     def estimate(self) -> pd.Series:
         '''Estimate initial particle parameters from the hologram crop.
@@ -141,8 +134,10 @@ class Feature(Hologram):
         instrument.wavelength = 0.447
         instrument.magnification = 0.048
         instrument.n_m = 1.34
+        instrument.noise = 0.05
 
-        feature.mask.fraction = 0.25
+        feature.estimator.fraction = 0.01
+        feature.optimizer.fraction = 0.25
         feature.optimizer.variables = 'x_p y_p z_p a_p n_p'.split()
 
         feature.model.coordinates = feature.flat_coordinates

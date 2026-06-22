@@ -108,6 +108,7 @@ class DEEstimator(BaseEstimator):
     model: LorenzMie
     bounds: dict = field(default_factory=lambda: DEFAULT_BOUNDS.copy())
     fraction: float = 0.02
+    mask: Mask | None = None
     popsize: int = 10
     seed: int | None = None
     settings: dict = field(default_factory=lambda: {'tol': 0.01,
@@ -141,6 +142,8 @@ class DEEstimator(BaseEstimator):
         self.model.particle.y_p = float(hologram.coordinates[1].mean())
 
         mask = Mask(fraction=self.fraction)
+        if self.mask is not None:
+            mask.exclude = self.mask.exclude
         de_data, de_coords = mask.apply(hologram)
         noise = self.model.instrument.noise
 

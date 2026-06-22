@@ -31,6 +31,10 @@ class TestFeature(unittest.TestCase):
         self.feature = Feature(Hologram(data), model=model)
         self.feature.mask.fraction = 0.1
 
+    def test_mask_shared(self):
+        '''Estimator and Optimizer share the same Mask instance.'''
+        self.assertIs(self.feature.estimator.mask, self.feature.optimizer.mask)
+
     def test_is_hologram(self):
         '''Feature is-a Hologram.'''
         self.assertIsInstance(self.feature, Hologram)
