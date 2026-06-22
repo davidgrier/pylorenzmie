@@ -1,4 +1,5 @@
 from .Localizer import Localizer
+from .BaseEstimator import BaseEstimator
 from .Estimator import Estimator
 from .DEEstimator import DEEstimator
 from .Optimizer import Optimizer
@@ -13,6 +14,6 @@ from .Frame import Frame
 from .Trajectory import Trajectory
 from .Hologram import Hologram
 
-__all__ = ['Hologram', 'Localizer', 'Estimator', 'DEEstimator', 'Optimizer',
+__all__ = ['Hologram', 'Localizer', 'BaseEstimator', 'Estimator', 'DEEstimator', 'Optimizer',
            'cupyOptimizer', 'Mask', 'RadialMask', 'Feature', 'Frame',
            'Trajectory']
