@@ -1,5 +1,6 @@
 from pylorenzmie.theory import Instrument, LorenzMie
 from pylorenzmie.analysis import Localizer, Feature
+from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import Image, Properties, Results
 import pandas as pd
@@ -120,8 +121,8 @@ class Frame(LMObject):
             (x0, y0), w, h = bbox
             dim = min(w, h)
             d = self.data[y0:y0 + dim, x0:x0 + dim]
-            c = self.coordinates[:, y0:y0 + dim, x0:x0 + dim].reshape((2, -1))
-            this = Feature(data=d, coordinates=c,
+            holo = Hologram(d, corner=(float(x0), float(y0)))
+            this = Feature(hologram=holo,
                            model=LorenzMie(instrument=self.instrument))
             this.particle.x_p = x0 + dim / 2.
             this.particle.y_p = y0 + dim / 2.
@@ -146,8 +147,8 @@ class Frame(LMObject):
             (x0, y0), w, h = row.bbox
             dim = min(w, h)
             d = self.data[y0:y0 + dim, x0:x0 + dim]
-            c = self.coordinates[:, y0:y0 + dim, x0:x0 + dim].reshape((2, -1))
-            this = Feature(data=d, coordinates=c,
+            holo = Hologram(d, corner=(float(x0), float(y0)))
+            this = Feature(hologram=holo,
                            model=LorenzMie(instrument=self.instrument))
             this.particle.x_p = row.x_p
             this.particle.y_p = row.y_p
