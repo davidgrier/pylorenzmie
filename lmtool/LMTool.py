@@ -15,6 +15,7 @@ from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
 from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog, QProgressBar)
 
 from pylorenzmie.analysis import DEEstimator
+from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lmtool.LMWidget import LMWidget
 from pylorenzmie.utilities import Normalizer
@@ -30,19 +31,15 @@ class _EstimateWorker(QObject):
     finished = pyqtSignal(object)  # pd.Series
     error = pyqtSignal(str)
 
-    def __init__(self, estimator: DEEstimator,
-                 data: NDArray[float],
-                 coordinates: NDArray[float]) -> None:
+    def __init__(self, estimator: DEEstimator, hologram: Hologram) -> None:
         super().__init__()
         self._estimator = estimator
-        self._data = data
-        self._coordinates = coordinates
+        self._hologram = hologram
 
     @pyqtSlot()
     def run(self) -> None:
         try:
-            self.finished.emit(
-                self._estimator.estimate(self._data, self._coordinates))
+            self.finished.emit(self._estimator.estimate(self._hologram))
         except Exception as e:
             self.error.emit(str(e))
 
@@ -225,9 +222,10 @@ class LMTool(QMainWindow):
                               if k in props}
         self.actionUndoEstimate.setEnabled(True)
         data, _, coordinates = self.crop()
+        hologram = Hologram._from_slice(data, coordinates)
         model = self.fitWidget.optimizer.model
         estimator = DEEstimator(model=model)
-        worker = _EstimateWorker(estimator, data, coordinates.reshape(2, -1))
+        worker = _EstimateWorker(estimator, hologram)
         thread = QThread()
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
