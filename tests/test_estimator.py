@@ -4,6 +4,8 @@ import pandas as pd
 from pathlib import Path
 
 from pylorenzmie.analysis.Estimator import Estimator
+from pylorenzmie.analysis.Hologram import Hologram
+from pylorenzmie.analysis.BaseEstimator import BaseEstimator
 from pylorenzmie.theory import Instrument
 
 
@@ -18,42 +20,53 @@ class TestEstimator(unittest.TestCase):
         self.instrument = Instrument()
         self.estimator = Estimator(instrument=self.instrument)
         data = cv2.imread(str(TEST_IMAGE), cv2.IMREAD_GRAYSCALE)
-        self.data = data.astype(float) / 100.
+        self.hologram = Hologram(data.astype(float) / 100.)
+
+    def test_is_base_estimator(self):
+        '''Estimator is a subclass of BaseEstimator.'''
+        self.assertIsInstance(self.estimator, BaseEstimator)
 
     def test_properties_keys(self):
-        '''properties contains all particle parameter keys'''
-        self.estimator.estimate(self.data)
-        props = self.estimator.properties
+        '''properties contains all particle parameter keys.'''
+        self.estimator.estimate(self.hologram)
         for key in ('x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p'):
-            self.assertIn(key, props)
+            self.assertIn(key, self.estimator.properties)
 
     def test_estimate_returns_series(self):
-        result = self.estimator.estimate(self.data)
+        '''estimate returns a pandas.Series.'''
+        result = self.estimator.estimate(self.hologram)
         self.assertIsInstance(result, pd.Series)
 
     def test_estimate_sets_center(self):
-        h, w = self.data.shape
-        result = self.estimator.estimate(self.data)
-        self.assertAlmostEqual(result['x_p'], w / 2.)
-        self.assertAlmostEqual(result['y_p'], h / 2.)
+        '''x_p and y_p are set from hologram coordinate means.'''
+        result = self.estimator.estimate(self.hologram)
+        self.assertAlmostEqual(result['x_p'],
+                               float(self.hologram.coordinates[0].mean()))
+        self.assertAlmostEqual(result['y_p'],
+                               float(self.hologram.coordinates[1].mean()))
+
+    def test_estimate_center_corner_aware(self):
+        '''Center shifts correctly for a hologram with a non-zero corner.'''
+        corner = (10., 20.)
+        h = Hologram(self.hologram.data, corner=corner)
+        result = self.estimator.estimate(h)
+        self.assertAlmostEqual(result['x_p'], float(h.coordinates[0].mean()))
+        self.assertAlmostEqual(result['y_p'], float(h.coordinates[1].mean()))
 
     def test_estimate_z_positive(self):
-        result = self.estimator.estimate(self.data)
+        '''Estimated z_p is positive.'''
+        result = self.estimator.estimate(self.hologram)
         self.assertGreater(result['z_p'], 0)
 
     def test_estimate_a_positive(self):
-        result = self.estimator.estimate(self.data)
+        '''Estimated a_p is positive.'''
+        result = self.estimator.estimate(self.hologram)
         self.assertGreater(result['a_p'], 0)
 
-    def test_estimate_list(self):
-        result = self.estimator.estimate([self.data, self.data])
-        self.assertIsInstance(result, list)
-        self.assertEqual(len(result), 2)
-
     def test_predict_alias(self):
-        '''predict() is a backward-compatibility alias for estimate()'''
-        r1 = self.estimator.estimate(self.data)
-        r2 = self.estimator.predict(self.data)
+        '''predict() is a backward-compatibility alias for estimate().'''
+        r1 = self.estimator.estimate(self.hologram)
+        r2 = self.estimator.predict(self.hologram)
         self.assertAlmostEqual(r1['z_p'], r2['z_p'], places=3)
 
 

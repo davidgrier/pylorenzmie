@@ -1,6 +1,8 @@
 from dataclasses import dataclass
-from pylorenzmie.lib import LMObject, Azimuthal
-from pylorenzmie.lib.lmtypes import Image, Images, Properties, Result
+from pylorenzmie.lib import Azimuthal
+from pylorenzmie.lib.lmtypes import Image, Properties, Result
+from pylorenzmie.analysis.BaseEstimator import BaseEstimator
+from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import Instrument
 import pandas as pd
 import numpy as np
@@ -9,14 +11,14 @@ from scipy.special import jn_zeros
 
 
 @dataclass
-class Estimator(LMObject):
+class Estimator(BaseEstimator):
     '''Estimate initial parameters of a holographic feature.
 
     Uses the azimuthal average of a cropped hologram to estimate the
     axial position and radius of the scattering particle, providing
     initial values for :class:`Optimizer`.
 
-    Inherits from :class:`pylorenzmie.lib.LMObject`.
+    Inherits from :class:`BaseEstimator`.
 
     Parameters
     ----------
@@ -64,7 +66,7 @@ class Estimator(LMObject):
         self.z_p: float | None = None
         self.a_p: float | None = None
 
-    @LMObject.properties.getter
+    @BaseEstimator.properties.getter
     def properties(self) -> Properties:
         '''Estimated particle properties.'''
         return dict(x_p=self.x_p, y_p=self.y_p,
@@ -115,29 +117,22 @@ class Estimator(LMObject):
         a_p = np.min(jn_zeros(1, len(minima)) * alpha_n) / self._k
         self.a_p = float(self._magnification * a_p)
 
-    def estimate(self, feature: Images,
-                 coordinates: object = None) -> Result:
-        '''Estimate particle properties from a holographic crop.
+    def estimate(self, hologram: Hologram) -> Result:
+        '''Estimate particle properties from a normalized hologram.
 
         Parameters
         ----------
-        feature : numpy.ndarray or list of numpy.ndarray
-            Normalized hologram crop(s).
-        coordinates : ignored
-            Accepted for interface compatibility with
-            :class:`DEEstimator`; not used by this class.
+        hologram : Hologram
+            Normalized hologram crop.
 
         Returns
         -------
-        result : pandas.Series or list of pandas.Series
+        result : pandas.Series
             Estimated particle properties.
         '''
-        if isinstance(feature, list):
-            return [self.estimate(f) for f in feature]
-        self._initialize(feature)
-        h, w = feature.shape
-        self.x_p = float(w / 2.)
-        self.y_p = float(h / 2.)
+        self._initialize(hologram.data)
+        self.x_p = float(hologram.coordinates[0].mean())
+        self.y_p = float(hologram.coordinates[1].mean())
         self._estimate_z()
         self._estimate_a()
         return pd.Series(self.properties)
@@ -153,10 +148,11 @@ class Estimator(LMObject):
         instrument.n_m = 1.34
 
         estimator = cls(instrument=instrument)
+        hologram = Hologram(example_hologram())
 
         print(f'{cls.__name__} example')
         start = perf_counter()
-        result = estimator.estimate(example_hologram())
+        result = estimator.estimate(hologram)
         print(f'Time: {perf_counter() - start:.3f} s')
         print(result)
 

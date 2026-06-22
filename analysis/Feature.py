@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from pylorenzmie.analysis import Mask, Estimator, Optimizer
+from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie, Particle
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import Image, Coordinates, Properties
@@ -129,11 +130,11 @@ class Feature(LMObject):
         properties : pandas.Series
             Estimated particle properties.
         '''
-        properties = self.estimator.estimate(self.data, self.coordinates)
+        corner = (float(self.coordinates[0].min()),
+                  float(self.coordinates[1].min()))
+        hologram = Hologram(self.data, corner=corner)
+        properties = self.estimator.estimate(hologram)
         self.particle.properties = properties
-        if self.coordinates is not None:
-            self.particle.x_p = float(self.coordinates[0].mean())
-            self.particle.y_p = float(self.coordinates[1].mean())
         return properties
 
     def optimize(self) -> pd.Series:
