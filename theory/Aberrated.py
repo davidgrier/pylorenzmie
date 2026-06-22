@@ -74,6 +74,11 @@ def Aberrated(base_class: type) -> type:
 
 
 AberratedLorenzMie = Aberrated(LorenzMie)
+# Fix __qualname__ so pickle can locate the class at module level.
+# Factory-defined classes get __qualname__ = 'Aberrated.<locals>.AberratedLorenzMie',
+# which Python cannot resolve during unpickling.
+AberratedLorenzMie.__qualname__ = 'AberratedLorenzMie'
+AberratedLorenzMie.__name__ = 'AberratedLorenzMie'
 
 
 if __name__ == '__main__':  # pragma: no cover
