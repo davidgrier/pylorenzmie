@@ -115,7 +115,7 @@ class Localizer(LMObject):
         from pylorenzmie.utilities import example_hologram
 
         localizer = cls()
-        image = example_hologram('image0010.png')
+        image = example_hologram('image0010.png').data
 
         start = perf_counter()
         features = localizer.localize(image)
