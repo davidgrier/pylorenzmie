@@ -148,7 +148,7 @@ class Estimator(BaseEstimator):
         instrument.n_m = 1.34
 
         estimator = cls(instrument=instrument)
-        hologram = Hologram(example_hologram())
+        hologram = example_hologram()
 
         print(f'{cls.__name__} example')
         start = perf_counter()
