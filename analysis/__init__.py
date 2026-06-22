@@ -11,7 +11,8 @@ from .RadialMask import RadialMask
 from .Feature import Feature
 from .Frame import Frame
 from .Trajectory import Trajectory
+from .Hologram import Hologram
 
-__all__ = ['Localizer', 'Estimator', 'DEEstimator', 'Optimizer',
+__all__ = ['Hologram', 'Localizer', 'Estimator', 'DEEstimator', 'Optimizer',
            'cupyOptimizer', 'Mask', 'RadialMask', 'Feature', 'Frame',
            'Trajectory']

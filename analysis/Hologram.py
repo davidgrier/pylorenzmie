@@ -3,8 +3,8 @@
 from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
-from .meshgrid import meshgrid
-from .lmtypes import Image
+from pylorenzmie.lib import meshgrid
+from pylorenzmie.lib.lmtypes import Image
 
 
 @dataclass(eq=False)

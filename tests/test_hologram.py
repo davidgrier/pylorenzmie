@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from pylorenzmie.lib import Hologram
+from pylorenzmie.analysis import Hologram
 
 
 class TestHologram(unittest.TestCase):

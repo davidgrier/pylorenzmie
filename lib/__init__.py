@@ -1,6 +1,5 @@
 from .meshgrid import meshgrid
 from .LMObject import LMObject
-from .Hologram import Hologram
 from .CircleTransform import (CircleTransform, circletransform)
 from . import Azimuthal
 
@@ -12,6 +11,6 @@ def coordinates(*args, **kwargs):
     return meshgrid(*args, **kwargs)
 
 
-__all__ = ['LMObject', 'meshgrid', 'Hologram',
+__all__ = ['LMObject', 'meshgrid',
            'Azimuthal', 'CircleTransform', 'circletransform',
            'coordinates']
