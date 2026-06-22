@@ -27,6 +27,8 @@ class Feature(Hologram):
                  hologram: Hologram,
                  model: LorenzMie | None = None,
                  fixed: list[str] | None = None) -> None:
+        # Copy Hologram state directly; super().__init__() is skipped to avoid
+        # calling __post_init__ (which would rerun meshgrid on hologram.data).
         self.data = hologram.data
         self.corner = hologram.corner
         self._coordinates = hologram._coordinates
@@ -39,15 +41,10 @@ class Feature(Hologram):
             | np.isnan(self.data)
             | np.isinf(self.data)
         )
-        self.estimator = DEEstimator(model=self.model, mask=m)
+        self.estimator = DEEstimator(model=self.model, exclude=m.exclude)
         self.optimizer = Optimizer(model=self.model, mask=m)
         if fixed is not None:
             self.optimizer.fixed = fixed
-
-    @property
-    def hologram(self) -> 'Feature':
-        '''This Feature viewed as its underlying Hologram (returns self).'''
-        return self
 
     @property
     def mask(self) -> Mask:
@@ -61,7 +58,7 @@ class Feature(Hologram):
 
     @mask.setter
     def mask(self, mask: Mask) -> None:
-        self.estimator.mask = mask
+        self.estimator.exclude = mask.exclude
         self.optimizer.mask = mask
 
     @property
@@ -99,6 +96,11 @@ class Feature(Hologram):
         -------
         result : pandas.Series
             Fitted values, uncertainties, and goodness-of-fit statistics.
+
+        Notes
+        -----
+        When a mask with ``fraction < 1.0`` is set, a fresh random pixel
+        subsample is drawn on every call.
         '''
         return self.optimizer.optimize(self)
 

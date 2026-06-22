@@ -5,6 +5,7 @@ from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import LorenzMie
 import numpy as np
+from numpy.typing import NDArray
 import pandas as pd
 from scipy.optimize import differential_evolution
 
@@ -66,6 +67,10 @@ class DEEstimator(BaseEstimator):
         Default: 0.02.  A fixed random subsample is drawn once per
         call and held constant throughout the search so the objective
         is deterministic.
+    exclude : numpy.ndarray of bool, optional
+        Boolean mask of pixels to force-exclude from sampling (e.g.
+        saturated or dead pixels).  Default: ``None`` (no exclusions).
+        Set via :attr:`~Feature.mask` when using :class:`Feature`.
     popsize : int, optional
         DE population size multiplier (population = popsize ×
         len(bounds)).  Default: 10.
@@ -108,7 +113,7 @@ class DEEstimator(BaseEstimator):
     model: LorenzMie
     bounds: dict = field(default_factory=lambda: DEFAULT_BOUNDS.copy())
     fraction: float = 0.02
-    mask: Mask | None = None
+    exclude: NDArray[np.bool_] | None = None
     popsize: int = 10
     seed: int | None = None
     settings: dict = field(default_factory=lambda: {'tol': 0.01,
@@ -142,8 +147,8 @@ class DEEstimator(BaseEstimator):
         self.model.particle.y_p = float(hologram.coordinates[1].mean())
 
         mask = Mask(fraction=self.fraction)
-        if self.mask is not None:
-            mask.exclude = self.mask.exclude
+        if self.exclude is not None:
+            mask.exclude = self.exclude
         de_data, de_coords = mask.apply(hologram)
         noise = self.model.instrument.noise
 

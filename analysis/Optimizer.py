@@ -69,14 +69,11 @@ class Optimizer(LMObject):
 
     @property
     def properties(self) -> Properties:
-        '''Optimizer settings merged with model properties.'''
-        properties = dict(settings=self.settings, fixed=self.fixed)
-        properties.update(self.model.properties)
-        return properties
+        '''Optimizer configuration: settings and fixed parameter list.'''
+        return dict(settings=self.settings, fixed=self.fixed)
 
     @properties.setter
     def properties(self, properties: Properties) -> None:
-        self.model.properties = properties
         for name, value in properties.items():
             if hasattr(self, name):
                 setattr(self, name, value)

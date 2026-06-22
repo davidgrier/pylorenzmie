@@ -45,16 +45,13 @@ class Mask(LMObject):
     exclude: NDArray[np.bool_] | None = None
 
     def __post_init__(self) -> None:
-        self._initialized = False
         self._mask: NDArray[np.bool_] = np.empty((0, 0), dtype=bool)
         self.update()
-        self._initialized = True
 
     def __setattr__(self, prop: str, value: object) -> None:
         super().__setattr__(prop, value)
-        if prop in ('shape', 'fraction', 'exclude'):
-            if getattr(self, '_initialized', False):
-                self.update()
+        if prop in ('shape', 'fraction', 'exclude') and hasattr(self, '_mask'):
+            self.update()
 
     def __call__(self) -> NDArray[np.bool_]:
         return self._mask
