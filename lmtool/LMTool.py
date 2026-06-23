@@ -99,8 +99,8 @@ class LMTool(QMainWindow):
         self.saveResultAs.triggered.connect(self.fitWidget.saveResultAs)
         self.actionRobust.toggled.connect(self.setRobust)
         self.actionOptimize.triggered.connect(self.optimize)
-        connect = self.optimizerWidget.settingChanged.connect
-        connect(self.fitWidget.setSetting)
+        self.optimizerWidget.settingChanged.connect(
+            self.fitWidget.setSetting)
         self.fitWidget.optimizationStarted.connect(self._onOptimizationStarted)
         self.fitWidget.optimizationFinished.connect(self._onOptimizationFinished)
         self.fitWidget.optimizationError.connect(self._onOptimizationError)

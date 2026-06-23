@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from pyqtgraph.Qt import uic
-from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty)
+from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtProperty)
 from pyqtgraph.Qt.QtWidgets import QFrame
 
 from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
@@ -40,7 +40,9 @@ class LMWidget(QFrame):
 
     def _connectSignals(self) -> None:
         for control in self.controls:
-            control.valueChanged.connect(self._handleChange)
+            name = control.objectName()
+            control.valueChanged.connect(
+                lambda v, n=name: self._handleChange(n, v))
 
     @pyqtProperty(dict)
     def properties(self) -> LorenzMie.Properties:
@@ -62,15 +64,12 @@ class LMWidget(QFrame):
         for control in self.controls:
             control.setFixed(control.objectName() in fixed)
 
-    @pyqtSlot(float)
-    def _handleChange(self, value: float) -> None:
-        name = self.sender().objectName()
+    def _handleChange(self, name: str, value: float) -> None:
         self.model.properties = {name: value}
         self.propertyChanged.emit(name, value)
 
     def config(self) -> dict[str, LorenzMie.Properties]:
-        return {n: c.settings() for n, c in self.__dict__.items()
-                if isinstance(c, ParameterWidget)}
+        return {c.objectName(): c.settings() for c in self.controls}
 
     def setConfig(self, config: dict[str, LorenzMie.Properties]) -> None:
         self.controls = []

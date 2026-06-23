@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from datetime import datetime
+import logging
 from pathlib import Path
 import warnings
 import numpy as np
@@ -13,6 +14,8 @@ from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.theory import LorenzMie
+
+logger = logging.getLogger(__name__)
 
 
 class _Worker(QObject):
@@ -248,6 +251,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
 
     @pyqtSlot(str, object)
     def setSetting(self, name: str, value: LorenzMie.Property) -> None:
+        # fraction is a direct Optimizer attribute, not part of .settings
         if name == 'fraction':
             self.optimizer.fraction = value
         else:
@@ -264,13 +268,17 @@ class FitWidget(pg.GraphicsLayoutWidget):
         if self.result is None:
             return
         filename = filename or self._output_path()
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                'ignore', category=pd.errors.PerformanceWarning)
-            self.result.to_hdf(filename, 'result', mode='w')
-            metadata = self.optimizer.metadata
-            metadata['datafile'] = self.datafile
-            metadata.to_hdf(filename, 'metadata')
+        try:
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    'ignore', category=pd.errors.PerformanceWarning)
+                self.result.to_hdf(filename, 'result', mode='w')
+                metadata = self.optimizer.metadata
+                metadata['datafile'] = self.datafile
+                metadata.to_hdf(filename, 'metadata')
+        except ImportError:
+            logger.warning('tables not installed; saving as JSON instead')
+            self.saveJson(str(Path(filename).with_suffix('.json')))
 
     def saveJson(self, filename: str) -> None:
         if self.result is None:

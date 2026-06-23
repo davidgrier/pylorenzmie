@@ -50,6 +50,7 @@ class ProfileWidget(pg.PlotWidget):
 
     @properties.setter
     def properties(self, properties: dict[str, LorenzMie.Property]) -> None:
+        # Profile is always centred at the origin, so x_p/y_p are irrelevant.
         properties = {k: v for k, v in properties.items()
                       if k not in ('x_p', 'y_p')}
         if len(properties) == 0:
