@@ -10,6 +10,9 @@ For a user-oriented guide to launching and using the application, see
 .. automodule:: pylorenzmie.lmtool.LMWidget
    :members:
 
+.. automodule:: pylorenzmie.lmtool.ALMWidget
+   :members:
+
 .. automodule:: pylorenzmie.lmtool.ImageWidget
    :members:
 

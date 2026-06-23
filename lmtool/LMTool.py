@@ -60,6 +60,7 @@ class LMTool(QMainWindow):
         self.normalizer = normalizer if normalizer is not None else Normalizer()
         self._raw = None
         self._data = None
+        self.coordinates = None
         self._pre_estimate = None
         self._est_worker = None
         self._est_thread = None

@@ -99,6 +99,9 @@ class FitWidget(pg.GraphicsLayoutWidget):
                  coordinates: Coordinates) -> pd.Series:
         '''Fit the model to data and update the display.
 
+        Blocks the calling thread until the fit completes. For non-blocking
+        use in a GUI context call :meth:`optimizeAsync` instead.
+
         Parameters
         ----------
         data : ndarray
