@@ -86,6 +86,20 @@ It provides:
 **`Azimuthal`** — module of functions (`avg`, `std`, `med`, `mad`) that compute
 azimuthal statistics of 2-D images. Decorated with `@azimuthaloperator` so they
 accept `(data, center)` and handle coordinate generation internally.
+Radial geometry (integer-radius array, sort order, bin boundaries) is cached
+per `(shape, center)` via `lru_cache`; repeated calls on the same crop shape
+pay no recomputation cost.
+
+Other Python packages provide related functionality but do not substitute here:
+- **pyFAI** — high-performance azimuthal integration for X-ray/neutron
+  scattering; requires physical detector geometry and calibration, provides
+  mean and variance only, no `med`/`mad`.
+- **photutils** `RadialProfile` — concentric-annulus mean for astronomical
+  point sources; no `std`, `med`, or `mad`.
+- **scikit-image** `warp_polar` — remaps to polar coordinates (introduces
+  interpolation); azimuthal mean requires a separate `.mean(axis=1)` step.
+- **scipy.ndimage** — `ndimage.mean` matches `avg` but is marginally slower;
+  `ndimage.median` is ~40% slower than the current loop-based `med`.
 
 **`CircleTransform`** — ring-finding transform used by `Localizer` to detect
 holographic ring patterns.
