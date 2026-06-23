@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.typing import NDArray
 import pyqtgraph as pg
-from pyqtgraph.Qt.QtCore import (Qt, pyqtProperty, pyqtSlot)
+from pyqtgraph.Qt.QtCore import (Qt, pyqtProperty)
 
 from pylorenzmie.theory import LorenzMie
 
@@ -18,6 +18,7 @@ class ProfileWidget(pg.PlotWidget):
         self._configurePlot()
         self.model = LorenzMie() if model is None else model
         self._data = None
+        self._stdev = None
         self.radius = radius
 
     def _configurePlot(self) -> None:
@@ -101,10 +102,6 @@ class ProfileWidget(pg.PlotWidget):
         self.experiment.setData(data)
         self.upper.setData(data + stdev)
         self.lower.setData(data - stdev)
-
-    @pyqtSlot(str, float)
-    def setProperty(self, name: str, value: float) -> None:
-        self.model.properties = {name: value}
 
     @classmethod
     def example(cls) -> None:

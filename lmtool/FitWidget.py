@@ -8,10 +8,10 @@ import pandas as pd
 import pyqtgraph as pg
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
                                   QObject, QRectF, QThread)
+from pyqtgraph.Qt.QtGui import QShowEvent
 from pyqtgraph.Qt.QtWidgets import QFileDialog
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.analysis.Hologram import Hologram
-from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.theory import LorenzMie
 
@@ -57,6 +57,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self._data = None
         self.rect = None
         self._thread = None
+        self._worker = None
         self._opt_hologram = None
 
     def _configurePlot(self) -> None:
@@ -197,7 +198,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.region.setRect(rect)
         self._updateFitDisplay()
 
-    def showEvent(self, event) -> None:
+    def showEvent(self, event: QShowEvent) -> None:
         super().showEvent(event)
         self._updateFitDisplay()
 

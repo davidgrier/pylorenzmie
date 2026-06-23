@@ -11,6 +11,7 @@ import pandas as pd
 from pyqtgraph.Qt import uic
 from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot,
                                   QRectF, QSignalBlocker, QThread)
+from pyqtgraph.Qt.QtGui import QCloseEvent
 from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog, QProgressBar)
 
 from pylorenzmie.analysis import DEEstimator
@@ -53,7 +54,7 @@ class LMTool(QMainWindow):
     def __init__(self,
                  controls: type[LMWidget],
                  filename: str | None = None,
-                 normalizer: Normalizer | None = None):
+                 normalizer: Normalizer | None = None) -> None:
         super().__init__()
         uic.loadUi(_DIR / self.uiFile, self)
         self.normalizer = normalizer if normalizer is not None else Normalizer()
@@ -136,7 +137,12 @@ class LMTool(QMainWindow):
         if not filename:
             return
         self.fitWidget.datafile = filename
-        self.data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+        data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+        if data is None:
+            logger.error(f'Could not read image: {filename!r}')
+            self.statusBar().showMessage(f'Could not read: {filename}', 5000)
+            return
+        self.data = data.astype(float)
 
     @pyqtSlot()
     def readBackground(self, filename: str | None = None) -> None:
@@ -146,8 +152,14 @@ class LMTool(QMainWindow):
                               'Images (*.png *.tif *.tiff)')
         if not filename:
             return
-        bg = cv2.imread(filename, cv2.IMREAD_GRAYSCALE).astype(float)
+        bg = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+        if bg is None:
+            logger.error(f'Could not read background: {filename!r}')
+            self.statusBar().showMessage(
+                f'Could not read: {filename}', 5000)
+            return
         self.normalizer.method = 'reference'
+        bg = bg.astype(float)
         self.normalizer.reference = bg
         if self._raw is not None:
             self.data = self._raw
@@ -207,6 +219,8 @@ class LMTool(QMainWindow):
         if self._est_thread is not None and self._est_thread.isRunning():
             return
         props = self.controls.properties
+        # Save only the scalar physical parameters for undo; x_p/y_p are
+        # excluded because the user may have moved the ROI since estimating.
         self._pre_estimate = {k: props[k] for k in ('z_p', 'a_p', 'n_p')
                               if k in props}
         self.actionUndoEstimate.setEnabled(True)
@@ -268,7 +282,7 @@ class LMTool(QMainWindow):
         optimizer.robust = state
         self.optimizerWidget.settings = optimizer.settings
 
-    def closeEvent(self, event) -> None:
+    def closeEvent(self, event: QCloseEvent) -> None:
         if self._est_thread is not None and self._est_thread.isRunning():
             self._est_thread.quit()
             self._est_thread.wait()
