@@ -23,12 +23,10 @@
 
 ## estimation
 
-- [ ] **MLP estimator** (see ml section below for full spec): a small
-      scikit-learn `MLPRegressor` trained on synthetic azimuthal profiles gives
-      sub-millisecond inference at DE-quality accuracy. `RadialEstimator` (DE on
-      the 1D radial profile) reduces the per-iteration model cost (~10×) but
-      DE still runs many iterations, so wall-clock improvement on real data is
-      modest. The MLP is the step that actually breaks the seconds barrier.
+- [x] **MLP estimator**: `analysis/MLPEstimator.py` implemented; pre-trained
+      weights ship as `analysis/mlp_estimator.joblib` (bundled via
+      `package-data`). Retrain with `devel/train_mlp_estimator.py`.
+      `scikit-learn` and `joblib` added as core dependencies.
 
 ## lmtool
 
@@ -96,21 +94,11 @@
 
 ## ml
 
-- [ ] MLP estimator: train a small `MLPRegressor` (scikit-learn) on synthetic
-      azimuthal profiles to replace `DEEstimator` as the default fast initializer.
-      Input: 100-point radial average `b(r)` from `Azimuthal.avg`. Output: z_p,
-      a_p, n_p. Training data: millions of synthetic profiles from `LorenzMie` +
-      `Azimuthal.avg`, spanning the full physical bounds used by `DEEstimator`.
-      Inference: < 1 ms (vs. ~2 s for DE), matching the original Yevick et al.
-      (Opt. Express 22, 26884, 2014) SVM approach but with a single multi-output
-      MLP instead of three separate SVMs. Ship pre-trained weights for common
-      instrument configurations (447 nm laser, silica/PS in water, 0.048 μm/px).
-      Provide a `devel/train_mlp_estimator.py` script for retraining on custom
-      ranges. Fall back to `DEEstimator` when the MLP confidence is low or the
-      predicted values fall outside the training domain.
-      Current stepping-stone: `RadialEstimator` (DE on 1D azimuthal profile)
-      reduces per-iteration cost but not wall-clock time dramatically; the MLP
-      is the step that makes estimation genuinely fast.
+- [x] MLP estimator: implemented in `analysis/MLPEstimator.py`. Pre-trained
+      weights for 447 nm laser / 0.048 μm px / water shipped as
+      `analysis/mlp_estimator.joblib`. Retrain via `devel/train_mlp_estimator.py`
+      (caches generated data in `devel/mlp_training_data.npz` to avoid
+      regeneration on re-runs).
 - [ ] CNN characterization (CATCH revival): re-implement the CATCH compact CNN
       (Altman & Grier 2020/2023) in PyTorch. Input: normalized 201×201 hologram
       crop. Output: a_p, n_p, z_p. Train on synthetic holograms from the existing

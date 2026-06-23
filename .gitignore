@@ -9,3 +9,4 @@ plots
 .DS_Store
 *~
 *.txt
+devel/mlp_training_data.npz

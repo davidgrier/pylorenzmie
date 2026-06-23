@@ -49,6 +49,12 @@ RadialEstimator
 .. automodule:: pylorenzmie.analysis.RadialEstimator
    :members:
 
+MLPEstimator
+------------
+
+.. automodule:: pylorenzmie.analysis.MLPEstimator
+   :members:
+
 Optimizer
 ---------
 

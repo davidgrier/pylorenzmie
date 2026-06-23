@@ -35,6 +35,8 @@ dependencies = [
     "opencv-python",
     "pyqtgraph",
     "trackpy",
+    "scikit-learn",
+    "joblib",
 ]
 
 [project.urls]
@@ -64,7 +66,8 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"pylorenzmie.lmtool" = ["*.ui", "*.json"]
+"pylorenzmie.lmtool"     = ["*.ui", "*.json"]
+"pylorenzmie.analysis"   = ["*.joblib"]
 
 [tool.setuptools.package-dir]
 "pylorenzmie"            = "."
