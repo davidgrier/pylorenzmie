@@ -45,5 +45,5 @@ class TestCluster(unittest.TestCase):
         self.assertEqual(self.cluster[1], new_particles[1])
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

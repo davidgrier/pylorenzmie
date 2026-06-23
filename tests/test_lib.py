@@ -23,7 +23,7 @@ class TestAzimuthal(unittest.TestCase):
 
     def test_azistd(self) -> None:
         a, s = Azimuthal.std(self.data, (50, 45))
-        rad = int(np.hypot(50, + 45)) + 1
+        rad = int(np.hypot(50, 45)) + 1
         self.assertEqual(len(a), rad)
 
     def test_azimad(self) -> None:
@@ -64,5 +64,5 @@ class TestLMObjectEquality(unittest.TestCase):
         self.assertNotEqual(s, i)
 
 
-if __name__ == '__main__':
+if __name__ == '__main__':  # pragma: no cover
     unittest.main()

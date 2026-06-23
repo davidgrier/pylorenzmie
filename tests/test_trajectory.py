@@ -36,7 +36,8 @@ class TestTrajectory(unittest.TestCase):
         self.assertEqual(len(self.trajectory.data), 0)
 
     def test_to_csv(self):
-        import tempfile, os
+        import tempfile
+        import os
         df = pd.DataFrame({'a_p': [1.1], 'z_p': [100.]})
         self.trajectory.append(df)
         with tempfile.NamedTemporaryFile(suffix='.csv', delete=False) as f:
