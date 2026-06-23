@@ -2,9 +2,8 @@ import unittest
 import numpy as np
 import pandas as pd
 
+from pylorenzmie.analysis import BaseEstimator, Hologram
 from pylorenzmie.analysis.DEEstimator import DEEstimator, DEFAULT_BOUNDS
-from pylorenzmie.analysis.BaseEstimator import BaseEstimator
-from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie
 from pylorenzmie.lib import LMObject
 
@@ -92,6 +91,22 @@ class TestDEEstimator(unittest.TestCase):
         result = custom.estimate(self.hologram)
         self.assertGreaterEqual(result['z_p'], 150.)
         self.assertLessEqual(result['z_p'], 250.)
+
+    def test_exclude_filters_pixels(self):
+        '''exclude array is honoured: excluded pixels are not sampled.'''
+        shape = self.hologram.shape
+        exclude = np.zeros(shape, dtype=bool)
+        exclude[:, shape[1] // 2:] = True  # exclude right half
+        estimator = DEEstimator(
+            model=self.model, seed=0, exclude=exclude)
+        estimator.settings['maxiter'] = 1
+        estimator.settings['workers'] = 1
+        result = estimator.estimate(self.hologram)
+        self.assertIsInstance(result, pd.Series)
+
+    def test_exclude_none_by_default(self):
+        '''exclude defaults to None.'''
+        self.assertIsNone(self.estimator.exclude)
 
 
 if __name__ == '__main__':  # pragma: no cover

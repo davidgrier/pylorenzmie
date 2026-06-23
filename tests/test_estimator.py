@@ -1,11 +1,10 @@
 import unittest
 import numpy as np
 import pandas as pd
+import cv2
 from pathlib import Path
 
-from pylorenzmie.analysis.Estimator import Estimator
-from pylorenzmie.analysis.Hologram import Hologram
-from pylorenzmie.analysis.BaseEstimator import BaseEstimator
+from pylorenzmie.analysis import Estimator, Hologram, BaseEstimator
 from pylorenzmie.theory import Instrument
 
 
@@ -16,7 +15,6 @@ TEST_IMAGE = THIS_DIR / 'data' / 'crop.png'
 class TestEstimator(unittest.TestCase):
 
     def setUp(self):
-        import cv2
         self.instrument = Instrument()
         self.estimator = Estimator(instrument=self.instrument)
         data = cv2.imread(str(TEST_IMAGE), cv2.IMREAD_GRAYSCALE)

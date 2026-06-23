@@ -88,6 +88,16 @@ class TestMask(unittest.TestCase):
         np.testing.assert_array_equal(data, hologram.data[m])
         np.testing.assert_array_equal(coords, hologram.coordinates[:, m])
 
+    def test_apply_respects_exclude(self):
+        '''apply does not return pixels marked in exclude.'''
+        hologram = Hologram(np.random.rand(*self.shape))
+        exclude = np.zeros(self.shape, dtype=bool)
+        exclude[0, :] = True  # exclude entire top row (y == 0)
+        self.mask.fraction = 1.
+        self.mask.exclude = exclude
+        _, coords = self.mask.apply(hologram)
+        self.assertFalse(np.any(coords[1] == 0.))
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()
