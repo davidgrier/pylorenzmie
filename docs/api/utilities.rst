@@ -10,8 +10,5 @@ Utilities (``pylorenzmie.utilities``)
 .. automodule:: pylorenzmie.utilities.vmedian
    :members:
 
-.. automodule:: pylorenzmie.utilities.h5video
-   :members:
-
 .. automodule:: pylorenzmie.utilities.water
    :members:

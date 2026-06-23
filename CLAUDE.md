@@ -154,9 +154,8 @@ interactive fitting, and displays results.
 ### `utilities/` — Helpers
 
 Image normalization (`normalize_image.py`), running statistics
-(`running_normal.py`, `vmedian.py`), HDF5 video I/O (`h5video.py`),
-water refractive index (`water.py`), geometry utilities (`geometry.py`),
-visualization helpers (`visualization.py`).
+(`running_normal.py`, `vmedian.py`), water refractive index (`water.py`),
+geometry utilities (`geometry.py`), visualization helpers (`visualization.py`).
 
 ## Test conventions
 
