@@ -27,17 +27,9 @@ jobs:
           for i in $(seq 1 10); do
             RECORD=$(curl -s \
               "https://zenodo.org/api/records?q=related.identifier:\"${URL}\"&sort=mostrecent&size=1")
-            DOI=$(echo "$RECORD" | python3 -c "
-import sys, json
-hits = json.load(sys.stdin).get('hits', {}).get('hits', [])
-print(hits[0].get('doi', '') if hits else '', end='')
-")
+            DOI=$(echo "$RECORD" | jq -r '.hits.hits[0].doi // ""')
             if [ -n "$DOI" ]; then
-              CONCEPT_DOI=$(echo "$RECORD" | python3 -c "
-import sys, json
-hits = json.load(sys.stdin).get('hits', {}).get('hits', [])
-print(hits[0].get('conceptdoi', '') if hits else '', end='')
-")
+              CONCEPT_DOI=$(echo "$RECORD" | jq -r '.hits.hits[0].conceptdoi // ""')
               echo "Found version DOI:  $DOI"
               echo "Found concept DOI: $CONCEPT_DOI"
               echo "doi=$DOI" >> "$GITHUB_OUTPUT"
