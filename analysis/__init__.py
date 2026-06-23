@@ -2,6 +2,7 @@ from .Localizer import Localizer
 from .BaseEstimator import BaseEstimator
 from .Estimator import Estimator
 from .DEEstimator import DEEstimator
+from .RadialEstimator import RadialEstimator
 from .Optimizer import Optimizer
 try:
     from .cupyOptimizer import cupyOptimizer
@@ -14,6 +15,7 @@ from .Frame import Frame
 from .Trajectory import Trajectory
 from .Hologram import Hologram
 
-__all__ = ['Hologram', 'Localizer', 'BaseEstimator', 'Estimator', 'DEEstimator', 'Optimizer',
+__all__ = ['Hologram', 'Localizer', 'BaseEstimator', 'Estimator',
+           'DEEstimator', 'RadialEstimator', 'Optimizer',
            'cupyOptimizer', 'Mask', 'RadialMask', 'Feature', 'Frame',
            'Trajectory']

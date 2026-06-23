@@ -43,6 +43,12 @@ DEEstimator
 .. automodule:: pylorenzmie.analysis.DEEstimator
    :members:
 
+RadialEstimator
+---------------
+
+.. automodule:: pylorenzmie.analysis.RadialEstimator
+   :members:
+
 Optimizer
 ---------
 
