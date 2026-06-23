@@ -5,6 +5,8 @@ from numpy.typing import NDArray
 from scipy.fft import fft2, ifft2, fftshift
 from scipy.signal import savgol_filter
 
+__all__ = ['CircleTransform', 'circletransform']
+
 
 class CircleTransform:
     '''Transform an image to emphasize ring-like holographic features.
@@ -37,7 +39,7 @@ class CircleTransform:
         ny, nx = shape
         kx = fftshift(np.linspace(-1., 1, nx, endpoint=False))
         ky = fftshift(np.linspace(-1., 1, ny, endpoint=False))
-        k = np.hypot.outer(ky, kx) + 0.001
+        k = np.hypot.outer(ky, kx) + 0.001  # epsilon avoids DC singularity
         kernel = np.subtract.outer(1.j * ky, kx) / k
         kernel *= kernel / k
         self._kernel = kernel
@@ -95,7 +97,7 @@ def example() -> None:  # pragma: no cover
     import matplotlib.pyplot as plt
     from pylorenzmie.utilities import example_hologram
 
-    a = example_hologram('image0400.png')
+    a = example_hologram('image0400.png').data
     b = circletransform(a)
     fig, (axa, axb) = plt.subplots(nrows=2, sharex=True, sharey=True)
     axa.imshow(a, cmap='gray')
