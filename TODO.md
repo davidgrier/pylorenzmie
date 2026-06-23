@@ -26,16 +26,9 @@
 - [ ] **MLP estimator** (see ml section below for full spec): a small
       scikit-learn `MLPRegressor` trained on synthetic azimuthal profiles gives
       sub-millisecond inference at DE-quality accuracy. `RadialEstimator` (DE on
-      the 1D radial profile) is the current best-available intermediate: ~10×
-      faster than `DEEstimator`, same accuracy. The MLP would be another ~1000×
-      faster still.
-
-- [ ] **Warm-started DE**: when `Estimator` produces a plausible result (i.e.
-      z_p > 0 and a_p > 0), use it to seed the initial DE population within a
-      tight neighborhood (e.g. ±20% of the estimate) rather than sampling the
-      full prior volume. This can cut DE iterations dramatically on clean data
-      while falling back gracefully to a full search when `Estimator` fails.
-      Implement as an option in both `DEEstimator` and `RadialEstimator`.
+      the 1D radial profile) reduces the per-iteration model cost (~10×) but
+      DE still runs many iterations, so wall-clock improvement on real data is
+      modest. The MLP is the step that actually breaks the seconds barrier.
 
 ## lmtool
 
@@ -115,8 +108,9 @@
       Provide a `devel/train_mlp_estimator.py` script for retraining on custom
       ranges. Fall back to `DEEstimator` when the MLP confidence is low or the
       predicted values fall outside the training domain.
-      Current stepping-stone: `RadialEstimator` (DE on 1D azimuthal profile,
-      ~10× faster than `DEEstimator`) bridges the gap until the MLP is trained.
+      Current stepping-stone: `RadialEstimator` (DE on 1D azimuthal profile)
+      reduces per-iteration cost but not wall-clock time dramatically; the MLP
+      is the step that makes estimation genuinely fast.
 - [ ] CNN characterization (CATCH revival): re-implement the CATCH compact CNN
       (Altman & Grier 2020/2023) in PyTorch. Input: normalized 201×201 hologram
       crop. Output: a_p, n_p, z_p. Train on synthetic holograms from the existing
