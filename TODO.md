@@ -1,5 +1,42 @@
 # TODO
 
+## normalization
+
+- [ ] **Temporal background estimation**: connect `VMedian` to `Normalizer` as a
+      `'running'` method. For video data, `VMedian` already accumulates the
+      per-pixel temporal median across frames; when particles diffuse, each pixel
+      alternates between seeing a particle and seeing clear background, so the
+      temporal median converges to the background. Expose this as
+      `Normalizer(method='running')` that wraps a `VMedian` instance, updates it
+      on each `__call__`, and uses the current running estimate as the reference.
+      This is the most reliable single-image-source background method available
+      and requires no dedicated reference frame.
+
+- [ ] **Faster single-image background estimation**: replace or supplement the
+      `'filter'` method (51-px median filter; slow on large images) with a large
+      Gaussian blur or a low-degree 2D polynomial fit. Both are significantly
+      faster, handle illumination gradients robustly, and do not leak fringe
+      structure into the background estimate when fringe spacing is coarse.
+      Gaussian blur: `scipy.ndimage.gaussian_filter(image, sigma=25)`.
+      Polynomial fit: `numpy.polynomial.polynomial.polyfit2d` on a downsampled
+      version of the image, then evaluate on the full grid.
+
+## estimation
+
+- [ ] **MLP estimator** (see ml section below for full spec): a small
+      scikit-learn `MLPRegressor` trained on synthetic azimuthal profiles gives
+      sub-millisecond inference at DE-quality accuracy. `RadialEstimator` (DE on
+      the 1D radial profile) is the current best-available intermediate: ~10×
+      faster than `DEEstimator`, same accuracy. The MLP would be another ~1000×
+      faster still.
+
+- [ ] **Warm-started DE**: when `Estimator` produces a plausible result (i.e.
+      z_p > 0 and a_p > 0), use it to seed the initial DE population within a
+      tight neighborhood (e.g. ±20% of the estimate) rather than sampling the
+      full prior volume. This can cut DE iterations dramatically on clean data
+      while falling back gracefully to a full search when `Estimator` fails.
+      Implement as an option in both `DEEstimator` and `RadialEstimator`.
+
 ## lmtool
 
 - [ ] Localizer integration: detect candidate particles in the image; let the
@@ -78,6 +115,8 @@
       Provide a `devel/train_mlp_estimator.py` script for retraining on custom
       ranges. Fall back to `DEEstimator` when the MLP confidence is low or the
       predicted values fall outside the training domain.
+      Current stepping-stone: `RadialEstimator` (DE on 1D azimuthal profile,
+      ~10× faster than `DEEstimator`) bridges the gap until the MLP is trained.
 - [ ] CNN characterization (CATCH revival): re-implement the CATCH compact CNN
       (Altman & Grier 2020/2023) in PyTorch. Input: normalized 201×201 hologram
       crop. Output: a_p, n_p, z_p. Train on synthetic holograms from the existing
@@ -99,12 +138,9 @@
 
 ## api
 
-- [ ] `Hologram` class: pair normalized image data with pixel coordinates so that
-      cropping always yields a consistent (data, coordinates) pair. Implement
-      `__getitem__` for coordinate-aware slicing (`hologram[y0:y1, x0:x1]`).
-      Would simplify `Feature`, `Frame`, and `FitWidget` by collapsing every
-      `(data, coordinates)` argument pair into a single object. Sketch in
-      `devel/Hologram.py`; revisit when the public API is stabilized.
+- [x] `Hologram` class: implemented in v1.2.0. Pairs normalized image data with
+      pixel coordinates; `__getitem__` for coordinate-aware slicing; used
+      throughout `Feature`, `Frame`, and `FitWidget`.
 
 ## infrastructure
 
