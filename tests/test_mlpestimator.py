@@ -71,16 +71,17 @@ class TestMLPEstimatorMocked(unittest.TestCase):
         args, _ = self.mock_pipe.predict.call_args
         self.assertEqual(args[0].shape, (1, n))
 
-    def test_short_profile_padded_with_ones(self):
-        '''Profiles shorter than n_features are padded with 1.0.'''
+    def test_short_profile_padded_with_zeros(self):
+        '''Profiles shorter than n_features are zero-padded (sentinel for no data).'''
         tiny = Hologram(self.hologram.data[:10, :10])
         self.estimator.estimate(tiny)
         args, _ = self.mock_pipe.predict.call_args
         features = args[0][0]
         n = self.estimator.n_features
         self.assertEqual(len(features), n)
-        # All values should be finite
-        self.assertTrue(np.isfinite(features).all())
+        # A 10x10 crop gives a very short profile; verify the tail is zero.
+        # We check from index 15 to be insensitive to the exact profile length.
+        self.assertTrue((features[15:] == 0.0).all())
 
     def test_z_p_clipped_low(self):
         '''z_p predictions below the clip floor are clipped to 10.'''
