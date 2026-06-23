@@ -63,6 +63,7 @@ class ProfileWidget(pg.PlotWidget):
 
     @model.setter
     def model(self, model: LorenzMie) -> None:
+        # Profile is always computed at the origin; zero the position in-place.
         model.x_p = 0.0
         model.y_p = 0.0
         self._model = model

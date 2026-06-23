@@ -58,12 +58,12 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
     @data.setter
     def data(self, data: NDArray[float]) -> None:
-        prev_shape = getattr(self, '_data', None)
+        prev_data = getattr(self, '_data', None)
         self._data = data
         self.image.setImage(data)
         h, w = data.shape
         self.image.setRect(QRectF(0, 0, w, h))
-        if prev_shape is None or prev_shape.shape != data.shape:
+        if prev_data is None or prev_data.shape != data.shape:
             self.roi.setPos([0, 0])
             self.roi.setSize([200, 200])
 

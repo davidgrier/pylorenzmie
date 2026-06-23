@@ -8,7 +8,7 @@ class DoubleSpinBox(QDoubleSpinBox):
     buttonClicked = pyqtSignal(float)
     editingFinished = pyqtSignal(float)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         super().editingFinished.connect(self._editingFinished)
 

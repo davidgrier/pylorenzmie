@@ -9,35 +9,18 @@ logger = logging.getLogger(__name__)
 
 
 class DoubleSlider(QSlider):
-    '''Slider widget for double-precision floating point values
+    '''QSlider with a floating-point value range.
 
-    ...
+    Maps the integer slider position to a float in ``[minimum, maximum]``
+    and emits ``valueChanged[float]`` rather than ``valueChanged[int]``.
 
-    Methods
-    -------
-    value() : float
-        Returns current floating point value
-    setMinimum(value) :
-        Set minimum floating point value
-    setMaximum(value) :
-        Set maximum floating point value
-    setRange(minimum, maximum) :
-        Set floating point range of slider
-    setSingleStep(value) :
-        Set value change associated with single slider step
-
-    Signals
-    -------
-    valueChanged[float] :
-        Overloaded signal containing current value
-
-    Slots
-    -----
-    setValue(value: float) :
-        Overloaded slot for setting current value
+    Parameters
+    ----------
+    minimum : float, optional
+        Lower bound of the float range. Default 0.0.
+    maximum : float, optional
+        Upper bound of the float range. Default 100.0.
     '''
-
-    __pyqtSignals__ = ('valueChanged(float)',)
 
     valueChanged = pyqtSignal(float)
 
@@ -67,22 +50,10 @@ class DoubleSlider(QSlider):
         self.valueChanged[float].emit(self._i2f(value))
 
     def value(self) -> float:
-        '''Current floating point value
-
-        Returns
-        -------
-        value : float
-        '''
         return self._i2f(super().value())
 
     @pyqtSlot(float)
     def setValue(self, value: float) -> None:
-        '''Set slider value programmatically
-
-        Parameters
-        ----------
-        value : float
-        '''
         value = float(np.clip(value, self._minimum, self._maximum))
         super().setValue(self._f2i(value))
 
@@ -90,12 +61,6 @@ class DoubleSlider(QSlider):
         return self._minimum
 
     def setMinimum(self, minimum: float) -> None:
-        '''Set minimum end of slider range
-
-        Parameters
-        ----------
-        minimum : float
-        '''
         if minimum > self._maximum:
             logger.warning(f'{minimum} > maximum ({self._maximum})')
             return
@@ -106,12 +71,6 @@ class DoubleSlider(QSlider):
         return self._maximum
 
     def setMaximum(self, maximum: float) -> None:
-        '''Set maximum end of slider range
-
-        Parameters
-        ----------
-        maximum : float
-        '''
         if maximum < self._minimum:
             logger.warning(f'{maximum} < minimum ({self._minimum})')
             return
@@ -119,23 +78,10 @@ class DoubleSlider(QSlider):
         self.setValue(self.value())
 
     def setRange(self, minimum: float, maximum: float) -> None:
-        '''Set minimum and maximum of slider range
-
-        Parameters
-        ----------
-        minimum : float
-        maximum : float
-        '''
         self.setMinimum(minimum)
         self.setMaximum(maximum)
 
     def setSingleStep(self, value: float) -> None:
-        '''Set value change associated with single slider step
-
-        Parameters
-        ----------
-        value : float
-        '''
         span = self._maximum - self._minimum
         int_step = max(1, int(value / span * (self._imax - self._imin)))
         super().setSingleStep(int_step)

@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 import warnings
@@ -14,21 +15,21 @@ from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.theory import LorenzMie
 
 
-class _OptimizeWorker(QObject):
-    '''Runs scipy optimization in a background thread.'''
+class _Worker(QObject):
+    '''Background thread worker for a single-argument callable.'''
 
-    finished = pyqtSignal(object)  # pd.Series
+    finished = pyqtSignal(object)
     error = pyqtSignal(str)
 
-    def __init__(self, optimizer: Optimizer, hologram: Hologram) -> None:
+    def __init__(self, fn: Callable, arg: object) -> None:
         super().__init__()
-        self._optimizer = optimizer
-        self._hologram = hologram
+        self._fn = fn
+        self._arg = arg
 
     @pyqtSlot()
     def run(self) -> None:
         try:
-            self.finished.emit(self._optimizer.optimize(self._hologram))
+            self.finished.emit(self._fn(self._arg))
         except Exception as e:
             self.error.emit(str(e))
 
@@ -53,6 +54,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self._data = None
         self.rect = None
         self._thread = None
+        self._opt_hologram = None
 
     def _configurePlot(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -136,7 +138,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.optimizer.mask.exclude = (data == np.max(data))
         self._opt_hologram = hologram
         self._data = data
-        worker = _OptimizeWorker(self.optimizer, hologram)
+        worker = _Worker(self.optimizer.optimize, hologram)
         thread = QThread()
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
@@ -251,7 +253,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         else:
             self.optimizer.settings[name] = value
 
-    def filename(self) -> str:
+    def _output_path(self) -> str:
         directory = Path('~/data/lmtool').expanduser()
         directory.mkdir(exist_ok=True)
         timestamp = datetime.now().strftime('%m_%d_%Y-%H_%M_%S')
@@ -261,7 +263,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
     def saveResult(self, filename: str | None = None) -> None:
         if self.result is None:
             return
-        filename = filename or self.filename()
+        filename = filename or self._output_path()
         with warnings.catch_warnings():
             warnings.filterwarnings(
                 'ignore', category=pd.errors.PerformanceWarning)
@@ -281,11 +283,12 @@ class FitWidget(pg.GraphicsLayoutWidget):
     def saveResultAs(self) -> None:
         get = QFileDialog.getSaveFileName
         filename, _ = get(self, 'Save Results',
-                          self.filename(),
+                          self._output_path(),
                           'HDF5 (*.h5);;JSON (*.json)')
         if not filename:
             return
-        if '.h5' in filename:
+        suffix = Path(filename).suffix
+        if suffix == '.h5':
             self.saveResult(filename)
-        elif '.json' in filename:
+        elif suffix == '.json':
             self.saveJson(filename)

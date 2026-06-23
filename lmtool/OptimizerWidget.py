@@ -62,8 +62,8 @@ class OptimizerWidget(ParameterTree):
             self.params.child('loss').setOpts(enabled=True)
 
     def _connectSignals(self) -> None:
-        p = self.params.child('method')
-        p.sigValueChanged.connect(self._updateLoss)
+        method_param = self.params.child('method')
+        method_param.sigValueChanged.connect(self._updateLoss)
         for p in self.params:
             p.sigValueChanged.connect(self._handleValueChanged)
 

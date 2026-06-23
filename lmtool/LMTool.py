@@ -9,39 +9,21 @@ import cv2
 import numpy as np
 import pandas as pd
 from pyqtgraph.Qt import uic
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
-                                  QObject, QRectF, QSignalBlocker, QThread)
+from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot,
+                                  QRectF, QSignalBlocker, QThread)
 from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog, QProgressBar)
 
 from pylorenzmie.analysis import DEEstimator
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
+from pylorenzmie.lmtool.FitWidget import _Worker
 from pylorenzmie.lmtool.LMWidget import LMWidget
 from pylorenzmie.utilities import Normalizer
 
 _DIR = Path(__file__).parent
 
 logger = logging.getLogger(__name__)
-
-
-class _EstimateWorker(QObject):
-    '''Runs DEEstimator in a background thread.'''
-
-    finished = pyqtSignal(object)  # pd.Series
-    error = pyqtSignal(str)
-
-    def __init__(self, estimator: DEEstimator, hologram: Hologram) -> None:
-        super().__init__()
-        self._estimator = estimator
-        self._hologram = hologram
-
-    @pyqtSlot()
-    def run(self) -> None:
-        try:
-            self.finished.emit(self._estimator.estimate(self._hologram))
-        except Exception as e:
-            self.error.emit(str(e))
 
 
 # TODO: interactive residuals (currently only updates after fits)
@@ -122,6 +104,13 @@ class LMTool(QMainWindow):
         self.fitWidget.optimizationStarted.connect(self._onOptimizationStarted)
         self.fitWidget.optimizationFinished.connect(self._onOptimizationFinished)
         self.fitWidget.optimizationError.connect(self._onOptimizationError)
+
+    def _setUIBusy(self, busy: bool) -> None:
+        self._progress.setVisible(busy)
+        self.controls.setEnabled(not busy)
+        self.imageWidget.setEnabled(not busy)
+        self.actionOptimize.setEnabled(not busy)
+        self.actionEstimate.setEnabled(not busy)
 
     @pyqtProperty(np.ndarray)
     def data(self) -> Image:
@@ -225,7 +214,7 @@ class LMTool(QMainWindow):
         hologram = Hologram._from_slice(data, coordinates)
         model = self.fitWidget.optimizer.model
         estimator = DEEstimator(model=model)
-        worker = _EstimateWorker(estimator, hologram)
+        worker = _Worker(estimator.estimate, hologram)
         thread = QThread()
         worker.moveToThread(thread)
         thread.started.connect(worker.run)
@@ -237,20 +226,12 @@ class LMTool(QMainWindow):
         self._est_worker = worker
         self._est_thread = thread
         thread.start()
-        self.actionEstimate.setEnabled(False)
-        self.actionOptimize.setEnabled(False)
-        self.controls.setEnabled(False)
-        self.imageWidget.setEnabled(False)
-        self._progress.setVisible(True)
+        self._setUIBusy(True)
         self.statusBar().showMessage('Estimating...')
 
     @pyqtSlot(object)
     def _onEstimationFinished(self, result: pd.Series) -> None:
-        self._progress.setVisible(False)
-        self.controls.setEnabled(True)
-        self.imageWidget.setEnabled(True)
-        self.actionOptimize.setEnabled(True)
-        self.actionEstimate.setEnabled(True)
+        self._setUIBusy(False)
         updates = {k: float(result[k]) for k in ('z_p', 'a_p', 'n_p')
                    if k in result
                    and result[k] is not None
@@ -263,11 +244,7 @@ class LMTool(QMainWindow):
 
     @pyqtSlot(str)
     def _onEstimationError(self, message: str) -> None:
-        self._progress.setVisible(False)
-        self.controls.setEnabled(True)
-        self.imageWidget.setEnabled(True)
-        self.actionOptimize.setEnabled(True)
-        self.actionEstimate.setEnabled(True)
+        self._setUIBusy(False)
         logger.error(f'Estimation failed: {message}')
         self.statusBar().showMessage(f'Estimation failed: {message}', 5000)
 
@@ -311,31 +288,19 @@ class LMTool(QMainWindow):
 
     @pyqtSlot()
     def _onOptimizationStarted(self) -> None:
-        self.actionOptimize.setEnabled(False)
-        self.actionEstimate.setEnabled(False)
-        self.controls.setEnabled(False)
-        self.imageWidget.setEnabled(False)
-        self._progress.setVisible(True)
+        self._setUIBusy(True)
         self.statusBar().showMessage('Optimizing...')
 
     @pyqtSlot(object)
     def _onOptimizationFinished(self, result: pd.Series) -> None:
-        self._progress.setVisible(False)
-        self.controls.setEnabled(True)
-        self.imageWidget.setEnabled(True)
-        self.actionOptimize.setEnabled(True)
-        self.actionEstimate.setEnabled(True)
+        self._setUIBusy(False)
         self.controls.properties = self.fitWidget.optimizer.model.properties
         logger.info(f'Optimization complete\n{result}')
         self.statusBar().showMessage('Optimization complete', 2000)
 
     @pyqtSlot(str)
     def _onOptimizationError(self, message: str) -> None:
-        self._progress.setVisible(False)
-        self.controls.setEnabled(True)
-        self.imageWidget.setEnabled(True)
-        self.actionOptimize.setEnabled(True)
-        self.actionEstimate.setEnabled(True)
+        self._setUIBusy(False)
         logger.error(f'Optimization failed: {message}')
         self.statusBar().showMessage(f'Optimization failed: {message}', 5000)
 
