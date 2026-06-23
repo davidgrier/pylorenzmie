@@ -32,7 +32,10 @@ class Optimizer(LMObject):
         Default: ``False``.
     fixed : list[str], optional
         Names of model properties held constant during fitting.
-        Default: ``['noise', 'numerical_aperture']``.
+        Default: all instrument parameters plus ``k_p``
+        (``wavelength``, ``magnification``, ``numerical_aperture``,
+        ``n_m``, ``noise``, ``k_p``), leaving only the five particle
+        parameters (``x_p``, ``y_p``, ``z_p``, ``a_p``, ``n_p``) free.
     settings : dict, optional
         Keyword arguments forwarded to ``scipy.optimize.least_squares``.
         Defaults to sensible values for holographic particle fitting.
@@ -62,7 +65,8 @@ class Optimizer(LMObject):
             raise TypeError('Model not compatible with Optimizer')
         self.mask = mask
         self.settings = settings
-        self.fixed = fixed if fixed is not None else ['noise', 'numerical_aperture']
+        default_fixed = 'wavelength magnification numerical_aperture n_m noise k_p'.split()
+        self.fixed = fixed if fixed is not None else default_fixed
         self.robust = robust
         self._data: Image | None = None
         self._result = None
@@ -281,8 +285,7 @@ class Optimizer(LMObject):
         noise = model.instrument.noise * np.random.normal(size=shape)
         data = model.hologram().reshape(shape) + noise
         hologram = Hologram(data)
-        fixed = 'wavelength magnification numerical_aperture n_m noise k_p'.split()
-        a = cls(model=model, fixed=fixed, **kwargs)
+        a = cls(model=model, **kwargs)
         settings = a.settings
         settings['method'] = 'trf'
         settings['loss'] = 'cauchy'
