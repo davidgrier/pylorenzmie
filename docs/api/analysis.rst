@@ -1,6 +1,12 @@
 Analysis (``pylorenzmie.analysis``)
 =====================================
 
+Hologram
+--------
+
+.. automodule:: pylorenzmie.analysis.Hologram
+   :members:
+
 Mask
 ----
 
@@ -19,10 +25,22 @@ Localizer
 .. automodule:: pylorenzmie.analysis.Localizer
    :members:
 
+BaseEstimator
+-------------
+
+.. automodule:: pylorenzmie.analysis.BaseEstimator
+   :members:
+
 Estimator
 ---------
 
 .. automodule:: pylorenzmie.analysis.Estimator
+   :members:
+
+DEEstimator
+-----------
+
+.. automodule:: pylorenzmie.analysis.DEEstimator
    :members:
 
 Optimizer
