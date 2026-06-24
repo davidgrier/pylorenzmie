@@ -11,12 +11,24 @@ from pylorenzmie.theory.Sphere import Sphere
 from pylorenzmie.lib.lmtypes import Coefficients, Coordinates, Field
 import numpy as np
 
+import logging as _logging
+
 try:
     import jax
     import jax.numpy as jnp
     jax.config.update('jax_enable_x64', True)
+    # Verify the active backend can execute a trivial float64 op.
+    # jax-metal built against older StableHLO raises JaxRuntimeError here.
+    jax.jit(lambda x: x)(jnp.array(1.0))
     _jax_available = True
 except ImportError:
+    _jax_available = False
+except Exception as _e:
+    _logging.getLogger(__name__).warning(
+        'JAX backend "%s" failed a smoke test (%s); '
+        'falling back to NumPy.  Check that jax-metal / jax-cuda '
+        'matches your JAX version.',
+        jax.default_backend(), _e)
     _jax_available = False
 
 
