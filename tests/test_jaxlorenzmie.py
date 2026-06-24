@@ -95,6 +95,11 @@ class TestJaxLorenzMie(unittest.TestCase):
             with self.subTest(param=name):
                 np.testing.assert_allclose(J[name], fd, rtol=3e-4, atol=1e-8)
 
+    def test_jac_params(self) -> None:
+        self.assertIsInstance(self.model.jac_params, frozenset)
+        self.assertSetEqual(self.model.jac_params,
+                            {'x_p', 'y_p', 'z_p', 'a_p', 'n_p'})
+
     def test_repr(self) -> None:
         r = repr(self.model)
         self.assertIsInstance(r, str)

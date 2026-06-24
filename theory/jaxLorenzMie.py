@@ -313,6 +313,7 @@ class jaxLorenzMie(LorenzMie):
     '''
 
     method: str = 'jax numpy'
+    jac_params: frozenset = frozenset({'x_p', 'y_p', 'z_p', 'a_p', 'n_p'})
 
     def _compute_nmax(self) -> int:
         # Use the unscaled (rad/μm) wavenumber — same as Sphere.mie_coefficients

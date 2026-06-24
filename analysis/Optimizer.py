@@ -214,7 +214,11 @@ class Optimizer(LMObject):
         else:
             self._data, self.model.coordinates = self.mask.apply(hologram)
         p0 = np.array([self.model.properties[p] for p in self.variables])
-        self._result = least_squares(self._residuals, p0, **self.settings)
+        settings = dict(self.settings)
+        jac_params = getattr(self.model, 'jac_params', None)
+        if jac_params is not None and set(self.variables) <= jac_params:
+            settings['jac'] = self._analytical_jac
+        self._result = least_squares(self._residuals, p0, **settings)
         return self.result
 
     def report(self) -> str:
@@ -243,6 +247,12 @@ class Optimizer(LMObject):
         lines += [f'npixels = {result.npix:.0f}',
                   f'χ² = {result.redchi:.2f}']
         return '\n'.join(lines)
+
+    def _analytical_jac(self, values: NDArray[float]) -> NDArray[float]:
+        self.model.properties = dict(zip(self.variables, values))
+        J = self.model.jac()
+        noise = self.model.instrument.noise
+        return np.column_stack([J[p] for p in self.variables]) / noise
 
     def _residuals(self, values: NDArray[float]) -> Image:
         self.model.properties = dict(zip(self.variables, values))
