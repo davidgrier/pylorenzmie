@@ -3,7 +3,7 @@ from numpy.typing import NDArray
 import pyqtgraph as pg
 from pyqtgraph.Qt.QtCore import (Qt, pyqtProperty)
 
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory import LorenzMie, best_model
 
 
 class ProfileWidget(pg.PlotWidget):
@@ -16,7 +16,7 @@ class ProfileWidget(pg.PlotWidget):
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._configurePlot()
-        self.model = LorenzMie() if model is None else model
+        self.model = best_model() if model is None else model
         self._data = None
         self._stdev = None
         self.radius = radius

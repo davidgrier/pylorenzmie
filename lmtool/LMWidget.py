@@ -6,7 +6,7 @@ from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtProperty)
 from pyqtgraph.Qt.QtWidgets import QFrame
 
 from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory import LorenzMie, best_model
 
 _DIR = Path(__file__).parent
 
@@ -19,7 +19,7 @@ class LMWidget(QFrame):
     Emits :attr:`propertyChanged` whenever any parameter value changes.
     '''
 
-    cls = LorenzMie
+    cls = staticmethod(best_model)
     uiFile = 'LMWidget.ui'
     configFile = 'LMTool.json'
 
