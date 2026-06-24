@@ -98,6 +98,24 @@ class TestMask(unittest.TestCase):
         _, coords = self.mask.apply(hologram)
         self.assertFalse(np.any(coords[1] == 0.))
 
+    def test_exclude_before_shape_change_does_not_raise(self):
+        '''Setting exclude for a new shape before apply() does not crash.
+
+        Regression: FitWidget sets mask.exclude from the incoming crop
+        before optimizer.optimize() calls mask.apply(), which updates
+        mask.shape.  If the crop size changed between calls the old
+        mask shape and the new exclude shape disagreed, causing an
+        IndexError in update().
+        '''
+        new_shape = (self.shape[0] + 1, self.shape[1])
+        exclude = np.zeros(new_shape, dtype=bool)
+        exclude[0, :] = True
+        self.mask.exclude = exclude   # shape mismatch — must not raise
+        hologram = Hologram(np.random.rand(*new_shape))
+        self.mask.fraction = 1.
+        data, coords = self.mask.apply(hologram)
+        self.assertFalse(np.any(coords[1] == 0.))
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

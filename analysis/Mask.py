@@ -76,7 +76,7 @@ class Mask(LMObject):
         if self.shape is None:
             return
         self._select()
-        if self.exclude is not None:
+        if self.exclude is not None and self.exclude.shape == self._mask.shape:
             self._mask[self.exclude] = False
 
     def apply(self, hologram: Hologram) -> tuple[Image, Coordinates]:
