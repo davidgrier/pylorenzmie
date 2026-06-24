@@ -37,7 +37,9 @@ class TestBestModel(unittest.TestCase):
 
     def test_jax_skipped_when_unavailable(self):
         '''best_model() skips jaxLorenzMie when _jax_available is False.'''
-        with patch('pylorenzmie.theory.jaxLorenzMie._jax_available', False):
+        import importlib
+        _jlm = importlib.import_module('pylorenzmie.theory.jaxLorenzMie')
+        with patch.object(_jlm, '_jax_available', False):
             model = best_model()
         self.assertNotIsInstance(model, jaxLorenzMie)
 

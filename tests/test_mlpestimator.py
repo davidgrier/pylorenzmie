@@ -28,8 +28,8 @@ def _make_estimator(model):
     from pylorenzmie.analysis.MLPEstimator import MLPEstimator
     mock_pipe = MagicMock()
     mock_pipe.predict.return_value = np.array([[200., 0.75, 1.45]])
-    with patch('pylorenzmie.analysis.MLPEstimator.joblib.load',
-               return_value=mock_pipe):
+    with patch('pylorenzmie.analysis.MLPEstimator.joblib') as mock_joblib:
+        mock_joblib.load.return_value = mock_pipe
         est = MLPEstimator(model=model)
     return est, mock_pipe
 
