@@ -50,6 +50,7 @@ lmtool = "pylorenzmie.lmtool.LMTool:lmtool"
 
 [project.optional-dependencies]
 gpu   = ["cupy-cuda12x"]
+jax   = ["jax[cpu]"]
 numba = ["numba"]
 torch = ["torch"]
 dev   = ["pytest", "pytest-cov", "opencv-python"]

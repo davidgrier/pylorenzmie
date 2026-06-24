@@ -44,6 +44,8 @@ autodoc_default_options = {
 # Optional heavy dependencies not available on doc-build hosts
 autodoc_mock_imports = [
     'cupy',
+    'jax',
+    'jax.numpy',
     'numba',
     'torch',
     'pyqtgraph',
