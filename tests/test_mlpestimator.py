@@ -25,10 +25,12 @@ def _make_model_and_hologram():
 
 def _make_estimator(model):
     '''Build an MLPEstimator with a mocked pipeline (no real weights needed).'''
+    import importlib
     from pylorenzmie.analysis.MLPEstimator import MLPEstimator
+    _mlp = importlib.import_module('pylorenzmie.analysis.MLPEstimator')
     mock_pipe = MagicMock()
     mock_pipe.predict.return_value = np.array([[200., 0.75, 1.45]])
-    with patch('pylorenzmie.analysis.MLPEstimator.joblib') as mock_joblib:
+    with patch.object(_mlp, 'joblib') as mock_joblib:
         mock_joblib.load.return_value = mock_pipe
         est = MLPEstimator(model=model)
     return est, mock_pipe
