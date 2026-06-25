@@ -1,9 +1,11 @@
-'''
-Compute scattered light field with CUDA acceleration using pytorch.
-Inherits LorenzMie numpy base class. 
+'''Compute scattered light field with CUDA acceleration using PyTorch.
+
+Inherits LorenzMie numpy base class.
 '''
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
+from pylorenzmie.lib.lmtypes import Image
+import numpy as np
 import torch
 import triton
 import triton.language as tl
@@ -13,11 +15,10 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
-'''
-Create a Triton CUDA kernel to compute the LM scattered electromagnetic field for a single 
-particle over npts pixels in parallel. Compiles the whole Mie calculation into one program
-to avoid overhead from multiple pytorch calls. 
-'''
+
+# Triton CUDA kernel: computes the Lorenz-Mie scattered field for a
+# single particle over npts pixels in parallel.  The entire Mie sum
+# runs inside one kernel to avoid per-order launch overhead.
 @triton.jit
 def _lorenzmie_kernel(
         kx_ptr, ky_ptr, kz_ptr,           # [npts] float32 — k-scaled displacements
@@ -75,7 +76,6 @@ def _lorenzmie_kernel(
     En_i_re = 1.0
     En_i_im = 0.0
 
-    # Mie series loop
     for n in range(1, norders):
         En_i_re, En_i_im = -En_i_im, En_i_re
 
@@ -177,31 +177,54 @@ def _lorenzmie_kernel(
 
 
 def get_device() -> torch.device:
+    '''Return the best available compute device.
+
+    Returns
+    -------
+    device : torch.device
+        ``cuda`` if a working GPU is available, otherwise ``cpu``.
+    '''
     if torch.cuda.is_available():
         try:
             torch.zeros(1).cuda()
             logger.info('Using GPU acceleration')
             return torch.device('cuda')
         except Exception as e:
-            logger.warning(f'CUDA available but failed: {e}. Falling back to CPU.')
+            logger.warning(
+                f'CUDA available but failed: {e}. Falling back to CPU.')
     return torch.device('cpu')
 
-'''
-Inherits LorenzMie and overrides the inner computation with the triton kernel. Computes
-scattered light field with generalized LM theory. 
-'''
+
 class TorchLorenzMie(LorenzMie):
+    '''GPU-accelerated Lorenz-Mie hologram calculator using Triton.
+
+    Overrides :meth:`lorenzmie` with a single Triton kernel that runs
+    the full Mie partial-wave sum on the GPU.  All other behavior
+    (coordinate handling, multi-particle accumulation, properties
+    interface) is inherited from :class:`LorenzMie`.
+
+    Attributes
+    ----------
+    device : torch.device
+        Compute device in use (``cuda`` or ``cpu``).
+    '''
+
     method: str = 'torch'
 
-    def __init__(self, *args, device: torch.device | None = None, **kwargs) -> None:
+    def __init__(self,
+                 *args,
+                 device: torch.device | None = None,
+                 **kwargs) -> None:
         self._device = device if device is not None else get_device()
         super().__init__(*args, **kwargs)
 
     @property
     def device(self) -> torch.device:
+        '''Compute device in use.'''
         return self._device
 
     def _allocate(self) -> None:
+        '''Allocate GPU tensors sized to the current coordinate grid.'''
         logger.debug('Allocating torch buffers')
         shape = self.coordinates.shape
         npts = shape[1]
@@ -209,15 +232,55 @@ class TorchLorenzMie(LorenzMie):
             self.coordinates, dtype=torch.float32, device=self._device)
         self._field_t  = torch.zeros(
             shape, dtype=torch.complex64, device=self._device)
-        self._tri_e_re = torch.zeros(3, npts, dtype=torch.float32, device=self._device)
-        self._tri_e_im = torch.zeros(3, npts, dtype=torch.float32, device=self._device)
+        self._tri_e_re = torch.zeros(
+            3, npts, dtype=torch.float32, device=self._device)
+        self._tri_e_im = torch.zeros(
+            3, npts, dtype=torch.float32, device=self._device)
 
-    def hologram(self, cartesian: bool = True, bohren: bool = True):
+    def hologram(self,
+                 cartesian: bool = True,
+                 bohren: bool = True) -> Image:
+        '''Hologram of the particle at the current coordinates.
+
+        Parameters
+        ----------
+        cartesian : bool
+            If True (default), project the field onto Cartesian
+            coordinates. If False, return the field in spherical
+            polar coordinates.
+        bohren : bool
+            If True (default), use +z along the propagation direction.
+            If False, flip the orientation of z.
+
+        Returns
+        -------
+        hologram : numpy.ndarray, shape (npts,)
+            Computed hologram intensity at each coordinate.
+        '''
         field = self.field(cartesian=cartesian, bohren=bohren)
-        field[0] += 1.0 + 0j
-        return (field.real**2 + field.imag**2).sum(dim=0).cpu().numpy() # convert final output to numpy array 
+        intensity = (field.real**2 + field.imag**2).sum(dim=0)
+        return (intensity + 2.*field[0].real + 1.).cpu().numpy()
 
-    def field(self, cartesian: bool = True, bohren: bool = True) -> torch.Tensor:
+    def field(self,
+              cartesian: bool = True,
+              bohren: bool = True) -> torch.Tensor:
+        '''Electric field scattered by the particle(s).
+
+        Parameters
+        ----------
+        cartesian : bool
+            If True (default), project the field onto Cartesian
+            coordinates. If False, return the field in spherical
+            polar coordinates.
+        bohren : bool
+            If True (default), use +z along the propagation direction.
+            If False, flip the orientation of z.
+
+        Returns
+        -------
+        field : torch.Tensor, shape (3, npts), dtype complex64
+            Complex electric field scattered by the particle(s).
+        '''
         k = float(self.instrument.wavenumber())
         n_m = self.instrument.n_m
         wavelength = self.instrument.wavelength
@@ -244,8 +307,7 @@ class TorchLorenzMie(LorenzMie):
                 -1j * k * float(r_p[2]),
                 dtype=torch.complex64,
                 device=self._device))
-            self._field_t += particle_field
-            self._field_t *= phase
+            self._field_t += particle_field * phase
 
         return self._field_t
 
@@ -254,7 +316,27 @@ class TorchLorenzMie(LorenzMie):
                   kdr: torch.Tensor,
                   cartesian: bool = True,
                   bohren: bool = True) -> torch.Tensor:
-   
+        '''Scattered field for given Mie coefficients and geometry.
+
+        Parameters
+        ----------
+        ab : torch.Tensor, shape (norders, 2), dtype complex64
+            Mie scattering coefficients.
+        kdr : torch.Tensor, shape (3, npts)
+            Wavenumber-scaled displacement from particle to each
+            coordinate point.
+        cartesian : bool
+            If True, return field projected onto Cartesian coordinates.
+            Default: True.
+        bohren : bool
+            If True, use sign convention from Bohren and Huffman.
+            Default: True.
+
+        Returns
+        -------
+        field : torch.Tensor, shape (3, npts), dtype complex64
+            Complex scattered field at each coordinate.
+        '''
         norders = ab.shape[0]
         npts    = kdr.shape[1]
 
@@ -278,5 +360,6 @@ class TorchLorenzMie(LorenzMie):
         )
         return torch.complex(self._tri_e_re, self._tri_e_im)
 
-if __name__ == '__main__': #pragma: no cover
+
+if __name__ == '__main__':  # pragma: no cover
     TorchLorenzMie.example()
