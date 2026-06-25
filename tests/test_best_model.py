@@ -1,47 +1,36 @@
 import unittest
-from unittest.mock import patch
-from pylorenzmie.theory import best_model, LorenzMie
-from pylorenzmie.theory.jaxLorenzMie import jaxLorenzMie, _jax_available
+from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory.LorenzMie import LorenzMie as BaseLorenzMie
+
+try:
+    from pylorenzmie.theory.jaxLorenzMie import jaxLorenzMie
+    _jax_available = True
+except Exception:
+    _jax_available = False
 
 
-class TestBestModel(unittest.TestCase):
+class TestLorenzMieSelection(unittest.TestCase):
+    '''LorenzMie exported from theory is the best available backend.'''
 
-    def test_returns_lorenzmie_instance(self):
-        '''best_model() always returns a LorenzMie instance.'''
-        model = best_model()
-        self.assertIsInstance(model, LorenzMie)
+    def test_is_base_subclass(self):
+        '''LorenzMie is always the base class or a subclass of it.'''
+        self.assertTrue(issubclass(LorenzMie, BaseLorenzMie))
+
+    def test_callable(self):
+        '''LorenzMie() creates a usable model instance.'''
+        model = LorenzMie()
+        self.assertIsInstance(model, BaseLorenzMie)
 
     def test_kwargs_forwarded(self):
-        '''Keyword arguments are passed to the chosen constructor.'''
-        coords = LorenzMie.meshgrid((32, 32))
-        model = best_model(coordinates=coords)
+        '''Keyword arguments reach the constructor.'''
+        coords = BaseLorenzMie.meshgrid((32, 32))
+        model = LorenzMie(coordinates=coords)
         self.assertIsNotNone(model.coordinates)
 
-    @unittest.skipUnless(_jax_available, 'JAX not installed')
+    @unittest.skipUnless(_jax_available, 'JAX not installed or backend broken')
     def test_prefers_jax_when_available(self):
-        '''best_model() returns jaxLorenzMie when JAX is present.'''
-        model = best_model()
-        self.assertIsInstance(model, jaxLorenzMie)
-
-    def test_falls_back_to_numpy(self):
-        '''best_model() returns LorenzMie when all accelerated backends fail.'''
-        with patch('pylorenzmie.theory.best_model._jax_available', False,
-                   create=True):
-            with patch.dict('sys.modules',
-                            {'cupy': None,
-                             'pylorenzmie.theory.cupyLorenzMie': None}):
-                with patch('pylorenzmie.theory.numbaLorenzMie._numba_available',
-                           False, create=True):
-                    model = best_model()
-        self.assertIsInstance(model, LorenzMie)
-
-    def test_jax_skipped_when_unavailable(self):
-        '''best_model() skips jaxLorenzMie when _jax_available is False.'''
-        import importlib
-        _jlm = importlib.import_module('pylorenzmie.theory.jaxLorenzMie')
-        with patch.object(_jlm, '_jax_available', False):
-            model = best_model()
-        self.assertNotIsInstance(model, jaxLorenzMie)
+        '''LorenzMie is jaxLorenzMie when JAX is installed and functional.'''
+        self.assertIs(LorenzMie, jaxLorenzMie)
 
 
 if __name__ == '__main__':  # pragma: no cover

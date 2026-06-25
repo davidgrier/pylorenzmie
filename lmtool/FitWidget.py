@@ -13,7 +13,7 @@ from pyqtgraph.Qt.QtWidgets import QFileDialog
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib.lmtypes import Coordinates, Image
-from pylorenzmie.theory import LorenzMie, best_model
+from pylorenzmie.theory import LorenzMie
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +50,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._configurePlot()
-        self.optimizer = Optimizer(model=best_model())
+        self.optimizer = Optimizer(model=LorenzMie())
         self.optimizer.fraction = 0.25
         self.datafile = None
         self.result = None

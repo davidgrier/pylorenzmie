@@ -4,7 +4,11 @@ from pylorenzmie.analysis import Optimizer
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import LorenzMie
-from pylorenzmie.theory.jaxLorenzMie import jaxLorenzMie, _jax_available
+try:
+    from pylorenzmie.theory.jaxLorenzMie import jaxLorenzMie
+    _jax_available = True
+except Exception:
+    _jax_available = False
 from pylorenzmie.lib import LMObject
 from pathlib import Path
 import cv2

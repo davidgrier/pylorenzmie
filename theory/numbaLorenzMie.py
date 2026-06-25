@@ -2,13 +2,7 @@ from pylorenzmie.lib.lmtypes import Coefficients, Coordinates, Field
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
 
-try:
-    from numba import njit
-    _numba_available = True
-except ImportError:
-    def njit(**kwargs):
-        return lambda f: f
-    _numba_available = False
+from numba import njit
 
 
 @njit(fastmath=True, cache=True)
@@ -164,10 +158,6 @@ class numbaLorenzMie(LorenzMie):
                   bohren: bool = True) -> Field:
         return compute_field_jit(kdr, tuple(self.buffers),
                                  self._scratch, ab, cartesian, bohren)
-
-
-if not _numba_available:
-    numbaLorenzMie = LorenzMie
 
 
 if __name__ == '__main__':  # pragma: no cover

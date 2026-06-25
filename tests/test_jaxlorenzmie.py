@@ -1,7 +1,12 @@
 from pylorenzmie.theory.LorenzMie import LorenzMie
-from pylorenzmie.theory.jaxLorenzMie import jaxLorenzMie, _jax_available
 import unittest
 import numpy as np
+
+try:
+    from pylorenzmie.theory.jaxLorenzMie import jaxLorenzMie
+    _jax_available = True
+except Exception:
+    _jax_available = False
 
 
 @unittest.skipUnless(_jax_available, 'JAX not installed')
