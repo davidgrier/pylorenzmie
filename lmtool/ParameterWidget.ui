@@ -114,7 +114,7 @@
   <customwidget>
    <class>DoubleSlider</class>
    <extends>QSlider</extends>
-   <header>DoubleSlider</header>
+   <header>pylorenzmie.lmtool.DoubleSlider</header>
    <slots>
     <signal>valueChanged(double)</signal>
     <slot>setDisabled(int)</slot>
@@ -124,7 +124,7 @@
   <customwidget>
    <class>DoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
-   <header>DoubleSpinBox</header>
+   <header>pylorenzmie.lmtool.DoubleSpinBox</header>
    <slots>
     <signal>editingFinished(double)</signal>
     <signal>buttonClicked(double)</signal>

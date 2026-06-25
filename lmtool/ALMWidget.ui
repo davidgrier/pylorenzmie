@@ -365,7 +365,7 @@
   <customwidget>
    <class>ParameterWidget</class>
    <extends>QFrame</extends>
-   <header>ParameterWidget</header>
+   <header>pylorenzmie.lmtool.ParameterWidget</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

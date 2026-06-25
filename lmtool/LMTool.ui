@@ -263,25 +263,25 @@
   <customwidget>
    <class>ImageWidget</class>
    <extends>QWidget</extends>
-   <header>ImageWidget</header>
+   <header>pylorenzmie.lmtool.ImageWidget</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>ProfileWidget</class>
    <extends>QWidget</extends>
-   <header>ProfileWidget</header>
+   <header>pylorenzmie.lmtool.ProfileWidget</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>FitWidget</class>
    <extends>QWidget</extends>
-   <header>FitWidget</header>
+   <header>pylorenzmie.lmtool.FitWidget</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>OptimizerWidget</class>
    <extends>QTreeWidget</extends>
-   <header>OptimizerWidget</header>
+   <header>pylorenzmie.lmtool.OptimizerWidget</header>
   </customwidget>
  </customwidgets>
  <tabstops>
