@@ -81,7 +81,7 @@
     },
     "spherical": {
 	"text": "spherical",
-	"range": [-50.0, 50.0],
+	"range": [-200.0, 200.0],
 	"step": 0.1,
 	"value": 0.0,
 	"decimals": 1
