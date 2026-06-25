@@ -81,10 +81,10 @@
     },
     "spherical": {
 	"text": "spherical",
-	"range": [-5.0, 5.0],
-	"step": 0.01,
+	"range": [-50.0, 50.0],
+	"step": 0.1,
 	"value": 0.0,
-	"decimals": 2
+	"decimals": 1
     },
     "noise": {
 	"text": "noise",

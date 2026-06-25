@@ -8,8 +8,7 @@ def Aberrated(base_class: type) -> type:
     '''Return an aberrated subclass of a LorenzMie calculator.
 
     The returned class extends :meth:`scattered_field` to multiply
-    the scattered field by a Zernike spherical-aberration phase mask
-    evaluated at the pupil plane.
+    the scattered field by a spherical-aberration phase mask.
 
     Parameters
     ----------
@@ -23,15 +22,26 @@ def Aberrated(base_class: type) -> type:
     '''
 
     class AberratedLorenzMie(base_class):
-        '''LorenzMie subclass with Zernike spherical aberration.
+        '''LorenzMie subclass with spherical aberration.
 
         Inherits from the base class supplied to :func:`Aberrated`.
 
         Parameters
         ----------
         spherical : float, optional
-            Zernike spherical-aberration coefficient [waves].
-            Default: 0 (no aberration).
+            Spherical-aberration coefficient [pixels]. Default: 0.
+
+        Notes
+        -----
+        The aberration phase at each pixel is
+
+        .. math::
+
+            \\Phi(\\vec{r}) = s \\frac{r^4}{(r^2 + z_p^2)^2}
+
+        where :math:`s` is ``spherical``, :math:`r` is the in-plane
+        distance from the particle center in pixels, and :math:`z_p` is
+        the particle's axial position in pixels.
         '''
 
         def __init__(self, *args,
@@ -45,21 +55,15 @@ def Aberrated(base_class: type) -> type:
             return {**super().properties,
                     'spherical': self.spherical}
 
-        def _aperture(self, z_p: float) -> float:
-            NA = self.instrument.numerical_aperture
-            n_m = self.instrument.n_m
-            return 2. * NA * z_p / n_m
-
         def _aberration(self, r_p: Coordinates) -> Field:
-            '''Zernike spherical-aberration phase mask for particle at r_p.'''
-            omega = self._aperture(r_p[2])
-            if omega == 0. or self.spherical == 0.:
+            '''Spherical-aberration phase mask for particle at r_p.'''
+            if self.spherical == 0.:
                 return 1.
-            x = (self.coordinates[0] - r_p[0]) / omega
-            y = (self.coordinates[1] - r_p[1]) / omega
-            rhosq = x * x + y * y
-            phase = 6. * rhosq * (rhosq - 1.) + 1.
-            phase *= -self.spherical
+            x = self.coordinates[0] - r_p[0]
+            y = self.coordinates[1] - r_p[1]
+            rsq = x * x + y * y
+            zpsq = r_p[2] ** 2
+            phase = self.spherical * rsq * rsq / (rsq + zpsq) ** 2
             return np.exp(1j * phase)
 
         def scattered_field(self,
