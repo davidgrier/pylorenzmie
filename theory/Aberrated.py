@@ -29,7 +29,7 @@ def Aberrated(base_class: type) -> type:
         Parameters
         ----------
         spherical : float, optional
-            Spherical-aberration coefficient [pixels]. Default: 0.
+            Spherical-aberration coefficient [wavelengths]. Default: 0.
 
         Notes
         -----
@@ -37,11 +37,14 @@ def Aberrated(base_class: type) -> type:
 
         .. math::
 
-            \\Phi(\\vec{r}) = s \\frac{r^4}{(r^2 + z_p^2)^2}
+            \\Phi(\\vec{r}) = \\frac{4 n_m^3}{k}\\, s
+                              \\frac{r^4}{(r^2 + z_p^2)^2}
 
-        where :math:`s` is ``spherical``, :math:`r` is the in-plane
-        distance from the particle center in pixels, and :math:`z_p` is
-        the particle's axial position in pixels.
+        where :math:`s` is ``spherical`` in wavelengths,
+        :math:`k = 2\\pi n_m / \\lambda` is the in-medium wavenumber,
+        :math:`n_m` is the medium refractive index, :math:`r` is the
+        in-plane distance from the particle center in pixels, and
+        :math:`z_p` is the particle's axial position in pixels.
         '''
 
         def __init__(self, *args,
@@ -59,11 +62,13 @@ def Aberrated(base_class: type) -> type:
             '''Spherical-aberration phase mask for particle at r_p.'''
             if self.spherical == 0.:
                 return 1.
+            k = self.instrument.wavenumber()
+            n_m = self.instrument.n_m
             x = self.coordinates[0] - r_p[0]
             y = self.coordinates[1] - r_p[1]
             rsq = x * x + y * y
             zpsq = r_p[2] ** 2
-            phase = self.spherical * rsq * rsq / (rsq + zpsq) ** 2
+            phase = (4. * n_m**3 / k) * self.spherical * rsq**2 / (rsq + zpsq)**2
             return np.exp(1j * phase)
 
         def scattered_field(self,
