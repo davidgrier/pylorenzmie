@@ -5,12 +5,13 @@ import numpy as np
 try:
     from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie
     from pylorenzmie.theory.torchLorenzMieBatch import TorchLorenzMieBatch
-    _torch_available = True
+    import torch as _torch
+    _torch_available = _torch.cuda.is_available()
 except Exception:
     _torch_available = False
 
 
-@unittest.skipUnless(_torch_available, 'torch/triton not installed')
+@unittest.skipUnless(_torch_available, 'torch/triton/CUDA not available')
 class TestTorchLorenzMie(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -58,7 +59,7 @@ class TestTorchLorenzMie(unittest.TestCase):
         self.assertIsInstance(r, str)
 
 
-@unittest.skipUnless(_torch_available, 'torch/triton not installed')
+@unittest.skipUnless(_torch_available, 'torch/triton/CUDA not available')
 class TestTorchLorenzMieBatch(unittest.TestCase):
 
     def setUp(self) -> None:

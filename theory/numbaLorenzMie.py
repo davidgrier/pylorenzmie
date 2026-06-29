@@ -140,11 +140,11 @@ class numbaLorenzMie(LorenzMie):
     compilation (warm-up); subsequent calls use the cached compiled
     function.
 
-    The class attribute ``method = 'numba'`` allows :class:`Optimizer`
+    The class attribute ``method = 'numba numpy'`` allows :class:`Optimizer`
     to select a compatible model.
     '''
 
-    method: str = 'numba'
+    method: str = 'numba numpy'
 
     def _allocate(self) -> None:
         super()._allocate()

@@ -311,8 +311,11 @@ class TorchLorenzMieBatch(TorchLorenzMie):
         wavelength = self.instrument.wavelength
 
         B = len(particle_lists)
-        P = max(len(pl) for pl in particle_lists)
         npts = self._coords.shape[1]
+        P = max((len(pl) for pl in particle_lists), default=0)
+        if B == 0 or P == 0:
+            return torch.zeros(
+                B, 3, npts, dtype=torch.complex64, device=self._device)
 
         all_abs = [[particle.ab(n_m, wavelength) for particle in plist]
                    for plist in particle_lists]

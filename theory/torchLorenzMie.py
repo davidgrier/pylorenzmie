@@ -176,12 +176,17 @@ def _lorenzmie_kernel(
 
 
 def get_device() -> torch.device:
-    '''Return the best available compute device.
+    '''Return a working CUDA device, or raise RuntimeError.
 
     Returns
     -------
     device : torch.device
-        ``cuda`` if a working GPU is available, otherwise ``cpu``.
+        A validated ``cuda`` device.
+
+    Raises
+    ------
+    RuntimeError
+        If no CUDA GPU is available or the GPU cannot be initialised.
     '''
     if torch.cuda.is_available():
         try:
@@ -189,9 +194,11 @@ def get_device() -> torch.device:
             logger.info('Using GPU acceleration')
             return torch.device('cuda')
         except Exception as e:
-            logger.warning(
-                f'CUDA available but failed: {e}. Falling back to CPU.')
-    return torch.device('cpu')
+            raise RuntimeError(
+                f'CUDA device found but failed to initialise: {e}') from e
+    raise RuntimeError(
+        'TorchLorenzMie requires a CUDA GPU; none found. '
+        'Use LorenzMie (NumPy), jaxLorenzMie, or numbaLorenzMie for CPU.')
 
 
 class TorchLorenzMie(LorenzMie):
@@ -260,6 +267,44 @@ class TorchLorenzMie(LorenzMie):
         intensity = (field.real**2 + field.imag**2).sum(dim=0)
         return (intensity + 2.*field[0].real + 1.).double().cpu().numpy()
 
+    def scattered_field(self,
+                        particle: 'Particle',
+                        cartesian: bool = True,
+                        bohren: bool = True) -> torch.Tensor:
+        '''Electric field scattered by a single particle.
+
+        Parameters
+        ----------
+        particle : Particle
+            The scattering particle.
+        cartesian : bool
+            If True (default), project the field onto Cartesian
+            coordinates.
+        bohren : bool
+            If True (default), use +z along the propagation direction.
+
+        Returns
+        -------
+        field : torch.Tensor, shape (3, npts), dtype complex64
+            Complex scattered field including the propagation phase
+            ``exp(-i k z_p)``.
+        '''
+        k = float(self.instrument.wavenumber())
+        r_p = torch.tensor(
+            particle.r_p + particle.r_0,
+            dtype=torch.float32,
+            device=self._device)
+        ab = torch.tensor(
+            particle.ab(self.instrument.n_m, self.instrument.wavelength),
+            dtype=torch.complex64,
+            device=self._device)
+        kdr = k * (self._coords - r_p[:, None])
+        phase = torch.exp(torch.tensor(
+            -1j * k * float(r_p[2]),
+            dtype=torch.complex64,
+            device=self._device))
+        return self.lorenzmie(ab, kdr, cartesian=cartesian, bohren=bohren) * phase
+
     def field(self,
               cartesian: bool = True,
               bohren: bool = True) -> torch.Tensor:
@@ -280,34 +325,10 @@ class TorchLorenzMie(LorenzMie):
         field : torch.Tensor, shape (3, npts), dtype complex64
             Complex electric field scattered by the particle(s).
         '''
-        k = float(self.instrument.wavenumber())
-        n_m = self.instrument.n_m
-        wavelength = self.instrument.wavelength
-
         self._field_t.zero_()
-
         for particle in self.particle:
-            r_p = torch.tensor(
-                particle.r_p + particle.r_0,
-                dtype=torch.float32,
-                device=self._device)
-            ab = torch.tensor(
-                particle.ab(n_m, wavelength),
-                dtype=torch.complex64,
-                device=self._device)
-
-            dr = self._coords - r_p[:, None]
-            kdr = k * dr
-
-            particle_field = self.lorenzmie(
-                ab, kdr, cartesian=cartesian, bohren=bohren)
-
-            phase = torch.exp(torch.tensor(
-                -1j * k * float(r_p[2]),
-                dtype=torch.complex64,
-                device=self._device))
-            self._field_t += particle_field * phase
-
+            self._field_t += self.scattered_field(
+                particle, cartesian=cartesian, bohren=bohren)
         return self._field_t
 
     def lorenzmie(self,
