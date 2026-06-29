@@ -5,7 +5,6 @@ Inherits LorenzMie numpy base class.
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.lib.lmtypes import Image
-import numpy as np
 import torch
 import triton
 import triton.language as tl

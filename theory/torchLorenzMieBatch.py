@@ -20,7 +20,6 @@ import triton
 import triton.language as tl
 import triton.language.extra.cuda.libdevice as tl_libdevice
 import logging
-import matplotlib.pyplot as plt
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -347,9 +346,10 @@ class TorchLorenzMieBatch(TorchLorenzMie):
             dr  = self._coords.unsqueeze(0) - r_p_p.unsqueeze(-1)  # [B, 3, npts]
             kdr = k * dr
 
-            field += self._batch_lorenzmie(ab_p, kdr, cartesian=cartesian, bohren=bohren)
+            particle_field = self._batch_lorenzmie(
+                ab_p, kdr, cartesian=cartesian, bohren=bohren)
             phases = torch.exp(-1j * k * r_p_p[:, 2].to(torch.complex64))  # [B]
-            field *= phases.reshape(B, 1, 1)
+            field += particle_field * phases.reshape(B, 1, 1)
 
         return field
 
@@ -418,6 +418,7 @@ class TorchLorenzMieBatch(TorchLorenzMie):
                       **kwargs) -> None:  # pragma: no cover
 
         '''Demonstrate batch_hologram() with four holograms'''
+        import matplotlib.pyplot as plt
         import numpy as np
         from pylorenzmie.theory import Sphere, Instrument
         from time import perf_counter
