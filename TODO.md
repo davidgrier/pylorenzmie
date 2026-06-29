@@ -59,6 +59,17 @@
       loops, and physics-informed neural network integration. PyMieDiff
       (APL Photonics 2026) demonstrates the pattern for layered spheres.
 
+## precision
+
+- [ ] **Single-precision pipeline**: investigate whether the full pipeline
+      (hologram generation, fitting, estimation) can run in float32 rather than
+      float64. Single precision halves memory bandwidth and is natively fast on
+      consumer GPUs (and on Apple Silicon). Key questions: does LM convergence
+      degrade? Are Mie coefficient accumulation errors acceptable at float32?
+      The torch backend already uses float32/complex64 internally; the numpy/cupy
+      paths use float64 throughout. A natural starting point is to add a
+      `dtype` parameter to `LorenzMie` and benchmark fit quality vs. speed.
+
 ## optimizer
 
 - [ ] Backend-native Optimizer: implement an `Optimizer` subclass that works
