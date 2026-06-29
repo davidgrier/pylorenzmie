@@ -18,19 +18,16 @@ composition, and location in three dimensions. This package extracts
 that information by fitting a recorded hologram to a generative model
 based on the Lorenz-Mie theory of light scattering.
 
-<img src="docs/tutorials/crop.png" alt="Typical Hologram"
+<img src="https://raw.githubusercontent.com/davidgrier/pylorenzmie/master/docs/tutorials/crop.png" alt="Typical Hologram"
 width="200"/>
 
 ## Interactive particle tracking and characterization
 `pylorenzmie` includes a GUI application called `LMTool.py`
 for interacting with experimentally recorded holograms.
 
-<img src="docs/lmtool/LMTool_ImageWidget.png" alt="LMTool image
-screen" width="30%"/>
-<img src="docs/lmtool/LMTool_ProfileWidget.png" alt="LMTool profile
-screen" width="30%"/>
-<img src="docs/lmtool/LMTool_FitWidget.png" alt="LMTool fit
-screen" width="30%"/>
+<img src="https://raw.githubusercontent.com/davidgrier/pylorenzmie/master/docs/lmtool/LMTool_ImageWidget.png" alt="LMTool image screen" width="30%"/>
+<img src="https://raw.githubusercontent.com/davidgrier/pylorenzmie/master/docs/lmtool/LMTool_ProfileWidget.png" alt="LMTool profile screen" width="30%"/>
+<img src="https://raw.githubusercontent.com/davidgrier/pylorenzmie/master/docs/lmtool/LMTool_FitWidget.png" alt="LMTool fit screen" width="30%"/>
 
 ## Authors
 David G. Grier (New York University), Lauren Altman, Fook Chiong Cheong,
