@@ -127,7 +127,8 @@ class cupyLorenzMie(LorenzMie):
 
     def culorenzmie(self) -> cp.RawKernel:
         '''Return CUDA kernel for double-precision field computation'''
-        change = {'f(': '(',
+        change = {'__sincosf(': 'sincos(',
+                  'f(': '(',
                   '.f': '.',
                   'float': 'double',
                   'Float': 'Double'}
