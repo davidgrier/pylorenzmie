@@ -54,3 +54,15 @@ numbaLorenzMie
 
 .. automodule:: pylorenzmie.theory.numbaLorenzMie
    :members:
+
+torchLorenzMie
+--------------
+
+.. automodule:: pylorenzmie.theory.torchLorenzMie
+   :members:
+
+torchLorenzMieBatch
+-------------------
+
+.. automodule:: pylorenzmie.theory.torchLorenzMieBatch
+   :members:

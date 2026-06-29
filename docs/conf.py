@@ -48,6 +48,9 @@ autodoc_mock_imports = [
     'jax.numpy',
     'numba',
     'torch',
+    'triton',
+    'triton.language',
+    'triton.language.extra.cuda.libdevice',
     'pyqtgraph',
     'trackpy',
 ]

@@ -220,7 +220,7 @@ class TorchLorenzMieBatch(TorchLorenzMie):
 
     Extends :class:`TorchLorenzMie` with a batched computation path that
     generates B holograms in a single Triton kernel launch.  All other
-    behaviour (single-hologram API, device selection, coordinate handling)
+    behavior (single-hologram API, device selection, coordinate handling)
     is inherited unchanged.
 
     Additional methods
@@ -261,14 +261,11 @@ class TorchLorenzMieBatch(TorchLorenzMie):
                        bohren: bool = True):
         '''Generate B holograms simultaneously on the GPU.
 
-        Arguments
-        ---------
-        particle_lists : a list of lists of the particles for each hologram.
-            Lists can have different numbers of particles — shorter lists
-            are padded with zero-ab dummy particles automatically.
-
-        Keywords
-        --------
+        Parameters
+        ----------
+        particle_lists : list of list of Particle
+            One list of particles per hologram. Lists may have different
+            lengths — shorter lists are padded with zero-ab dummy particles.
         cartesian : bool
             If True (default), project field onto Cartesian coordinates.
         bohren : bool
@@ -276,13 +273,13 @@ class TorchLorenzMieBatch(TorchLorenzMie):
 
         Returns
         -------
-        holograms : numpy.ndarray
-            [B, npts] hologram intensities.
+        holograms : numpy.ndarray, shape (B, npts), dtype float64
+            Hologram intensities for each of the B inputs.
         '''
         field = self.batch_field(particle_lists, cartesian=cartesian, bohren=bohren)
         # field: [B, 3, npts]
         field[:, 0, :] += 1.0 + 0j
-        return (field.real**2 + field.imag**2).sum(dim=1).cpu().numpy()
+        return (field.real**2 + field.imag**2).sum(dim=1).double().cpu().numpy()
         # → [B, npts]
 
     def batch_field(self,
@@ -295,15 +292,19 @@ class TorchLorenzMieBatch(TorchLorenzMie):
         call. Holograms with fewer than P particles are padded with dummy
         particles whose ab coefficients are zero (no scattering).
 
-        Arguments
-        ---------
-        particle_lists : list of lists of Particle
+        Parameters
+        ----------
+        particle_lists : list of list of Particle
             B lists of particles, one per hologram.
+        cartesian : bool
+            If True (default), project field onto Cartesian coordinates.
+        bohren : bool
+            If True (default), use Bohren sign convention.
 
         Returns
         -------
-        field : torch.Tensor
-            [B, 3, npts] total scattered field for each hologram.
+        field : torch.Tensor, shape (B, 3, npts), dtype complex64
+            Total scattered field for each hologram.
         '''
         k = float(self.instrument.wavenumber())
         n_m = self.instrument.n_m
@@ -358,23 +359,27 @@ class TorchLorenzMieBatch(TorchLorenzMie):
                          kdr: torch.Tensor,
                          cartesian: bool = True,
                          bohren: bool = True) -> torch.Tensor:
-        '''
-        Batched lorenzmie computation over N particles simultaneously via
-        a 2-D Triton grid: axis-0 over pixel blocks, axis-1 over batch slots.
-        The entire Mie series loop runs inside the kernel — no Python loop,
+        '''Batched lorenzmie computation via a 2-D Triton grid.
+
+        Axis-0 iterates over pixel blocks, axis-1 over batch slots. The
+        entire Mie series loop runs inside the kernel — no Python loop,
         no per-order kernel launches.
 
-        Arguments
-        ---------
-        ab : torch.Tensor
-            [N, norders, 2] Mie scattering coefficients for all N particles
-        kdr : torch.Tensor
-            [N, 3, npts] wavenumber-scaled displacements for all N particles
+        Parameters
+        ----------
+        ab : torch.Tensor, shape (N, norders, 2), dtype complex64
+            Mie scattering coefficients for all N particles.
+        kdr : torch.Tensor, shape (N, 3, npts)
+            Wavenumber-scaled displacements for all N particles.
+        cartesian : bool
+            If True (default), return field in Cartesian coordinates.
+        bohren : bool
+            If True (default), use Bohren sign convention.
 
         Returns
         -------
-        field : torch.Tensor
-            [N, 3, npts] complex scattered field for each particle.
+        field : torch.Tensor, shape (N, 3, npts), dtype complex64
+            Complex scattered field for each particle.
         '''
         N       = kdr.shape[0]
         norders = ab.shape[1]

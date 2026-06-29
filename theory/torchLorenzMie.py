@@ -208,7 +208,7 @@ class TorchLorenzMie(LorenzMie):
         Compute device in use (``cuda`` or ``cpu``).
     '''
 
-    method: str = 'torch'
+    method: str = 'torch numpy'
 
     def __init__(self,
                  *args,
@@ -258,7 +258,7 @@ class TorchLorenzMie(LorenzMie):
         '''
         field = self.field(cartesian=cartesian, bohren=bohren)
         intensity = (field.real**2 + field.imag**2).sum(dim=0)
-        return (intensity + 2.*field[0].real + 1.).cpu().numpy()
+        return (intensity + 2.*field[0].real + 1.).double().cpu().numpy()
 
     def field(self,
               cartesian: bool = True,
