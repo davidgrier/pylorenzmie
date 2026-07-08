@@ -327,6 +327,9 @@ class TorchLorenzMieBatch(TorchLorenzMie):
             B, P, norders, 2, dtype=torch.complex64, device=self._device)
         r_p_all = torch.zeros(
             B, P, 3, dtype=torch.float32, device=self._device)
+        # Padded slots keep z_p = 1 so kr and per-particle masks stay
+        # finite at pixel (0, 0); their ab = 0 field is zero regardless.
+        r_p_all[..., 2] = 1.
 
         for b, plist in enumerate(particle_lists):
             for p, particle in enumerate(plist):
@@ -343,6 +346,10 @@ class TorchLorenzMieBatch(TorchLorenzMie):
         # Loop over particle slots rather than flattening all B*P at once.
         # Each iteration processes [B, npts] tensors instead of [B*P, npts],
         # keeping intermediate allocations P times smaller for better cache use.
+        #
+        # Wrappers such as Aberrated modulate scattered_field() with a
+        # per-particle phase mask; apply the same mask on the batch path.
+        aberration = getattr(self, '_aberration', None)
         for p in range(P):
             ab_p  = ab_all[:, p, :, :]   # [B, norders, 2] — view, no copy
             r_p_p = r_p_all[:, p, :]     # [B, 3]          — view, no copy
@@ -353,7 +360,15 @@ class TorchLorenzMieBatch(TorchLorenzMie):
             particle_field = self._batch_lorenzmie(
                 ab_p, kdr, cartesian=cartesian, bohren=bohren)
             phases = torch.exp(-1j * k * r_p_p[:, 2].to(torch.complex64))  # [B]
-            field += particle_field * phases.reshape(B, 1, 1)
+            particle_field = particle_field * phases.reshape(B, 1, 1)
+            if aberration is not None:
+                masks = [aberration(r) for r in r_p_p.cpu().numpy()]
+                if not isinstance(masks[0], float):  # 1. if spherical == 0
+                    mask = torch.stack(
+                        [torch.as_tensor(m, device=self._device)
+                         for m in masks]).to(torch.complex64)
+                    particle_field = particle_field * mask.unsqueeze(1)
+            field += particle_field
 
         return field
 
