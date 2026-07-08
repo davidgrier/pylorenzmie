@@ -69,7 +69,11 @@ def Aberrated(base_class: type) -> type:
             rsq = x * x + y * y
             zpsq = r_p[2] ** 2
             phase = (4. * n_m**3 / k) * self.spherical * rsq**2 / (rsq + zpsq)**2
-            return np.exp(1j * phase)
+            mask = np.exp(1j * phase)
+            if hasattr(self, '_device'):
+                import torch
+                return torch.as_tensor(mask, device=self._device)
+            return mask
 
         def scattered_field(self,
                             particle: Particle,
