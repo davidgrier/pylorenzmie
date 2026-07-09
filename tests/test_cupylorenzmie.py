@@ -71,6 +71,33 @@ class TestCupyLorenzMie(unittest.TestCase):
         nholo = self.nmethod.hologram().reshape(shape)
         self.assertTrue(np.allclose(holo, nholo, rtol=1e-5))
 
+    def test_compare_methods_aberrated(self):
+        '''Aberrated CUDA and numpy pipelines must agree.'''
+        from pylorenzmie.theory.cupyLorenzMie import cupyLorenzMie
+        from pylorenzmie.theory.Aberrated import Aberrated
+
+        c = LMObject.meshgrid([128, 128])
+        method = Aberrated(cupyLorenzMie)(coordinates=c)
+        nmethod = Aberrated(numpyLorenzMie)(coordinates=c)
+
+        p = method.particle
+        p.a_p = 1.
+        p.n_p = 1.4
+        p.r_p = [64, 64, 100]
+        nmethod.particle = p
+
+        method.spherical = 0.9
+        nmethod.spherical = 0.9
+        holo = method.hologram()
+        nholo = nmethod.hologram()
+        self.assertTrue(np.allclose(holo, nholo, rtol=1e-5))
+
+        # aberration must actually change the hologram, so the
+        # comparison above cannot pass with the mask dropped
+        nmethod.spherical = 0.
+        plain = nmethod.hologram()
+        self.assertFalse(np.allclose(nholo, plain, rtol=1e-5))
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()
