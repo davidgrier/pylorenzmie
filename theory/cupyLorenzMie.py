@@ -108,6 +108,10 @@ class cupyLorenzMie(LorenzMie):
         n_m = self.instrument.n_m
         wavelength = self.instrument.wavelength
         self._field.fill(0.+0.j)
+        # Wrappers such as Aberrated modulate scattered_field() with a
+        # per-particle phase mask; this field() bypasses scattered_field(),
+        # so apply the same mask to each particle's contribution here.
+        aberration = getattr(self, '_aberration', None)
         for particle in self.particle:
             ab = particle.ab(n_m, wavelength)
             a = cp.asarray(ab[:, 0], dtype=self.ctype)
@@ -118,6 +122,10 @@ class cupyLorenzMie(LorenzMie):
                             a, b, ab.shape[0],
                             *r_p, k, cartesian, bohren,
                             *self.buffer))
+            if aberration is not None:
+                mask = aberration(r_p)
+                if not isinstance(mask, float):  # 1. if spherical == 0
+                    self.buffer *= cp.asarray(mask, dtype=self.ctype)
             self._field += self.buffer
         return self._field if device else self._field.get()
 
