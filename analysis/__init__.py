@@ -18,8 +18,9 @@ from .Feature import Feature
 from .Frame import Frame
 from .Trajectory import Trajectory
 from .Hologram import Hologram
+from .pair_grouping import group_overlapping
 
 __all__ = ['Hologram', 'Localizer', 'BaseEstimator', 'Estimator',
            'DEEstimator', 'RadialEstimator', 'MLPEstimator', 'Optimizer',
            'cupyOptimizer', 'Mask', 'RadialMask', 'Feature', 'Frame',
-           'Trajectory']
+           'Trajectory', 'group_overlapping']
