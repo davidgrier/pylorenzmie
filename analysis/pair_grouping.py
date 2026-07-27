@@ -64,10 +64,11 @@ def group_overlapping(predictions: pd.DataFrame) -> pd.DataFrame:
     Returns
     -------
     grouped : pandas.DataFrame
-        Columns: ``x_p``, ``y_p``, ``bbox``.
+        Columns: ``x_p``, ``y_p``, ``bbox``, ``n_particles``.
         For merged rows, ``x_p`` and ``y_p`` are two-element lists of
-        the original centers and ``bbox`` is the union of the two
-        input boxes. Single rows are unchanged.
+        the original centers, ``bbox`` is the union of the two input
+        boxes, and ``n_particles`` is 2. Single rows are unchanged,
+        with ``n_particles`` set to 1.
     '''
     bboxes = predictions['bbox'].tolist()
     n = len(bboxes)
@@ -90,13 +91,17 @@ def group_overlapping(predictions: pd.DataFrame) -> pd.DataFrame:
             a, b = predictions.iloc[i], predictions.iloc[j]
             rows.append(dict(x_p=[a.x_p, b.x_p],
                              y_p=[a.y_p, b.y_p],
-                             bbox=_merge_bbox(a.bbox, b.bbox)))
+                             bbox=_merge_bbox(a.bbox, b.bbox),
+                             n_particles=2))
             seen.add(i)
             seen.add(j)
         else:
-            rows.append(predictions.iloc[i][['x_p', 'y_p', 'bbox']].to_dict())
+            row = predictions.iloc[i][['x_p', 'y_p', 'bbox']].to_dict()
+            row['n_particles'] = 1
+            rows.append(row)
             seen.add(i)
-    return pd.DataFrame(rows, columns=['x_p', 'y_p', 'bbox'])
+    columns = ['x_p', 'y_p', 'bbox', 'n_particles']
+    return pd.DataFrame(rows, columns=columns)
 
 
 if __name__ == '__main__':  # pragma: no cover
