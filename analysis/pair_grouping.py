@@ -43,17 +43,50 @@ def _merge_bbox(bbox1: tuple, bbox2: tuple) -> tuple:
     return (x0, y0), x1 - x0, y1 - y0
 
 
+def _connected_components(neighbors: list) -> list:
+    '''Partition an adjacency list into connected components.
+
+    Parameters
+    ----------
+    neighbors : list[set[int]]
+        ``neighbors[i]`` is the set of indices overlapping box ``i``.
+
+    Returns
+    -------
+    components : list[set[int]]
+        Each set is the indices of one connected component.
+    '''
+    visited = set()
+    components = []
+    for start in range(len(neighbors)):
+        if start in visited:
+            continue
+        component = {start}
+        stack = [start]
+        while stack:
+            i = stack.pop()
+            for j in neighbors[i]:
+                if j not in component:
+                    component.add(j)
+                    stack.append(j)
+        visited |= component
+        components.append(component)
+    return components
+
+
 def group_overlapping(predictions: pd.DataFrame) -> pd.DataFrame:
     '''Merge overlapping bounding boxes into two-particle groups.
 
     Intended for a Pair fitter, where a bounding box may contain at
-    most two particles. Boxes are compared pairwise: a box that
-    overlaps exactly one other (and that other overlaps no other box)
-    is merged with its partner into a single two-particle group. A
-    box that overlaps two or more others is "contaminated" — it is
-    discarded, since more than two particles cannot be resolved by a
-    Pair fit. Boxes left with no remaining overlap, including ones
-    whose only neighbor was discarded, pass through unchanged.
+    most two particles. Boxes are partitioned into connected
+    components under the "overlaps" relation. An isolated box (no
+    overlaps) passes through unchanged as a single-particle box. A
+    component of exactly two mutually overlapping boxes is merged
+    into one two-particle box. A component of three or more boxes is
+    discarded entirely: even the boxes at the ends of a chain, such
+    as A overlapping B and B overlapping C, still contain pixels from
+    a third particle and so cannot be analyzed as an isolated single
+    or pair.
 
     Parameters
     ----------
@@ -78,28 +111,21 @@ def group_overlapping(predictions: pd.DataFrame) -> pd.DataFrame:
             neighbors[i].add(j)
             neighbors[j].add(i)
 
-    contaminated = {i for i in range(n) if len(neighbors[i]) >= 2}
-
     rows = []
-    seen = set()
-    for i in range(n):
-        if i in contaminated or i in seen:
-            continue
-        partners = neighbors[i] - contaminated
-        if partners:
-            j = partners.pop()
+    for component in _connected_components(neighbors):
+        if len(component) == 1:
+            i, = component
+            row = predictions.iloc[i][['x_p', 'y_p', 'bbox']].to_dict()
+            row['n_particles'] = 1
+            rows.append(row)
+        elif len(component) == 2:
+            i, j = component
             a, b = predictions.iloc[i], predictions.iloc[j]
             rows.append(dict(x_p=[a.x_p, b.x_p],
                              y_p=[a.y_p, b.y_p],
                              bbox=_merge_bbox(a.bbox, b.bbox),
                              n_particles=2))
-            seen.add(i)
-            seen.add(j)
-        else:
-            row = predictions.iloc[i][['x_p', 'y_p', 'bbox']].to_dict()
-            row['n_particles'] = 1
-            rows.append(row)
-            seen.add(i)
+        # else: three or more overlapping boxes — discard the group.
     columns = ['x_p', 'y_p', 'bbox', 'n_particles']
     return pd.DataFrame(rows, columns=columns)
 
