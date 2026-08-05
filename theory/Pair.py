@@ -9,17 +9,10 @@ class Pair(Cluster):
     '''Two independently positioned spheres for Lorenz-Mie microscopy.
 
     Models two spheres with fully independent position, radius, and
-    refractive index. Intended for fitting the two-particle groups
-    produced by
-    :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`,
-    where the two particles may differ in size, index, and depth and
-    need not be in contact.
-
-    Unlike :class:`~pylorenzmie.theory.Dimer`, the spheres do not
-    share a radius or refractive index, are not constrained to touch,
-    and do not move together: each is parameterized independently so
-    that :class:`~pylorenzmie.analysis.Optimizer` can fit both at
-    once.
+    refractive index. Intended for fitting two particle groups where
+    the two particles may differ in size, index, depth, and are not
+    in contact (for touching particles, see
+    :class:`~pylorenzmie.theory.Dimer`).
 
     Inherits from :class:`~pylorenzmie.theory.Cluster`.
 
