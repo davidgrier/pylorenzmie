@@ -2,6 +2,7 @@ from .Localizer import Localizer
 from .BaseEstimator import BaseEstimator
 from .Estimator import Estimator
 from .DEEstimator import DEEstimator
+from .PairEstimator import PairEstimator
 from .RadialEstimator import RadialEstimator
 try:
     from .MLPEstimator import MLPEstimator
@@ -21,6 +22,6 @@ from .Hologram import Hologram
 from .pair_grouping import group_overlapping
 
 __all__ = ['Hologram', 'Localizer', 'BaseEstimator', 'Estimator',
-           'DEEstimator', 'RadialEstimator', 'MLPEstimator', 'Optimizer',
-           'cupyOptimizer', 'Mask', 'RadialMask', 'Feature', 'Frame',
-           'Trajectory', 'group_overlapping']
+           'DEEstimator', 'PairEstimator', 'RadialEstimator', 'MLPEstimator',
+           'Optimizer', 'cupyOptimizer', 'Mask', 'RadialMask', 'Feature',
+           'Frame', 'Trajectory', 'group_overlapping']
