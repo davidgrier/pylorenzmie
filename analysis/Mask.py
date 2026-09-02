@@ -99,10 +99,17 @@ class Mask(LMObject):
         Notes
         -----
         Each call draws a fresh random subsample from ``hologram.shape``.
+
+        Both returned arrays are C-contiguous.  Slicing the coordinate
+        grid with a 2-D mask yields a non-contiguous view that the
+        NumPy backend tolerates but the CuPy backend reads incorrectly,
+        so the coordinates are copied to a contiguous layout here.
         '''
         self.shape = hologram.shape
         m = self._mask
-        return hologram.data[m], hologram.coordinates[:, m]
+        data = hologram.data[m]
+        coordinates = np.ascontiguousarray(hologram.coordinates[:, m])
+        return data, coordinates
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

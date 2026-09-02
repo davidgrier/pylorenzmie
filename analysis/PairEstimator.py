@@ -100,6 +100,9 @@ class PairEstimator(DEEstimator):
         hologram = Hologram(model.hologram().reshape(shape))
 
         estimator = cls(model=model, seed=0)
+        # LorenzMie may resolve to cupyLorenzMie, which holds GPU memory
+        # and cannot survive a fork; keep the search single-process.
+        estimator.settings['workers'] = 1
 
         print(f'{cls.__name__} example')
         start = perf_counter()
