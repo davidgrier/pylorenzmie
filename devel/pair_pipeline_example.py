@@ -12,9 +12,10 @@ Usage
 -----
     python devel/pair_pipeline_example.py [image]
 
-``image`` is either a file in ``docs/tutorials/`` or a path to any
-8-bit hologram normalized to 100 counts (e.g. one written by
-``devel/make_test_holograms.py``).  Default: ``image0010.png``.
+``image`` is a bare filename in ``docs/simulated pair holograms/`` or
+``docs/tutorials/``, or a path to any 8-bit hologram normalized to 100
+counts.  Default: ``close_pair.png`` (the mid-separation simulated
+pair from ``devel/make_test_holograms.py``).
 '''
 
 import sys
@@ -32,11 +33,17 @@ from pylorenzmie.theory import Pair
 from pylorenzmie.utilities import example_hologram
 
 
+SIMULATED = (Path(__file__).resolve().parent.parent
+             / 'docs' / 'simulated pair holograms')
+
+
 def _load(image: str) -> np.ndarray:
-    '''Normalized hologram from a path, or a ``docs/tutorials/`` name.'''
-    path = Path(image)
-    if path.is_file():
-        return cv2.imread(str(path), cv2.IMREAD_GRAYSCALE).astype(float) / 100.
+    '''Normalized hologram from a path, a ``docs/simulated pair
+    holograms/`` name, or a ``docs/tutorials/`` name.'''
+    for candidate in (Path(image), SIMULATED / image):
+        if candidate.is_file():
+            return (cv2.imread(str(candidate), cv2.IMREAD_GRAYSCALE)
+                    .astype(float) / 100.)
     return example_hologram(image).data
 
 
@@ -50,7 +57,7 @@ def _fmt(properties: dict) -> str:
     return '  '.join(f'{k}={float(v):.3f}' for k, v in properties.items())
 
 
-def run_pipeline(name: str = 'image0010.png',
+def run_pipeline(name: str = 'close_pair.png',
                  show: bool = True,
                  nfringes: int | None = None,
                  diameter: int | None = None,
@@ -60,8 +67,9 @@ def run_pipeline(name: str = 'image0010.png',
     Parameters
     ----------
     name : str, optional
-        A ``docs/tutorials/`` filename or a path to any hologram
-        normalized to 100 counts.  Default: ``'image0010.png'``.
+        A bare filename in ``docs/simulated pair holograms/`` or
+        ``docs/tutorials/``, or a path to any hologram normalized to
+        100 counts.  Default: ``'close_pair.png'``.
     show : bool, optional
         Display the detection boxes and per-feature data/fit/residual
         panels.  Default: ``True``.
@@ -168,4 +176,4 @@ def _show(frame: Frame, name: str) -> None:
 
 
 if __name__ == '__main__':  # pragma: no cover
-    run_pipeline(sys.argv[1] if len(sys.argv) > 1 else 'image0010.png')
+    run_pipeline(sys.argv[1] if len(sys.argv) > 1 else 'close_pair.png')
