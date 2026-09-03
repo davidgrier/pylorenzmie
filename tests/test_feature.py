@@ -87,6 +87,51 @@ class TestFeature(unittest.TestCase):
         residuals = self.feature.residuals()
         self.assertEqual(residuals.shape, self.feature.shape)
 
+    def test_single_feature_defaults(self):
+        '''Without centers, Feature uses a Sphere and a DEEstimator.'''
+        from pylorenzmie.analysis import DEEstimator
+        from pylorenzmie.theory import Sphere
+        feature = Feature(Hologram(self.data))
+        self.assertIsInstance(feature.particle, Sphere)
+        self.assertIsInstance(feature.estimator, DEEstimator)
+        self.assertIsNone(feature.centers)
+
+    def test_pair_centers_configure_pair(self):
+        '''Two centers configure a Pair particle and a PairEstimator.'''
+        from pylorenzmie.analysis import PairEstimator
+        from pylorenzmie.theory import Pair
+        centers = [(130., 180.), (260., 210.)]
+        feature = Feature(Hologram(self.data), centers=centers)
+        self.assertIsInstance(feature.particle, Pair)
+        self.assertIsInstance(feature.estimator, PairEstimator)
+        self.assertEqual(feature.centers, centers)
+        self.assertEqual(
+            (feature.particle.x_p1, feature.particle.y_p1), (130., 180.))
+        self.assertEqual(
+            (feature.particle.x_p2, feature.particle.y_p2), (260., 210.))
+
+    def test_pair_optimizer_frees_geometry_fixes_absorption(self):
+        '''Pair optimizer holds k_p1/k_p2 fixed and frees z/a/n for both.'''
+        feature = Feature(Hologram(self.data),
+                          centers=[(130., 180.), (260., 210.)])
+        self.assertIn('k_p1', feature.optimizer.fixed)
+        self.assertIn('k_p2', feature.optimizer.fixed)
+        for p in ('z_p1', 'a_p1', 'n_p1', 'z_p2', 'a_p2', 'n_p2'):
+            self.assertIn(p, feature.optimizer.variables)
+
+    def test_pair_estimate_returns_pair_series(self):
+        '''estimate() on a pair feature returns Pair keys, centers pinned.'''
+        feature = Feature(Hologram(self.data),
+                          centers=[(130., 180.), (260., 210.)])
+        feature.estimator.settings['workers'] = 1
+        feature.estimator.settings['maxiter'] = 1
+        result = feature.estimate()
+        self.assertIsInstance(result, pd.Series)
+        for key in ('z_p1', 'a_p1', 'n_p1', 'z_p2', 'a_p2', 'n_p2'):
+            self.assertIn(key, result)
+        self.assertEqual(feature.particle.x_p1, 130.)
+        self.assertEqual(feature.particle.x_p2, 260.)
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

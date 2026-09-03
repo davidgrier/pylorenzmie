@@ -3,6 +3,7 @@ from pylorenzmie.lib import meshgrid
 from pylorenzmie.theory import Instrument, LorenzMie
 from pylorenzmie.analysis import Localizer, Feature
 from pylorenzmie.analysis.Hologram import Hologram
+from pylorenzmie.analysis.pair_grouping import group_overlapping
 from pylorenzmie.lib.lmtypes import Image, Results
 
 
@@ -114,6 +115,14 @@ class Frame(Hologram):
             feature.particle.y_p = y0 + dim / 2.
             self._features.append(feature)
 
+    def _feature(self,
+                 key: tuple,
+                 centers: list[tuple[float, float]] | None = None) -> Feature:
+        '''Build a Feature crop with matching corner and shared instrument.'''
+        return Feature(Hologram.__getitem__(self, key),
+                       model=LorenzMie(instrument=self.instrument),
+                       centers=centers)
+
     def __getitem__(self, key: tuple) -> Feature:
         '''Return a Feature crop with matching corner and instrument.
 
@@ -127,11 +136,17 @@ class Frame(Hologram):
         feature : Feature
             Cropped Feature with correct corner and shared instrument.
         '''
-        return Feature(Hologram.__getitem__(self, key),
-                       model=LorenzMie(instrument=self.instrument))
+        return self._feature(key)
 
     def detect(self) -> int:
         '''Detect and localize features in :attr:`data`.
+
+        Localized bounding boxes are passed through
+        :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`:
+        an isolated box becomes a single-particle :class:`Feature`,
+        while two mutually overlapping boxes are merged into one
+        :class:`Feature` configured for a
+        :class:`~pylorenzmie.theory.Pair`.
 
         Returns
         -------
@@ -142,15 +157,22 @@ class Frame(Hologram):
             self._features = []
             self._bboxes = []
             return 0
-        df = self.localizer.localize(self._data)
+        df = group_overlapping(self.localizer.localize(self._data))
         self._features = []
         self._bboxes = []
         for _, row in df.iterrows():
             (x0, y0), w, h = row.bbox
-            dim = min(w, h)
-            feature = self[y0:y0 + dim, x0:x0 + dim]
-            feature.particle.x_p = row.x_p
-            feature.particle.y_p = row.y_p
+            x0, y0 = max(int(x0), 0), max(int(y0), 0)
+            if row.n_particles == 2:
+                feature = self._feature(
+                    (slice(y0, y0 + h), slice(x0, x0 + w)),
+                    centers=list(zip(row.x_p, row.y_p)))
+            else:
+                dim = min(w, h)
+                feature = self._feature(
+                    (slice(y0, y0 + dim), slice(x0, x0 + dim)))
+                feature.particle.x_p = row.x_p
+                feature.particle.y_p = row.y_p
             self._features.append(feature)
             self._bboxes.append(row.bbox)
         return len(self._features)

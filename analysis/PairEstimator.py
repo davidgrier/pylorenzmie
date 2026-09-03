@@ -32,7 +32,8 @@ class PairEstimator(DEEstimator):
 
     def estimate(self,
                  hologram: Hologram,
-                 centers: tuple[tuple[float, float], tuple[float, float]]
+                 centers: tuple[tuple[float, float],
+                                tuple[float, float]] | None = None
                  ) -> Result:
         '''Estimate Pair parameters by differential evolution.
 
@@ -40,9 +41,11 @@ class PairEstimator(DEEstimator):
         ----------
         hologram : Hologram
             Normalized hologram crop containing both particles.
-        centers : tuple[tuple[float, float], tuple[float, float]]
+        centers : tuple[tuple[float, float], tuple[float, float]], optional
             ``((x_p1, y_p1), (x_p2, y_p2))`` rough centers of the two
-            particles, in pixels.
+            particles, in pixels.  Default: ``None``, which reads the
+            centers already set on ``model.particle`` (``x_p1``/``y_p1``
+            and ``x_p2``/``y_p2``).
 
         Returns
         -------
@@ -50,6 +53,9 @@ class PairEstimator(DEEstimator):
             Estimated Pair properties (same keys as
             :attr:`~pylorenzmie.theory.Pair.properties`).
         '''
+        if centers is None:
+            p = self.model.particle
+            centers = ((p.x_p1, p.y_p1), (p.x_p2, p.y_p2))
         (x_p1, y_p1), (x_p2, y_p2) = centers
         self.model.particle.x_p1 = float(x_p1)
         self.model.particle.y_p1 = float(y_p1)

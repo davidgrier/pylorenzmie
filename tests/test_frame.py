@@ -79,6 +79,21 @@ class TestFrame(unittest.TestCase):
         crop = self.frame[50:150, 50:150]
         self.assertEqual(crop.corner, (50., 50.))
 
+    def test_detect_groups_overlap_into_pair_feature(self):
+        '''image0010's two overlapping boxes become one Pair Feature.'''
+        from pylorenzmie.analysis import PairEstimator
+        from pylorenzmie.theory import Pair
+        self.frame.instrument.wavelength = 0.447
+        self.frame.data = self.data
+        n = self.frame.detect()
+        self.assertEqual(n, 1)
+        feature = self.frame.features[0]
+        self.assertIsInstance(feature.particle, Pair)
+        self.assertIsInstance(feature.estimator, PairEstimator)
+        self.assertEqual(len(feature.centers), 2)
+        # shared instrument still reaches the feature's model
+        self.assertAlmostEqual(feature.model.instrument.wavelength, 0.447)
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()
