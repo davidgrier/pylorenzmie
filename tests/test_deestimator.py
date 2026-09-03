@@ -68,6 +68,7 @@ class TestDEEstimator(unittest.TestCase):
             model=self.model,
             bounds={'z_p': (500., 100.)},  # invalid: lo > hi → DE will raise
             seed=0)
+        bad_estimator.settings['workers'] = 1
         try:
             bad_estimator.estimate(self.hologram)
         except Exception:
