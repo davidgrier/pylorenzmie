@@ -14,8 +14,8 @@ Usage
 
 ``image`` is a bare filename in ``docs/simulated pair holograms/`` or
 ``docs/tutorials/``, or a path to any 8-bit hologram normalized to 100
-counts.  Default: ``close_pair.png`` (the mid-separation simulated
-pair from ``devel/make_test_holograms.py``).
+counts.  Default: ``random_pairs_2.png`` (a random, un-curated scatter
+of pairs -- some isolated, some crowded into discarded 3+ clusters).
 '''
 
 import sys
@@ -33,8 +33,8 @@ from pylorenzmie.theory import Pair
 from pylorenzmie.utilities import example_hologram
 
 
-SIMULATED = (Path(__file__).resolve().parent.parent
-             / 'docs' / 'simulated pair holograms')
+DOCS = Path(__file__).resolve().parent.parent / 'docs'
+SIMULATED = DOCS / 'simulated pair holograms'
 
 
 def _load(image: str) -> np.ndarray:
@@ -57,10 +57,10 @@ def _fmt(properties: dict) -> str:
     return '  '.join(f'{k}={float(v):.3f}' for k, v in properties.items())
 
 
-def run_pipeline(name: str = 'close_pair.png',
+def run_pipeline(name: str = 'random_pairs_2.png',
                  show: bool = True,
                  nfringes: int | None = None,
-                 diameter: int | None = None,
+                 diameter: int | None = 41,
                  **instrument: float) -> Frame:
     '''Detect, estimate, and optimize every feature in an example image.
 
@@ -69,18 +69,20 @@ def run_pipeline(name: str = 'close_pair.png',
     name : str, optional
         A bare filename in ``docs/simulated pair holograms/`` or
         ``docs/tutorials/``, or a path to any hologram normalized to
-        100 counts.  Default: ``'close_pair.png'``.
+        100 counts.  Default: ``'random_pairs_2.png'``.
     show : bool, optional
-        Display the detection boxes and per-feature data/fit/residual
-        panels.  Default: ``True``.
+        Display and save the detection boxes and per-feature
+        data/fit/residual panels to ``docs/<name stem>/``.
+        Default: ``True``.
     nfringes : int, optional
         Fringes enclosed in each detection box.  Smaller boxes are less
         likely to merge dense fields into 3+ clusters that
         :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`
         discards.  Default: the :class:`Localizer` default (20).
     diameter : int, optional
-        ``trackpy.locate`` feature diameter, in pixels.  Default: the
-        :class:`Localizer` default (31).
+        ``trackpy.locate`` feature diameter, in pixels.  Default: 41.
+        The :class:`Localizer` default (31) misses the blended core of
+        ``overlapping_pair.png`` entirely; 41 also fits the wider pairs.
     **instrument
         Instrument overrides (``wavelength`` [um], ``magnification``
         [um/pixel], ``n_m``, ...).  Default: the tutorial microscope.
@@ -142,13 +144,18 @@ def run_pipeline(name: str = 'close_pair.png',
 
 
 def _show(frame: Frame, name: str) -> None:
-    '''Full frame with detection boxes; data/fit/residual per feature.'''
+    '''Full frame with detection boxes; data/fit/residual per feature.
+    Each figure is also saved into ``docs/<name stem>/``.'''
+    outdir = DOCS / Path(name).stem
+    outdir.mkdir(parents=True, exist_ok=True)
+
     box_style = dict(fill=False, linewidth=2, edgecolor='red')
     fig, ax = plt.subplots(num=f'{name}: detections')
     ax.imshow(frame.data, cmap='gray')
     for (x0, y0), w, h in frame.bboxes:
         ax.add_patch(Rectangle((x0, y0), w, h, **box_style))
     ax.set_title(f'{name}: {len(frame.features)} feature(s)')
+    fig.savefig(outdir / 'detections.png')
 
     for i, feature in enumerate(frame.features):
         # Pin the model to the fitted optimum before predicting so the
@@ -161,19 +168,24 @@ def _show(frame: Frame, name: str) -> None:
 
         vmin, vmax = 0.9 * data.min(), 1.1 * data.max()
         img_style = dict(vmin=vmin, vmax=vmax, cmap='gray')
+        # Normalized residuals, styled after lmtool/FitWidget.py's
+        # CET-D1 display: (data - fit) / noise, levels fixed at +-10.
+        noise = feature.model.instrument.noise
+        res_style = dict(vmin=-10, vmax=10, cmap='coolwarm')
         fig, axes = plt.subplots(ncols=3, figsize=(10, 4),
                                  constrained_layout=True,
                                  num=f'{name}: feature {i}')
-        panels = [(data, 'data'),
-                  (fit, f'fit  (redchi = {result.redchi:.2f})'),
-                  (fit - data + 1., 'residual + 1')]
-        for ax, (img, label) in zip(axes, panels):
-            ax.imshow(img, **img_style)
-            ax.set_title(label)
+        panels = [(data, 'Data', img_style),
+                  (fit, 'Fit', img_style),
+                  ((data - fit) / noise, 'Residuals', res_style)]
+        for ax, (img, label, style) in zip(axes, panels):
+            ax.imshow(img, **style)
             ax.axis('off')
+            ax.set_title(label)
+        fig.savefig(outdir / f'feature_{i}.png')
 
     plt.show()
 
 
 if __name__ == '__main__':  # pragma: no cover
-    run_pipeline(sys.argv[1] if len(sys.argv) > 1 else 'close_pair.png')
+    run_pipeline(sys.argv[1] if len(sys.argv) > 1 else 'random_pairs_2.png')
