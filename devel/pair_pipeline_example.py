@@ -14,8 +14,8 @@ Usage
 
 ``image`` is a bare filename in ``docs/simulated pair holograms/`` or
 ``docs/tutorials/``, or a path to any 8-bit hologram normalized to 100
-counts.  Default: ``random_pairs_2.png`` (a random, un-curated scatter
-of pairs -- some isolated, some crowded into discarded 3+ clusters).
+counts.  Default: ``random_pairs.png`` (a random, un-curated scatter of
+pairs -- some isolated, some crowded into discarded 3+ clusters).
 '''
 
 import sys
@@ -57,7 +57,7 @@ def _fmt(properties: dict) -> str:
     return '  '.join(f'{k}={float(v):.3f}' for k, v in properties.items())
 
 
-def run_pipeline(name: str = 'random_pairs_2.png',
+def run_pipeline(name: str = 'random_pairs.png',
                  show: bool = True,
                  nfringes: int | None = None,
                  diameter: int | None = 41,
@@ -69,7 +69,7 @@ def run_pipeline(name: str = 'random_pairs_2.png',
     name : str, optional
         A bare filename in ``docs/simulated pair holograms/`` or
         ``docs/tutorials/``, or a path to any hologram normalized to
-        100 counts.  Default: ``'random_pairs_2.png'``.
+        100 counts.  Default: ``'random_pairs.png'``.
     show : bool, optional
         Display and save the detection boxes and per-feature
         data/fit/residual panels to ``docs/<name stem>/``.
@@ -188,4 +188,4 @@ def _show(frame: Frame, name: str) -> None:
 
 
 if __name__ == '__main__':  # pragma: no cover
-    run_pipeline(sys.argv[1] if len(sys.argv) > 1 else 'random_pairs_2.png')
+    run_pipeline(sys.argv[1] if len(sys.argv) > 1 else 'random_pairs.png')
