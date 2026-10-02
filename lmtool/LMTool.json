@@ -79,12 +79,58 @@
 	"fixed": true,
 	"decimals": 2
     },
-    "spherical": {
-	"text": "spherical",
-	"range": [-5.0, 5.0],
+    "defocus": {
+	"text": "defocus",
+	"range": [-10.0, 10.0],
 	"step": 0.1,
 	"value": 0.0,
 	"decimals": 1
+    },
+    "spherical": {
+	"text": "spherical",
+	"range": [-10.0, 10.0],
+	"step": 0.1,
+	"value": 0.0,
+	"decimals": 1
+    },
+    "coma": {
+	"text": "coma",
+	"range": [-10.0, 10.0],
+	"step": 0.1,
+	"value": 0.0,
+	"decimals": 1
+    },
+    "astigmatism": {
+	"text": "astigmatism",
+	"range": [-10.0, 10.0],
+	"step": 0.1,
+	"value": 0.0,
+	"decimals": 1
+    },
+    "distortion": {
+	"text": "distortion",
+	"range": [-10.0, 10.0],
+	"step": 0.1,
+	"value": 0.0,
+	"decimals": 1
+    },
+    "x_c": {
+	"text": "x<sub>c</sub>",
+	"suffix": " pixel",
+	"range": [0.0, 1240.0],
+	"step": 0.1,
+	"value": 0.0,
+	"fixed": true,
+	"decimals": 2
+    },
+    "y_c": {
+	"text": "y<sub>c</sub>",
+	"suffix": " pixel",
+	"range": [0.0, 1080.0],
+	"step": 0.1,
+	"value": 0.0,
+	"fixed": true,
+	"decimals": 2
     },
     "noise": {
 	"text": "noise",
