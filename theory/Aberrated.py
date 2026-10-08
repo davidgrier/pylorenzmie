@@ -88,9 +88,8 @@ def Aberrated(base_class: type) -> type:
         :math:`(x_c, y_c)`, :math:`\\varphi` is the azimuth of the field
         point about the particle, and :math:`\\psi` is the azimuth of
         the displacement from the aberration center to the particle.
-        Defocus and spherical aberration are
-        rotationally symmetric about the optical axis and do not
-        depend on :math:`(x_c, y_c)`.
+        Defocus and spherical aberration are rotationally symmetric
+        about the optical axis and do not depend on :math:`(x_c, y_c)`.
 
         Table I of [1]_ gives the generating functions and phase
         factors in a frame where :math:`\\hat{\\vec{y}}` is oriented

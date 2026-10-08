@@ -49,25 +49,64 @@ class TestAberratedLorenzMie(unittest.TestCase):
         self.assertIsInstance(self.mask(), float)
 
     def test_center_at_particle_is_finite(self):
-        # degenerate aberration direction: the guards must prevent NaN
+        # degenerate aberration direction: the guards must prevent NaN.
+        # With no displacement the off-axis terms contribute no phase.
         m = self.mask(coma=1., astigmatism=1., distortion=1.,
                       x_c=self.xp, y_c=self.yp)
         self.assertTrue(np.all(np.isfinite(m)))
+        self.assertTrue(np.allclose(m, 1.))
+
+    def test_defocus(self):
+        n_m = Instrument().n_m
+        u = self.geometry()[3]
+        m = self.mask(defocus=0.3)
+        self.assertTrue(np.allclose(m, np.exp(1j * 4.*np.pi*n_m**2 *
+                                              0.3 * u)))
+
+    def test_spherical(self):
+        n_m = Instrument().n_m
+        u = self.geometry()[3]
+        m = self.mask(spherical=0.3)
+        self.assertTrue(np.allclose(m, np.exp(1j * 8.*np.pi*n_m**4 *
+                                              0.3 * u**2)))
+
+    def table_frame(self, d=20.):
+        '''Return (n_m, eta, u, sin_theta) for the Table I frame.
+
+        The particle is displaced along +y from the aberration center,
+        so cos(phi - psi) = sin(theta) = dy/r.
+        '''
+        n_m = Instrument().n_m
+        dx, dy, r, u = self.geometry()
+        sin_theta = np.divide(dy, r, out=np.zeros_like(u), where=r > 0)
+        return n_m, d / self.zp, u, sin_theta
+
+    def test_table_frame_coma(self):
+        # includes points with sin(theta) < 0, which fix the sign
+        d = 20.
+        c = 0.7
+        n_m, eta, u, sin_theta = self.table_frame(d)
+        expected = 6.*np.pi*n_m**3 * c * eta * u**1.5 * sin_theta
+        m = self.mask(coma=c, x_c=self.xp, y_c=self.yp - d)
+        self.assertTrue(np.allclose(m, np.exp(1j * expected)))
+
+    def test_table_frame_astigmatism(self):
+        d = 20.
+        a = 0.7
+        n_m, eta, u, sin_theta = self.table_frame(d)
+        expected = 4.*np.pi*n_m**2 * a * eta**2 * u * sin_theta**2
+        m = self.mask(astigmatism=a, x_c=self.xp, y_c=self.yp - d)
+        self.assertTrue(np.allclose(m, np.exp(1j * expected)))
 
     def test_pickle_class(self):
         cls = pickle.loads(pickle.dumps(AberratedLorenzMie))
         self.assertIs(cls, AberratedLorenzMie)
 
     def test_table_frame_distortion(self):
-        # Table I frame: the particle is displaced along +y from the
-        # aberration center, so cos(phi - psi) = sin(theta) = dy/r.
         d = 20.
         t = 0.7
-        n_m = Instrument().n_m
-        dx, dy, r, u = self.geometry()
-        sin_theta = np.divide(dy, r, out=np.zeros_like(u), where=r > 0)
-        eta = d / self.zp
-        expected = (2.*np.pi*n_m * t * eta**3 * np.sqrt(u) * sin_theta)
+        n_m, eta, u, sin_theta = self.table_frame(d)
+        expected = 2.*np.pi*n_m * t * eta**3 * np.sqrt(u) * sin_theta
         m = self.mask(distortion=t, x_c=self.xp, y_c=self.yp - d)
         self.assertTrue(np.allclose(m, np.exp(1j * expected)))
 
