@@ -73,21 +73,22 @@ def Aberrated(base_class: type) -> type:
             \\Phi_\\text{spherical} &=
                 8\\pi n_m^4\\, s\\, u^2 \\\\
             \\Phi_\\text{coma} &=
-                6\\pi n_m^3\\, c\\, \\eta\\, u^{3/2} \\sin(\\varphi-\\psi) \\\\
+                6\\pi n_m^3\\, c\\, \\eta\\, u^{3/2} \\cos(\\varphi-\\psi) \\\\
             \\Phi_\\text{astigmatism} &=
-                4\\pi n_m^2\\, a\\, \\eta^2\\, u \\sin^2(\\varphi-\\psi) \\\\
+                4\\pi n_m^2\\, a\\, \\eta^2\\, u \\cos^2(\\varphi-\\psi) \\\\
             \\Phi_\\text{distortion} &=
-                2\\pi n_m\\, t\\, \\eta^3\\, u^{1/2} \\sin(\\varphi-\\psi)
+                2\\pi n_m\\, t\\, \\eta^3\\, u^{1/2} \\cos(\\varphi-\\psi)
 
         where :math:`d, s, c, a, t` are ``defocus``, ``spherical``,
         ``coma``, ``astigmatism``, and ``distortion``,
         :math:`u = r^2/(r^2+z_p^2)` with :math:`r` the in-plane
         distance from the particle to the field point,
         :math:`\\eta = r_c/z_p` with :math:`r_c` the in-plane distance
-        from the particle to the aberration center
-        :math:`(x_c, y_c)`, and :math:`\\varphi-\\psi` is the angle
-        between the field point and the aberration center, as seen
-        from the particle. Defocus and spherical aberration are
+        between the particle and the aberration center
+        :math:`(x_c, y_c)`, :math:`\\varphi` is the azimuth of the field
+        point about the particle, and :math:`\\psi` is the azimuth of
+        the displacement from the aberration center to the particle.
+        Defocus and spherical aberration are
         rotationally symmetric about the optical axis and do not
         depend on :math:`(x_c, y_c)`.
 
@@ -95,6 +96,9 @@ def Aberrated(base_class: type) -> type:
         factors in a frame where :math:`\\hat{\\vec{y}}` is oriented
         along the aberration offset; the expressions above are the
         same formulas generalized to an arbitrary aberration center.
+        In that frame :math:`\\psi = \\pi/2`, so
+        :math:`\\cos(\\varphi-\\psi)` reduces to the table's
+        :math:`\\sin\\theta`.
 
         References
         ----------
@@ -157,22 +161,23 @@ def Aberrated(base_class: type) -> type:
                 rc = np.hypot(dxc, dyc)
                 if rc > 0:
                     r = np.sqrt(rsq)
-                    # sin(phi - psi), from sin(phi)=dy/r, cos(phi)=dx/r,
-                    # sin(psi)=dyc/rc, cos(psi)=dxc/rc -- avoids calling
-                    # arctan2/sin explicitly.
-                    sin_rel = np.divide(dy*dxc - dx*dyc, r*rc,
+                    # cos(phi - psi) = cos(phi)cos(psi) + sin(phi)sin(psi),
+                    # from cos(phi)=dx/r, sin(phi)=dy/r, cos(psi)=dxc/rc,
+                    # sin(psi)=dyc/rc -- avoids calling arctan2/cos
+                    # explicitly.
+                    cos_rel = np.divide(dx*dxc + dy*dyc, r*rc,
                                         out=np.zeros_like(u), where=r > 0)
                     eta = rc / r_p[2]
                     root_u = np.sqrt(u)  # r / sqrt(r^2 + z_p^2)
                     if self.coma:
                         phase = phase + self.coma * (6.*np.pi*n_m**3) * \
-                            eta * root_u**3 * sin_rel
+                            eta * root_u**3 * cos_rel
                     if self.astigmatism:
                         phase = phase + self.astigmatism * \
-                            (4.*np.pi*n_m**2) * eta**2 * u * sin_rel**2
+                            (4.*np.pi*n_m**2) * eta**2 * u * cos_rel**2
                     if self.distortion:
                         phase = phase + self.distortion * \
-                            (2.*np.pi*n_m) * eta**3 * root_u * sin_rel
+                            (2.*np.pi*n_m) * eta**3 * root_u * cos_rel
 
             mask = np.exp(1j * phase)
             if hasattr(self, '_device'):

@@ -131,7 +131,8 @@ compatible `Optimizer` instances.
 and `lorenzmie()`:
 - `cupyLorenzMie` — CuPy (CUDA GPU), `method = 'cupy numpy'`
 - `numbaLorenzMie` — Numba JIT, CPU
-- `AberratedLorenzMie` — adds spherical aberration support
+- `AberratedLorenzMie` — adds phase masks for the five primary Seidel
+  aberrations (defocus, spherical, coma, astigmatism, distortion)
 
 ### `analysis/` — Fitting pipeline
 
