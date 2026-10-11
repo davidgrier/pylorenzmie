@@ -14,7 +14,9 @@ class RadialMask(Mask):
     ``fraction >= 0.5`` all pixels have a nonzero selection probability;
     the distribution becomes more uniform as ``fraction`` → 1.
 
-    Inherits all parameters from :class:`Mask`.
+    Inherits all parameters from :class:`Mask`, including ``seed``.
+    Pixels are selected independently, so the number selected varies
+    from draw to draw.
     '''
 
     def _select(self) -> None:
@@ -28,7 +30,7 @@ class RadialMask(Mask):
         x = a + b * x
         y = a + b * y
         p = np.hypot.outer(y, x)
-        self._mask = p >= np.random.random_sample(self.shape)
+        self._mask = p >= self._generator().random(self.shape)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -117,6 +117,24 @@ class TestOptimizer(unittest.TestCase):
         result = self.optimizer.optimize(self.hologram)
         self.assertIsInstance(result, pd.Series)
 
+    def test_seeded_mask_makes_the_fit_reproducible(self):
+        '''The same seed gives the same pixels and so the same result.'''
+        self.optimizer.mask = Mask(fraction=0.1, seed=4)
+        self.optimizer.settings['max_nfev'] = 3
+        start = dict(self.optimizer.model.particle.properties)
+        first = self.optimizer.optimize(self.hologram)
+        self.optimizer.model.particle.properties = start
+        second = self.optimizer.optimize(self.hologram)
+        self.assertEqual(first['npix'], second['npix'])
+        pd.testing.assert_series_equal(first, second)
+
+    def test_unseeded_mask_has_a_fixed_pixel_count(self):
+        self.optimizer.mask = Mask(fraction=0.1)
+        self.optimizer.settings['max_nfev'] = 1
+        counts = {self.optimizer.optimize(self.hologram)['npix']
+                  for _ in range(4)}
+        self.assertEqual(len(counts), 1)
+
     def test_optimize_npix_all_pixels(self):
         '''Without a mask, npix equals the total pixel count.'''
         self.optimizer.settings['max_nfev'] = 1

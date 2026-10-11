@@ -12,8 +12,15 @@ class Mask(LMObject):
 
     Randomly selects a fraction of pixels for analysis, with optional
     exclusion of saturated, NaN, or infinite pixels.  Regenerates
-    automatically whenever :attr:`shape`, :attr:`fraction`, or
-    :attr:`exclude` is changed.
+    automatically whenever :attr:`shape`, :attr:`fraction`,
+    :attr:`exclude` or :attr:`seed` is changed.
+
+    Exactly ``round(fraction * n)`` of the ``n`` pixels that are not
+    excluded are selected, so the number of fitted pixels is the same for
+    every draw (compiled and GPU back ends then do not see a new array
+    size on each fit).  The generator is a private
+    :class:`numpy.random.Generator`: the mask neither uses nor disturbs
+    the global NumPy random state.
 
     Inherits from :class:`pylorenzmie.lib.LMObject`.
 
@@ -25,6 +32,11 @@ class Mask(LMObject):
         Fraction of pixels to include.  Default: 0.1.
     exclude : numpy.ndarray of bool, optional
         Boolean array of pixels to force-exclude.  Default: ``None``.
+    seed : int, optional
+        If given, every draw is reproducible: the mask is a function of
+        ``seed``, ``shape``, ``fraction`` and ``exclude`` alone, so the
+        same hologram is always fitted with the same pixels.  If ``None``
+        (default) each draw is independent and unpredictable.
 
     Notes
     -----
@@ -43,6 +55,7 @@ class Mask(LMObject):
     shape: tuple[int, int] | None = None
     fraction: float = 0.1
     exclude: NDArray[np.bool_] | None = None
+    seed: int | None = None
 
     def __post_init__(self) -> None:
         self._mask: NDArray[np.bool_] = np.empty((0, 0), dtype=bool)
@@ -50,7 +63,8 @@ class Mask(LMObject):
 
     def __setattr__(self, prop: str, value: object) -> None:
         super().__setattr__(prop, value)
-        if prop in ('shape', 'fraction', 'exclude') and hasattr(self, '_mask'):
+        if (prop in ('shape', 'fraction', 'exclude', 'seed') and
+                hasattr(self, '_mask')):
             self.update()
 
     def __call__(self) -> NDArray[np.bool_]:
@@ -61,15 +75,37 @@ class Mask(LMObject):
         '''Mask configuration: fraction of pixels to sample.'''
         return dict(fraction=self.fraction)
 
+    def _generator(self) -> np.random.Generator:
+        '''Random generator for one draw.
+
+        Seeded afresh for every draw when :attr:`seed` is set, so that the
+        draw is reproducible; otherwise a persistent generator that
+        starts from operating-system entropy.
+        '''
+        if self.seed is not None:
+            return np.random.default_rng(self.seed)
+        if not hasattr(self, '_entropy'):
+            self._entropy = np.random.default_rng()
+        return self._entropy
+
     def _select(self) -> None:
         '''Randomly select pixels according to :attr:`fraction`.
 
-        Subclasses can override this to implement other sampling
-        distributions.
+        Selects ``round(fraction * n)`` of the ``n`` pixels that are not
+        excluded.  Subclasses can override this to implement other
+        sampling distributions.
         '''
         if self.shape is None:
             return
-        self._mask = np.random.rand(*self.shape) < self.fraction
+        allowed = np.ones(self.shape, dtype=bool)
+        if self.exclude is not None and self.exclude.shape == allowed.shape:
+            allowed &= ~self.exclude
+        candidates = np.flatnonzero(allowed)
+        k = int(round(min(max(self.fraction, 0.), 1.) * candidates.size))
+        chosen = self._generator().choice(candidates, size=k, replace=False)
+        mask = np.zeros(allowed.size, dtype=bool)
+        mask[chosen] = True
+        self._mask = mask.reshape(self.shape)
 
     def update(self) -> None:
         '''Regenerate the mask with the current parameters.'''
@@ -98,7 +134,8 @@ class Mask(LMObject):
 
         Notes
         -----
-        Each call draws a fresh random subsample from ``hologram.shape``.
+        Each call draws a new subsample from ``hologram.shape``, unless
+        :attr:`seed` is set, in which case the subsample is always the same.
         '''
         self.shape = hologram.shape
         m = self._mask

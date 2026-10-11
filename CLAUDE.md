@@ -153,7 +153,9 @@ returns bounding boxes as `pandas.DataFrame` with columns `x_p`, `y_p`, `bbox`.
 feature image using azimuthal analysis of the fringe pattern.
 
 **`Mask`** — selects which pixels participate in the fit (excludes
-saturated/NaN pixels; supports random subsampling via `fraction`).
+saturated/NaN pixels; supports random subsampling via `fraction`: exactly
+`round(fraction * n)` of the usable pixels, drawn from a private generator;
+`seed` makes the draw reproducible).
 
 **`Optimizer(LMObject)`** — wraps `scipy.optimize.least_squares`. The `method`
 attribute must be compatible with the model's `method`. Properties `fixed` and
