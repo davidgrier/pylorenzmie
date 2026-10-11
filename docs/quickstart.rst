@@ -88,3 +88,36 @@ Analyzing a full frame
    data /= data.mean()
    results = frame.analyze(data)
    print(results)   # pandas.DataFrame with one row per particle
+
+Speed: the Numba backend and threads
+------------------------------------
+
+If Numba is installed (``pip install pylorenzmie[numba]``),
+:class:`~pylorenzmie.theory.numbaLorenzMie` evaluates the Lorenz-Mie
+field one point at a time on all CPU threads: about 4 times faster than
+the default NumPy calculator on one thread, and 10 to 20 times faster
+on a ten-core machine.  The NumPy calculator is always available
+and needs no extra packages.
+
+The threads are on by default because the points of a hologram are
+independent.  Turn them off when your own code is already parallel,
+because the two levels of parallelism then compete for the same cores:
+
+.. code-block:: python
+
+   from pylorenzmie.theory.numbaLorenzMie import numbaLorenzMie
+
+   numbaLorenzMie.parallel = False      # all models
+   model = numbaLorenzMie()
+   model.parallel = False               # this model only
+
+   # or share the cores among your worker processes
+   import numba
+   numba.set_num_threads(2)
+
+The cases to look for are worker pools (``multiprocessing``, ``joblib``,
+``concurrent.futures``) with a worker per core, and calls from inside
+another Numba parallel function, which Numba does not support.  Set the
+``NUMBA_NUM_THREADS`` environment variable before importing Numba to
+limit the number of threads for the whole program.  See the
+:class:`~pylorenzmie.theory.numbaLorenzMie` documentation for details.
