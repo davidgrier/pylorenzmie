@@ -13,7 +13,7 @@ pip install -e ".[dev]"
 ln -sf ../../scripts/update_bib.py .git/hooks/post-merge
 chmod +x .git/hooks/post-merge
 
-# Run all tests
+# Run all tests (or: make test; make cov for coverage; make docs)
 python -m pytest
 
 # Run a single test file

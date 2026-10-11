@@ -10,3 +10,7 @@ plots
 *~
 *.txt
 devel/mlp_training_data.npz
+.coverage
+htmlcov/
+.pytest_cache/
+docs/_build/
