@@ -10,6 +10,17 @@
 Python routines for tracking and characterizing colloidal particles
 with in-line holographic video microscopy (HVM)
 
+## Explanation of the module
+`pylorenzmie` provides a set of python classes for interacting with and
+analyzing holographic microscopy data. The hologram of a colloidal
+particle encodes comprehensive information about the particle's size,
+composition, and location in three dimensions. This package extracts
+that information by fitting a recorded hologram to a generative model
+based on the Lorenz-Mie theory of light scattering.
+
+<img src="https://raw.githubusercontent.com/davidgrier/pylorenzmie/master/docs/tutorials/crop.png" alt="Typical Hologram"
+width="200"/>
+
 ## Documentation
 The documentation is on [Read the Docs](https://pylorenzmie.readthedocs.io/en/stable/):
 
@@ -58,17 +69,6 @@ hologram = model.hologram().reshape(201, 201)
 
 The [quickstart](https://pylorenzmie.readthedocs.io/en/stable/quickstart.html)
 goes on to fit recorded holograms.
-
-## Explanation of the module
-`pylorenzmie` provides a set of python classes for interacting with and
-analyzing holographic microscopy data. The hologram of a colloidal
-particle encodes comprehensive information about the particle's size,
-composition, and location in three dimensions. This package extracts
-that information by fitting a recorded hologram to a generative model
-based on the Lorenz-Mie theory of light scattering.
-
-<img src="https://raw.githubusercontent.com/davidgrier/pylorenzmie/master/docs/tutorials/crop.png" alt="Typical Hologram"
-width="200"/>
 
 ## Interactive particle tracking and characterization
 `pylorenzmie` includes a GUI application called `lmtool`
