@@ -76,7 +76,10 @@ The tag push triggers two CI workflows automatically:
   GitHub Release (do not run `gh release create` manually).
 - `update-citation.yml` updates `CITATION.cff` and commits it back.
 
-The GitHub Release event fires Zenodo's webhook and mints a DOI.
+The GitHub Release event fires Zenodo's webhook and mints a version DOI.
+`CITATION.cff` carries the project (concept) DOI, 10.5281/zenodo.20784723,
+which always resolves to the latest version, so nothing needs updating after
+a release.
 
 ## Architecture
 

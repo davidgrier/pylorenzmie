@@ -83,10 +83,9 @@ git tag -a vX.Y.Z -m "pylorenzmie X.Y.Z" && git push origin vX.Y.Z
 The tag builds the package and publishes it to PyPI (`publish.yml`, which also
 creates the GitHub release) and updates `CITATION.cff`
 (`update-citation.yml`). A version cannot be published twice. The release is
-archived on Zenodo, which mints a DOI; the workflow that copies the DOI into
-`CITATION.cff` (`update-doi.yml`) runs when a person publishes a release and is
-not triggered by the release that `publish.yml` creates, so check the DOI after
-a release.
+archived on Zenodo, which mints a DOI for that version. `CITATION.cff` cites
+the project (concept) DOI, which always resolves to the latest version, so it
+needs no change at a release.
 
 ## License
 
