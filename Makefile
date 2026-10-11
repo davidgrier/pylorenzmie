@@ -8,8 +8,8 @@ PYTHON ?= python
 all: test
 
 help:
-	@echo 'make test      run the test suite, as CI does (without tests/slow)'
-	@echo 'make test-all  run all tests, including tests/slow'
+	@echo 'make test      run the test suite, as CI does (without tests/slow and the JAX tests)'
+	@echo 'make test-all  run all tests, including tests/slow and the JAX tests'
 	@echo 'make cov       run the test suite and report coverage'
 	@echo 'make docs      build the HTML documentation in docs/_build/html'
 	@echo 'make clean     remove build, cache and coverage files'
@@ -19,7 +19,7 @@ help:
 test:
 	$(PYTHON) -m pytest --tb=short -q
 
-# pyproject.toml excludes tests/slow by default
+# pyproject.toml excludes tests/slow and the JAX tests by default
 test-all:
 	$(PYTHON) -m pytest -o addopts= --tb=short -q
 

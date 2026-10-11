@@ -81,7 +81,8 @@ packages = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--ignore=tests/slow"
+# the JAX tests run only when asked for: pytest tests/test_jaxlorenzmie.py
+addopts = "--ignore=tests/slow --ignore=tests/test_jaxlorenzmie.py"
 
 [tool.coverage.run]
 source = ["pylorenzmie"]
