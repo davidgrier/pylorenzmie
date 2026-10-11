@@ -41,6 +41,9 @@ and [the building blocks of the model](https://github.com/davidgrier/pylorenzmie
 The documentation of the development version is
 [here](https://pylorenzmie.readthedocs.io/en/latest/).
 
+To report a problem or to contribute, see
+[CONTRIBUTING.md](https://github.com/davidgrier/pylorenzmie/blob/master/CONTRIBUTING.md).
+
 ## Installation
 `pylorenzmie` requires Python 3.11 or later:
 
