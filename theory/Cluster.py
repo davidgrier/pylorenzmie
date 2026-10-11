@@ -1,3 +1,19 @@
+'''A group of particles that is analyzed as one scatterer.
+
+A :class:`Cluster` holds a list of particles, such as spheres, and has a
+position of its own that is the **origin of the coordinates of its members**:
+the position of each member is relative to the cluster, so a sphere at
+``r_p = (10, 0, 50)`` in a cluster at ``(100, 100, 100)`` is at
+``(110, 100, 150)`` in the image.  By default the cluster is at
+``z_p = 100`` pixels, not at the focal plane; set ``x_p``, ``y_p`` and ``z_p``
+to zero to use absolute coordinates.
+
+The calculators sum the fields of the members coherently.  Only the position
+of the cluster is a fit parameter (``properties``); the members keep their
+own.  :class:`~pylorenzmie.theory.Dimer.Dimer` is a cluster of two touching
+spheres.
+'''
+
 from pylorenzmie.theory.Particle import Particle
 from pylorenzmie.lib.lmtypes import Properties
 from dataclasses import dataclass, field
@@ -7,9 +23,10 @@ from dataclasses import dataclass, field
 class Cluster(Particle):
     '''A cluster of particles for Lorenz-Mie microscopy.
 
-    Groups a list of :class:`Particle` objects into a single
-    scatterer.  The cluster position ``r_p`` sets the origin of each
-    constituent particle's coordinate system via :attr:`Particle.r_0`.
+    Groups a list of :class:`~pylorenzmie.theory.Particle.Particle` objects
+    into a single scatterer.  The cluster position ``r_p`` sets the origin of
+    each constituent particle's coordinate system via
+    :attr:`~pylorenzmie.theory.Particle.Particle.r_0`.
 
     Inherits from :class:`~pylorenzmie.theory.Particle`.
 

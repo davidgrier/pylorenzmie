@@ -1,3 +1,12 @@
+'''Pixel subsets that favor the outer fringes.
+
+:class:`RadialMask` is a :class:`~pylorenzmie.analysis.Mask.Mask` whose pixels
+are chosen with a probability that increases with the distance from the
+center of the image, which emphasizes the outer interference rings in a fit.
+The pixels are chosen independently, so the number of pixels varies from draw
+to draw, and the ``seed`` of the mask makes the draw reproducible.
+'''
+
 from pylorenzmie.analysis.Mask import Mask
 import numpy as np
 
@@ -5,8 +14,8 @@ import numpy as np
 class RadialMask(Mask):
     '''Pixel selection mask with radially-weighted sampling probability.
 
-    Overrides :meth:`Mask._select` to sample pixels with a probability
-    that varies with radial distance from the image center.
+    Overrides ``Mask._select`` to sample pixels
+    with a probability that varies with radial distance from the image center.
 
     When ``fraction < 0.5`` the image center has probability zero of
     being selected; probability increases toward the edges, emphasizing
@@ -14,10 +23,9 @@ class RadialMask(Mask):
     ``fraction >= 0.5`` all pixels have a nonzero selection probability;
     the distribution becomes more uniform as ``fraction`` → 1.
 
-    Inherits all parameters from :class:`Mask`, including ``seed``.
-    Pixels are selected independently, so the number selected varies
-    from draw to draw.
-    '''
+    Inherits all parameters from :class:`~pylorenzmie.analysis.Mask.Mask`,
+    including ``seed``. Pixels are selected independently, so the number
+    selected varies from draw to draw. '''
 
     def _select(self) -> None:
         f = self.fraction

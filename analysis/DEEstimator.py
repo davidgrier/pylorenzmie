@@ -1,3 +1,22 @@
+'''Global search for the starting values of a fit.
+
+A :class:`DEEstimator` searches for the height, radius and refractive index of
+a particle with differential evolution
+(:func:`scipy.optimize.differential_evolution`), minimizing the squared
+difference between the model and a random subset of the pixels of the
+hologram.  The search needs no starting values, only bounds, and it is the
+default estimator of :class:`~pylorenzmie.analysis.Feature.Feature`.
+
+The position in the plane is not searched: it is taken as the center of the
+hologram.  The bounds on the three parameters are wide by default, so a
+search can settle on an unphysical solution for a feature that several
+different particles could explain; narrower bounds that reflect what is known
+about the sample, and a ``seed`` for reproducibility, help.  The search runs
+in one process by default; ``settings['workers'] = -1`` distributes it over the
+cores of the processor, which pays off for slow calculators and large
+holograms.
+'''
+
 from dataclasses import dataclass, field
 from pylorenzmie.lib.lmtypes import Image, Properties, Result
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
@@ -46,18 +65,20 @@ class _DEObjective:
 class DEEstimator(BaseEstimator):
     '''Estimate initial particle parameters by global search.
 
-    Uses differential evolution (DE) to minimize the sum-squared
-    residual between the forward model and a subsampled hologram crop,
-    providing robust initial values for :class:`Optimizer` even when
-    the conventional :class:`Estimator` fails to converge.
+    Uses differential evolution (DE) to minimize the sum-squared residual
+    between the forward model and a subsampled hologram crop, providing robust
+    initial values for :class:`~pylorenzmie.analysis.Optimizer.Optimizer` even
+    when the conventional :class:`~pylorenzmie.analysis.Estimator.Estimator`
+    fails to converge.
 
-    Inherits from :class:`BaseEstimator`.
+    Inherits from :class:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator`.
 
     Parameters
     ----------
     model : LorenzMie
-        Generative scattering model shared with :class:`Optimizer`.
-        The particle parameters on this model are updated in-place.
+        Generative scattering model shared with
+        :class:`~pylorenzmie.analysis.Optimizer.Optimizer`. The particle
+        parameters on this model are updated in-place.
     bounds : dict, optional
         Mapping of parameter name to ``(min, max)`` search range.
         Default: ``z_p`` (10, 600) pixels, ``a_p`` (0.25, 10.0) μm,
@@ -70,7 +91,8 @@ class DEEstimator(BaseEstimator):
     exclude : numpy.ndarray of bool, optional
         Boolean mask of pixels to force-exclude from sampling (e.g.
         saturated or dead pixels).  Default: ``None`` (no exclusions).
-        Set via :attr:`~Feature.mask` when using :class:`Feature`.
+        Set via :attr:`~pylorenzmie.analysis.Feature.Feature.mask` when using
+        :class:`~pylorenzmie.analysis.Feature.Feature`.
     popsize : int, optional
         DE population size multiplier (population = popsize ×
         len(bounds)).  Default: 10.
@@ -112,11 +134,11 @@ class DEEstimator(BaseEstimator):
     ``updating='deferred'`` (also the default) is required for
     ``workers != 1`` and suppresses a SciPy warning.
 
-    Use :class:`Estimator` for a fast conventional estimate when the
-    fringe pattern is clean.  Use :class:`DEEstimator` when the
-    conventional estimator produces starting points too far from the
-    true solution for :class:`Optimizer` to converge.
-    '''
+    Use :class:`~pylorenzmie.analysis.Estimator.Estimator` for a fast
+    conventional estimate when the fringe pattern is clean.  Use
+    :class:`DEEstimator` when the conventional estimator produces starting
+    points too far from the true solution for
+    :class:`~pylorenzmie.analysis.Optimizer.Optimizer` to converge. '''
 
     model: LorenzMie
     bounds: dict = field(default_factory=lambda: DEFAULT_BOUNDS.copy())
@@ -149,7 +171,7 @@ class DEEstimator(BaseEstimator):
         -------
         result : pandas.Series
             Estimated particle properties (same keys as
-            :attr:`~pylorenzmie.theory.Particle.properties`).
+            :attr:`~pylorenzmie.theory.Particle.Particle.properties`).
         '''
         self.model.particle.x_p = float(hologram.coordinates[0].mean())
         self.model.particle.y_p = float(hologram.coordinates[1].mean())

@@ -10,13 +10,15 @@ class BaseEstimator(LMObject):
     '''Abstract base for particle parameter estimators.
 
     Subclasses must implement :meth:`estimate` and the
-    :attr:`~pylorenzmie.lib.LMObject.properties` getter inherited
+    :attr:`~pylorenzmie.lib.LMObject.LMObject.properties` getter inherited
     from :class:`~pylorenzmie.lib.LMObject`.
 
     See Also
     --------
-    Estimator : conventional azimuthal-profile estimator.
-    DEEstimator : global differential-evolution estimator.
+    ~pylorenzmie.analysis.Estimator.Estimator : conventional azimuthal-profile
+        estimator.
+    ~pylorenzmie.analysis.DEEstimator.DEEstimator : global
+        differential-evolution estimator.
     '''
 
     @abstractmethod

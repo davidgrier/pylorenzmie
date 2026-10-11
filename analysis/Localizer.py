@@ -1,3 +1,20 @@
+'''Detection of holographic features in a frame.
+
+A :class:`Localizer` finds the particles in a normalized image.  It enhances
+the ring-like patterns of the holograms with a circle transform
+(:class:`~pylorenzmie.lib.CircleTransform.CircleTransform`), locates the
+centers of the bright spots with :func:`trackpy.locate`, and sizes a bounding
+box around each center to enclose a chosen number of interference fringes,
+clipped to the image.  The result is a table with the position and the box of
+each feature.
+
+Detection depends on the nominal ``diameter`` of a feature, in pixels, and the
+default can find one particle twice or miss a faint one; the single-frame
+tutorial shows how to tune it.  Further keyword arguments of
+:meth:`~Localizer.localize` go to :func:`trackpy.locate`.
+:meth:`~Localizer.crop` cuts the box out of the image.
+'''
+
 from pylorenzmie.lib import LMObject, Azimuthal, CircleTransform
 from pylorenzmie.lib.lmtypes import Image, Properties
 import numpy as np
@@ -40,7 +57,7 @@ class Localizer(LMObject):
 
     @LMObject.properties.getter
     def properties(self) -> Properties:
-        '''Localization parameters: nfringes and diameter.'''
+        '''Parameters of the localization (nfringes and diameter).'''
         return dict(nfringes=self.nfringes, diameter=self.diameter)
 
     def localize(self,
@@ -55,9 +72,9 @@ class Localizer(LMObject):
         image : numpy.ndarray or list of numpy.ndarray
             Normalized hologram intensity.
         diameter : int, optional
-            Override :attr:`diameter` for this call.
+            Override ``diameter`` for this call.
         nfringes : int, optional
-            Override :attr:`nfringes` for this call.
+            Override ``nfringes`` for this call.
         **kwargs
             Additional keyword arguments passed to ``trackpy.locate``.
 

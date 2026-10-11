@@ -1,3 +1,23 @@
+'''Analysis of a full camera frame.
+
+A :class:`Frame` is the whole normalized image of the camera, together with a
+:class:`~pylorenzmie.analysis.Localizer.Localizer` and the
+:class:`~pylorenzmie.theory.Instrument.Instrument` that the particles share.
+It takes three steps, which :meth:`~Frame.analyze` runs in turn:
+
+1. :meth:`~Frame.detect` finds the particles and crops a
+   :class:`~pylorenzmie.analysis.Feature.Feature` around each,
+2. :meth:`~Frame.estimate` finds starting values for each feature, and
+3. :meth:`~Frame.optimize` fits each feature and collects the results in a
+   table with one row per particle.
+
+The steps can be run one at a time to adjust the estimator or the optimizer of
+the features in between, as the single-frame tutorial does.  Each feature is
+fitted on its own, so a particle whose pattern overlaps another's is fitted
+with the neighbor's fringes as noise.  The table of a series of frames can be
+collected in a :class:`~pylorenzmie.analysis.Trajectory.Trajectory`.
+'''
+
 import pandas as pd
 from pylorenzmie.lib import meshgrid
 from pylorenzmie.theory import Instrument, LorenzMie

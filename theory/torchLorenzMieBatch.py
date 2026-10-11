@@ -3,15 +3,17 @@
 This module extends :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie`
 with a batched computation path that generates B holograms in a single Triton
 kernel launch, which is substantially faster than calling
-:meth:`~TorchLorenzMie.hologram` B times in a loop.
+:meth:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie.hologram` B times in a
+loop.
 
 Key components
 --------------
 _batch_lorenzmie_kernel
     Triton kernel — 2-D grid variant that handles N particles simultaneously.
 TorchLorenzMieBatch
-    Subclass of :class:`TorchLorenzMie` that adds :meth:`batch_hologram` and
-    :meth:`batch_field` for generating many holograms in a single GPU call.
+    Subclass of :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie` that
+    adds ``batch_hologram`` and ``batch_field`` for generating many
+    holograms in a single GPU call.
 '''
 
 from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie
@@ -219,10 +221,10 @@ def _batch_lorenzmie_kernel(
 class TorchLorenzMieBatch(TorchLorenzMie):
     '''Batched GPU-accelerated Lorenz-Mie hologram calculator.
 
-    Extends :class:`TorchLorenzMie` with a batched computation path that
-    generates B holograms in a single Triton kernel launch.  All other
-    behavior (single-hologram API, device selection, coordinate handling)
-    is inherited unchanged.
+    Extends :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie` with a
+    batched computation path that generates B holograms in a single Triton
+    kernel launch.  All other behavior (single-hologram API, device selection,
+    coordinate handling) is inherited unchanged.
 
     Additional methods
     ------------------

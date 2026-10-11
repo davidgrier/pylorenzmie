@@ -1,3 +1,13 @@
+'''A touching pair of identical spheres.
+
+A :class:`Dimer` is a :class:`~pylorenzmie.theory.Cluster.Cluster` of two
+identical spheres of radius ``a_p`` in contact, placed symmetrically about the
+center of the cluster along an axis whose orientation is set by an elevation
+angle ``theta`` above the image plane and an azimuth ``phi`` in it, both in
+radians.  The center is the cluster position, so a dimer has the parameters of
+a sphere together with the two angles.
+'''
+
 from pylorenzmie.theory.Cluster import Cluster
 from pylorenzmie.theory.Sphere import Sphere
 from pylorenzmie.lib.lmtypes import Properties

@@ -1,3 +1,33 @@
+'''Lorenz-Mie scattered field and hologram, in NumPy.
+
+:class:`LorenzMie` is the reference calculator.  For each particle it forms
+the scattered field of a plane wave that is linearly polarized along x and
+propagates along -z, so that a particle above the focal plane has a positive
+``z_p``, evaluates it at the pixel ``coordinates``, and interferes it with
+the incident wave to give the hologram :math:`|\\hat{x} + E_s|^2`, with the
+background normalized to 1.  The partial-wave sum uses the upward recurrences
+of Wiscombe for the angular functions and of the Riccati-Bessel functions
+with Deirmendjian's derivative.
+
+Coordinates and particle positions are in pixels, lengths in micrometers.
+The accelerated calculators are subclasses that replace
+:meth:`~LorenzMie.lorenzmie`:
+
+* :class:`~pylorenzmie.theory.numbaLorenzMie.numbaLorenzMie`, for the CPU,
+  which is the default when Numba is installed;
+* :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie`, for GPUs;
+* :class:`~pylorenzmie.theory.cupyLorenzMie.cupyLorenzMie`, for NVIDIA GPUs;
+* :class:`~pylorenzmie.theory.jaxLorenzMie.jaxLorenzMie`, with an analytical
+  Jacobian.
+
+:func:`~pylorenzmie.theory.Aberrated.Aberrated` adds the aberrations of the
+microscope to any of them.
+
+The class attribute ``method`` names the calculator, and an
+:class:`~pylorenzmie.analysis.Optimizer.Optimizer` uses it to check that it
+can work with the model.
+'''
+
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import (Coordinates, Coefficients, Field,
                                    Image, Properties)
@@ -14,8 +44,9 @@ class LorenzMie(LMObject):
     to be a plane wave linearly polarized along x and propagating
     along -z.
 
-    The class attribute ``method`` is used by :class:`Optimizer` to
-    select a compatible calculator.
+    The class attribute ``method`` is used by
+    :class:`~pylorenzmie.analysis.Optimizer.Optimizer` to select a compatible
+    calculator.
 
     Attributes
     ----------
@@ -23,7 +54,8 @@ class LorenzMie(LMObject):
         Pixel coordinates at which the field is evaluated,
         shape ``(3, npts)``. Defaults to a 201×201 grid if not supplied.
     particle : Particle or list of Particle
-        Scattering particle(s).  Defaults to a :class:`Sphere`.
+        Scattering particle(s).  Defaults to a
+        :class:`~pylorenzmie.theory.Sphere.Sphere`.
     instrument : Instrument
         Optical parameters of the microscope.
 

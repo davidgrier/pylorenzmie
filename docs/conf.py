@@ -65,6 +65,16 @@ intersphinx_mapping = {
 
 exclude_patterns = ['_build']
 
+# Check every cross-reference, so that a broken one fails the build (Read the
+# Docs treats warnings as errors).  The names of the optional libraries that
+# conf.py mocks, and of types that have no documentation page to link to, are
+# left as plain text.
+nitpicky = True
+nitpick_ignore_regex = [
+    (r'py:.*', r'(torch|jax|cupy|numba|trackpy|pyqtgraph|sklearn)(\..*)?'),
+    (r'py:.*', r'numpy\._typing\..*'),
+]
+
 # Suppress warnings that cannot be fixed in source
 suppress_warnings = [
     'sphinx_autodoc_typehints.local_function',   # AberratedLorenzMie factory

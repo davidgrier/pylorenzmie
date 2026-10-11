@@ -1,3 +1,23 @@
+'''Homogeneous sphere as a scatterer for Lorenz-Mie microscopy.
+
+A :class:`Sphere` has a radius ``a_p`` in micrometers and a complex
+refractive index ``n_p + i k_p``.  It computes the Mie scattering coefficients
+:math:`a_n` and :math:`b_n` of a homogeneous sphere in a medium of given
+refractive index at a given vacuum wavelength, following Bohren and Huffman,
+with the number of partial waves chosen by the criterion of Wiscombe, in the
+form that Yang extended to layered spheres, or by the criterion of Neves and
+Pisignano.  The calculators in ``pylorenzmie.theory`` combine the
+coefficients with the geometry of the pixels to obtain the scattered field.
+
+Lengths are in micrometers and positions in pixels, as everywhere in the
+package.
+
+See Also
+--------
+~pylorenzmie.theory.Particle.Particle : base class, with the position.
+~pylorenzmie.theory.LorenzMie.LorenzMie : calculator of the scattered field.
+'''
+
 from dataclasses import dataclass
 from pylorenzmie.theory import Particle
 from pylorenzmie.lib.lmtypes import Coefficients, Properties
@@ -8,10 +28,10 @@ import numpy as np
 class Sphere(Particle):
     '''Homogeneous spherical scatterer for Lorenz-Mie microscopy.
 
-    Extends :class:`Particle` with the physical parameters needed to
-    compute Mie scattering coefficients for an isotropic homogeneous
-    sphere illuminated by a coherent plane wave polarized along x and
-    propagating along z.
+    Extends :class:`~pylorenzmie.theory.Particle.Particle` with the physical
+    parameters needed to compute Mie scattering coefficients for an isotropic
+    homogeneous sphere illuminated by a coherent plane wave polarized along x
+    and propagating along z.
 
     Attributes
     ----------

@@ -48,21 +48,23 @@ class RadialEstimator(BaseEstimator):
     differential evolution (DE) to find the parameter set that minimises
     the residual between a 1-D radial model evaluation and that profile.
 
-    Because a sphere's hologram is rotationally symmetric, the full 2-D
-    pixel comparison in :class:`DEEstimator` can be reduced to a 1-D
-    radial comparison with no loss of information about *z_p*, *a_p*, or
-    *n_p*.  This makes each DE objective evaluation roughly an order of
-    magnitude cheaper than :class:`DEEstimator` while retaining the
+    Because a sphere's hologram is rotationally symmetric, the full 2-D pixel
+    comparison in :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` can be
+    reduced to a 1-D radial comparison with no loss of information about *z_p*,
+    *a_p*, or *n_p*.  This makes each DE objective evaluation roughly an order
+    of magnitude cheaper than
+    :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` while retaining the
     robustness of global search and adding *n_p* estimation that
-    :class:`Estimator` cannot provide.
+    :class:`~pylorenzmie.analysis.Estimator.Estimator` cannot provide.
 
-    Inherits from :class:`BaseEstimator`.
+    Inherits from :class:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator`.
 
     Parameters
     ----------
     model : LorenzMie
-        Generative scattering model shared with :class:`Optimizer`.
-        The particle parameters on this model are updated in-place.
+        Generative scattering model shared with
+        :class:`~pylorenzmie.analysis.Optimizer.Optimizer`. The particle
+        parameters on this model are updated in-place.
     bounds : dict, optional
         Mapping of parameter name to ``(min, max)`` search range.
         Default: ``z_p`` (10, 600) pixels, ``a_p`` (0.25, 10.0) μm,
@@ -84,22 +86,22 @@ class RadialEstimator(BaseEstimator):
     ``(x_p + r, y_p)`` for ``r = 0, 1, …, n_radii - 1`` and restored on
     exit, even if an exception occurs.
 
-    This estimator assumes the hologram is rotationally symmetric about
-    the particle position, which holds for spherical particles.  For
-    non-spherical scatterers use :class:`DEEstimator` instead.
+    This estimator assumes the hologram is rotationally symmetric about the
+    particle position, which holds for spherical particles.  For non-spherical
+    scatterers use :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator`
+    instead.
 
-    The default ``settings['workers'] = 1`` is appropriate here because
-    each objective evaluation is inexpensive (~100 model points vs
-    ~1000–2000 for :class:`DEEstimator`).  Set ``workers=-1`` to
-    distribute over all cores if you are running very large population
-    sizes or tight tolerances.
+    The default ``settings['workers'] = 1`` is appropriate here because each
+    objective evaluation is inexpensive (~100 model points vs ~1000–2000 for
+    :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator`).  Set
+    ``workers=-1`` to distribute over all cores if you are running very large
+    population sizes or tight tolerances.
 
-    Use :class:`Estimator` for a fast conventional estimate when the
-    fringe pattern is clean and *n_p* is known.  Use this class when you
-    need a robust estimate of *n_p* as well as *z_p* and *a_p*.  Use
-    :class:`DEEstimator` for non-spherical particles or when rotational
-    symmetry cannot be assumed.
-    '''
+    Use :class:`~pylorenzmie.analysis.Estimator.Estimator` for a fast
+    conventional estimate when the fringe pattern is clean and *n_p* is known.
+    Use this class when you need a robust estimate of *n_p* as well as *z_p*
+    and *a_p*.  Use :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` for
+    non-spherical particles or when rotational symmetry cannot be assumed. '''
 
     model: LorenzMie
     bounds: dict = field(default_factory=lambda: DEFAULT_BOUNDS.copy())
@@ -129,7 +131,7 @@ class RadialEstimator(BaseEstimator):
         -------
         result : pandas.Series
             Estimated particle properties (same keys as
-            :attr:`~pylorenzmie.theory.Particle.properties`).
+            :attr:`~pylorenzmie.theory.Particle.Particle.properties`).
         '''
         x_p = float(hologram.coordinates[0].mean())
         y_p = float(hologram.coordinates[1].mean())

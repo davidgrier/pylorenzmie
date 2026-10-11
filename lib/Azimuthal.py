@@ -39,7 +39,7 @@ def azimuthaloperator(func):
     signature ``f(data, center=None)``, where *data* is a 2-D image and
     *center* is an ``(x, y)`` coordinate pair defaulting to the image
     centre.  Internally the decorator builds or retrieves a cached
-    :class:`_Context` (integer radii, sort order, bin boundaries) and
+    ``_Context`` (integer radii, sort order, bin boundaries) and
     passes the ravelled data and context to the original function.
 
     The context is keyed by ``(ny, nx, x_p, y_p)`` and cached across

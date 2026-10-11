@@ -1,3 +1,20 @@
+'''Random subsets of pixels for fast fitting.
+
+Fitting all of the pixels of a hologram is slow and unnecessary: a random
+subset constrains the parameters nearly as well (Dimiduk and others, 2014).
+A :class:`Mask` selects ``round(fraction * n)`` of the ``n`` pixels that
+are not excluded, so the number of pixels is the same for every draw, using a
+random generator of its own.  A ``seed`` makes the selection reproducible, so
+that the same hologram is always fitted with the same pixels.  The pixels in
+``exclude`` (saturated, dead, NaN or infinite pixels) are never selected.
+
+:meth:`Mask.apply` applies a mask to a
+:class:`~pylorenzmie.analysis.Hologram.Hologram` and returns the selected
+data and coordinates in the flat form that the solvers use.
+:class:`~pylorenzmie.analysis.RadialMask.RadialMask` weights the selection by
+distance from the center of the image.
+'''
+
 from dataclasses import dataclass
 import numpy as np
 from numpy.typing import NDArray
@@ -41,7 +58,7 @@ class Mask(LMObject):
     Notes
     -----
     Call :meth:`update` to resample the mask without changing any
-    parameter.  Subclasses may override :meth:`_select` to implement
+    parameter.  Subclasses may override ``_select`` to implement
     non-uniform sampling strategies.
 
     References
@@ -72,7 +89,7 @@ class Mask(LMObject):
 
     @LMObject.properties.getter
     def properties(self) -> Properties:
-        '''Mask configuration: fraction of pixels to sample.'''
+        '''Configuration of the mask (the fraction of pixels to sample).'''
         return dict(fraction=self.fraction)
 
     def _generator(self) -> np.random.Generator:

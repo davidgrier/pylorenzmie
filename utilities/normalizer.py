@@ -1,3 +1,16 @@
+'''Normalization of holograms by their background.
+
+A hologram must be divided by the intensity of the background illumination
+before it is analyzed, so that the background is 1.  A :class:`Normalizer`
+does so by one of three methods: the median of the image, for uniform
+illumination; a large median filter, which estimates a slowly varying
+background from the image itself; or a recorded reference image, which is the
+most accurate, because it also removes dust and fringes of the optics.  For a
+video, :class:`~pylorenzmie.utilities.vmedian.VMedian` supplies a running
+median background.  Subtract the dark count of the camera from the image and
+the reference before normalizing.
+'''
+
 import logging
 
 import numpy as np

@@ -242,7 +242,7 @@ class TorchLorenzMie(LorenzMie):
     Triton kernel on a CUDA GPU, a Metal kernel on an Apple GPU (through
     PyTorch's MPS back end).  All other behavior (coordinate handling,
     multi-particle accumulation, properties interface) is inherited from
-    :class:`LorenzMie`.
+    :class:`~pylorenzmie.theory.LorenzMie.LorenzMie`.
 
     Parameters
     ----------

@@ -1,3 +1,23 @@
+'''Aberrations of the microscope as phase factors on the scattered field.
+
+:func:`Aberrated` takes any calculator derived from
+:class:`~pylorenzmie.theory.LorenzMie.LorenzMie` and returns a subclass that
+multiplies the scattered field of each particle by a phase factor, leaving the
+reference wave alone.  The factor is built from the five primary Seidel
+aberrations: defocus, spherical aberration, coma, astigmatism and distortion.
+Each coefficient is expressed in wavelengths of the illumination in vacuum
+and enters through the phase factor of the operator formalism for the
+aberration, which depends on the particle's height ``z_p`` and on the
+distance from the particle in the image.  Coma, astigmatism and distortion
+also depend on the position of the aberration center (``x_c``, ``y_c``, in
+pixels) relative to the particle.
+
+:data:`AberratedLorenzMie` is the aberrated NumPy calculator.  The
+calculators that evaluate the field inside a compiled kernel (Metal and JAX)
+apply the same phase inside the kernel.  Defocus is nearly degenerate with
+``z_p``, so fit it only when the height is constrained by other means.
+'''
+
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Particle import Particle
 from pylorenzmie.lib.lmtypes import Coordinates, Field, Properties
@@ -7,7 +27,7 @@ import numpy as np
 def Aberrated(base_class: type) -> type:
     '''Return an aberrated subclass of a LorenzMie calculator.
 
-    The returned class extends :meth:`scattered_field` to multiply
+    The returned class extends ``scattered_field`` to multiply
     the scattered field by a phase mask built from the primary Seidel
     aberrations (defocus, spherical, coma, astigmatism, distortion).
 

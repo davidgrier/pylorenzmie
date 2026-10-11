@@ -1,3 +1,11 @@
+'''Example holograms for the documentation and the examples.
+
+:func:`example_hologram` returns one of the images that are installed with the
+package, as a normalized
+:class:`~pylorenzmie.analysis.Hologram.Hologram`.  The ``example`` methods of
+the classes in ``pylorenzmie.analysis`` use it.
+'''
+
 from pathlib import Path
 from pylorenzmie.analysis.Hologram import Hologram
 

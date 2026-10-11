@@ -1,3 +1,23 @@
+'''Conventional estimates of the starting values of a fit.
+
+An :class:`Estimator` obtains the height and the radius of a particle from the
+azimuthal average of its hologram.  The spacing of the fringes gives the
+height in the paraxial approximation, and the first minima of the profile give
+the radius in the Fraunhofer approximation, which is rough (up to a factor of
+two).  The estimator is fast and needs no random search, but it cannot
+determine the refractive index, which it takes as given, and it needs a clean
+fringe pattern around the center of the crop.
+
+It is one of four estimators, which return the same table of starting values
+for :class:`~pylorenzmie.analysis.Optimizer.Optimizer`:
+:class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` (global search on the
+pixels, the default of :class:`~pylorenzmie.analysis.Feature.Feature`),
+:class:`~pylorenzmie.analysis.RadialEstimator.RadialEstimator` (global search
+on the radial profile) and
+:class:`~pylorenzmie.analysis.MLPEstimator.MLPEstimator` (a trained neural
+network).
+'''
+
 from dataclasses import dataclass
 from pylorenzmie.lib import Azimuthal
 from pylorenzmie.lib.lmtypes import Image, Properties, Result
@@ -16,9 +36,9 @@ class Estimator(BaseEstimator):
 
     Uses the azimuthal average of a cropped hologram to estimate the
     axial position and radius of the scattering particle, providing
-    initial values for :class:`Optimizer`.
+    initial values for :class:`~pylorenzmie.analysis.Optimizer.Optimizer`.
 
-    Inherits from :class:`BaseEstimator`.
+    Inherits from :class:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator`.
 
     Parameters
     ----------
@@ -36,7 +56,7 @@ class Estimator(BaseEstimator):
     Call :meth:`estimate` to populate all particle parameters.
     Results are available via :attr:`properties` afterwards.
 
-    :meth:`predict` is a backward-compatibility alias for
+    ``predict`` is a backward-compatibility alias for
     :meth:`estimate`.
 
     This class provides a lightweight conventional-algorithm baseline.

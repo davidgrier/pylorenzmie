@@ -24,7 +24,7 @@ class Hologram:
     Notes
     -----
     Pixel coordinates are generated automatically from ``data.shape``
-    and ``corner`` via :func:`~pylorenzmie.lib.meshgrid` and stored as
+    and ``corner`` via :func:`~pylorenzmie.lib.meshgrid.meshgrid` and stored as
     a ``(2, ny, nx)`` array.  Two flat views are provided for use by
     scattering models and numerical solvers:
 

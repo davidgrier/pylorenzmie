@@ -350,7 +350,7 @@ class jaxLorenzMie(LorenzMie):
     Parameters
     ----------
     coordinates, particle, instrument
-        Forwarded to :class:`LorenzMie`.
+        Forwarded to :class:`~pylorenzmie.theory.LorenzMie.LorenzMie`.
 
     Notes
     -----
@@ -431,7 +431,8 @@ class jaxLorenzMie(LorenzMie):
         Raises
         ------
         TypeError
-            If :attr:`particle` is not a single :class:`~pylorenzmie.theory.Sphere`.
+            If ``particle`` is not a single
+            :class:`~pylorenzmie.theory.Sphere.Sphere`.
         '''
         if not isinstance(self.particle, Sphere):
             raise TypeError('jac() supports single Sphere particles only')

@@ -1,3 +1,27 @@
+'''Least-squares fitting of a Lorenz-Mie model to a hologram.
+
+An :class:`Optimizer` fits the parameters of a generative model, such as a
+:class:`~pylorenzmie.theory.LorenzMie.LorenzMie` calculator with a sphere, to a
+normalized :class:`~pylorenzmie.analysis.Hologram.Hologram` with
+:func:`scipy.optimize.least_squares`.  The residual of each pixel is weighted
+by the noise of the instrument, so that the reduced chi-squared of the result
+is near 1 when the model explains the data.  The solver is the
+Levenberg-Marquardt algorithm by default and the trust-region reflective
+algorithm with a Cauchy loss for a robust fit (``robust = True``).  When the
+model provides an analytical Jacobian (``jac()``, as the JAX calculator does)
+it is used; otherwise the solver differences numerically.
+
+Which parameters are fitted is set by ``fixed`` and ``variables``.  By default
+only the position, radius and refractive index of the particle are free:
+the instrument, the absorption and the aberrations are fixed.  A
+:class:`~pylorenzmie.analysis.Mask.Mask` can restrict the fit to a subset of
+the pixels.  The result of :meth:`~Optimizer.optimize` is a table of fitted
+values with their uncertainties, the number of pixels and the reduced
+chi-squared.  The uncertainties assume that the instrument noise is correct,
+and a reduced chi-squared well above 1 means that the model leaves structure in
+the data.
+'''
+
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import Image, Properties, Result
 from pylorenzmie.analysis.Hologram import Hologram
@@ -25,8 +49,8 @@ class Optimizer(LMObject):
     mask : Mask or None, optional
         Pixel-selection mask applied to the hologram before fitting.
         ``None`` (default) uses all pixels via
-        :attr:`~Hologram.flat_data` and
-        :attr:`~Hologram.flat_coordinates`.
+        :attr:`~pylorenzmie.analysis.Hologram.Hologram.flat_data` and
+        :attr:`~pylorenzmie.analysis.Hologram.Hologram.flat_coordinates`.
     robust : bool, optional
         ``True`` selects the robust Cauchy loss and ``False`` standard
         least squares, replacing ``method`` and ``loss`` in *settings*.
@@ -81,7 +105,7 @@ class Optimizer(LMObject):
 
     @property
     def properties(self) -> Properties:
-        '''Optimizer configuration: settings and fixed parameter list.'''
+        '''Configuration of the optimizer (settings and fixed parameters).'''
         return dict(settings=self.settings, fixed=self.fixed)
 
     @properties.setter
@@ -138,9 +162,8 @@ class Optimizer(LMObject):
     def fraction(self) -> float:
         '''Fraction of pixels used for fitting.
 
-        Setting this creates a :class:`Mask` if one does not exist.
-        ``1.0`` (all pixels) when no mask is set.
-        '''
+        Setting this creates a :class:`~pylorenzmie.analysis.Mask.Mask` if one
+        does not exist. ``1.0`` (all pixels) when no mask is set. '''
         return 1.0 if self.mask is None else self.mask.fraction
 
     @fraction.setter
@@ -207,7 +230,7 @@ class Optimizer(LMObject):
         Parameters
         ----------
         hologram : Hologram
-            Normalized hologram to fit.  When :attr:`mask` is ``None``
+            Normalized hologram to fit.  When ``mask`` is ``None``
             all pixels are used; otherwise the mask subsamples the
             hologram before fitting.
 
