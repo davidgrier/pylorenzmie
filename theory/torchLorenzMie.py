@@ -50,6 +50,8 @@ kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
                       constant float&     zp      [[buffer(10)]],
                       constant float&     phre    [[buffer(11)]],
                       constant float&     phim    [[buffer(12)]],
+                      device float*       inten   [[buffer(13)]],  // (npts)
+                      constant uint&      mode    [[buffer(14)]],
                       uint i [[thread_position_in_grid]]) {
     if (i >= npts) return;
     float kx = k * (coords[i] - xp);
@@ -98,6 +100,20 @@ kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
     Et *= cosp * inv_kr;
     Ep *= sinp * inv_kr;
     float2 ph = float2(phre, phim);
+    if (mode != 0) {
+        // hologram of a single particle: |E|^2 + 2 Re(E_x) + 1, with no
+        // field written out
+        float2 e0, e1, e2;
+        if (cart != 0) {
+            e0 = cmul(Er*sint*cosp + Et*cost*cosp - Ep*sinp, ph);
+            e1 = cmul(Er*sint*sinp + Et*cost*sinp + Ep*cosp, ph);
+            e2 = cmul(Er*cost - Et*sint, ph);
+        } else {
+            e0 = cmul(Er, ph); e1 = cmul(Et, ph); e2 = cmul(Ep, ph);
+        }
+        inten[i] = dot(e0, e0) + dot(e1, e1) + dot(e2, e2) + 2.0f*e0.x + 1.0f;
+        return;
+    }
     if (cart != 0) {
         out[i]          = cmul(Er*sint*cosp + Et*cost*cosp - Ep*sinp, ph);
         out[npts + i]   = cmul(Er*sint*sinp + Et*cost*sinp + Ep*cosp, ph);
@@ -251,6 +267,8 @@ class TorchLorenzMie(LorenzMie):
         if self._device.type == 'mps':
             self._metal_out = torch.zeros(
                 shape, dtype=torch.complex64, device=self._device)
+            self._metal_intensity = torch.zeros(
+                npts, dtype=torch.float32, device=self._device)
             self._metal_table = None      # device copy of the Mie table
             self._host_tables = []        # see _scattered_field_metal
         self._field_t  = torch.zeros(
@@ -280,6 +298,11 @@ class TorchLorenzMie(LorenzMie):
         hologram : numpy.ndarray, shape (npts,)
             Computed hologram intensity at each coordinate.
         '''
+        # The fast path calls the kernel directly, so it must not be used
+        # by a subclass (Aberrated) that changes scattered_field()
+        if (self._device.type == 'mps' and len(self.particle) == 1 and
+                type(self).scattered_field is TorchLorenzMie.scattered_field):
+            return self._hologram_metal(cartesian, bohren)
         field = self.field(cartesian=cartesian, bohren=bohren)
         intensity = (field.real**2 + field.imag**2).sum(dim=0)
         # float64 only on the host: Apple GPUs have no double precision
@@ -327,6 +350,20 @@ class TorchLorenzMie(LorenzMie):
             device=self._device))
         return self.lorenzmie(ab, kdr, cartesian=cartesian, bohren=bohren) * phase
 
+    def _hologram_metal(self, cartesian: bool, bohren: bool) -> Image:
+        '''Hologram of a single particle, intensity formed in the kernel.
+
+        Saves writing out and re-reading the complex field and the
+        half-dozen small operations that sum it, which dominate the time
+        for the few thousand pixels of a masked fit.
+        '''
+        self._release_host_tables()
+        self._scattered_field_metal(self.particle[0], cartesian, bohren,
+                                    intensity=True)
+        result = self._metal_intensity.cpu().double().numpy()
+        self._release_host_tables()           # .cpu() has synchronized
+        return result
+
     def _release_host_tables(self) -> None:
         '''Free the host arrays of queued copies once the GPU is done.'''
         if self._device.type == 'mps' and self._host_tables:
@@ -336,7 +373,8 @@ class TorchLorenzMie(LorenzMie):
     def _scattered_field_metal(self,
                                particle: 'Particle',
                                cartesian: bool,
-                               bohren: bool) -> torch.Tensor:
+                               bohren: bool,
+                               intensity: bool = False) -> torch.Tensor:
         '''Scattered field of one particle from the Metal kernel.
 
         The displacement of each pixel and the propagation phase are
@@ -368,6 +406,7 @@ class TorchLorenzMie(LorenzMie):
             self._coords, table, torch.view_as_real(out),
             npts, norders, int(cartesian), int(bohren),
             k, x, y, z, phase.real, phase.imag,
+            self._metal_intensity, int(intensity),
             threads=npts)
         return out
 

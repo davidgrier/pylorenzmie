@@ -112,6 +112,15 @@ class TestTorchLorenzMie(unittest.TestCase):
         np.testing.assert_allclose(torch_model.hologram(),
                                    numpy_model.hologram(), atol=ATOL)
 
+    def test_single_particle_fast_path_matches_the_field_route(self) -> None:
+        # on Apple GPUs a single particle's hologram is formed in the kernel
+        for kwargs in (dict(), dict(cartesian=False), dict(bohren=False)):
+            fast = self.model.hologram(**kwargs)
+            field = self.model.field(**kwargs).cpu()
+            slow = (field.real**2 + field.imag**2).sum(0) + 2*field[0].real + 1
+            np.testing.assert_allclose(fast, slow.double().numpy(),
+                                       atol=1e-5, err_msg=str(kwargs))
+
     def test_unsupported_device_raises(self) -> None:
         with self.assertRaises(ValueError):
             TorchLorenzMie(device='cpu')

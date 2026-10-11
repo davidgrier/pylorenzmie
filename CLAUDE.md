@@ -130,8 +130,8 @@ and `lorenzmie()`:
 - `TorchLorenzMie` — GPU via PyTorch, `method = 'torch numpy'`: a Triton
   kernel on CUDA, a Metal kernel on Apple GPUs (MPS); single precision
   (hologram error about 1e-5 for a 0.5 um sphere, up to about 1e-3 for
-  radii of a few um). On an M1 Pro it beats Numba for fits of more than
-  about 10,000 pixels (2 to 3 times faster) and is slower for fewer
+  radii of a few um). On an M1 Pro it matches Numba for fits of 4,000
+  pixels and is 2 to 3 times faster above about 25,000 pixels
 - `jaxLorenzMie` — JAX JIT with an analytical Jacobian; single spheres only
   (clusters fall back to NumPy) and it recompiles when the number of partial
   waves changes, so it is slower than Numba on a CPU
