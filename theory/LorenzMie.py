@@ -229,12 +229,14 @@ class LorenzMie(LMObject):
         sinkr = np.sin(kr)
         coskr = np.cos(kr)
 
-        φ = np.arctan2(ky, kx)
-        cosφ = np.cos(φ)
-        sinφ = np.sin(φ)
-        θ = np.arctan2(kρ, kz)
-        cosθ = np.cos(θ)
-        sinθ = np.sin(θ)
+        # On the axis (kρ = 0) the azimuth is undefined, and any value is
+        # correct because the field has no azimuthal dependence there:
+        # use φ = 0, as arctan2 does.
+        cosθ = kz / kr
+        sinθ = kρ / kr
+        off_axis = kρ > 0.
+        cosφ = np.divide(kx, kρ, out=np.ones(shape), where=off_axis)
+        sinφ = np.divide(ky, kρ, out=np.zeros(shape), where=off_axis)
 
         # SPECIAL FUNCTIONS
         # starting points for recursive function evaluation ...
