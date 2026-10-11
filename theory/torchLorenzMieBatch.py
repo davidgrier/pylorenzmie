@@ -451,7 +451,6 @@ class TorchLorenzMieBatch(TorchLorenzMie):
 
         instrument = Instrument()
         instrument.magnification = 0.048
-        instrument.numerical_aperture = 1.45
         instrument.wavelength = 0.447
         instrument.n_m = 1.340
 

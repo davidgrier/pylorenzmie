@@ -82,10 +82,6 @@ class TestOptimizer(unittest.TestCase):
         '''noise is fixed by default to prevent degenerate fits.'''
         self.assertIn('noise', self.optimizer.fixed)
 
-    def test_default_fixed_includes_numerical_aperture(self):
-        '''numerical_aperture is fixed by default.'''
-        self.assertIn('numerical_aperture', self.optimizer.fixed)
-
     def test_fixed_list_is_copied(self):
         '''Mutating the list passed to fixed does not affect the optimizer.'''
         fixed = ['wavelength']

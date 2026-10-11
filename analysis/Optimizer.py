@@ -33,8 +33,8 @@ class Optimizer(LMObject):
     fixed : list[str], optional
         Names of model properties held constant during fitting.
         Default: all instrument parameters plus ``k_p``
-        (``wavelength``, ``magnification``, ``numerical_aperture``,
-        ``n_m``, ``noise``, ``k_p``), leaving only the five particle
+        (``wavelength``, ``magnification``, ``n_m``,
+        ``noise``, ``k_p``), leaving only the five particle
         parameters (``x_p``, ``y_p``, ``z_p``, ``a_p``, ``n_p``) free.
     settings : dict, optional
         Keyword arguments forwarded to ``scipy.optimize.least_squares``.
@@ -65,7 +65,7 @@ class Optimizer(LMObject):
             raise TypeError('Model not compatible with Optimizer')
         self.mask = mask
         self.settings = settings
-        default_fixed = 'wavelength magnification numerical_aperture n_m noise k_p'.split()
+        default_fixed = 'wavelength magnification n_m noise k_p'.split()
         self.fixed = fixed if fixed is not None else default_fixed
         self.robust = robust
         self._data: Image | None = None

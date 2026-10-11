@@ -107,9 +107,8 @@ holographic ring patterns.
 ### `theory/` — Physical models
 
 **`Instrument`** — dataclass with microscope parameters: `wavelength` (μm),
-`magnification` (μm/pixel), `numerical_aperture`, `n_m` (medium refractive
-index), `noise`. Only the first four appear in `properties` and are therefore
-adjustable during fitting.
+`magnification` (μm/pixel), `n_m` (medium refractive index), `noise`. All four
+appear in `properties` and are therefore adjustable during fitting.
 
 **`Particle`** — abstract dataclass base for scatterers; holds 3D position
 `r_p = [x_p, y_p, z_p]` and offset `r_0`. Implements `__len__`, `__iter__`,

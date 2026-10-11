@@ -8,9 +8,9 @@ import numpy as np
 class Instrument(LMObject):
     '''In-line holographic microscope for Lorenz-Mie microscopy.
 
-    Encapsulates the optical parameters of the instrument.  All five
-    attributes (``n_m``, ``wavelength``, ``magnification``,
-    ``numerical_aperture``, ``noise``) are exposed via ``properties``
+    Encapsulates the optical parameters of the instrument.  All four
+    attributes (``n_m``, ``wavelength``, ``magnification``, ``noise``)
+    are exposed via ``properties``
     and are therefore available to :class:`Optimizer` during fitting.
 
     Attributes
@@ -21,8 +21,6 @@ class Instrument(LMObject):
     magnification : float
         Effective pixel size (object-space), in μm/pixel.
         Default: 0.048.
-    numerical_aperture : float
-        Numerical aperture of the objective lens. Default: 1.45.
     noise : float
         Camera noise as a fraction of the mean intensity. Default: 0.05.
     n_m : float
@@ -31,7 +29,6 @@ class Instrument(LMObject):
 
     wavelength: float = 0.447
     magnification: float = 0.048
-    numerical_aperture: float = 1.45
     noise: float = 0.05
     n_m: float = 1.340
 
@@ -40,7 +37,6 @@ class Instrument(LMObject):
         return {'n_m': self.n_m,
                 'wavelength': self.wavelength,
                 'magnification': self.magnification,
-                'numerical_aperture': self.numerical_aperture,
                 'noise': self.noise}
 
     def wavenumber(self,
