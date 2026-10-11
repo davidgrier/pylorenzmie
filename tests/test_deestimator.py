@@ -22,6 +22,24 @@ class TestDEEstimator(unittest.TestCase):
         self.estimator.settings['maxiter'] = 1
         self.estimator.settings['workers'] = 1
 
+    def test_default_is_a_single_worker(self):
+        '''A pool costs seconds to start and slows a compiled model down.'''
+        self.assertEqual(DEEstimator(model=self.model).settings['workers'], 1)
+
+    def test_seed_makes_the_estimate_reproducible(self):
+        '''The seed controls the search and the subsampled pixels.'''
+        results = []
+        for _ in range(2):
+            estimator = DEEstimator(model=self.model, seed=3)
+            results.append(estimator.estimate(self.hologram))
+        self.assertTrue(results[0].equals(results[1]))
+
+    def test_worker_pool_can_still_be_requested(self):
+        estimator = DEEstimator(model=self.model, seed=0)
+        estimator.settings.update(workers=2, maxiter=2)
+        result = estimator.estimate(self.hologram)
+        self.assertIn('z_p', result.index)
+
     def test_is_base_estimator(self):
         '''DEEstimator is a subclass of BaseEstimator.'''
         self.assertIsInstance(self.estimator, BaseEstimator)

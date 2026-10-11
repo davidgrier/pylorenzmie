@@ -93,20 +93,24 @@ class DEEstimator(BaseEstimator):
     The model coordinates are temporarily overridden during the search
     and restored on exit, even if an exception occurs.
 
-    By default ``settings['workers'] = -1`` distributes candidate
-    evaluations across all CPU cores via ``multiprocessing``.  On Linux
-    (``fork`` start method) the speedup is near-linear with core count
-    at negligible overhead.  On macOS (``spawn`` start method) each
-    :meth:`estimate` call pays a process-pool startup cost; on machines
-    with many cores this is still a net win (~2× on a 10-core Mac).
-    Where processes are started by importing the main script again (macOS
-    and Windows), a script that calls :meth:`estimate` must be protected
-    by ``if __name__ == '__main__':``; otherwise it runs inside each
-    worker.  Notebooks and interactive sessions need no guard.
-    Set ``workers=1`` to disable parallelism, e.g. when using
-    ``cupyLorenzMie`` (which holds GPU memory and is not picklable).
-    The companion setting ``updating='deferred'`` (also the default) is
-    required for ``workers != 1`` and suppresses a SciPy warning.
+    By default ``settings['workers'] = 1``: the candidates are evaluated
+    in one process.  With a compiled calculator
+    (:class:`~pylorenzmie.theory.numbaLorenzMie.numbaLorenzMie`) the
+    search takes a fraction of a second, and starting a pool of worker
+    processes costs about two seconds on macOS, so a pool would make it
+    several times slower.  Set ``workers=-1`` to distribute the
+    candidates across all CPU cores via ``multiprocessing``, which pays
+    off for the NumPy calculator on large crops (about 1.5 times faster
+    for a 370-pixel crop on a 10-core Mac; on Linux, where workers are
+    forked, the cost of starting them is small and the speedup is closer
+    to the number of cores).  Where processes are started by importing
+    the main script again (macOS and Windows), a script that uses a pool
+    must be protected by ``if __name__ == '__main__':``; otherwise it
+    runs inside each worker.  Notebooks and interactive sessions need no
+    guard.  A pool cannot be used with ``cupyLorenzMie`` (which holds GPU
+    memory and is not picklable).  The companion setting
+    ``updating='deferred'`` (also the default) is required for
+    ``workers != 1`` and suppresses a SciPy warning.
 
     Use :class:`Estimator` for a fast conventional estimate when the
     fringe pattern is clean.  Use :class:`DEEstimator` when the
@@ -123,7 +127,7 @@ class DEEstimator(BaseEstimator):
     settings: dict = field(default_factory=lambda: {'tol': 0.01,
                                                      'polish': False,
                                                      'updating': 'deferred',
-                                                     'workers': -1})
+                                                     'workers': 1})
 
     @BaseEstimator.properties.getter
     def properties(self) -> Properties:
@@ -150,7 +154,9 @@ class DEEstimator(BaseEstimator):
         self.model.particle.x_p = float(hologram.coordinates[0].mean())
         self.model.particle.y_p = float(hologram.coordinates[1].mean())
 
-        mask = Mask(fraction=self.fraction)
+        # seeded with the estimator, so that a seed makes the whole
+        # estimate reproducible
+        mask = Mask(fraction=self.fraction, seed=self.seed)
         if self.exclude is not None:
             mask.exclude = self.exclude
         de_data, de_coords = mask.apply(hologram)
