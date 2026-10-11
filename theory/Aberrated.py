@@ -181,7 +181,9 @@ def Aberrated(base_class: type) -> type:
             mask = np.exp(1j * phase)
             if hasattr(self, '_device'):
                 import torch
-                return torch.as_tensor(mask, device=self._device)
+                # single precision: Apple GPUs have no complex128
+                return torch.as_tensor(mask, dtype=torch.complex64,
+                                       device=self._device)
             return mask
 
         def _aberration_coefficients(self) -> np.ndarray | None:

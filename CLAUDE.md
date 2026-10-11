@@ -127,6 +127,11 @@ and `lorenzmie()`:
 - `numbaLorenzMie` — Numba JIT, CPU; pointwise kernel, multi-threaded by
   default (`parallel = True`; fall back with `parallel = False` when the
   calling code is already parallel, see its docstring)
+- `TorchLorenzMie` — GPU via PyTorch, `method = 'torch numpy'`: a Triton
+  kernel on CUDA, a Metal kernel on Apple GPUs (MPS); single precision
+  (hologram error about 1e-5 for a 0.5 um sphere, up to about 1e-3 for
+  radii of a few um). On an M1 Pro it beats Numba for fits of more than
+  about 10,000 pixels (2 to 3 times faster) and is slower for fewer
 - `jaxLorenzMie` — JAX JIT with an analytical Jacobian; single spheres only
   (clusters fall back to NumPy) and it recompiles when the number of partial
   waves changes, so it is slower than Numba on a CPU
@@ -134,9 +139,9 @@ and `lorenzmie()`:
   aberrations (defocus, spherical, coma, astigmatism, distortion)
 
 `from pylorenzmie.theory import LorenzMie` is `numbaLorenzMie` when Numba works
-and the NumPy class otherwise. JAX and CuPy are never chosen automatically;
-select one with the environment variable `PYLORENZMIE_BACKEND` (`numpy`,
-`numba`, `jax` or `cupy`; an unavailable choice raises `ImportError`) or import
+and the NumPy class otherwise. The GPU backends and JAX are never chosen
+automatically; select one with the environment variable
+`PYLORENZMIE_BACKEND` (`numpy`, `numba`, `torch`, `jax` or `cupy`; an unavailable choice raises `ImportError`) or import
 the class from its module.
 
 ### `analysis/` — Fitting pipeline

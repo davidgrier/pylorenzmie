@@ -1,227 +1,229 @@
-'''Compute scattered light field with CUDA acceleration using PyTorch.
+'''Compute scattered light field on a GPU with PyTorch.
 
-Inherits LorenzMie numpy base class.
+Inherits LorenzMie numpy base class.  Two GPU back ends share one class:
+
+* CUDA GPUs run a Triton kernel (``_tritonkernel``);
+* Apple GPUs run a Metal kernel through the MPS back end of PyTorch.
+
+Both work in single precision.
 '''
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.lib.lmtypes import Image
+import cmath
+import numpy as np
 import torch
-import triton
-import triton.language as tl
-import triton.language.extra.cuda.libdevice as tl_libdevice
 import logging
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
 
 
-# Triton CUDA kernel: computes the Lorenz-Mie scattered field for a
-# single particle over npts pixels in parallel.  The entire Mie sum
-# runs inside one kernel to avoid per-order launch overhead.
-@triton.jit
-def _lorenzmie_kernel(
-        kx_ptr, ky_ptr, kz_ptr,           # [npts] float32 — k-scaled displacements
-        a_re_ptr, a_im_ptr,               # [norders] float32 — Mie a coefficients
-        b_re_ptr, b_im_ptr,               # [norders] float32 — Mie b coefficients
-        norders: tl.constexpr,
-        e1_re_ptr, e1_im_ptr,             # [npts] float32 — output field component 1
-        e2_re_ptr, e2_im_ptr,
-        e3_re_ptr, e3_im_ptr,
-        npts,
-        bohren: tl.constexpr,
-        cartesian: tl.constexpr,
-        BLOCK: tl.constexpr):
+# Metal kernel: the same pointwise algorithm as numbaLorenzMie, one GPU
+# thread per pixel.  The point-independent factors of the partial-wave sum
+# arrive precomputed in one array of eight floats per order:
+# Re/Im of an0 = an*(n*n+n), an, bn, then c2 = 2n-1 and c3 = 1+1/n.
+# The pixel displacement is formed in the kernel from the coordinates and
+# the particle position, and the propagation phase exp(-i k z_p) is applied
+# on the way out.
+_METAL_SOURCE = r'''
+#include <metal_stdlib>
+using namespace metal;
 
-    pid = tl.program_id(0)
-    idx = pid * BLOCK + tl.arange(0, BLOCK)
-    mask = idx < npts
+inline float2 cmul(float2 a, float2 b) {
+    return float2(a.x*b.x - a.y*b.y, a.x*b.y + a.y*b.x);
+}
 
-    kx = tl.load(kx_ptr + idx, mask=mask, other=0.0)
-    ky = tl.load(ky_ptr + idx, mask=mask, other=0.0)
-    kz = -tl.load(kz_ptr + idx, mask=mask, other=0.0)
+kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
+                      device const float* consts  [[buffer(1)]],  // (norders, 8)
+                      device float2*      out     [[buffer(2)]],  // (3, npts)
+                      constant uint&      npts    [[buffer(3)]],
+                      constant uint&      norders [[buffer(4)]],
+                      constant uint&      cart    [[buffer(5)]],
+                      constant uint&      bohren  [[buffer(6)]],
+                      constant float&     k       [[buffer(7)]],
+                      constant float&     xp      [[buffer(8)]],
+                      constant float&     yp      [[buffer(9)]],
+                      constant float&     zp      [[buffer(10)]],
+                      constant float&     phre    [[buffer(11)]],
+                      constant float&     phim    [[buffer(12)]],
+                      uint i [[thread_position_in_grid]]) {
+    if (i >= npts) return;
+    float kx = k * (coords[i] - xp);
+    float ky = k * (coords[npts + i] - yp);
+    float kz = -(k * (coords[2*npts + i] - zp));
+    float krho = sqrt(kx*kx + ky*ky);
+    float kr = sqrt(krho*krho + kz*kz);
+    float inv_kr = 1.0f / kr;
+    float sinkr = precise::sin(kr);
+    float coskr = precise::cos(kr);
+    float cost = kz * inv_kr;
+    float sint = krho * inv_kr;
+    float cosp = 1.0f, sinp = 0.0f;
+    if (krho > 0.0f) { cosp = kx / krho; sinp = ky / krho; }
 
-    krho      = tl.sqrt(kx*kx + ky*ky)
-    kr        = tl.sqrt(krho*krho + kz*kz)
-    phi       = tl_libdevice.atan2(ky, kx)
-    cos_phi   = tl.cos(phi)
-    sin_phi   = tl.sin(phi)
-    theta     = tl_libdevice.atan2(krho, kz)
-    cos_theta = tl.cos(theta)
-    sin_theta = tl.sin(theta)
-    sinkr     = tl.sin(kr)
-    coskr     = tl.cos(kr)
+    // sign of Im(factor) selects h_n^(1) (kz > 0) or h_n^(2) (kz < 0)
+    float s = (kz > 0.0f) ? 1.0f : ((kz < 0.0f) ? -1.0f : 0.0f);
+    if (bohren == 0) s = -s;
+    float2 xm2 = float2(coskr, s * sinkr);       // xi_{-1}(kr)
+    float2 xm1 = float2(sinkr, -s * coskr);      // xi_0(kr)
+    float pim1 = 0.0f, pin = 1.0f;
+    float2 Er = float2(0.0f), Et = float2(0.0f), Ep = float2(0.0f);
+    for (uint n = 1; n < norders; ++n) {
+        device const float* c = consts + 8*n;
+        float2 an0 = float2(c[0], c[1]);
+        float2 an  = float2(c[2], c[3]);
+        float2 bn  = float2(c[4], c[5]);
+        float sw = pin * cost;
+        float tw = sw - pim1;
+        float tau = pim1 - float(n) * tw;
+        float2 xn = c[6] * (xm1 * inv_kr) - xm2;
+        float2 Dn = float(n) * (xn * inv_kr) - xm1;
+        float2 Mt = pin * xn;
+        float2 Mp = tau * xn;
+        float2 Nt = tau * Dn;
+        float2 Np = pin * Dn;
+        Er += cmul(an0, Mt);
+        Et += cmul(an, Nt) - cmul(bn, Mt);
+        Ep += cmul(an, Np) - cmul(bn, Mp);
+        pim1 = pin;
+        pin = sw + c[7] * tw;
+        xm2 = xm1;
+        xm1 = xn;
+    }
+    Er *= cosp * sint * inv_kr * inv_kr;
+    Et *= cosp * inv_kr;
+    Ep *= sinp * inv_kr;
+    float2 ph = float2(phre, phim);
+    if (cart != 0) {
+        out[i]          = cmul(Er*sint*cosp + Et*cost*cosp - Ep*sinp, ph);
+        out[npts + i]   = cmul(Er*sint*sinp + Et*cost*sinp + Ep*cosp, ph);
+        out[2*npts + i] = cmul(Er*cost - Et*sint, ph);
+    } else {
+        out[i] = cmul(Er, ph);
+        out[npts + i] = cmul(Et, ph);
+        out[2*npts + i] = cmul(Ep, ph);
+    }
+}
+'''
 
-    sign_kz = tl.where(kz > 0, 1.0, tl.where(kz < 0, -1.0, 0.0))
-    if bohren:
-        factor_im = sign_kz
-    else:
-        factor_im = -sign_kz
-
-    xi_nm2_re = coskr
-    xi_nm2_im = factor_im * sinkr
-    xi_nm1_re = sinkr
-    xi_nm1_im = -factor_im * coskr
-
-    pi_nm1 = tl.zeros([BLOCK], dtype=tl.float32)
-    pi_n   = tl.full([BLOCK], 1.0, dtype=tl.float32)
-
-    esr_re = tl.zeros([BLOCK], dtype=tl.float32)
-    esr_im = tl.zeros([BLOCK], dtype=tl.float32)
-    est_re = tl.zeros([BLOCK], dtype=tl.float32)
-    est_im = tl.zeros([BLOCK], dtype=tl.float32)
-    esp_re = tl.zeros([BLOCK], dtype=tl.float32)
-    esp_im = tl.zeros([BLOCK], dtype=tl.float32)
-
-    En_i_re = 1.0
-    En_i_im = 0.0
-
-    for n in range(1, norders):
-        En_i_re, En_i_im = -En_i_im, En_i_re
-
-        swisc = pi_n * cos_theta
-        twisc = swisc - pi_nm1
-        tau_n = pi_nm1 - n * twisc
-
-        c       = (2.0 * n - 1.0) / kr
-        xi_n_re = c * xi_nm1_re - xi_nm2_re
-        xi_n_im = c * xi_nm1_im - xi_nm2_im
-
-        c2    = n / kr
-        Dn_re = c2 * xi_n_re - xi_nm1_re
-        Dn_im = c2 * xi_n_im - xi_nm1_im
-
-        En_mag = (2.0 * n + 1.0) / (n * n + n)
-        En_re  = En_i_re * En_mag
-        En_im  = En_i_im * En_mag
-
-        a_re = tl.load(a_re_ptr + n)
-        a_im = tl.load(a_im_ptr + n)
-        b_re = tl.load(b_re_ptr + n)
-        b_im = tl.load(b_im_ptr + n)
-
-        En_a_re = En_re * a_re - En_im * a_im
-        En_a_im = En_re * a_im + En_im * a_re
-        En_b_re = En_re * b_re - En_im * b_im
-        En_b_im = En_re * b_im + En_im * b_re
-
-        iEn_a_re = -En_a_im
-        iEn_a_im =  En_a_re
-
-        pi_xi_re  = pi_n  * xi_n_re
-        pi_xi_im  = pi_n  * xi_n_im
-        tau_xi_re = tau_n * xi_n_re
-        tau_xi_im = tau_n * xi_n_im
-        tau_Dn_re = tau_n * Dn_re
-        tau_Dn_im = tau_n * Dn_im
-        pi_Dn_re  = pi_n  * Dn_re
-        pi_Dn_im  = pi_n  * Dn_im
-
-        nn = n * n + n
-
-        esr_re += iEn_a_re * nn * pi_xi_re - iEn_a_im * nn * pi_xi_im
-        esr_im += iEn_a_re * nn * pi_xi_im + iEn_a_im * nn * pi_xi_re
-
-        est_re += (iEn_a_re * tau_Dn_re - iEn_a_im * tau_Dn_im
-                   - En_b_re * pi_xi_re + En_b_im * pi_xi_im)
-        est_im += (iEn_a_re * tau_Dn_im + iEn_a_im * tau_Dn_re
-                   - En_b_re * pi_xi_im - En_b_im * pi_xi_re)
-
-        esp_re += (iEn_a_re * pi_Dn_re - iEn_a_im * pi_Dn_im
-                   - En_b_re * tau_xi_re + En_b_im * tau_xi_im)
-        esp_im += (iEn_a_re * pi_Dn_im + iEn_a_im * pi_Dn_re
-                   - En_b_re * tau_xi_im - En_b_im * tau_xi_re)
-
-        pi_nm1 = pi_n
-        pi_n   = swisc + (1.0 + 1.0 / n) * twisc
-
-        xi_nm2_re, xi_nm1_re = xi_nm1_re, xi_n_re
-        xi_nm2_im, xi_nm1_im = xi_nm1_im, xi_n_im
-
-    inv_kr  = 1.0 / kr
-    esr_re *= cos_phi * sin_theta * inv_kr * inv_kr
-    esr_im *= cos_phi * sin_theta * inv_kr * inv_kr
-    est_re *= cos_phi * inv_kr
-    est_im *= cos_phi * inv_kr
-    esp_re *= sin_phi * inv_kr
-    esp_im *= sin_phi * inv_kr
-
-    if cartesian:
-        ec1_re = (esr_re * sin_theta * cos_phi
-                  + est_re * cos_theta * cos_phi
-                  - esp_re * sin_phi)
-        ec1_im = (esr_im * sin_theta * cos_phi
-                  + est_im * cos_theta * cos_phi
-                  - esp_im * sin_phi)
-        ec2_re = (esr_re * sin_theta * sin_phi
-                  + est_re * cos_theta * sin_phi
-                  + esp_re * cos_phi)
-        ec2_im = (esr_im * sin_theta * sin_phi
-                  + est_im * cos_theta * sin_phi
-                  + esp_im * cos_phi)
-        ec3_re = esr_re * cos_theta - est_re * sin_theta
-        ec3_im = esr_im * cos_theta - est_im * sin_theta
-        tl.store(e1_re_ptr + idx, ec1_re, mask=mask)
-        tl.store(e1_im_ptr + idx, ec1_im, mask=mask)
-        tl.store(e2_re_ptr + idx, ec2_re, mask=mask)
-        tl.store(e2_im_ptr + idx, ec2_im, mask=mask)
-        tl.store(e3_re_ptr + idx, ec3_re, mask=mask)
-        tl.store(e3_im_ptr + idx, ec3_im, mask=mask)
-    else:
-        tl.store(e1_re_ptr + idx, esr_re, mask=mask)
-        tl.store(e1_im_ptr + idx, esr_im, mask=mask)
-        tl.store(e2_re_ptr + idx, est_re, mask=mask)
-        tl.store(e2_im_ptr + idx, est_im, mask=mask)
-        tl.store(e3_re_ptr + idx, esp_re, mask=mask)
-        tl.store(e3_im_ptr + idx, esp_im, mask=mask)
+_metal_library = None
 
 
-def get_device() -> torch.device:
-    '''Return a working CUDA device, or raise RuntimeError.
+def _metal():
+    '''The compiled Metal library, built on first use.'''
+    global _metal_library
+    if _metal_library is None:
+        _metal_library = torch.mps.compile_shader(_METAL_SOURCE)
+    return _metal_library
+
+
+def _partial_wave_table(ab: np.ndarray) -> np.ndarray:
+    '''Point-independent factors of the partial-wave sum, shape (norders, 8).
+
+    Folds the Mie coefficients together with the prefactors
+    ``i**n (2n + 1) / (n (n + 1))`` of Bohren and Huffman (4.45), exactly as
+    ``numbaLorenzMie`` does, and returns them as single-precision
+    (Re, Im) pairs of ``an0``, ``an``, ``bn`` followed by ``c2`` and ``c3``.
+    '''
+    norders = ab.shape[0]
+    n = np.arange(norders, dtype=np.float64)
+    nn = np.maximum(n, 1.)
+    En = (1.j ** np.arange(norders)) * (2. * n + 1.) / (nn * nn + nn)
+    an = 1.j * En * ab[:, 0]
+    bn = En * ab[:, 1]
+    an0 = an * (n * n + n)
+    table = np.stack([an0.real, an0.imag, an.real, an.imag,
+                      bn.real, bn.imag, 2. * n - 1., 1. + 1. / nn], axis=1)
+    return np.ascontiguousarray(table, dtype=np.float32)
+
+
+def get_device(prefer: str | None = None) -> torch.device:
+    '''Return a working GPU device, or raise RuntimeError.
+
+    Parameters
+    ----------
+    prefer : str, optional
+        ``'cuda'`` or ``'mps'`` to require that device.  By default a
+        CUDA GPU is used if there is one, otherwise an Apple GPU.
 
     Returns
     -------
     device : torch.device
-        A validated ``cuda`` device.
+        A validated ``cuda`` or ``mps`` device.
 
     Raises
     ------
     RuntimeError
-        If no CUDA GPU is available or the GPU cannot be initialised.
+        If no suitable GPU is available or it cannot be initialised.
     '''
-    if torch.cuda.is_available():
+    if prefer not in (None, 'cuda', 'mps'):
+        raise ValueError(f"prefer must be 'cuda' or 'mps', not {prefer!r}")
+    if prefer in (None, 'cuda') and torch.cuda.is_available():
         try:
             torch.zeros(1).cuda()
-            logger.info('Using GPU acceleration')
+            logger.info('Using CUDA acceleration')
             return torch.device('cuda')
         except Exception as e:
             raise RuntimeError(
                 f'CUDA device found but failed to initialise: {e}') from e
+    if prefer in (None, 'mps') and torch.backends.mps.is_available():
+        try:
+            torch.zeros(1, device='mps')
+            logger.info('Using Metal (MPS) acceleration')
+            return torch.device('mps')
+        except Exception as e:
+            raise RuntimeError(
+                f'Metal device found but failed to initialise: {e}') from e
     raise RuntimeError(
-        'TorchLorenzMie requires a CUDA GPU; none found. '
-        'Use LorenzMie (NumPy), jaxLorenzMie, or numbaLorenzMie for CPU.')
+        'TorchLorenzMie requires a CUDA or Apple (MPS) GPU; none found. '
+        'Use LorenzMie (NumPy) or numbaLorenzMie for CPU.')
 
 
 class TorchLorenzMie(LorenzMie):
-    '''GPU-accelerated Lorenz-Mie hologram calculator using Triton.
+    '''GPU-accelerated Lorenz-Mie hologram calculator.
 
-    Overrides :meth:`lorenzmie` with a single Triton kernel that runs
-    the full Mie partial-wave sum on the GPU.  All other behavior
-    (coordinate handling, multi-particle accumulation, properties
-    interface) is inherited from :class:`LorenzMie`.
+    A single kernel runs the full Mie partial-wave sum on the GPU: a
+    Triton kernel on a CUDA GPU, a Metal kernel on an Apple GPU (through
+    PyTorch's MPS back end).  All other behavior (coordinate handling,
+    multi-particle accumulation, properties interface) is inherited from
+    :class:`LorenzMie`.
+
+    Parameters
+    ----------
+    device : torch.device or str, optional
+        ``'cuda'`` or ``'mps'``.  Default: a CUDA GPU if there is one,
+        otherwise an Apple GPU (see :func:`get_device`).
 
     Attributes
     ----------
     device : torch.device
-        Compute device in use (``cuda`` or ``cpu``).
+        Compute device in use (``cuda`` or ``mps``).
+
+    Notes
+    -----
+    The calculation is done in single precision, because Apple GPUs have
+    no double precision.  Compared with the double-precision NumPy
+    calculator the hologram differs by about 1e-5 for a sphere of 0.5 um
+    radius and by up to about 1e-3 for radii of a few um, which is below
+    typical camera noise but not negligible for the largest spheres.
+    The returned hologram is a float64 NumPy array.
     '''
 
     method: str = 'torch numpy'
 
     def __init__(self,
                  *args,
-                 device: torch.device | None = None,
+                 device: torch.device | str | None = None,
                  **kwargs) -> None:
-        self._device = device if device is not None else get_device()
+        if device is None:
+            device = get_device()
+        elif torch.device(device).type in ('cuda', 'mps'):
+            device = get_device(torch.device(device).type)
+        else:
+            raise ValueError(f'Unsupported device {device!r}: '
+                             "use 'cuda' or 'mps'")
+        self._device = device
         super().__init__(*args, **kwargs)
 
     @property
@@ -235,7 +237,13 @@ class TorchLorenzMie(LorenzMie):
         shape = self.coordinates.shape
         npts = shape[1]
         self._coords   = torch.tensor(
-            self.coordinates, dtype=torch.float32, device=self._device)
+            self.coordinates, dtype=torch.float32,
+            device=self._device).contiguous()
+        if self._device.type == 'mps':
+            self._metal_out = torch.zeros(
+                shape, dtype=torch.complex64, device=self._device)
+            self._metal_table = None      # device copy of the Mie table
+            self._host_tables = []        # see _scattered_field_metal
         self._field_t  = torch.zeros(
             shape, dtype=torch.complex64, device=self._device)
         self._tri_e_re = torch.zeros(
@@ -265,7 +273,10 @@ class TorchLorenzMie(LorenzMie):
         '''
         field = self.field(cartesian=cartesian, bohren=bohren)
         intensity = (field.real**2 + field.imag**2).sum(dim=0)
-        return (intensity + 2.*field[0].real + 1.).double().cpu().numpy()
+        # float64 only on the host: Apple GPUs have no double precision
+        result = (intensity + 2.*field[0].real + 1.).cpu().double().numpy()
+        self._release_host_tables()           # .cpu() has synchronized
+        return result
 
     def scattered_field(self,
                         particle: 'Particle',
@@ -289,6 +300,8 @@ class TorchLorenzMie(LorenzMie):
             Complex scattered field including the propagation phase
             ``exp(-i k z_p)``.
         '''
+        if self._device.type == 'mps':
+            return self._scattered_field_metal(particle, cartesian, bohren)
         k = float(self.instrument.wavenumber())
         r_p = torch.tensor(
             particle.r_p + particle.r_0,
@@ -304,6 +317,50 @@ class TorchLorenzMie(LorenzMie):
             dtype=torch.complex64,
             device=self._device))
         return self.lorenzmie(ab, kdr, cartesian=cartesian, bohren=bohren) * phase
+
+    def _release_host_tables(self) -> None:
+        '''Free the host arrays of queued copies once the GPU is done.'''
+        if self._device.type == 'mps' and self._host_tables:
+            torch.mps.synchronize()
+            self._host_tables.clear()
+
+    def _scattered_field_metal(self,
+                               particle: 'Particle',
+                               cartesian: bool,
+                               bohren: bool) -> torch.Tensor:
+        '''Scattered field of one particle from the Metal kernel.
+
+        The displacement of each pixel and the propagation phase are
+        formed inside the kernel, so one small table of partial-wave
+        factors is the only data sent to the GPU per particle.
+        '''
+        k = float(self.instrument.wavenumber())
+        x, y, z = (float(c) for c in particle.r_p + particle.r_0)
+        ab = particle.ab(self.instrument.n_m, self.instrument.wavelength)
+        norders = ab.shape[0]
+        # The table goes to a preallocated device buffer with a
+        # non-blocking copy, which takes about a tenth of the time of a
+        # blocking one.  The GPU reads the host array after the copy is
+        # queued, so it is kept alive until the next synchronization
+        # (end of hologram(), or start of field()).  Copies and kernels
+        # run in order, so particles can share the device buffer.
+        host = _partial_wave_table(ab)
+        self._host_tables.append(host)
+        table = self._metal_table
+        if table is None or table.shape[0] < norders:
+            table = torch.zeros(max(norders, 128), 8, dtype=torch.float32,
+                                device=self._device)
+            self._metal_table = table
+        table[:norders].copy_(torch.from_numpy(host), non_blocking=True)
+        phase = cmath.exp(-1j * k * z)
+        out = self._metal_out
+        npts = self._coords.shape[1]
+        _metal().lorenzmie(
+            self._coords, table, torch.view_as_real(out),
+            npts, norders, int(cartesian), int(bohren),
+            k, x, y, z, phase.real, phase.imag,
+            threads=npts)
+        return out
 
     def field(self,
               cartesian: bool = True,
@@ -325,6 +382,7 @@ class TorchLorenzMie(LorenzMie):
         field : torch.Tensor, shape (3, npts), dtype complex64
             Complex electric field scattered by the particle(s).
         '''
+        self._release_host_tables()
         self._field_t.zero_()
         for particle in self.particle:
             self._field_t += self.scattered_field(
@@ -357,6 +415,14 @@ class TorchLorenzMie(LorenzMie):
         field : torch.Tensor, shape (3, npts), dtype complex64
             Complex scattered field at each coordinate.
         '''
+        if self._device.type != 'cuda':
+            raise NotImplementedError(
+                'lorenzmie() takes precomputed displacements and is '
+                'implemented for CUDA only; on Apple GPUs use '
+                'scattered_field(), hologram() or field()')
+        import triton
+        from pylorenzmie.theory._tritonkernel import _lorenzmie_kernel
+
         norders = ab.shape[0]
         npts    = kdr.shape[1]
 

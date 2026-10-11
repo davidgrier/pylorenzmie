@@ -100,12 +100,17 @@ ten-core machine.  It is what ``from pylorenzmie.theory import
 LorenzMie`` returns when Numba works; otherwise you get the NumPy
 calculator, which needs no extra packages.
 
-The JAX and CuPy calculators are never chosen automatically, because they
-pay off on GPUs, not on CPUs.  To use one, set the environment variable
-``PYLORENZMIE_BACKEND`` to ``numpy``, ``numba``, ``jax`` or ``cupy``
-(an unavailable choice raises ``ImportError``), or import the class from its
-module, for example ``from pylorenzmie.theory.jaxLorenzMie import
-jaxLorenzMie``.
+The GPU calculators are never chosen automatically, because they pay off
+for large images, not for the small masked fits that are typical.
+:class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie` runs on CUDA GPUs
+(Triton) and on Apple GPUs (Metal, through PyTorch's MPS back end) in single
+precision; on an Apple M1 Pro it fits a particle in an image of 40,000 or more
+pixels two to three times faster than Numba does, and is slower for much
+smaller fits.  CuPy needs a CUDA GPU and JAX is slower than Numba on a CPU.
+To use one, set the environment variable ``PYLORENZMIE_BACKEND`` to
+``numpy``, ``numba``, ``torch``, ``jax`` or ``cupy`` (an unavailable choice
+raises ``ImportError``), or import the class from its module, for example
+``from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie``.
 
 The threads are on by default because the points of a hologram are
 independent.  Turn them off when your own code is already parallel,

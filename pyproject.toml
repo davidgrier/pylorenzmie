@@ -53,7 +53,7 @@ lmtool = "pylorenzmie.lmtool.LMTool:lmtool"
 gpu   = ["cupy-cuda12x"]
 jax   = ["jax[cpu]"]
 numba = ["numba"]
-torch = ["torch", "triton"]
+torch = ["torch", "triton; sys_platform == 'linux'"]
 dev   = ["pytest", "pytest-cov", "opencv-python"]
 docs    = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints"]
 

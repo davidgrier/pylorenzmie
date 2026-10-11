@@ -12,14 +12,16 @@ from .LorenzMie import LorenzMie as _BaseLorenzMie
 # Choice of the calculator exported as ``LorenzMie``.
 #
 # By default it is the fastest backend that needs no special hardware:
-# Numba if it is installed and works, otherwise NumPy.  JAX and CuPy are not
-# selected automatically.  On a CPU the Numba kernel is several times faster
-# than JAX for one sphere and much faster for clusters (which JAX hands back
-# to NumPy) and for fits (JAX recompiles whenever the number of partial waves
-# changes); JAX and CuPy are worth choosing for a GPU.  Choose one with the
-# environment variable PYLORENZMIE_BACKEND (numpy, numba, jax or cupy), or
-# import the class from its module, e.g.
-# ``from pylorenzmie.theory.jaxLorenzMie import jaxLorenzMie``.
+# Numba if it is installed and works, otherwise NumPy.  The GPU backends
+# (torch, CuPy) and JAX are not selected automatically: a GPU pays off for
+# large images and many pixels, not for the small masked fits that are
+# typical, and the speed depends on the hardware.  On a CPU the Numba kernel
+# is several times faster than JAX for one sphere and much faster for
+# clusters (which JAX hands back to NumPy) and for fits (JAX recompiles
+# whenever the number of partial waves changes).  Choose a backend with the
+# environment variable PYLORENZMIE_BACKEND (numpy, numba, torch, jax or
+# cupy), or import the class from its module, e.g.
+# ``from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie``.
 # A backend that is requested explicitly but cannot be loaded raises an error
 # rather than silently falling back to a different one.
 
@@ -33,11 +35,14 @@ def _load(name: str) -> type:
     if name == 'jax':
         from .jaxLorenzMie import jaxLorenzMie
         return jaxLorenzMie
+    if name == 'torch':
+        from .torchLorenzMie import TorchLorenzMie
+        return TorchLorenzMie
     if name == 'cupy':
         from .cupyLorenzMie import cupyLorenzMie
         return cupyLorenzMie
     raise ValueError(f'Unknown backend {name!r}: choose numpy, numba, '
-                     'jax or cupy')
+                     'torch, jax or cupy')
 
 
 def _select_backend(requested: str | None = None) -> type:
