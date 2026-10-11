@@ -2,7 +2,7 @@
 
 [![PyPI version](https://img.shields.io/pypi/v/pylorenzmie)](https://pypi.org/project/pylorenzmie/)
 [![Python versions](https://img.shields.io/pypi/pyversions/pylorenzmie)](https://pypi.org/project/pylorenzmie/)
-[![License](https://img.shields.io/pypi/l/pylorenzmie)](https://www.gnu.org/licenses/gpl-3.0.html)
+[![License](https://img.shields.io/pypi/l/pylorenzmie)](https://github.com/davidgrier/pylorenzmie/blob/master/LICENSE)
 [![Documentation](https://readthedocs.org/projects/pylorenzmie/badge/?version=latest)](https://pylorenzmie.readthedocs.io)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20784723.svg)](https://doi.org/10.5281/zenodo.20784723)
 [![Tests](https://github.com/davidgrier/pylorenzmie/actions/workflows/test.yml/badge.svg)](https://github.com/davidgrier/pylorenzmie/actions/workflows/test.yml)
@@ -84,7 +84,7 @@ Mark D. Hannel, Sanghyuk Lee, Michael O'Brien, Sarah Odeh, Kaitlynn Snyder,
 Jackie Sustiel
 
 ## Licensing.
-[GPLv3](https://www.gnu.org/licenses/gpl-3.0.html)
+[GPLv3](https://github.com/davidgrier/pylorenzmie/blob/master/LICENSE)
 
 ## References:
 ### Lorenz-Mie analysis of colloidal particles
