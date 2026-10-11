@@ -99,8 +99,9 @@ class Feature(Hologram):
 
         Notes
         -----
-        When a mask with ``fraction < 1.0`` is set, a fresh random pixel
-        subsample is drawn on every call.
+        When a mask with ``fraction < 1.0`` is set, a new random pixel
+        subsample is drawn on every call, unless the mask has a ``seed``,
+        in which case the same pixels are used every time.
         '''
         return self.optimizer.optimize(self)
 

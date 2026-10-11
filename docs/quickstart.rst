@@ -8,9 +8,15 @@ Install from PyPI::
 
     pip install pylorenzmie
 
-For GPU-accelerated hologram computation (requires CUDA 12)::
+Optional accelerated calculators are installed as extras::
 
-    pip install pylorenzmie[gpu]
+    pip install pylorenzmie[numba]   # fast CPU calculator, recommended
+    pip install pylorenzmie[torch]   # GPU: CUDA, ROCm, Intel, or Apple Metal
+    pip install pylorenzmie[gpu]     # GPU: CuPy (requires CUDA 12)
+    pip install pylorenzmie[jax]     # JAX, with automatic differentiation
+
+Extras can be combined, as in ``pip install pylorenzmie[numba,torch]``.
+See `Speed: the Numba backend and threads`_ below for what each one buys.
 
 The interactive GUI tool (:doc:`lmtool`) is included in the standard
 install and can be launched immediately::
@@ -52,7 +58,7 @@ Fitting a hologram
 .. code-block:: python
 
    import cv2
-   from pylorenzmie.analysis import Feature
+   from pylorenzmie.analysis import Feature, Hologram
    from pylorenzmie.theory import LorenzMie
 
    # Load and normalize a hologram (divide by background level)
@@ -69,11 +75,9 @@ Fitting a hologram
    model.particle.n_p = 1.45
 
    # Optimize
-   feature = Feature(data=data,
-                     coordinates=model.meshgrid(data.shape),
-                     model=model)
+   feature = Feature(Hologram(data), model=model)
    result = feature.optimize()
-   print(result)
+   print(result)    # fitted values, uncertainties and goodness of fit
 
 Analyzing a full frame
 ----------------------
@@ -83,11 +87,29 @@ Analyzing a full frame
    import cv2
    from pylorenzmie.analysis import Frame
 
-   frame = Frame()
-   data = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE).astype(float)
-   data /= data.mean()
-   results = frame.analyze(data)
-   print(results)   # pandas.DataFrame with one row per particle
+   if __name__ == '__main__':
+       frame = Frame()
+       data = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE).astype(float)
+       data /= data.mean()
+       results = frame.analyze(data)
+       print(results)   # pandas.DataFrame with one row per particle
+
+.. note::
+
+   The default estimator searches with a pool of worker processes. On macOS
+   and Windows, Python starts each worker by importing your script again, so a
+   script that does this work at the top level must be protected by
+   ``if __name__ == '__main__':``, as above. Without it the script runs
+   inside every worker. In a notebook or an interactive session no guard is
+   needed. To avoid the pool, run the steps one at a time and give each
+   feature's estimator a single worker::
+
+       frame.data = data
+       frame.detect()
+       for feature in frame.features:
+           feature.estimator.settings['workers'] = 1
+       frame.estimate()
+       results = frame.optimize()
 
 Speed: the Numba backend and threads
 ------------------------------------

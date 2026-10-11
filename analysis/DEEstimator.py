@@ -99,6 +99,10 @@ class DEEstimator(BaseEstimator):
     at negligible overhead.  On macOS (``spawn`` start method) each
     :meth:`estimate` call pays a process-pool startup cost; on machines
     with many cores this is still a net win (~2× on a 10-core Mac).
+    Where processes are started by importing the main script again (macOS
+    and Windows), a script that calls :meth:`estimate` must be protected
+    by ``if __name__ == '__main__':``; otherwise it runs inside each
+    worker.  Notebooks and interactive sessions need no guard.
     Set ``workers=1`` to disable parallelism, e.g. when using
     ``cupyLorenzMie`` (which holds GPU memory and is not picklable).
     The companion setting ``updating='deferred'`` (also the default) is

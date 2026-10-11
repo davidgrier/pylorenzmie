@@ -1,6 +1,26 @@
 Theory (``pylorenzmie.theory``)
 ================================
 
+Calculators
+-----------
+
+:class:`~pylorenzmie.theory.LorenzMie.LorenzMie` is the reference
+implementation in NumPy. The accelerated calculators below are subclasses
+that replace the inner calculation. ``pylorenzmie.theory.LorenzMie`` is
+:class:`~pylorenzmie.theory.numbaLorenzMie.numbaLorenzMie` if Numba works and
+the NumPy class otherwise. The GPU calculators
+(:class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie`,
+:class:`~pylorenzmie.theory.cupyLorenzMie.cupyLorenzMie`) and
+:class:`~pylorenzmie.theory.jaxLorenzMie.jaxLorenzMie` are never chosen
+automatically. Select one by setting the environment variable
+``PYLORENZMIE_BACKEND`` to ``numpy``, ``numba``, ``torch``, ``jax`` or
+``cupy`` before importing pylorenzmie (a backend that cannot be loaded
+raises ``ImportError``), or import the class from its module. See
+:doc:`../quickstart` for timings.
+
+Particles and instrument
+------------------------
+
 Instrument
 ----------
 
@@ -65,4 +85,10 @@ torchLorenzMieBatch
 -------------------
 
 .. automodule:: pylorenzmie.theory.torchLorenzMieBatch
+   :members:
+
+jaxLorenzMie
+------------
+
+.. automodule:: pylorenzmie.theory.jaxLorenzMie
    :members:
