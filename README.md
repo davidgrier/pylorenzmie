@@ -10,7 +10,7 @@
 Python routines for tracking and characterizing colloidal particles
 with in-line holographic video microscopy (HVM)
 
-## Explanation of the module
+## What pylorenzmie does
 `pylorenzmie` provides a set of python classes for interacting with and
 analyzing holographic microscopy data. The hologram of a colloidal
 particle encodes comprehensive information about the particle's size,
