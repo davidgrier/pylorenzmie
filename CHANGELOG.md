@@ -4,6 +4,29 @@ All notable changes to pylorenzmie are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+* A `LICENSE` file (GPLv3), included in the wheel and the source distribution.
+* A `gui` extra (`pip install pylorenzmie[gui]`) that installs PyQt6, which
+  `lmtool` needs. Previously a plain install had no Qt binding.
+* `py.typed`, so type checkers use the package's annotations.
+* `CONTRIBUTING.md` and documentation pages on the architecture, the
+  conventions and how to extend the package.
+* Tests for the utilities, the properties protocol, backend fallbacks,
+  `Optimizer.report()` and the lmtool widgets (run offscreen in their own CI
+  job). The CI coverage job requires 65%.
+
+### Fixed
+
+* `utilities.water.density()` had the wrong sign on the cubic term of Kell's
+  formula, a transposed digit and a stray factor. It was in error by 2% at 80
+  celsius and affected `refractiveindex()` (3e-4 at 25 C, 1.6e-3 at 40 C). It
+  now agrees with IAPWS-95 to 0.01 kg/m^3.
+* The quickstart showed three of its sections twice.
+* Array annotations use `np.floating`, `np.complexfloating` and `np.integer`.
+
 ## [3.0.0] - 2026-10-11
 
 Faster calculators, GPU support on Apple silicon, and a set of corrections to
