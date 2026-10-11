@@ -70,6 +70,7 @@ packages = [
 [tool.setuptools.package-data]
 "pylorenzmie.lmtool"     = ["*.ui", "*.json"]
 "pylorenzmie.analysis"   = ["*.joblib"]
+"pylorenzmie.utilities"  = ["data/*.png"]
 
 [tool.setuptools.package-dir]
 "pylorenzmie"            = "."

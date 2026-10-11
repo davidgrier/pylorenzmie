@@ -8,6 +8,7 @@ plots
 *.pyc
 .idea/
 *.png
+!utilities/data/*.png
 .DS_Store
 *~
 *.txt
