@@ -104,4 +104,4 @@ exclude_lines = [
 show_missing = true
 # the Python-only code; the accelerated kernels and the GPU paths are invisible
 # to coverage or skipped without the hardware
-fail_under = 60
+fail_under = 65

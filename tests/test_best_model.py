@@ -65,5 +65,31 @@ class TestLorenzMieSelection(unittest.TestCase):
         self.assertIs(_select_backend('jax'), jaxLorenzMie)
 
 
+class TestBackendFallback(unittest.TestCase):
+    '''What the default selection does when Numba is unusable.'''
+
+    def test_a_missing_numba_gives_the_numpy_calculator(self):
+        from unittest import mock
+        import pylorenzmie.theory as theory
+        with mock.patch.object(theory, '_load', side_effect=ImportError):
+            self.assertIs(theory._select_backend(), BaseLorenzMie)
+
+    def test_a_broken_numba_gives_the_numpy_calculator_and_a_warning(self):
+        from unittest import mock
+        import pylorenzmie.theory as theory
+        with mock.patch.object(theory, '_load',
+                               side_effect=RuntimeError('broken')):
+            with self.assertLogs('pylorenzmie.theory', level='WARNING'):
+                self.assertIs(theory._select_backend(), BaseLorenzMie)
+
+    def test_a_requested_backend_that_is_broken_raises(self):
+        from unittest import mock
+        import pylorenzmie.theory as theory
+        with mock.patch.object(theory, '_load',
+                               side_effect=RuntimeError('broken')):
+            with self.assertRaises(ImportError):
+                theory._select_backend('numba')
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

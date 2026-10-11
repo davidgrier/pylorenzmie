@@ -148,5 +148,44 @@ class TestAberratedLorenzMie(unittest.TestCase):
                             msg=name)
 
 
+class TestAberratedKernelHooks(unittest.TestCase):
+    '''The hooks that calculators with an in-kernel phase use.'''
+
+    def setUp(self):
+        self.model = AberratedLorenzMie(coordinates=LorenzMie.meshgrid(
+            (32, 32)))
+        self.model.particle = Sphere(a_p=0.75, n_p=1.45, x_p=16., y_p=16.,
+                                     z_p=120.)
+
+    def test_no_coefficients_without_aberrations(self):
+        self.assertIsNone(self.model._aberration_coefficients())
+
+    def test_coefficients_in_a_fixed_order(self):
+        self.model.defocus = 0.5
+        self.model.spherical = 2.
+        self.model.coma = 0.1
+        self.model.astigmatism = 0.2
+        self.model.distortion = 0.3
+        self.model.x_c = 7.
+        self.model.y_c = 9.
+        np.testing.assert_array_equal(
+            self.model._aberration_coefficients(),
+            [0.5, 2., 0.1, 0.2, 0.3, 7., 9.])
+
+    def test_a_calculator_that_applies_the_phase_itself_is_not_multiplied(self):
+        class InKernel(type(self.model)):
+            _aberrations_in_kernel = True
+
+        plain = LorenzMie(coordinates=self.model.coordinates)
+        plain.particle = self.model.particle
+        aberrated = InKernel(coordinates=self.model.coordinates,
+                             spherical=2.)
+        aberrated.particle = self.model.particle
+        # the Python mask is skipped: the field is that of the plain model
+        np.testing.assert_allclose(
+            aberrated.scattered_field(aberrated.particle),
+            plain.scattered_field(plain.particle))
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

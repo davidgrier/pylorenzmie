@@ -142,6 +142,18 @@ class TestOptimizer(unittest.TestCase):
         self.assertTrue(self.optimizer.robust)
         self.assertEqual(self.optimizer.settings['method'], 'trf')
 
+    def test_report_lists_every_fitted_parameter(self):
+        '''report() after a fit names each parameter with its error.'''
+        self.optimizer.settings['max_nfev'] = 2
+        self.optimizer.optimize(self.hologram)
+        report = self.optimizer.report()
+        for name in self.optimizer.variables:
+            self.assertIn(f'{name} = ', report)
+        self.assertIn('±', report)
+        self.assertIn('pixels', report)
+        self.assertIn('npixels = ', report)
+        self.assertIn('χ² = ', report)
+
     def test_report_before_optimize_raises(self):
         '''report() raises RuntimeError when called before optimize().'''
         with self.assertRaises(RuntimeError):
