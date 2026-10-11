@@ -2,6 +2,46 @@
 
 ## normalization
 
+- [ ] **Background estimation from the hologram itself** (the biggest obstacle
+      to analysis: features are hard to see and to fit until the background is
+      normalized away, and a blank frame or a long sequence is often not
+      available). A benchmark of the real blank frame in `docs/tutorials`
+      multiplied by simulated Lorenz-Mie spheres showed:
+      the blank frame is dominated by a fixed pattern (about 24% rms below 25
+      pixels, against 8% pixel noise), so smooth backgrounds (median, Gaussian,
+      polynomial) leave 28-50% error; with them `Localizer` finds 110-150 false
+      particles and fits lose a factor 10-30 in precision; the `'filter'` method
+      (51-pixel median filter) is the worst for size and index, worse than the
+      scalar median. The model can remove the particles, which a frame cannot
+      do alone. Plan:
+      1. an FFT **template-bank detector** (matched filter with model holograms
+         over height, size and index): found both test particles at 58 and 15
+         sigma within 1 pixel, against a pattern floor of 10 sigma; it feeds
+         `Estimator` with centers, which `DEEstimator` currently takes from the
+         box;
+      2. a **`BackgroundEstimator`** with `update(frame)`: detect, fit, divide
+         the particles out, and average recursively with a smooth gain for
+         drift. Fit-and-divide alone recovers the background to 3.5% rms (smooth:
+         36%); averaged over 8 frames of particles that move only 15-80 pixels
+         per frame, 1.2-1.3% (temporal median: 2.0-3.2%), and fits then match
+         those with the true background;
+      3. `Normalizer(method='model')` that uses it, and a documentation note
+         about `'filter'`.
+      A frame normalized with a background estimated from itself reproduces the
+      model, so the single-frame estimate does not improve that frame's own
+      fit. Whitening the fit residuals by the pattern spectrum made the fits
+      worse in a first test. Not yet tested: drift, particles that are missed
+      or not spheres, a low-rank (PCA) library of instrument backgrounds, a
+      joint fit with a smooth gain.
+- [ ] **Learned methods for the background problem**: (a) train the CATCH-style
+      detector and estimator on simulated holograms multiplied by real blank
+      frames, so that the network learns to ignore the pattern; (b) a
+      learned prior for the background (PCA first, then a VAE or a Gaussian
+      process) from the group's blank frames, inside the fit-and-divide scheme;
+      (c) amortized inference of the particle parameters with uncertainties,
+      marginalized over real background patches. Keep the physical model for
+      the final fit. See the CNN item under `ml`.
+
 - [ ] **Temporal background estimation**: connect `VMedian` to `Normalizer` as a
       `'running'` method. For video data, `VMedian` already accumulates the
       per-pixel temporal median across frames; when particles diffuse, each pixel
