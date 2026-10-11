@@ -7,9 +7,9 @@ from typing import NamedTuple
 
 __all__ = ['azimuthaloperator', 'avg', 'std', 'med', 'mad']
 
-_Data = NDArray[float]
-_Center = tuple[float, float] | NDArray[float]
-_Average = NDArray[float]
+_Data = NDArray[np.floating]
+_Center = tuple[float, float] | NDArray[np.floating]
+_Average = NDArray[np.floating]
 
 
 class _Context(NamedTuple):

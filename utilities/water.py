@@ -5,7 +5,7 @@ from numpy.polynomial import Polynomial
 from numpy.typing import NDArray
 
 
-Value = float | NDArray[float]
+Value = float | NDArray[np.floating]
 
 
 def density(temperature: float = 24.) -> float:

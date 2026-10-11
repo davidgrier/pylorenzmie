@@ -279,18 +279,18 @@ class Optimizer(LMObject):
                   f'χ² = {result.redchi:.2f}']
         return '\n'.join(lines)
 
-    def _analytical_jac(self, values: NDArray[float]) -> NDArray[float]:
+    def _analytical_jac(self, values: NDArray[np.floating]) -> NDArray[np.floating]:
         self.model.properties = dict(zip(self.variables, values))
         J = self.model.jac()
         noise = self.model.instrument.noise
         return np.column_stack([J[p] for p in self.variables]) / noise
 
-    def _residuals(self, values: NDArray[float]) -> Image:
+    def _residuals(self, values: NDArray[np.floating]) -> Image:
         self.model.properties = dict(zip(self.variables, values))
         noise = self.model.instrument.noise
         return (self.model.hologram() - self._data) / noise
 
-    def _statistics(self) -> tuple[float, NDArray[float]]:
+    def _statistics(self) -> tuple[float, NDArray[np.floating]]:
         '''Reduced chi-squared and parameter uncertainties.
 
         Uncertainties are square roots of the diagonal of the covariance

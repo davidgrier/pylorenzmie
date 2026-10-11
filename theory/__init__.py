@@ -1,5 +1,6 @@
 import logging as _logging
 import os as _os
+from typing import TYPE_CHECKING as _TYPE_CHECKING
 
 from .Particle import Particle
 from .Sphere import Sphere
@@ -66,7 +67,11 @@ def _select_backend(requested: str | None = None) -> type:
         return _BaseLorenzMie
 
 
-LorenzMie = _select_backend(_os.environ.get('PYLORENZMIE_BACKEND'))
+if _TYPE_CHECKING:
+    # the calculator is chosen at run time, but type checkers need a class
+    LorenzMie = _BaseLorenzMie
+else:
+    LorenzMie = _select_backend(_os.environ.get('PYLORENZMIE_BACKEND'))
 
 # Alias for backward compatibility
 LMHologram = LorenzMie

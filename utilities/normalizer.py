@@ -56,12 +56,12 @@ class Normalizer:
     def __init__(self,
                  method: str = 'median',
                  size: int = 51,
-                 reference: NDArray[float] | float | None = None) -> None:
+                 reference: NDArray[np.floating] | float | None = None) -> None:
         self.method = method
         self.size = size
         self.reference = reference
 
-    def __call__(self, image: NDArray[float]) -> NDArray[float]:
+    def __call__(self, image: NDArray[np.floating]) -> NDArray[np.floating]:
         '''Return the image divided by its estimated background.
 
         Parameters

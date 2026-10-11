@@ -25,7 +25,7 @@ class _RadialObjective:
 
     def __init__(self,
                  model: LorenzMie,
-                 profile: NDArray[float],
+                 profile: NDArray[np.floating],
                  variables: list[str],
                  noise: float) -> None:
         self._model = model

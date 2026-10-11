@@ -41,7 +41,14 @@ jobs:
         run: pip install -e ".[${{ matrix.extras }}]"
 
       - name: Run tests
+        if: ${{ !(matrix.python-version == '3.12' && matrix.extras == 'dev,numba') }}
         run: python -m pytest --tb=short -q
+
+      # one job also measures coverage and fails below the threshold in
+      # pyproject.toml
+      - name: Run tests with coverage
+        if: ${{ matrix.python-version == '3.12' && matrix.extras == 'dev,numba' }}
+        run: python -m pytest --cov --tb=short -q
 
   docs:
     # Read the Docs builds with Python 3.12, without the optional libraries
