@@ -18,7 +18,6 @@ from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie
 import torch
 import triton
 import triton.language as tl
-import triton.language.extra.cuda.libdevice as tl_libdevice
 import logging
 
 logger = logging.getLogger(__name__)
@@ -80,12 +79,14 @@ def _batch_lorenzmie_kernel(
 
     krho      = tl.sqrt(kx*kx + ky*ky)
     kr        = tl.sqrt(krho*krho + kz*kz)
-    phi       = tl_libdevice.atan2(ky, kx)
-    cos_phi   = tl.cos(phi)
-    sin_phi   = tl.sin(phi)
-    theta     = tl_libdevice.atan2(krho, kz)
-    cos_theta = tl.cos(theta)
-    sin_theta = tl.sin(theta)
+    # direction cosines from ratios, as in the Numba and Metal kernels; on
+    # the axis (krho = 0) the azimuth is undefined and any value will do.
+    # This avoids atan2, which exists only in the CUDA-specific libdevice.
+    cos_theta = kz / kr
+    sin_theta = krho / kr
+    off_axis  = krho > 0.0
+    cos_phi   = tl.where(off_axis, kx / krho, 1.0)
+    sin_phi   = tl.where(off_axis, ky / krho, 0.0)
     sinkr     = tl.sin(kr)
     coskr     = tl.cos(kr)
 

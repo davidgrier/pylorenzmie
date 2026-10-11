@@ -2,10 +2,13 @@
 
 Inherits LorenzMie numpy base class.  Two GPU back ends share one class:
 
-* CUDA GPUs run a Triton kernel (``_tritonkernel``);
+* CUDA GPUs, and AMD GPUs through PyTorch's ROCm build (which also reports
+  device type ``cuda``), and Intel GPUs (device type ``xpu``) run a Triton
+  kernel (``_tritonkernel``);
 * Apple GPUs run a Metal kernel through the MPS back end of PyTorch.
 
-Both work in single precision.
+Both work in single precision.  Only CUDA (NVIDIA) and MPS (Apple) have been
+tested; ROCm and XPU should work but have not been run.
 '''
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
@@ -138,46 +141,52 @@ def _partial_wave_table(ab: np.ndarray) -> np.ndarray:
     return np.ascontiguousarray(table, dtype=np.float32)
 
 
+_DEVICE_TYPES = ('cuda', 'xpu', 'mps')
+
+
+def _available(kind: str) -> bool:
+    if kind == 'cuda':
+        return torch.cuda.is_available()
+    if kind == 'xpu':
+        return hasattr(torch, 'xpu') and torch.xpu.is_available()
+    return torch.backends.mps.is_available()
+
+
 def get_device(prefer: str | None = None) -> torch.device:
     '''Return a working GPU device, or raise RuntimeError.
 
     Parameters
     ----------
     prefer : str, optional
-        ``'cuda'`` or ``'mps'`` to require that device.  By default a
-        CUDA GPU is used if there is one, otherwise an Apple GPU.
+        ``'cuda'`` (NVIDIA, or AMD with the ROCm build of PyTorch),
+        ``'xpu'`` (Intel) or ``'mps'`` (Apple) to require that device.
+        By default the first available of CUDA, XPU and MPS is used.
 
     Returns
     -------
     device : torch.device
-        A validated ``cuda`` or ``mps`` device.
+        A validated ``cuda``, ``xpu`` or ``mps`` device.
 
     Raises
     ------
     RuntimeError
         If no suitable GPU is available or it cannot be initialised.
     '''
-    if prefer not in (None, 'cuda', 'mps'):
-        raise ValueError(f"prefer must be 'cuda' or 'mps', not {prefer!r}")
-    if prefer in (None, 'cuda') and torch.cuda.is_available():
-        try:
-            torch.zeros(1).cuda()
-            logger.info('Using CUDA acceleration')
-            return torch.device('cuda')
-        except Exception as e:
-            raise RuntimeError(
-                f'CUDA device found but failed to initialise: {e}') from e
-    if prefer in (None, 'mps') and torch.backends.mps.is_available():
-        try:
-            torch.zeros(1, device='mps')
-            logger.info('Using Metal (MPS) acceleration')
-            return torch.device('mps')
-        except Exception as e:
-            raise RuntimeError(
-                f'Metal device found but failed to initialise: {e}') from e
+    if prefer not in (None, *_DEVICE_TYPES):
+        raise ValueError(f'prefer must be one of {_DEVICE_TYPES}, '
+                         f'not {prefer!r}')
+    for kind in _DEVICE_TYPES:
+        if prefer in (None, kind) and _available(kind):
+            try:
+                torch.zeros(1, device=kind)
+            except Exception as e:
+                raise RuntimeError(f'{kind} device found but failed to '
+                                   f'initialise: {e}') from e
+            logger.info('Using %s acceleration', kind)
+            return torch.device(kind)
     raise RuntimeError(
-        'TorchLorenzMie requires a CUDA or Apple (MPS) GPU; none found. '
-        'Use LorenzMie (NumPy) or numbaLorenzMie for CPU.')
+        'TorchLorenzMie requires a CUDA, Intel (XPU) or Apple (MPS) GPU; '
+        'none found. Use LorenzMie (NumPy) or numbaLorenzMie for CPU.')
 
 
 class TorchLorenzMie(LorenzMie):
@@ -192,13 +201,13 @@ class TorchLorenzMie(LorenzMie):
     Parameters
     ----------
     device : torch.device or str, optional
-        ``'cuda'`` or ``'mps'``.  Default: a CUDA GPU if there is one,
-        otherwise an Apple GPU (see :func:`get_device`).
+        ``'cuda'``, ``'xpu'`` or ``'mps'``.  Default: the first GPU
+        available in that order (see :func:`get_device`).
 
     Attributes
     ----------
     device : torch.device
-        Compute device in use (``cuda`` or ``mps``).
+        Compute device in use (``cuda``, ``xpu`` or ``mps``).
 
     Notes
     -----
@@ -218,11 +227,11 @@ class TorchLorenzMie(LorenzMie):
                  **kwargs) -> None:
         if device is None:
             device = get_device()
-        elif torch.device(device).type in ('cuda', 'mps'):
+        elif torch.device(device).type in _DEVICE_TYPES:
             device = get_device(torch.device(device).type)
         else:
             raise ValueError(f'Unsupported device {device!r}: '
-                             "use 'cuda' or 'mps'")
+                             "use 'cuda', 'xpu' or 'mps'")
         self._device = device
         super().__init__(*args, **kwargs)
 
@@ -415,10 +424,10 @@ class TorchLorenzMie(LorenzMie):
         field : torch.Tensor, shape (3, npts), dtype complex64
             Complex scattered field at each coordinate.
         '''
-        if self._device.type != 'cuda':
+        if self._device.type == 'mps':
             raise NotImplementedError(
                 'lorenzmie() takes precomputed displacements and is '
-                'implemented for CUDA only; on Apple GPUs use '
+                'implemented for Triton devices only; on Apple GPUs use '
                 'scattered_field(), hologram() or field()')
         import triton
         from pylorenzmie.theory._tritonkernel import _lorenzmie_kernel

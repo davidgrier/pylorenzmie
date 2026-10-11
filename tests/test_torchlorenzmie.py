@@ -11,7 +11,7 @@ except Exception:
 
 try:
     from pylorenzmie.theory.torchLorenzMieBatch import TorchLorenzMieBatch
-    _batch_available = _device == 'cuda'
+    _batch_available = _device in ('cuda', 'xpu')
 except Exception:
     _batch_available = False
 
@@ -119,6 +119,13 @@ class TestTorchLorenzMie(unittest.TestCase):
     def test_get_device_rejects_unknown_preference(self) -> None:
         with self.assertRaises(ValueError):
             get_device('tpu')
+
+    def test_device_preference_is_honored(self) -> None:
+        self.assertEqual(get_device(_device).type, _device)
+        self.assertEqual(TorchLorenzMie(device=_device).device.type, _device)
+        for other in {'cuda', 'xpu', 'mps'} - {_device}:
+            with self.assertRaises(RuntimeError):
+                get_device(other)
 
     def test_repr(self) -> None:
         r = repr(self.model)

@@ -1,15 +1,17 @@
-'''Triton kernel for the CUDA implementation of TorchLorenzMie.
+'''Triton kernel for the CUDA, ROCm and Intel GPU implementations of
+TorchLorenzMie.
 
 Kept in a module of its own so that ``torchLorenzMie`` imports without
-Triton, which exists only for CUDA (and ROCm) GPUs.
+Triton, which is not available on every platform (macOS has none).  Only
+portable Triton functions are used, so the kernel does not depend on the
+CUDA-specific libdevice.
 '''
 
 import triton
 import triton.language as tl
-import triton.language.extra.cuda.libdevice as tl_libdevice
 
 
-# Triton CUDA kernel: computes the Lorenz-Mie scattered field for a
+# Triton kernel: computes the Lorenz-Mie scattered field for a
 # single particle over npts pixels in parallel.  The entire Mie sum
 # runs inside one kernel to avoid per-order launch overhead.
 @triton.jit
@@ -36,12 +38,14 @@ def _lorenzmie_kernel(
 
     krho      = tl.sqrt(kx*kx + ky*ky)
     kr        = tl.sqrt(krho*krho + kz*kz)
-    phi       = tl_libdevice.atan2(ky, kx)
-    cos_phi   = tl.cos(phi)
-    sin_phi   = tl.sin(phi)
-    theta     = tl_libdevice.atan2(krho, kz)
-    cos_theta = tl.cos(theta)
-    sin_theta = tl.sin(theta)
+    # direction cosines from ratios, as in the Numba and Metal kernels; on
+    # the axis (krho = 0) the azimuth is undefined and any value will do.
+    # This avoids atan2, which exists only in the CUDA-specific libdevice.
+    cos_theta = kz / kr
+    sin_theta = krho / kr
+    off_axis  = krho > 0.0
+    cos_phi   = tl.where(off_axis, kx / krho, 1.0)
+    sin_phi   = tl.where(off_axis, ky / krho, 0.0)
     sinkr     = tl.sin(kr)
     coskr     = tl.cos(kr)
 
