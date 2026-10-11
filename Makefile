@@ -3,11 +3,12 @@
 
 PYTHON ?= python
 
-.PHONY: all help test test-all cov docs clean
+.PHONY: all help dev test test-all cov docs clean
 
 all: test
 
 help:
+	@echo 'make dev       install the package in editable mode with the test, Numba and docs extras'
 	@echo 'make test      run the test suite, as CI does (without tests/slow and the JAX tests)'
 	@echo 'make test-all  run all tests, including tests/slow and the JAX tests'
 	@echo 'make cov       run the test suite and report coverage'
@@ -15,6 +16,11 @@ help:
 	@echo 'make clean     remove build, cache and coverage files'
 	@echo
 	@echo 'Variable: PYTHON (default: python)'
+
+# Run this with the virtual environment's Python, e.g.
+# make dev PYTHON=~/python/venvs/pylorenzmie/bin/python
+dev:
+	$(PYTHON) -m pip install -e ".[dev,numba,docs]"
 
 test:
 	$(PYTHON) -m pytest --tb=short -q

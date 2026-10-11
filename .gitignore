@@ -18,3 +18,11 @@ htmlcov/
 docs/_build/
 *.nbi
 *.nbc
+# virtual environments (Python 3.13+ also writes a .gitignore into each)
+.venv/
+venv/
+.lm/
+# build and editor leftovers
+*.egg-info/
+\#*\#
+*.bak

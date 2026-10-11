@@ -2,11 +2,30 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development environment
+
+Keep the virtual environment **outside the repository**, for example in
+`~/python/venvs/pylorenzmie`. A venv inside the tree is swept by bulk edits
+(`grep -r`, `sed`, `find`), which once rewrote a line of llvmlite inside one,
+and `git clean -xdf` deletes it. Recreate it rather than move it, since venvs
+contain absolute paths:
+
+```bash
+python3 -m venv ~/python/venvs/pylorenzmie
+make dev PYTHON=~/python/venvs/pylorenzmie/bin/python   # editable install
+make test PYTHON=~/python/venvs/pylorenzmie/bin/python
+```
+
+`make dev` installs the `dev`, `numba` and `docs` extras. The `torch`, `jax`
+and `gpu` extras are optional and not needed for the default test run; CI
+installs `dev,numba` (and `dev` alone on one Python version). To check
+the code without Numba, use a throwaway venv with `pip install -e ".[dev]"`.
+
 ## Commands
 
 ```bash
-# Install in editable mode with test dependencies
-pip install -e ".[dev]"
+# Install in editable mode with test dependencies (or: make dev)
+pip install -e ".[dev,numba,docs]"
 
 # Run all tests (or: make test; make cov for coverage; make docs)
 python -m pytest
