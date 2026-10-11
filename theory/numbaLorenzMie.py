@@ -1,6 +1,7 @@
 from pylorenzmie.lib.lmtypes import Coefficients, Coordinates, Field
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
+import os
 import threading
 
 from numba import njit, prange
@@ -142,6 +143,24 @@ _parallel_kernel = _make_kernel(True)
 # launches makes concurrent use safe with every threading layer.
 _PARALLEL_LOCK = threading.Lock()
 
+# The OpenMP threading layers hang when a process created by fork() enters a
+# parallel region of a parent that has already used one.  Python 3.13 and
+# earlier use fork() for multiprocessing on Linux, including the workers of
+# scipy.optimize.differential_evolution in DEEstimator.  A forked child
+# therefore always evaluates on one thread, which is also what a pool of
+# worker processes should do.
+_FORKED = False
+
+
+def _after_fork_in_child() -> None:
+    global _FORKED, _PARALLEL_LOCK
+    _FORKED = True
+    _PARALLEL_LOCK = threading.Lock()     # may have been held at fork time
+
+
+if hasattr(os, 'register_at_fork'):
+    os.register_at_fork(after_in_child=_after_fork_in_child)
+
 
 def compute_field_jit(kdr, buffers, scratch, ab, cartesian, bohren):
     '''Scattered field summed over Mie partial waves (compatibility wrapper).
@@ -227,6 +246,15 @@ class numbaLorenzMie(LorenzMie):
     * you need the processor for something else at the same time, such
       as a responsive user interface, or reproducible timings.
 
+    In a process created by ``fork`` (the default start method of
+    :mod:`multiprocessing` on Linux through Python 3.13, used by the
+    workers of :class:`~pylorenzmie.analysis.DEEstimator`) the calculator
+    always runs on one thread, whatever :attr:`parallel` says, because
+    the OpenMP threading layers hang when a forked process enters a
+    parallel region. Worker processes started with ``spawn`` or
+    ``forkserver`` are new interpreters and do use the threads, so the
+    first item above applies to them.
+
     Calls from several Python threads at the same time are safe: they
     are serialized, because Numba's default ``workqueue`` threading
     layer aborts the process when two threads enter a parallel region at
@@ -263,7 +291,8 @@ class numbaLorenzMie(LorenzMie):
         if out.shape[1] != kdr.shape[1]:
             out = np.empty((3, kdr.shape[1]), dtype=complex)
         constants = _partial_wave_constants(ab)
-        if self.parallel and kdr.shape[1] >= self.parallel_threshold:
+        if (self.parallel and not _FORKED and
+                kdr.shape[1] >= self.parallel_threshold):
             with _PARALLEL_LOCK:
                 _parallel_kernel(kdr, *constants, out, cartesian, bohren)
         else:
