@@ -1,5 +1,7 @@
 theory/devel/
 former_scripts
+# local-only helpers (git hooks etc.), not part of the distribution
+scripts/
 plot
 plots
 .ipynb_checkpoints
