@@ -10,7 +10,7 @@ except Exception:
 
 
 class TestLorenzMieSelection(unittest.TestCase):
-    '''LorenzMie exported from theory is the best available backend.'''
+    '''LorenzMie exported from theory: Numba if available, else NumPy.'''
 
     def test_is_base_subclass(self):
         '''LorenzMie is always the base class or a subclass of it.'''
@@ -27,10 +27,42 @@ class TestLorenzMieSelection(unittest.TestCase):
         model = LorenzMie(coordinates=coords)
         self.assertIsNotNone(model.coordinates)
 
+    def test_default_is_numba_or_numpy(self):
+        '''JAX and CuPy are never selected unless requested.'''
+        from pylorenzmie.theory import _select_backend
+        self.assertIn(_select_backend().__name__,
+                      ('numbaLorenzMie', 'LorenzMie'))
+
+    def test_default_prefers_numba_when_available(self):
+        try:
+            from pylorenzmie.theory.numbaLorenzMie import numbaLorenzMie
+        except Exception:
+            self.skipTest('Numba not installed')
+        from pylorenzmie.theory import _select_backend
+        self.assertIs(_select_backend(), numbaLorenzMie)
+
+    def test_numpy_can_be_requested(self):
+        from pylorenzmie.theory import _select_backend
+        self.assertIs(_select_backend('numpy'), BaseLorenzMie)
+        self.assertIs(_select_backend(' NumPy '), BaseLorenzMie)
+
+    def test_unknown_backend_raises(self):
+        from pylorenzmie.theory import _select_backend
+        with self.assertRaises(ValueError):
+            _select_backend('fortran')
+
+    def test_unavailable_backend_raises_instead_of_falling_back(self):
+        from pylorenzmie.theory import _select_backend
+        from unittest import mock
+        with mock.patch.dict('sys.modules',
+                             {'pylorenzmie.theory.cupyLorenzMie': None}):
+            with self.assertRaises(ImportError):
+                _select_backend('cupy')
+
     @unittest.skipUnless(_jax_available, 'JAX not installed or backend broken')
-    def test_prefers_jax_when_available(self):
-        '''LorenzMie is jaxLorenzMie when JAX is installed and functional.'''
-        self.assertIs(LorenzMie, jaxLorenzMie)
+    def test_jax_can_be_requested(self):
+        from pylorenzmie.theory import _select_backend
+        self.assertIs(_select_backend('jax'), jaxLorenzMie)
 
 
 if __name__ == '__main__':  # pragma: no cover

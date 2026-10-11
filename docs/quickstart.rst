@@ -95,9 +95,17 @@ Speed: the Numba backend and threads
 If Numba is installed (``pip install pylorenzmie[numba]``),
 :class:`~pylorenzmie.theory.numbaLorenzMie` evaluates the Lorenz-Mie
 field one point at a time on all CPU threads: about 4 times faster than
-the default NumPy calculator on one thread, and 10 to 20 times faster
-on a ten-core machine.  The NumPy calculator is always available
-and needs no extra packages.
+the NumPy calculator on one thread, and 10 to 20 times faster on a
+ten-core machine.  It is what ``from pylorenzmie.theory import
+LorenzMie`` returns when Numba works; otherwise you get the NumPy
+calculator, which needs no extra packages.
+
+The JAX and CuPy calculators are never chosen automatically, because they
+pay off on GPUs, not on CPUs.  To use one, set the environment variable
+``PYLORENZMIE_BACKEND`` to ``numpy``, ``numba``, ``jax`` or ``cupy``
+(an unavailable choice raises ``ImportError``), or import the class from its
+module, for example ``from pylorenzmie.theory.jaxLorenzMie import
+jaxLorenzMie``.
 
 The threads are on by default because the points of a hologram are
 independent.  Turn them off when your own code is already parallel,

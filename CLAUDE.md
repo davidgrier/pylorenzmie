@@ -127,8 +127,17 @@ and `lorenzmie()`:
 - `numbaLorenzMie` — Numba JIT, CPU; pointwise kernel, multi-threaded by
   default (`parallel = True`; fall back with `parallel = False` when the
   calling code is already parallel, see its docstring)
+- `jaxLorenzMie` — JAX JIT with an analytical Jacobian; single spheres only
+  (clusters fall back to NumPy) and it recompiles when the number of partial
+  waves changes, so it is slower than Numba on a CPU
 - `AberratedLorenzMie` — adds phase masks for the five primary Seidel
   aberrations (defocus, spherical, coma, astigmatism, distortion)
+
+`from pylorenzmie.theory import LorenzMie` is `numbaLorenzMie` when Numba works
+and the NumPy class otherwise. JAX and CuPy are never chosen automatically;
+select one with the environment variable `PYLORENZMIE_BACKEND` (`numpy`,
+`numba`, `jax` or `cupy`; an unavailable choice raises `ImportError`) or import
+the class from its module.
 
 ### `analysis/` — Fitting pipeline
 
