@@ -28,17 +28,21 @@ class Optimizer(LMObject):
         :attr:`~Hologram.flat_data` and
         :attr:`~Hologram.flat_coordinates`.
     robust : bool, optional
-        Use robust Cauchy loss instead of standard least squares.
-        Default: ``False``.
+        ``True`` selects the robust Cauchy loss and ``False`` standard
+        least squares, replacing ``method`` and ``loss`` in *settings*.
+        Default: ``None``, which leaves *settings* as they are (standard
+        least squares for the default settings).
     fixed : list[str], optional
         Names of model properties held constant during fitting.
-        Default: all instrument parameters plus ``k_p``
-        (``wavelength``, ``magnification``, ``n_m``,
-        ``noise``, ``k_p``), leaving only the five particle
-        parameters (``x_p``, ``y_p``, ``z_p``, ``a_p``, ``n_p``) free.
+        Default: everything that is not a property of the particle (the
+        instrument parameters ``wavelength``, ``magnification``, ``n_m``
+        and ``noise``, and for an aberrated model the aberration
+        coefficients and center), together with ``k_p``.  That leaves the
+        particle's position, radius and refractive index free.
     settings : dict, optional
         Keyword arguments forwarded to ``scipy.optimize.least_squares``.
         Defaults to sensible values for holographic particle fitting.
+        The dictionary is copied.
     **kwargs
         Forwarded to ``LorenzMie()`` when ``model`` is not supplied.
 
@@ -56,7 +60,7 @@ class Optimizer(LMObject):
     def __init__(self,
                  model: LorenzMie | None = None,
                  mask: Mask | None = None,
-                 robust: bool = False,
+                 robust: bool | None = None,
                  fixed: list[str] | None = None,
                  settings: Properties | None = None,
                  **kwargs) -> None:
@@ -65,9 +69,13 @@ class Optimizer(LMObject):
             raise TypeError('Model not compatible with Optimizer')
         self.mask = mask
         self.settings = settings
-        default_fixed = 'wavelength magnification n_m noise k_p'.split()
-        self.fixed = fixed if fixed is not None else default_fixed
-        self.robust = robust
+        if fixed is None:
+            fixed = [p for p in self.model.properties
+                     if p not in self.model.particle.properties]
+            fixed.append('k_p')
+        self.fixed = fixed
+        if robust is not None:
+            self.robust = robust
         self._data: Image | None = None
         self._result = None
 
@@ -110,7 +118,7 @@ class Optimizer(LMObject):
                         'max_nfev': 2000,
                         'diff_step': 1e-5,
                         'x_scale': 'jac'}
-        self._settings = settings
+        self._settings = dict(settings)
 
     @property
     def robust(self) -> bool:

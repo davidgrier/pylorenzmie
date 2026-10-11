@@ -78,6 +78,49 @@ class TestOptimizer(unittest.TestCase):
             self.assertIn(f, self.optimizer.fixed)
             self.assertNotIn(f, self.optimizer.variables)
 
+    def test_default_variables_are_the_particle_parameters(self):
+        self.assertEqual(self.optimizer.variables,
+                         ['x_p', 'y_p', 'z_p', 'a_p', 'n_p'])
+
+    def test_aberrated_model_keeps_its_aberrations_fixed_by_default(self):
+        from pylorenzmie.theory import Aberrated
+        model = Aberrated(LorenzMie)(spherical=1.)
+        optimizer = Optimizer(model=model)
+        self.assertEqual(optimizer.variables,
+                         ['x_p', 'y_p', 'z_p', 'a_p', 'n_p'])
+        for name in ('defocus', 'spherical', 'coma', 'astigmatism',
+                     'distortion', 'x_c', 'y_c'):
+            self.assertIn(name, optimizer.fixed)
+
+    def test_aberrations_can_still_be_freed(self):
+        from pylorenzmie.theory import Aberrated
+        optimizer = Optimizer(model=Aberrated(LorenzMie)())
+        optimizer.variables = ['x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'spherical']
+        self.assertIn('spherical', optimizer.variables)
+        self.assertNotIn('spherical', optimizer.fixed)
+
+    def test_user_settings_are_kept(self):
+        settings = {'method': 'dogbox', 'loss': 'linear', 'max_nfev': 7}
+        optimizer = Optimizer(settings=settings)
+        self.assertEqual(optimizer.settings['method'], 'dogbox')
+        self.assertEqual(optimizer.settings['max_nfev'], 7)
+        self.assertFalse(optimizer.robust)
+        settings['max_nfev'] = 99               # the dictionary was copied
+        self.assertEqual(optimizer.settings['max_nfev'], 7)
+
+    def test_robust_true_overrides_settings(self):
+        optimizer = Optimizer(settings={'method': 'lm', 'loss': 'linear'},
+                              robust=True)
+        self.assertEqual(optimizer.settings['loss'], 'cauchy')
+        self.assertEqual(optimizer.settings['method'], 'trf')
+        self.assertTrue(optimizer.robust)
+
+    def test_robust_false_overrides_settings(self):
+        optimizer = Optimizer(settings={'method': 'trf', 'loss': 'cauchy'},
+                              robust=False)
+        self.assertEqual(optimizer.settings['loss'], 'linear')
+        self.assertEqual(optimizer.settings['method'], 'lm')
+
     def test_default_fixed_includes_noise(self):
         '''noise is fixed by default to prevent degenerate fits.'''
         self.assertIn('noise', self.optimizer.fixed)
