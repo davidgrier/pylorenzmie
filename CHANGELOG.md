@@ -16,7 +16,7 @@ All notable changes to pylorenzmie are recorded here. The format follows
   conventions and how to extend the package.
 * Tests for the utilities, the properties protocol, backend fallbacks,
   `Optimizer.report()` and the lmtool widgets (run offscreen in their own CI
-  job). The CI coverage job requires 65%.
+  job). The CI coverage job requires 62%.
 
 ### Fixed
 
