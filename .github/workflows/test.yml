@@ -42,3 +42,32 @@ jobs:
 
       - name: Run tests
         run: python -m pytest --tb=short -q
+
+  docs:
+    # Read the Docs builds with Python 3.12, without the optional libraries
+    # (which docs/conf.py mocks) and with warnings as errors; build the same
+    # way here so that a failure shows up before the badge turns red
+    name: Documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgl1
+
+      - name: Install package and documentation dependencies
+        run: pip install ".[docs]"
+
+      - name: Build the documentation
+        run: python -m sphinx -W --keep-going -b html docs docs/_build/html

@@ -17,6 +17,7 @@ import cmath
 import numpy as np
 import torch
 import logging
+from typing import Union
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
@@ -268,7 +269,7 @@ class TorchLorenzMie(LorenzMie):
 
     def __init__(self,
                  *args,
-                 device: torch.device | str | None = None,
+                 device: Union[torch.device, str, None] = None,
                  **kwargs) -> None:
         if device is None:
             device = get_device()
