@@ -1,3 +1,30 @@
+'''Lorenz-Mie scattered field and hologram computed with Numba.
+
+Provides :class:`numbaLorenzMie`, a drop-in replacement for
+:class:`~pylorenzmie.theory.LorenzMie.LorenzMie` whose partial-wave sum is
+compiled to machine code and evaluated on all of the processor's cores.  It
+agrees with the NumPy calculator to about 1e-13 (relative) and is about four
+times faster than it on one thread and ten to twenty times faster with
+threads, which makes it the calculator of choice for fitting on a CPU.  It is
+what ``pylorenzmie.theory.LorenzMie`` refers to when Numba is installed (see
+the environment variable ``PYLORENZMIE_BACKEND`` to choose another one).
+
+The kernel carries each pixel through the Riccati-Bessel and Legendre upward
+recurrences with scalar variables, folds the Mie coefficients together with the
+prefactors of the partial-wave sum once per call, and obtains the direction
+cosines from ratios instead of trigonometric functions.  Nothing is allocated
+inside the loop over pixels, so the loop can run in parallel.
+
+Requires the ``numba`` package (``pip install pylorenzmie[numba]``) and raises
+:exc:`ImportError` if it is missing.  The first call in a new installation
+compiles the kernels, which takes about a second; they are cached on disk, so
+later sessions start in about 0.15 s.
+
+The threads can be switched off, and the behavior inside worker processes and
+with several Python threads is described in the documentation of
+:class:`numbaLorenzMie`.
+'''
+
 from pylorenzmie.lib.lmtypes import Coefficients, Coordinates, Field
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import numpy as np
@@ -29,6 +56,20 @@ def _partial_wave_constants(ab):
 
 
 def _make_kernel(parallel: bool):
+    '''Compile the scattered-field kernel.
+
+    Parameters
+    ----------
+    parallel : bool
+        If True, the loop over points is a ``prange`` and runs on all
+        Numba threads; otherwise it is an ordinary loop.
+
+    Returns
+    -------
+    kernel : numba.core.registry.CPUDispatcher
+        ``kernel(kdr, an0, an, bn, c2, c3, out, cartesian, bohren)``,
+        which writes the field of every point of ``kdr`` into ``out``.
+    '''
     loop = prange if parallel else range
 
     # error_model='numpy': a division by zero gives inf or NaN, as in the
@@ -153,6 +194,7 @@ _FORKED = False
 
 
 def _after_fork_in_child() -> None:
+    '''Make a forked child process evaluate on one thread.'''
     global _FORKED, _PARALLEL_LOCK
     _FORKED = True
     _PARALLEL_LOCK = threading.Lock()     # may have been held at fork time
@@ -205,8 +247,13 @@ class numbaLorenzMie(LorenzMie):
     faster than NumPy.)  The first call triggers JIT compilation
     (warm-up); subsequent calls use the cached compiled function.
 
-    The class attribute ``method = 'numba numpy'`` allows :class:`Optimizer`
-    to select a compatible model.
+    The class attribute ``method = 'numba numpy'`` allows
+    :class:`~pylorenzmie.analysis.Optimizer` to select a compatible model.
+
+    Parameters
+    ----------
+    coordinates, particle, instrument
+        Forwarded to :class:`~pylorenzmie.theory.LorenzMie.LorenzMie`.
 
     Attributes
     ----------
@@ -268,6 +315,25 @@ class numbaLorenzMie(LorenzMie):
 
     The field returned by :meth:`lorenzmie` is a working array that is
     overwritten by the next call.
+
+    See Also
+    --------
+    ~pylorenzmie.theory.LorenzMie.LorenzMie : the NumPy calculator that this
+        class accelerates.
+    ~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie : calculator for GPUs.
+    ~pylorenzmie.theory.jaxLorenzMie.jaxLorenzMie : calculator with an
+        analytical Jacobian.
+
+    Examples
+    --------
+    >>> from pylorenzmie.theory import Sphere
+    >>> from pylorenzmie.theory.numbaLorenzMie import numbaLorenzMie
+    >>> model = numbaLorenzMie()
+    >>> model.coordinates = model.meshgrid((201, 201))
+    >>> model.particle = Sphere(a_p=0.75, n_p=1.45, x_p=100., y_p=100.,
+    ...                         z_p=200.)
+    >>> hologram = model.hologram().reshape(201, 201)
+    >>> model.parallel = False         # one thread, for this model only
     '''
 
     method: str = 'numba numpy'
@@ -286,6 +352,36 @@ class numbaLorenzMie(LorenzMie):
                   kdr: Coordinates,
                   cartesian: bool = True,
                   bohren: bool = True) -> Field:
+        '''Scattered field for given Mie coefficients and geometry.
+
+        Parameters
+        ----------
+        ab : numpy.ndarray, shape (n_orders, 2)
+            Mie scattering coefficients.
+        kdr : numpy.ndarray, shape (3, npts)
+            Wave-number-scaled displacement from particle to each
+            coordinate point.
+        cartesian : bool
+            If True, return field projected onto Cartesian coordinates.
+            Default: True.
+        bohren : bool
+            If True, use sign convention from Bohren and Huffman.
+            Default: True.
+
+        Returns
+        -------
+        field : numpy.ndarray, shape (3, npts), dtype complex
+            Complex scattered field at each coordinate.  This is a
+            working array of the calculator that the next call
+            overwrites; copy it to keep it.  A point at the center of the
+            particle (``kr = 0``) gives NaN.
+
+        Notes
+        -----
+        The evaluation runs on all Numba threads when :attr:`parallel` is
+        True, ``npts`` is at least :attr:`parallel_threshold` and the
+        process was not created by ``fork``; otherwise on one thread.
+        '''
         kdr = np.ascontiguousarray(kdr, dtype=np.float64)
         out = self.buffers[3] if cartesian else self.buffers[2]
         if out.shape[1] != kdr.shape[1]:
