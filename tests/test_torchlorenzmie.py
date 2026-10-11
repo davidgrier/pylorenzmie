@@ -121,6 +121,62 @@ class TestTorchLorenzMie(unittest.TestCase):
             np.testing.assert_allclose(fast, slow.double().numpy(),
                                        atol=1e-5, err_msg=str(kwargs))
 
+    def _aberrated_pair(self, **aberrations):
+        from pylorenzmie.theory import Aberrated
+        models = [Aberrated(cls)(coordinates=self.model.coordinates,
+                                 **aberrations)
+                  for cls in (TorchLorenzMie, LorenzMie)]
+        for model in models:
+            model.particle.properties = self.model.particle.properties
+        return models
+
+    def test_each_aberration_matches_numpy(self) -> None:
+        names = ('defocus', 'spherical', 'coma', 'astigmatism', 'distortion')
+        for name in names:
+            with self.subTest(name):
+                torch_model, numpy_model = self._aberrated_pair(
+                    **{name: 6.}, x_c=2., y_c=2.)
+                # the aberration must matter, or agreement means nothing
+                self.assertGreater(
+                    np.abs(numpy_model.hologram() -
+                           self.ref.hologram()).max(), 100 * ATOL)
+                np.testing.assert_allclose(torch_model.hologram(),
+                                           numpy_model.hologram(), atol=ATOL)
+
+    def test_aberration_center_on_the_particle(self) -> None:
+        x_p, y_p = self.model.particle.x_p, self.model.particle.y_p
+        torch_model, numpy_model = self._aberrated_pair(
+            spherical=2., coma=.5, astigmatism=.3, distortion=.2,
+            x_c=x_p, y_c=y_p)
+        np.testing.assert_allclose(torch_model.hologram(),
+                                   numpy_model.hologram(), atol=ATOL)
+
+    def test_aberrated_particle_below_focal_plane(self) -> None:
+        torch_model, numpy_model = self._aberrated_pair(
+            spherical=2., coma=.5, x_c=10., y_c=50.)
+        for model in (torch_model, numpy_model):
+            model.particle.z_p = -150.
+        np.testing.assert_allclose(torch_model.hologram(),
+                                   numpy_model.hologram(), atol=ATOL)
+
+    def test_aberrated_field_matches_numpy(self) -> None:
+        torch_model, numpy_model = self._aberrated_pair(
+            spherical=2., coma=.5, x_c=10., y_c=50.)
+        for kwargs in (dict(), dict(cartesian=False), dict(bohren=False)):
+            with self.subTest(**kwargs):
+                np.testing.assert_allclose(
+                    torch_model.field(**kwargs).cpu().numpy(),
+                    numpy_model.field(**kwargs), atol=ATOL)
+
+    def test_aberrated_hologram_matches_its_field_route(self) -> None:
+        # on Apple GPUs hologram() forms the intensity in the kernel
+        torch_model, _ = self._aberrated_pair(spherical=2., coma=.5,
+                                              x_c=10., y_c=50.)
+        field = torch_model.field().cpu()
+        slow = (field.real**2 + field.imag**2).sum(0) + 2*field[0].real + 1
+        np.testing.assert_allclose(torch_model.hologram(),
+                                   slow.double().numpy(), atol=1e-5)
+
     def test_unsupported_device_raises(self) -> None:
         with self.assertRaises(ValueError):
             TorchLorenzMie(device='cpu')

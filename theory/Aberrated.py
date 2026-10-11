@@ -187,9 +187,9 @@ def Aberrated(base_class: type) -> type:
             return mask
 
         def _aberration_coefficients(self) -> np.ndarray | None:
-            '''Coefficients for the JAX kernel, which computes the phase
-            inside the compiled function instead of calling
-            :meth:`_aberration`.  None when all aberrations are zero.'''
+            '''Coefficients for the JAX and Metal kernels, which compute
+            the phase themselves instead of calling :meth:`_aberration`.
+            None when all aberrations are zero.'''
             if not (self.defocus or self.spherical or
                     self.coma or self.astigmatism or self.distortion):
                 return None
@@ -202,8 +202,14 @@ def Aberrated(base_class: type) -> type:
                             **kwargs) -> Field:
             '''Scattered field including geometric aberrations.'''
             field = super().scattered_field(particle, **kwargs)
+            if getattr(self, '_aberrations_in_kernel', False):
+                return field                  # the kernel has applied them
             r_p = particle.r_p + particle.r_0
             return field * self._aberration(r_p)
+
+        # lets a back end that applies the phase in its kernel (Metal) keep
+        # its fast path for aberrated models
+        scattered_field._kernel_aberration = True
 
     return AberratedLorenzMie
 

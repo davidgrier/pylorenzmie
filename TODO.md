@@ -54,10 +54,12 @@
       Intel hardware (only Metal has been run; the Triton kernel and its
       move to `_tritonkernel.py` are untested), and give `TorchLorenzMieBatch`
       the same treatment
-- [ ] `torchLorenzMie`: put the aberration phase of `Aberrated` into the Metal
-      kernel (it takes the slower general route now), and speed up the Triton
-      kernel as the Metal one was (precomputed partial-wave constants,
-      displacement formed in the kernel, intensity formed in the kernel)
+- [x] `torchLorenzMie`: the Metal kernel applies the aberration phase of
+      `Aberrated` itself (aberrated fits: 3 times faster than Numba at 90,000
+      pixels)
+- [ ] `torchLorenzMie`: speed up the Triton kernel as the Metal one was
+      (precomputed partial-wave constants, displacement formed in the kernel,
+      intensity formed in the kernel, aberration phase in the kernel)
 - [ ] `Distorted`: the exact geometric-flow counterpart of `Aberrated` (patch
       on hold; see the aberration manuscript)
 - [ ] Piston (constant relative phase) and explicit saturation handling in

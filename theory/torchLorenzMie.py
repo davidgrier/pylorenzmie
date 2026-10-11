@@ -52,6 +52,9 @@ kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
                       constant float&     phim    [[buffer(12)]],
                       device float*       inten   [[buffer(13)]],  // (npts)
                       constant uint&      mode    [[buffer(14)]],
+                      device const float* aberr   [[buffer(15)]],  // (7)
+                      constant uint&      has_ab  [[buffer(16)]],
+                      constant float&     nm      [[buffer(17)]],
                       uint i [[thread_position_in_grid]]) {
     if (i >= npts) return;
     float kx = k * (coords[i] - xp);
@@ -100,6 +103,32 @@ kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
     Et *= cosp * inv_kr;
     Ep *= sinp * inv_kr;
     float2 ph = float2(phre, phim);
+    if (has_ab != 0) {
+        // Seidel aberration phase (Aberrated._aberration): defocus,
+        // spherical, coma, astigmatism, distortion [wavelengths], then
+        // the aberration center x_c, y_c [pixels]
+        float dx = coords[i] - xp;
+        float dy = coords[npts + i] - yp;
+        float rsq = dx*dx + dy*dy;
+        float u = rsq / (rsq + zp*zp);
+        float dxc = xp - aberr[5];
+        float dyc = yp - aberr[6];
+        float rc = sqrt(dxc*dxc + dyc*dyc);
+        float r = sqrt(rsq);
+        float cos_rel = (r > 0.0f && rc > 0.0f)
+                        ? (dx*dxc + dy*dyc) / (r*rc) : 0.0f;
+        float eta = (rc > 0.0f) ? rc / zp : 0.0f;
+        float root_u = sqrt(u);
+        float phase = aberr[0] * (4.0f*M_PI_F*nm*nm) * u
+                    + aberr[1] * (8.0f*M_PI_F*nm*nm*nm*nm) * u*u
+                    + aberr[2] * (6.0f*M_PI_F*nm*nm*nm)
+                      * eta * root_u*root_u*root_u * cos_rel
+                    + aberr[3] * (4.0f*M_PI_F*nm*nm)
+                      * eta*eta * u * cos_rel*cos_rel
+                    + aberr[4] * (2.0f*M_PI_F*nm)
+                      * eta*eta*eta * root_u * cos_rel;
+        ph = cmul(ph, float2(precise::cos(phase), precise::sin(phase)));
+    }
     if (mode != 0) {
         // hologram of a single particle: |E|^2 + 2 Re(E_x) + 1, with no
         // field written out
@@ -270,6 +299,8 @@ class TorchLorenzMie(LorenzMie):
             self._metal_intensity = torch.zeros(
                 npts, dtype=torch.float32, device=self._device)
             self._metal_table = None      # device copy of the Mie table
+            self._metal_aberration = torch.zeros(
+                7, dtype=torch.float32, device=self._device)
             self._host_tables = []        # see _scattered_field_metal
         self._field_t  = torch.zeros(
             shape, dtype=torch.complex64, device=self._device)
@@ -299,9 +330,12 @@ class TorchLorenzMie(LorenzMie):
             Computed hologram intensity at each coordinate.
         '''
         # The fast path calls the kernel directly, so it must not be used
-        # by a subclass (Aberrated) that changes scattered_field()
+        # by a subclass that changes scattered_field() in any other way
+        # than Aberrated, whose phase the Metal kernel applies itself
+        scattered_field = type(self).scattered_field
         if (self._device.type == 'mps' and len(self.particle) == 1 and
-                type(self).scattered_field is TorchLorenzMie.scattered_field):
+                (scattered_field is TorchLorenzMie.scattered_field or
+                 getattr(scattered_field, '_kernel_aberration', False))):
             return self._hologram_metal(cartesian, bohren)
         field = self.field(cartesian=cartesian, bohren=bohren)
         intensity = (field.real**2 + field.imag**2).sum(dim=0)
@@ -364,6 +398,18 @@ class TorchLorenzMie(LorenzMie):
         self._release_host_tables()           # .cpu() has synchronized
         return result
 
+    @property
+    def _aberrations_in_kernel(self) -> bool:
+        '''True if the Metal kernel applies the aberration phase.'''
+        return self._device.type == 'mps'
+
+    def _aberration_coefficients(self) -> np.ndarray | None:
+        '''Aberration coefficients for the kernel; None for no aberration.
+
+        :func:`~pylorenzmie.theory.Aberrated` overrides this.
+        '''
+        return None
+
     def _release_host_tables(self) -> None:
         '''Free the host arrays of queued copies once the GPU is done.'''
         if self._device.type == 'mps' and self._host_tables:
@@ -400,6 +446,12 @@ class TorchLorenzMie(LorenzMie):
             self._metal_table = table
         table[:norders].copy_(torch.from_numpy(host), non_blocking=True)
         phase = cmath.exp(-1j * k * z)
+        coefficients = self._aberration_coefficients()
+        if coefficients is not None:
+            self._metal_aberration.copy_(
+                torch.from_numpy(coefficients.astype(np.float32)),
+                non_blocking=True)
+            self._host_tables.append(coefficients)
         out = self._metal_out
         npts = self._coords.shape[1]
         _metal().lorenzmie(
@@ -407,6 +459,8 @@ class TorchLorenzMie(LorenzMie):
             npts, norders, int(cartesian), int(bohren),
             k, x, y, z, phase.real, phase.imag,
             self._metal_intensity, int(intensity),
+            self._metal_aberration, int(coefficients is not None),
+            float(self.instrument.n_m),
             threads=npts)
         return out
 
