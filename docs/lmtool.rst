@@ -8,7 +8,9 @@ fitting a Lorenz-Mie scattering model to the hologram.
 Launching
 ---------
 
-After installation, launch from the command line::
+**lmtool** needs a Qt binding, which pylorenzmie does not install by default:
+``pip install pylorenzmie[gui]`` adds PyQt6 (PyQt5, PySide2 and PySide6 also
+work). Then launch from the command line::
 
     lmtool [image.png]
 

@@ -78,3 +78,32 @@ jobs:
 
       - name: Build the documentation
         run: python -m sphinx -W --keep-going -b html docs docs/_build/html
+
+  gui:
+    # the widgets of lmtool, with Qt drawing to no display
+    name: GUI (offscreen Qt)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      QT_QPA_PLATFORM: offscreen
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgl1 libegl1 libglib2.0-0 libxkbcommon0 \
+            libdbus-1-3 libfontconfig1
+
+      - name: Install package and test dependencies
+        run: pip install -e ".[dev,gui]"
+
+      - name: Run the GUI tests
+        run: python -m pytest tests/test_lmtool_widgets.py --tb=short -q

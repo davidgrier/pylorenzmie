@@ -18,8 +18,9 @@ Optional accelerated calculators are installed as extras::
 Extras can be combined, as in ``pip install pylorenzmie[numba,torch]``.
 See `Speed: the Numba backend and threads`_ below for what each one buys.
 
-The interactive GUI tool (:doc:`lmtool`) is included in the standard
-install and can be launched immediately::
+The interactive GUI tool (:doc:`lmtool`) needs a Qt binding, which is not
+installed by default. Install one with ``pip install pylorenzmie[gui]``
+(PyQt6; PyQt5, PySide2 and PySide6 also work), and launch the tool with::
 
     lmtool
 
