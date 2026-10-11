@@ -10,6 +10,55 @@
 Python routines for tracking and characterizing colloidal particles
 with in-line holographic video microscopy (HVM)
 
+## Documentation
+The documentation is on [Read the Docs](https://pylorenzmie.readthedocs.io/en/stable/):
+
+* the [quickstart](https://pylorenzmie.readthedocs.io/en/stable/quickstart.html)
+  shows how to compute and fit holograms,
+* the [API reference](https://pylorenzmie.readthedocs.io/en/stable/api/theory.html)
+  describes the classes, and
+* the [changelog](https://github.com/davidgrier/pylorenzmie/blob/master/CHANGELOG.md)
+  lists what changed in each release and how to update.
+
+The tutorial notebooks are rendered on GitHub:
+[fitting a hologram](https://github.com/davidgrier/pylorenzmie/blob/master/docs/Fitting.ipynb),
+[analyzing a frame](https://github.com/davidgrier/pylorenzmie/blob/master/docs/FrameAnalysis.ipynb),
+[fitting a single frame](https://github.com/davidgrier/pylorenzmie/blob/master/docs/tutorials/SingleFrame.ipynb),
+[holograms of several spheres](https://github.com/davidgrier/pylorenzmie/blob/master/docs/MultiSphere.ipynb),
+[video analysis](https://github.com/davidgrier/pylorenzmie/blob/master/docs/Video_analysis.ipynb)
+and [the building blocks of the model](https://github.com/davidgrier/pylorenzmie/blob/master/docs/tutorials/Theory.ipynb).
+The documentation of the development version is
+[here](https://pylorenzmie.readthedocs.io/en/latest/).
+
+## Installation
+`pylorenzmie` requires Python 3.11 or later:
+
+```sh
+pip install pylorenzmie
+```
+
+Optional extras add faster calculators:
+`pip install pylorenzmie[numba]` (recommended: a fast CPU calculator),
+`pylorenzmie[torch]` (GPUs, including Apple silicon), `pylorenzmie[gpu]`
+(NVIDIA GPUs with CuPy) and `pylorenzmie[jax]`.
+Extras can be combined, as in `pip install pylorenzmie[numba,torch]`.
+
+## Example
+Compute the hologram of a polystyrene sphere that is 1 micrometer in radius
+and 200 pixels from the focal plane:
+
+```python
+from pylorenzmie.theory import LorenzMie, Sphere
+
+model = LorenzMie()
+model.coordinates = model.meshgrid((201, 201))
+model.particle = Sphere(a_p=1., n_p=1.59, x_p=100., y_p=100., z_p=200.)
+hologram = model.hologram().reshape(201, 201)
+```
+
+The [quickstart](https://pylorenzmie.readthedocs.io/en/stable/quickstart.html)
+goes on to fit recorded holograms.
+
 ## Explanation of the module
 `pylorenzmie` provides a set of python classes for interacting with and
 analyzing holographic microscopy data. The hologram of a colloidal
@@ -22,7 +71,7 @@ based on the Lorenz-Mie theory of light scattering.
 width="200"/>
 
 ## Interactive particle tracking and characterization
-`pylorenzmie` includes a GUI application called `LMTool.py`
+`pylorenzmie` includes a GUI application called `lmtool`
 for interacting with experimentally recorded holograms.
 
 <img src="https://raw.githubusercontent.com/davidgrier/pylorenzmie/master/docs/lmtool/LMTool_ImageWidget.png" alt="LMTool image screen" width="30%"/>
