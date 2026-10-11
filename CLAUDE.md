@@ -130,7 +130,9 @@ compatible `Optimizer` instances.
 **Accelerated subclasses** all inherit `LorenzMie` and override `_allocate()`
 and `lorenzmie()`:
 - `cupyLorenzMie` — CuPy (CUDA GPU), `method = 'cupy numpy'`
-- `numbaLorenzMie` — Numba JIT, CPU
+- `numbaLorenzMie` — Numba JIT, CPU; pointwise kernel, multi-threaded by
+  default (`parallel = True`; fall back with `parallel = False` when the
+  calling code is already parallel, see its docstring)
 - `AberratedLorenzMie` — adds phase masks for the five primary Seidel
   aberrations (defocus, spherical, coma, astigmatism, distortion)
 
