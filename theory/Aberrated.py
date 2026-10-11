@@ -184,6 +184,17 @@ def Aberrated(base_class: type) -> type:
                 return torch.as_tensor(mask, device=self._device)
             return mask
 
+        def _aberration_coefficients(self) -> np.ndarray | None:
+            '''Coefficients for the JAX kernel, which computes the phase
+            inside the compiled function instead of calling
+            :meth:`_aberration`.  None when all aberrations are zero.'''
+            if not (self.defocus or self.spherical or
+                    self.coma or self.astigmatism or self.distortion):
+                return None
+            return np.array([self.defocus, self.spherical, self.coma,
+                             self.astigmatism, self.distortion,
+                             self.x_c, self.y_c], dtype=float)
+
         def scattered_field(self,
                             particle: Particle,
                             **kwargs) -> Field:

@@ -242,8 +242,51 @@ def _jax_lorenzmie(ab, kdr, bohren=True):
     ])
 
 
+def _jax_aberration_phase(r_p, coordinates, n_m, coefficients):
+    '''Seidel aberration phase [rad] for a particle at r_p.
+
+    JAX counterpart of :meth:`Aberrated._aberration`, written without
+    branches so that it can be traced and differentiated with respect to
+    ``r_p``.  Square roots and quotients are guarded where their
+    arguments vanish (a pixel on the particle's axis, an aberration
+    center on the particle), because their derivatives would otherwise
+    be NaN there.
+
+    Parameters
+    ----------
+    coefficients : jnp.ndarray, shape (7,)
+        defocus, spherical, coma, astigmatism, distortion [wavelengths],
+        then x_c, y_c [pixels].
+    '''
+    defocus, spherical, coma, astigmatism, distortion, x_c, y_c = coefficients
+    dx = coordinates[0] - r_p[0]
+    dy = coordinates[1] - r_p[1]
+    rsq = dx*dx + dy*dy
+    u = rsq / (rsq + r_p[2]**2)
+
+    on_axis = rsq > 0.
+    r = jnp.where(on_axis, jnp.sqrt(jnp.where(on_axis, rsq, 1.)), 0.)
+    root_u = jnp.where(on_axis, jnp.sqrt(jnp.where(on_axis, u, 1.)), 0.)
+
+    dxc = r_p[0] - x_c
+    dyc = r_p[1] - y_c
+    rcsq = dxc*dxc + dyc*dyc
+    has_center = rcsq > 0.
+    rc = jnp.where(has_center, jnp.sqrt(jnp.where(has_center, rcsq, 1.)), 0.)
+    both = on_axis & has_center
+    cos_rel = jnp.where(both,
+                        (dx*dxc + dy*dyc) / jnp.where(both, r*rc, 1.), 0.)
+    eta = rc / r_p[2]       # zero at the aberration center: no coma etc.
+
+    return (defocus * (4.*jnp.pi*n_m**2) * u +
+            spherical * (8.*jnp.pi*n_m**4) * u**2 +
+            coma * (6.*jnp.pi*n_m**3) * eta * root_u**3 * cos_rel +
+            astigmatism * (4.*jnp.pi*n_m**2) * eta**2 * u * cos_rel**2 +
+            distortion * (2.*jnp.pi*n_m) * eta**3 * root_u * cos_rel)
+
+
 def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,
-                        coordinates, nmax):
+                       coordinates, nmax, aberration=None):
     '''Pure JAX hologram, differentiable w.r.t. all non-static args.
 
     Parameters
@@ -262,6 +305,9 @@ def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,
         Pixel coordinates at which to evaluate the hologram.
     nmax : int
         Number of Mie terms (static).
+    aberration : jnp.ndarray, shape (7,), or None
+        Aberration coefficients (see :func:`_jax_aberration_phase`).
+        ``None`` (the default) compiles the unaberrated model.
 
     Returns
     -------
@@ -271,6 +317,9 @@ def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,
     kdr = k * (coordinates - r_p[:, None])
     field = _jax_lorenzmie(ab, kdr)
     field = field * jnp.exp(-1.j * k * r_p[2])
+    if aberration is not None:
+        phase = _jax_aberration_phase(r_p, coordinates, n_m, aberration)
+        field = field * jnp.exp(1.j * phase)
     field = field.at[0].add(1.)
     return jnp.sum(field.real**2 + field.imag**2, axis=0)
 
@@ -320,6 +369,31 @@ class jaxLorenzMie(LorenzMie):
     method: str = 'jax numpy'
     jac_params: frozenset = frozenset({'x_p', 'y_p', 'z_p', 'a_p', 'n_p'})
 
+    def _aberration_coefficients(self) -> np.ndarray | None:
+        '''Aberration coefficients for the JAX kernel, or None.
+
+        :func:`~pylorenzmie.theory.Aberrated` overrides this.  Without
+        aberrations the JAX kernel compiles the plain model.
+        '''
+        return None
+
+    def _jax_arguments(self) -> tuple:
+        '''Arguments of the compiled kernels for the current state.'''
+        p = self.particle
+        r_p = jnp.asarray(p.r_p + p.r_0)
+        a_p = jnp.asarray(float(p.a_p))
+        n_p = jnp.asarray(float(p.n_p))
+        k_p = jnp.asarray(float(p.k_p))
+        k = jnp.asarray(float(self.instrument.wavenumber()))
+        n_m = jnp.asarray(float(self.instrument.n_m))
+        wavelength = jnp.asarray(float(self.instrument.wavelength))
+        coords = jnp.asarray(self.coordinates)
+        aberration = self._aberration_coefficients()
+        if aberration is not None:
+            aberration = jnp.asarray(aberration, dtype=float)
+        return (r_p, a_p, n_p, k_p, k, n_m, wavelength, coords,
+                self._compute_nmax(), aberration)
+
     def _compute_nmax(self) -> int:
         # Use the unscaled (rad/μm) wavenumber — same as Sphere.mie_coefficients
         k = float(self.instrument.wavenumber(scaled=False))
@@ -338,18 +412,7 @@ class jaxLorenzMie(LorenzMie):
         if not isinstance(self.particle, Sphere):
             return super().hologram(**kwargs)
 
-        nmax = self._compute_nmax()
-        r_p = jnp.asarray(self.particle.r_p + self.particle.r_0)
-        a_p = jnp.asarray(float(self.particle.a_p))
-        n_p = jnp.asarray(float(self.particle.n_p))
-        k_p = jnp.asarray(float(self.particle.k_p))
-        k = jnp.asarray(float(self.instrument.wavenumber()))
-        n_m = jnp.asarray(float(self.instrument.n_m))
-        wavelength = jnp.asarray(float(self.instrument.wavelength))
-        coords = jnp.asarray(self.coordinates)
-
-        return np.asarray(_jax_hologram_jit(
-            r_p, a_p, n_p, k_p, k, n_m, wavelength, coords, nmax))
+        return np.asarray(_jax_hologram_jit(*self._jax_arguments()))
 
     def jac(self) -> dict:
         '''Analytical Jacobian of the hologram w.r.t. particle parameters.
@@ -373,18 +436,7 @@ class jaxLorenzMie(LorenzMie):
         if not isinstance(self.particle, Sphere):
             raise TypeError('jac() supports single Sphere particles only')
 
-        nmax = self._compute_nmax()
-        r_p = jnp.asarray(self.particle.r_p + self.particle.r_0)
-        a_p = jnp.asarray(float(self.particle.a_p))
-        n_p = jnp.asarray(float(self.particle.n_p))
-        k_p = jnp.asarray(float(self.particle.k_p))
-        k = jnp.asarray(float(self.instrument.wavenumber()))
-        n_m = jnp.asarray(float(self.instrument.n_m))
-        wavelength = jnp.asarray(float(self.instrument.wavelength))
-        coords = jnp.asarray(self.coordinates)
-
-        J_r, J_a, J_n = _jax_hologram_jac(
-            r_p, a_p, n_p, k_p, k, n_m, wavelength, coords, nmax)
+        J_r, J_a, J_n = _jax_hologram_jac(*self._jax_arguments())
 
         return {
             'x_p': np.asarray(J_r[:, 0]),
