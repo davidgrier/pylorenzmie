@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Python ${{ matrix.python-version }}
+    name: Python ${{ matrix.python-version }} [${{ matrix.extras }}]
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -16,7 +16,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        extras: ["dev,numba"]
+        include:
+          # without Numba the NumPy calculator is the default backend
+          - python-version: "3.12"
+            extras: "dev"
 
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +37,7 @@ jobs:
           sudo apt-get install -y -q libgl1
 
       - name: Install package and test dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[${{ matrix.extras }}]"
 
       - name: Run tests
         run: python -m pytest --tb=short -q
