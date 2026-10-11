@@ -1,3 +1,4 @@
+import os
 import unittest
 
 import numpy as np
@@ -142,6 +143,41 @@ class TestNumbaLorenzMie(unittest.TestCase):
 
         with ThreadPoolExecutor(6) as pool:
             self.assertTrue(all(pool.map(work, range(12))))
+
+    @unittest.skipUnless(hasattr(os, 'fork'), 'fork is not available')
+    def test_forked_child_after_a_parallel_region_does_not_hang(self):
+        # Numba's OpenMP threading layers hang if a forked child enters
+        # a parallel region after its parent has used one
+        import multiprocessing
+        import importlib
+        # the package namespace holds the class of the same name
+        module = importlib.import_module(
+            'pylorenzmie.theory.numbaLorenzMie')
+        _, parent = self.models()
+        parent.parallel_threshold = 1
+        expected = parent.hologram().copy()
+        context = multiprocessing.get_context('fork')
+        queue = context.Queue()
+
+        def child():
+            _, m = self.models()
+            m.parallel_threshold = 1
+            queue.put((bool(np.array_equal(m.hologram(), expected)),
+                       module._FORKED))
+
+        process = context.Process(target=child)
+        process.start()
+        process.join(timeout=120)
+        hung = process.is_alive()
+        if hung:
+            process.terminate()
+            process.join()
+        self.assertFalse(hung, 'forked child hung in a parallel region')
+        self.assertEqual(process.exitcode, 0)
+        equal, forked = queue.get(timeout=5)
+        self.assertTrue(equal)
+        self.assertTrue(forked, 'the child did not register the fork')
+        self.assertFalse(module._FORKED, 'the parent was marked as forked')
 
     def test_parallel_is_the_default(self):
         self.assertTrue(numbaLorenzMie.parallel)
