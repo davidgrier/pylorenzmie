@@ -146,6 +146,15 @@ class TestJaxAberrated(unittest.TestCase):
             b = self.make(jaxLorenzMie, **kwargs).hologram()
             np.testing.assert_allclose(a, b, atol=1e-10, err_msg=name)
 
+    def test_piston_matches_numpy(self) -> None:
+        for kwargs in (dict(piston=0.7), dict(piston=-1., **self.ALL)):
+            a = self.make(LorenzMie, **kwargs).hologram()
+            b = self.make(jaxLorenzMie, **kwargs).hologram()
+            np.testing.assert_allclose(a, b, atol=1e-10, err_msg=str(kwargs))
+        self.assertGreater(
+            np.abs(self.make(jaxLorenzMie, piston=0.7).hologram() -
+                   self.make(jaxLorenzMie).hologram()).max(), 1e-3)
+
     def test_aberrations_change_the_hologram(self) -> None:
         plain = self.make(jaxLorenzMie).hologram()
         aberrated = self.make(jaxLorenzMie, spherical=2.).hologram()

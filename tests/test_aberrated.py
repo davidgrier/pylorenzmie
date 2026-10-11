@@ -56,6 +56,39 @@ class TestAberratedLorenzMie(unittest.TestCase):
         self.assertTrue(np.all(np.isfinite(m)))
         self.assertTrue(np.allclose(m, 1.))
 
+    def test_piston_only_is_pure_phase(self):
+        m = self.mask(piston=0.7)
+        self.assertTrue(np.allclose(m, np.exp(2j*np.pi*0.7)))
+
+    def test_piston_is_a_property(self):
+        m = self.model(piston=0.7)
+        self.assertEqual(m.properties['piston'], 0.7)
+        m.properties = dict(piston=-0.3)
+        self.assertEqual(m.piston, -0.3)
+
+    def test_piston_shifts_the_scattered_phase_only(self):
+        # the hologram is |1 + exp(2 pi i piston) E_s|^2, not a phase shift of
+        # both fields, which would change nothing
+        ideal = LorenzMie(coordinates=self.coordinates)
+        ideal.particle = self.particle
+        field = ideal.scattered_field(self.particle)
+        phi = 0.7
+        reference = np.zeros_like(field)
+        reference[0] = 1.
+        expected = np.sum(np.abs(reference + np.exp(2j*np.pi*phi)*field)**2,
+                          axis=0)
+        np.testing.assert_allclose(self.model(piston=phi).hologram(),
+                                   expected)
+
+    def test_piston_changes_the_hologram(self):
+        self.assertGreater(np.abs(self.model(piston=0.7).hologram() -
+                                  self.model().hologram()).max(), 1e-3)
+
+    def test_piston_adds_to_the_seidel_phase(self):
+        both = self.mask(spherical=1., piston=0.4)
+        np.testing.assert_allclose(both, self.mask(spherical=1.) *
+                                   np.exp(2j*np.pi*0.4))
+
     def test_defocus(self):
         n_m = Instrument().n_m
         u = self.geometry()[3]

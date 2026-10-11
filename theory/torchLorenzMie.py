@@ -446,7 +446,9 @@ class TorchLorenzMie(LorenzMie):
                                 device=self._device)
             self._metal_table = table
         table[:norders].copy_(torch.from_numpy(host), non_blocking=True)
-        phase = cmath.exp(-1j * k * z)
+        # the piston is a constant phase of the scattered field, so it
+        # joins the propagation phase
+        phase = cmath.exp(1j * (2.*np.pi*getattr(self, 'piston', 0.) - k * z))
         coefficients = self._aberration_coefficients()
         if coefficients is not None:
             self._metal_aberration.copy_(

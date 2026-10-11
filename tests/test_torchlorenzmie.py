@@ -143,6 +143,16 @@ class TestTorchLorenzMie(unittest.TestCase):
                 np.testing.assert_allclose(torch_model.hologram(),
                                            numpy_model.hologram(), atol=ATOL)
 
+    def test_piston_matches_numpy(self) -> None:
+        for kwargs in (dict(piston=.7), dict(piston=-1., spherical=3.)):
+            with self.subTest(**kwargs):
+                torch_model, numpy_model = self._aberrated_pair(**kwargs)
+                self.assertGreater(
+                    np.abs(numpy_model.hologram() -
+                           self.ref.hologram()).max(), 100 * ATOL)
+                np.testing.assert_allclose(torch_model.hologram(),
+                                           numpy_model.hologram(), atol=ATOL)
+
     def test_aberration_center_on_the_particle(self) -> None:
         x_p, y_p = self.model.particle.x_p, self.model.particle.y_p
         torch_model, numpy_model = self._aberrated_pair(

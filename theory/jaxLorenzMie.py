@@ -286,7 +286,7 @@ def _jax_aberration_phase(r_p, coordinates, n_m, coefficients):
 
 
 def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,
-                       coordinates, nmax, aberration=None):
+                       coordinates, nmax, aberration=None, piston=0.):
     '''Pure JAX hologram, differentiable w.r.t. all non-static args.
 
     Parameters
@@ -308,6 +308,9 @@ def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,
     aberration : jnp.ndarray, shape (7,), or None
         Aberration coefficients (see :func:`_jax_aberration_phase`).
         ``None`` (the default) compiles the unaberrated model.
+    piston : JAX float scalar
+        Constant phase of the scattered field relative to the
+        reference field [radians].
 
     Returns
     -------
@@ -316,7 +319,7 @@ def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,
     ab = _jax_mie_ab(a_p, n_p, k_p, n_m, wavelength, nmax)
     kdr = k * (coordinates - r_p[:, None])
     field = _jax_lorenzmie(ab, kdr)
-    field = field * jnp.exp(-1.j * k * r_p[2])
+    field = field * jnp.exp(1.j * (piston - k * r_p[2]))
     if aberration is not None:
         phase = _jax_aberration_phase(r_p, coordinates, n_m, aberration)
         field = field * jnp.exp(1.j * phase)
@@ -391,8 +394,9 @@ class jaxLorenzMie(LorenzMie):
         aberration = self._aberration_coefficients()
         if aberration is not None:
             aberration = jnp.asarray(aberration, dtype=float)
+        piston = jnp.asarray(2.*np.pi*float(getattr(self, 'piston', 0.)))
         return (r_p, a_p, n_p, k_p, k, n_m, wavelength, coords,
-                self._compute_nmax(), aberration)
+                self._compute_nmax(), aberration, piston)
 
     def _compute_nmax(self) -> int:
         # Use the unscaled (rad/μm) wavenumber — same as Sphere.mie_coefficients

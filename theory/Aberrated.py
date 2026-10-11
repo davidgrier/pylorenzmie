@@ -12,6 +12,16 @@ distance from the particle in the image.  Coma, astigmatism and distortion
 also depend on the position of the aberration center (``x_c``, ``y_c``, in
 pixels) relative to the particle.
 
+A sixth parameter, ``piston``, is the constant term of the phase.  It is the
+phase of the scattered field relative to the reference wave, in wavelengths
+of the illumination in vacuum like the other coefficients, and it multiplies
+the scattered field by :math:`\\exp(2\\pi i\\,\\text{piston})`.  A constant
+phase generates no ray deflection, so it has no generating function in the
+operator formalism and no row in the table of aberrations, and it is not
+affected by the refractive index of the medium; it is for instruments in
+which the scattered and unscattered light do not reach the camera with the
+phase that the ideal model assumes.  It is zero by default.
+
 :data:`AberratedLorenzMie` is the aberrated NumPy calculator.  The
 calculators that evaluate the field inside a compiled kernel (Metal and JAX)
 apply the same phase inside the kernel.  Defocus is nearly degenerate with
@@ -59,6 +69,9 @@ def Aberrated(base_class: type) -> type:
             Astigmatism coefficient [wavelengths]. Default: 0.
         distortion : float, optional
             Distortion coefficient [wavelengths]. Default: 0.
+        piston : float, optional
+            Constant phase of the scattered field relative to the
+            reference field [wavelengths]. Default: 0.
         x_c : float, optional
             x coordinate of the aberration center, in pixels.
             Used by coma, astigmatism, and distortion only.
@@ -70,9 +83,25 @@ def Aberrated(base_class: type) -> type:
 
         Notes
         -----
-        Each coefficient is expressed in wavelengths of the
-        illumination, :math:`\\lambda` (``instrument.wavelength``, the
-        *vacuum* wavelength): a coefficient of 1 corresponds to an
+        ``piston`` is not a geometric aberration.  It multiplies the
+        scattered field, and not the reference field, by
+        :math:`\\exp(2\\pi i\\,\\text{piston})`, which shifts the phase of
+        the interference fringes by the same amount everywhere.  (A phase
+        applied to both fields would have no effect on the hologram.)
+        A piston of 1 is one vacuum wavelength of optical path, with no
+        power of :math:`n_m`, consistent with the other coefficients, whose
+        powers of :math:`n_m` grow with the order of the aberration.  The
+        model of an ideal system fixes the relative phase through the
+        propagation phase :math:`k z_p`; a real optical train need not.
+        Treat a fitted piston as a diagnostic as well as a correction: it
+        is nearly degenerate with the phase of the particle's
+        forward-scattering amplitude, and so with its refractive index, and
+        can absorb other model errors.  It is held fixed by default.
+
+        Each coefficient is expressed in
+        wavelengths of the illumination, :math:`\\lambda`
+        (``instrument.wavelength``, the *vacuum* wavelength): a
+        coefficient of 1 corresponds to an
         aberration amplitude :math:`\\alpha_n = \\lambda` in the
         operator formalism of [1]_, not to one wavelength of classical
         wavefront error at the edge of the pupil. The two conventions
@@ -132,6 +161,7 @@ def Aberrated(base_class: type) -> type:
                      coma: float = 0.,
                      astigmatism: float = 0.,
                      distortion: float = 0.,
+                     piston: float = 0.,
                      x_c: float = 0.,
                      y_c: float = 0.,
                      **kwargs) -> None:
@@ -141,6 +171,7 @@ def Aberrated(base_class: type) -> type:
             self.coma = coma
             self.astigmatism = astigmatism
             self.distortion = distortion
+            self.piston = piston
             self.x_c = x_c
             self.y_c = y_c
 
@@ -152,13 +183,14 @@ def Aberrated(base_class: type) -> type:
                     'coma': self.coma,
                     'astigmatism': self.astigmatism,
                     'distortion': self.distortion,
+                    'piston': self.piston,
                     'x_c': self.x_c,
                     'y_c': self.y_c}
 
         def _aberration(self, r_p: Coordinates) -> Field:
             '''Aberration phase mask for a particle at r_p.'''
-            if not (self.defocus or self.spherical or
-                    self.coma or self.astigmatism or self.distortion):
+            if not (self.defocus or self.spherical or self.coma or
+                    self.astigmatism or self.distortion or self.piston):
                 return 1.
 
             n_m = self.instrument.n_m
@@ -198,7 +230,7 @@ def Aberrated(base_class: type) -> type:
                         phase = phase + self.distortion * \
                             (2.*np.pi*n_m) * eta**3 * root_u * cos_rel
 
-            mask = np.exp(1j * phase)
+            mask = np.exp(1j * (phase + 2.*np.pi*self.piston))
             if hasattr(self, '_device'):
                 import torch
                 # single precision: Apple GPUs have no complex128
@@ -209,7 +241,8 @@ def Aberrated(base_class: type) -> type:
         def _aberration_coefficients(self) -> np.ndarray | None:
             '''Coefficients for the JAX and Metal kernels, which compute
             the phase themselves instead of calling :meth:`_aberration`.
-            None when all aberrations are zero.'''
+            None when all aberrations are zero.  The piston is not among
+            them: the kernels receive it separately, as ``self.piston``.'''
             if not (self.defocus or self.spherical or
                     self.coma or self.astigmatism or self.distortion):
                 return None

@@ -227,6 +227,16 @@ class TestNumbaLorenzMie(unittest.TestCase):
         self.assertTrue(np.allclose(numpy.hologram(), numba.hologram(),
                                     rtol=0, atol=1e-10))
 
+    def test_piston_numba_matches_numpy(self):
+        numpy = Aberrated(LorenzMie)(coordinates=self.coordinates,
+                                     piston=0.8, spherical=2.)
+        numba = Aberrated(numbaLorenzMie)(coordinates=self.coordinates,
+                                          piston=0.8, spherical=2.)
+        for m in (numpy, numba):
+            m.particle = self.particle
+        self.assertTrue(np.allclose(numpy.hologram(), numba.hologram(),
+                                    rtol=0, atol=1e-10))
+
     def test_compute_field_jit_wrapper(self):
         numpy, numba = self.models()
         kdr, ab = self.kdr(numpy), self.ab(numpy)

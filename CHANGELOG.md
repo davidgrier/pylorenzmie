@@ -8,6 +8,12 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Added
 
+* `Aberrated(...)` classes take a `piston` parameter: a constant phase of the
+  scattered field relative to the reference field, in wavelengths like the other
+  coefficients. It is not a geometric aberration (it has no generating
+  function), it is zero by default, and it works in all calculators, including
+  the Metal and JAX kernels. Treat a fitted piston as a diagnostic: it is
+  nearly degenerate with the particle's refractive index.
 * A `LICENSE` file (GPLv3), included in the wheel and the source distribution.
 * A `gui` extra (`pip install pylorenzmie[gui]`) that installs PyQt6, which
   `lmtool` needs. Previously a plain install had no Qt binding.
