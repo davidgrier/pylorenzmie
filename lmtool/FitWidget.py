@@ -46,6 +46,10 @@ class FitWidget(pg.GraphicsLayoutWidget):
     optimizationFinished = pyqtSignal(object)
     #: Emitted with an error message string when optimization fails.
     optimizationError = pyqtSignal(str)
+    #: Emitted with the file name when a result has been saved.
+    resultSaved = pyqtSignal(str)
+    #: Emitted with an error message when a result could not be saved.
+    saveFailed = pyqtSignal(str)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -263,33 +267,63 @@ class FitWidget(pg.GraphicsLayoutWidget):
 
     def _output_path(self) -> str:
         directory = Path('~/data/lmtool').expanduser()
-        directory.mkdir(exist_ok=True)
+        directory.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime('%m_%d_%Y-%H_%M_%S')
         return str(directory / f'result_{timestamp}.h5')
 
     @pyqtSlot()
     def saveResult(self, filename: str | None = None) -> None:
-        if self.result is None:
-            return
-        filename = filename or self._output_path()
-        try:
-            with warnings.catch_warnings():
-                warnings.filterwarnings(
-                    'ignore', category=pd.errors.PerformanceWarning)
-                self.result.to_hdf(filename, 'result', mode='w')
-                metadata = self.optimizer.metadata
-                metadata['datafile'] = self.datafile
-                metadata.to_hdf(filename, 'metadata')
-        except ImportError:
-            logger.warning('tables not installed; saving as JSON instead')
-            self.saveJson(str(Path(filename).with_suffix('.json')))
+        '''Save the result of the last fit.
 
-    def saveJson(self, filename: str) -> None:
+        Writes HDF5 if PyTables is installed and JSON otherwise (the file
+        name then has the suffix ``.json``).  Emits :attr:`resultSaved`
+        with the name of the file that was written, or :attr:`saveFailed`
+        with the reason.  Without a ``filename`` the file goes to
+        ``~/data/lmtool`` with a time stamp in its name.
+        '''
         if self.result is None:
+            self.saveFailed.emit('There is no result to save: optimize first')
             return
+        try:
+            filename = filename or self._output_path()
+            try:
+                self._saveHdf(filename)
+            except ImportError:
+                logger.warning('tables not installed; saving as JSON instead')
+                filename = str(Path(filename).with_suffix('.json'))
+                self._saveJson(filename)
+        except Exception as error:
+            logger.error(f'Could not save the result: {error!r}')
+            self.saveFailed.emit(f'Could not save the result: {error}')
+            return
+        self.resultSaved.emit(filename)
+
+    def _saveHdf(self, filename: str) -> None:
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                'ignore', category=pd.errors.PerformanceWarning)
+            self.result.to_hdf(filename, key='result', mode='w')
+            metadata = self.optimizer.metadata
+            metadata['datafile'] = self.datafile
+            metadata.to_hdf(filename, key='metadata')
+
+    def _saveJson(self, filename: str) -> None:
         s = pd.concat([self.result, self.optimizer.metadata])
         s['datafile'] = self.datafile
         s.to_json(filename, indent=4)
+
+    def saveJson(self, filename: str) -> None:
+        '''Save the result of the last fit as JSON.'''
+        if self.result is None:
+            self.saveFailed.emit('There is no result to save: optimize first')
+            return
+        try:
+            self._saveJson(filename)
+        except Exception as error:
+            logger.error(f'Could not save the result: {error!r}')
+            self.saveFailed.emit(f'Could not save the result: {error}')
+            return
+        self.resultSaved.emit(filename)
 
     @pyqtSlot()
     def saveResultAs(self) -> None:
@@ -299,8 +333,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
                           'HDF5 (*.h5);;JSON (*.json)')
         if not filename:
             return
-        suffix = Path(filename).suffix
-        if suffix == '.h5':
-            self.saveResult(filename)
-        elif suffix == '.json':
+        if Path(filename).suffix == '.json':
             self.saveJson(filename)
+        else:
+            self.saveResult(filename)

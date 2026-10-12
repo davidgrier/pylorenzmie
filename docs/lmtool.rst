@@ -9,8 +9,8 @@ Launching
 ---------
 
 **lmtool** needs a Qt binding, which pylorenzmie does not install by default:
-``pip install pylorenzmie[gui]`` adds PyQt6 (PyQt5, PySide2 and PySide6 also
-work). Then launch from the command line::
+``pip install pylorenzmie[gui]`` adds PyQt6 and PyTables (PyQt5, PySide2 and
+PySide6 also work). Without PyTables, results are saved as JSON. Then launch from the command line::
 
     lmtool [image.png]
 

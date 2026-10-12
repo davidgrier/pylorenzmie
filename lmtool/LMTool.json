@@ -83,7 +83,8 @@
 	"range": [-10.0, 10.0],
 	"step": 0.1,
 	"value": 0.0,
-	"decimals": 1
+	"decimals": 1,
+	"fixed": true
     },
     "coma": {
 	"text": "coma",

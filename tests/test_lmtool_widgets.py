@@ -1,10 +1,17 @@
 '''Tests of the widgets of lmtool, without a display.
 
 They need a Qt binding (``pip install pylorenzmie[gui]``) and are skipped
-without one.  The whole application, LMTool, is not created here.
+without one.  :class:`LMTool` is created with a file name: without one it
+opens a modal file dialog and waits for a person.
 '''
+import json
 import os
+import tempfile
 import unittest
+from pathlib import Path
+from unittest import mock
+
+import pandas as pd
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
@@ -15,6 +22,8 @@ try:
     from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
     from pylorenzmie.lmtool.LMWidget import LMWidget
     from pylorenzmie.lmtool.ALMWidget import ALMWidget
+    from pylorenzmie.lmtool.FitWidget import FitWidget
+    from pylorenzmie.lmtool.LMTool import LMTool
     _qt = True
 except Exception:       # no Qt binding, or no usable platform plugin
     _qt = False
@@ -167,14 +176,103 @@ class TestControlPanels(unittest.TestCase):
         optimizer = Optimizer(model=panel.model)
         optimizer.fixed = panel.fixed
         self.assertEqual(optimizer.variables,
-                         ['x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'spherical'])
+                         ['x_p', 'y_p', 'z_p', 'a_p', 'n_p'])
 
-    def test_the_piston_is_held_fixed_until_asked_for(self):
+    def test_piston_and_spherical_are_held_fixed_until_asked_for(self):
         panel = ALMWidget()
         self.assertIn('piston', panel.fixed)
-        self.assertNotIn('spherical', panel.fixed)
+        self.assertIn('spherical', panel.fixed)
         panel.piston.setValue(0.25)
         self.assertAlmostEqual(panel.model.piston, 0.25, delta=0.01)
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestSavingResults(unittest.TestCase):
+
+    def setUp(self):
+        self.widget = FitWidget()
+        self.widget.result = pd.Series({'x_p': 1., 'z_p': 100.})
+        self.saved, self.failed = [], []
+        self.widget.resultSaved.connect(self.saved.append)
+        self.widget.saveFailed.connect(self.failed.append)
+        self.directory = tempfile.TemporaryDirectory()
+        self.addCleanup(self.directory.cleanup)
+
+    def path(self, name):
+        return str(Path(self.directory.name) / name)
+
+    def test_nothing_to_save_is_reported(self):
+        self.widget.result = None
+        self.widget.saveResult(self.path('a.h5'))
+        self.assertEqual(self.saved, [])
+        self.assertIn('no result', self.failed[0])
+
+    def test_json_is_saved_and_reported(self):
+        filename = self.path('result.json')
+        self.widget.saveJson(filename)
+        self.assertEqual(self.saved, [filename])
+        self.assertEqual(json.loads(Path(filename).read_text())['z_p'], 100.)
+
+    def test_without_pytables_the_result_goes_to_json(self):
+        with mock.patch.object(self.widget, '_saveHdf',
+                               side_effect=ImportError):
+            self.widget.saveResult(self.path('result.h5'))
+        self.assertEqual(self.saved, [self.path('result.json')])
+        self.assertTrue(Path(self.saved[0]).exists())
+
+    def test_hdf5_is_saved_when_pytables_is_available(self):
+        try:
+            import tables  # noqa: F401
+        except ImportError:
+            self.skipTest('PyTables is not installed')
+        filename = self.path('result.h5')
+        self.widget.saveResult(filename)
+        self.assertEqual(self.saved, [filename])
+        self.assertEqual(pd.read_hdf(filename, key='result')['z_p'], 100.)
+        self.assertIn('datafile', pd.read_hdf(filename, key='metadata'))
+
+    def test_a_failure_is_reported_not_raised(self):
+        with mock.patch.object(self.widget, '_saveHdf',
+                               side_effect=OSError('disk full')):
+            self.widget.saveResult(self.path('result.h5'))
+        self.assertEqual(self.saved, [])
+        self.assertIn('disk full', self.failed[0])
+
+    def test_the_default_directory_is_created(self):
+        with mock.patch.object(Path, 'expanduser',
+                               return_value=Path(self.directory.name) /
+                               'new' / 'lmtool'):
+            path = self.widget._output_path()
+        self.assertTrue(Path(path).parent.is_dir())
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestLMTool(unittest.TestCase):
+
+    IMAGE = Path(__file__).parents[1] / 'docs' / 'tutorials' / 'crop.png'
+
+    def test_a_session(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        self.assertEqual(tool._data.shape, (390, 390))
+        # the ROI controls the position of the model
+        tool.imageWidget.x_p, tool.imageWidget.y_p = 195.5, 193.2
+        properties = tool.controls.properties
+        self.assertAlmostEqual(properties['x_p'], 195.5, delta=0.1)
+        self.assertAlmostEqual(properties['y_p'], 193.2, delta=0.1)
+        # a fit changes the shown parameters and not the hidden ones
+        tool.fitWidget.optimizer.model.properties = dict(defocus=0.)
+        result = tool.fitWidget.optimize(*(tool.crop()[0::2]))
+        for name in ('defocus', 'coma', 'astigmatism', 'distortion',
+                     'x_c', 'y_c', 'spherical', 'piston'):
+            self.assertEqual(tool.fitWidget.model.properties[name], 0.)
+        self.assertTrue(result['success'])
+
+    def test_the_status_bar_reports_a_saved_result(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        tool.fitWidget.saveFailed.emit('Could not save the result: test')
+        self.assertIn('Could not save', tool.statusBar().currentMessage())
 
 
 if __name__ == '__main__':  # pragma: no cover

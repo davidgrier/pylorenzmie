@@ -20,7 +20,8 @@ See `Speed: the Numba backend and threads`_ below for what each one buys.
 
 The interactive GUI tool (:doc:`lmtool`) needs a Qt binding, which is not
 installed by default. Install one with ``pip install pylorenzmie[gui]``
-(PyQt6; PyQt5, PySide2 and PySide6 also work), and launch the tool with::
+(PyQt6 and PyTables, which saves results as HDF5; PyQt5, PySide2 and PySide6
+also work), and launch the tool with::
 
     lmtool
 

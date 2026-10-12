@@ -51,7 +51,7 @@ lmtool = "pylorenzmie.lmtool.LMTool:lmtool"
 
 [project.optional-dependencies]
 gpu   = ["cupy-cuda12x"]
-gui   = ["PyQt6"]
+gui   = ["PyQt6", "tables"]
 jax   = ["jax[cpu]"]
 numba = ["numba"]
 torch = ["torch", "triton; sys_platform == 'linux'"]

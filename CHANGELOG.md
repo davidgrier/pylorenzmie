@@ -4,6 +4,22 @@ All notable changes to pylorenzmie are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+* `lmtool`: spherical aberration is held fixed in fits until you free it, like
+  the piston.
+
+### Fixed
+
+* `lmtool`: saving a result raised a `TypeError` with pandas 3, which made
+  `key` a keyword-only argument, and the error was lost. Saving now reports its
+  success or failure in the status bar, writes JSON when PyTables is not
+  installed, creates `~/data/lmtool` if it is missing, and treats any name
+  that does not end in `.json` as HDF5 in *Save Result As*. The `gui` extra
+  installs PyTables.
+
 ## [3.1.1] - 2026-10-11
 
 A fix for fits in `lmtool`, and a new layout of its second row of controls.

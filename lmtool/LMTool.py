@@ -106,6 +106,8 @@ class LMTool(QMainWindow):
         self.fitWidget.optimizationStarted.connect(self._onOptimizationStarted)
         self.fitWidget.optimizationFinished.connect(self._onOptimizationFinished)
         self.fitWidget.optimizationError.connect(self._onOptimizationError)
+        self.fitWidget.resultSaved.connect(self._onResultSaved)
+        self.fitWidget.saveFailed.connect(self._onSaveFailed)
 
     def _setUIBusy(self, busy: bool) -> None:
         self._progress.setVisible(busy)
@@ -312,6 +314,14 @@ class LMTool(QMainWindow):
         self.controls.properties = self.fitWidget.optimizer.model.properties
         logger.info(f'Optimization complete\n{result}')
         self.statusBar().showMessage('Optimization complete', 2000)
+
+    @pyqtSlot(str)
+    def _onResultSaved(self, filename: str) -> None:
+        self.statusBar().showMessage(f'Saved {filename}', 5000)
+
+    @pyqtSlot(str)
+    def _onSaveFailed(self, message: str) -> None:
+        self.statusBar().showMessage(message, 8000)
 
     @pyqtSlot(str)
     def _onOptimizationError(self, message: str) -> None:
