@@ -4,7 +4,9 @@ All notable changes to pylorenzmie are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.1.1] - 2026-10-11
+
+A fix for fits in `lmtool`, and a new layout of its second row of controls.
 
 ### Changed
 
