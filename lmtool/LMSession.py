@@ -37,10 +37,9 @@ class LMSession(QObject):
     ``tolerance``, announces nothing, which also ends any loop between a
     widget and the session.
 
-    The session keeps the values that it has announced.  A background fit
-    changes the model without announcing it; :meth:`adopt` takes the new
-    values from the model and announces what changed, and :meth:`restore`
-    puts the announced values back.
+    A background fit or estimate does not change the session: it works on
+    a copy (see :mod:`pylorenzmie.lmtool.tasks`), and the session takes its
+    result with :meth:`update` when it is done.
     '''
 
     #: Emitted with the names of the parameters whose values changed.
@@ -99,30 +98,6 @@ class LMSession(QObject):
             self.model.properties = changed
             self.parametersChanged.emit(list(changed))
         return list(changed)
-
-    def adopt(self) -> list[str]:
-        '''Take the values from the model and announce what changed.
-
-        A fit or an estimate changes the model directly; this brings the
-        session, and so the widgets, up to date.
-        '''
-        current = self.model.properties
-        changed = [name for name, value in current.items()
-                   if name in self._values
-                   and not self._same(self._values[name], value)]
-        if changed:
-            self._values.update({name: float(current[name])
-                                 for name in changed})
-            self.parametersChanged.emit(changed)
-        return changed
-
-    def restore(self) -> None:
-        '''Give the model the values that the session holds.
-
-        A fit or an estimate that does not finish, or whose result is not
-        wanted, leaves the model in a state that the session never announced.
-        '''
-        self.model.properties = dict(self._values)
 
     def _same(self, a: float, b: float) -> bool:
         return bool(np.isclose(a, b, rtol=0., atol=self.tolerance))

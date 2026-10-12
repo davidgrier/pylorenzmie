@@ -9,18 +9,17 @@ import cv2
 import numpy as np
 import pandas as pd
 from pyqtgraph.Qt import uic
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot,
-                                  QRectF, QSignalBlocker, QThread)
+from pyqtgraph.Qt.QtCore import pyqtProperty, pyqtSlot, QRectF
 from pyqtgraph.Qt.QtGui import QCloseEvent
 from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog, QProgressBar)
 
-from pylorenzmie.analysis import DEEstimator, Localizer
-from pylorenzmie.analysis.Hologram import Hologram
+from pylorenzmie.analysis import Localizer
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
-from pylorenzmie.lmtool.FitWidget import _Worker
 from pylorenzmie.lmtool.LMWidget import LMWidget
 from pylorenzmie.lmtool.Preview import Preview
+from pylorenzmie.lmtool.tasks import (FitResult, Snapshot, TaskRunner,
+                                       run_estimate, run_fit)
 from pylorenzmie.utilities import Normalizer, estimate_noise
 
 _DIR = Path(__file__).parent
@@ -68,8 +67,7 @@ class LMTool(QMainWindow):
         self._moving = False
         self._candidates = None
         self._candidate = -1
-        self._est_worker = None
-        self._est_thread = None
+        self.tasks = TaskRunner()
         self._setupTheory(controls())
         self._setupStatusBar()
         self._connectSignals()
@@ -86,7 +84,6 @@ class LMTool(QMainWindow):
         self.profileWidget.model = None       # the preview has the model
         self.profileWidget.radius = self.imageWidget.radius
         self.preview.setRadius(self.imageWidget.radius)
-        self.fitWidget.model = self.session.model
         self.optimizerWidget.settings = self.fitWidget.optimizer.settings
 
     def _setupStatusBar(self) -> None:
@@ -114,9 +111,11 @@ class LMTool(QMainWindow):
         self.actionOptimize.triggered.connect(self.optimize)
         self.optimizerWidget.settingChanged.connect(
             self.fitWidget.setSetting)
-        self.fitWidget.optimizationStarted.connect(self._onOptimizationStarted)
-        self.fitWidget.optimizationFinished.connect(self._onOptimizationFinished)
-        self.fitWidget.optimizationError.connect(self._onOptimizationError)
+        self.actionCancel.triggered.connect(self.tasks.cancel)
+        self.tasks.started.connect(self._onTaskStarted)
+        self.tasks.finished.connect(self._onTaskFinished)
+        self.tasks.failed.connect(self._onTaskFailed)
+        self.tasks.cancelled.connect(self._onTaskCancelled)
         self.fitWidget.resultSaved.connect(self._onResultSaved)
         self.fitWidget.saveFailed.connect(self._onSaveFailed)
 
@@ -129,6 +128,7 @@ class LMTool(QMainWindow):
         self.actionFindParticles.setEnabled(not busy)
         self.actionEstimateNoise.setEnabled(not busy)
         self.actionNextParticle.setEnabled(not busy)
+        self.actionCancel.setEnabled(busy)
 
     @pyqtProperty(np.ndarray)
     def data(self) -> Image:
@@ -325,11 +325,21 @@ class LMTool(QMainWindow):
                 self.imageWidget.rect(),
                 self.coordinates[:, sy, sx])
 
+    def _snapshot(self) -> Snapshot:
+        '''A copy of what a task needs: the session and the region.'''
+        data, _, coordinates = self.crop()
+        optimizer = self.fitWidget.optimizer
+        return Snapshot.take(self.session.cls, self.session.properties,
+                             data, coordinates, self.session.fixed,
+                             optimizer.settings, optimizer.fraction)
+
     @pyqtSlot()
     def estimate(self) -> None:
-        if self._data is None:
-            return
-        if self._est_thread is not None and self._est_thread.isRunning():
+        '''Estimate the height, radius and index of the particle.
+
+        The search runs in a thread, on a copy of the session.
+        '''
+        if self._data is None or self.tasks.busy:
             return
         props = self.session.properties
         # Save only the scalar physical parameters for undo; x_p/y_p are
@@ -337,51 +347,17 @@ class LMTool(QMainWindow):
         self._pre_estimate = {k: props[k] for k in ('z_p', 'a_p', 'n_p')
                               if k in props}
         self.actionUndoEstimate.setEnabled(True)
-        data, _, coordinates = self.crop()
-        hologram = Hologram._from_slice(data, coordinates)
-        model = self.fitWidget.optimizer.model
-        estimator = DEEstimator(model=model)
-        worker = _Worker(estimator.estimate, hologram)
-        thread = QThread()
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(self._onEstimationFinished)
-        worker.error.connect(self._onEstimationError)
-        worker.finished.connect(thread.quit)
-        worker.error.connect(thread.quit)
-        thread.finished.connect(self._onEstThreadFinished)
-        self._est_worker = worker
-        self._est_thread = thread
-        thread.start()
-        self._setUIBusy(True)
-        self.statusBar().showMessage('Estimating...')
+        self.tasks.start('estimate', run_estimate, self._snapshot())
 
-    @pyqtSlot(object)
-    def _onEstimationFinished(self, result: pd.Series) -> None:
-        self._setUIBusy(False)
+    def _onEstimated(self, result: pd.Series) -> None:
         updates = {k: float(result[k]) for k in ('z_p', 'a_p', 'n_p')
                    if k in result
                    and result[k] is not None
                    and np.isfinite(result[k])}
-        # the estimator worked on the model: put back what the session
-        # announced, then announce the estimate
-        self.session.restore()
         if updates:
             self.session.update(updates)
         logger.info(f'Estimate: {result}')
         self.statusBar().showMessage('Estimation complete', 2000)
-
-    @pyqtSlot(str)
-    def _onEstimationError(self, message: str) -> None:
-        self._setUIBusy(False)
-        self.session.restore()
-        logger.error(f'Estimation failed: {message}')
-        self.statusBar().showMessage(f'Estimation failed: {message}', 5000)
-
-    @pyqtSlot()
-    def _onEstThreadFinished(self) -> None:
-        self._est_worker = None
-        self._est_thread = None
 
     @pyqtSlot()
     def undoEstimate(self) -> None:
@@ -398,36 +374,57 @@ class LMTool(QMainWindow):
         self.optimizerWidget.settings = optimizer.settings
 
     def closeEvent(self, event: QCloseEvent) -> None:
-        if self._est_thread is not None and self._est_thread.isRunning():
-            self._est_thread.quit()
-            self._est_thread.wait()
-        self.fitWidget.shutdown()
+        self.tasks.shutdown()
         super().closeEvent(event)
 
     @pyqtSlot()
     def optimize(self) -> None:
-        if self._data is None:
+        '''Fit the model to the region of interest.
+
+        The fit runs in a thread, on a copy of the session; the result
+        arrives when it is done, and Cancel (Esc) stops it.
+        '''
+        if self._data is None or self.tasks.busy:
             return
-        optimizer = self.fitWidget.optimizer
-        optimizer.fixed = self.session.fixed
-        optimizer.robust = self.actionRobust.isChecked()
-        data, _, coordinates = self.crop()
-        self.fitWidget.optimizeAsync(data, coordinates)
+        self.tasks.start('optimize', run_fit, self._snapshot())
 
-    @pyqtSlot()
-    def _onOptimizationStarted(self) -> None:
-        self._setUIBusy(True)
-        self.statusBar().showMessage('Optimizing...')
-
-    @pyqtSlot(object)
-    def _onOptimizationFinished(self, result: pd.Series) -> None:
-        self._setUIBusy(False)
-        self.session.adopt()
-        logger.info(f'Optimization complete\n{result}')
+    def _onOptimized(self, fit: FitResult) -> None:
+        self.session.update(fit.properties)
+        self.fitWidget.setResult(fit.result, fit.metadata)
+        logger.info(f'Optimization complete\n{fit.result}')
         message = 'Optimization complete'
-        if 'redchi' in result:
-            message += f': reduced \u03c7\u00b2 = {result["redchi"]:.2f}'
+        if 'redchi' in fit.result:
+            message += f': reduced \u03c7\u00b2 = {fit.result["redchi"]:.2f}'
         self.statusBar().showMessage(message, 8000)
+
+    @pyqtSlot(str)
+    def _onTaskStarted(self, name: str) -> None:
+        self._setUIBusy(True)
+        verb = 'Estimating' if name == 'estimate' else 'Optimizing'
+        self.statusBar().showMessage(f'{verb} ... (Esc cancels)')
+
+    @pyqtSlot(str, object)
+    def _onTaskFinished(self, name: str, result: object) -> None:
+        self._setUIBusy(False)
+        if name == 'estimate':
+            self._onEstimated(result)
+        else:
+            self._onOptimized(result)
+
+    @pyqtSlot(str, str)
+    def _onTaskFailed(self, name: str, message: str) -> None:
+        self._setUIBusy(False)
+        what = 'Estimation' if name == 'estimate' else 'Optimization'
+        logger.error(f'{what} failed: {message}')
+        self.statusBar().showMessage(f'{what} failed: {message}', 8000)
+
+    @pyqtSlot(str)
+    def _onTaskCancelled(self, name: str) -> None:
+        self._setUIBusy(False)
+        if name == 'estimate':            # nothing changed: nothing to undo
+            self._pre_estimate = None
+            self.actionUndoEstimate.setEnabled(False)
+        self.statusBar().showMessage('Cancelled', 3000)
 
     @pyqtSlot(str)
     def _onResultSaved(self, filename: str) -> None:
@@ -436,13 +433,6 @@ class LMTool(QMainWindow):
     @pyqtSlot(str)
     def _onSaveFailed(self, message: str) -> None:
         self.statusBar().showMessage(message, 8000)
-
-    @pyqtSlot(str)
-    def _onOptimizationError(self, message: str) -> None:
-        self._setUIBusy(False)
-        self.session.restore()
-        logger.error(f'Optimization failed: {message}')
-        self.statusBar().showMessage(f'Optimization failed: {message}', 5000)
 
 
 def lmtool() -> None:

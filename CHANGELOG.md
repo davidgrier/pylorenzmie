@@ -14,6 +14,13 @@ All notable changes to pylorenzmie are recorded here. The format follows
   recomputes the display once instead of four times, and one Optimize three
   times instead of nine. A parameter without a control is part of the session,
   fixed.
+* `lmtool`: an estimate or a fit runs in the background on a `Snapshot`, a
+  frozen copy of the parameters, the region and the settings, with a model of its
+  own; it shares nothing with the interface thread, and the session takes its
+  result when it is done. **Optimization -> Cancel** (Esc) stops the task and
+  changes nothing. `FitWidget.optimize`, `optimizeAsync` and the signals of the
+  optimization are gone, and so are `LMSession.adopt` and `restore`, which only
+  the shared model needed.
 * `lmtool`: a `Preview` computes what the model predicts (the hologram of the
   region and the radial profile) with models of its own, from the parameters of
   the session, and only once however many changes came before the event loop ran:

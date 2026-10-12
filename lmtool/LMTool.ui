@@ -179,6 +179,7 @@
     <addaction name="actionEstimate"/>
     <addaction name="actionUndoEstimate"/>
     <addaction name="actionOptimize"/>
+    <addaction name="actionCancel"/>
     <addaction name="actionRobust"/>
     <addaction name="saveResult"/>
     <addaction name="saveResultAs"/>
@@ -249,6 +250,17 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+P</string>
+   </property>
+  </action>
+  <action name="actionCancel">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Cancel</string>
+   </property>
+   <property name="shortcut">
+    <string>Esc</string>
    </property>
   </action>
   <action name="actionRobust">

@@ -58,24 +58,6 @@ class TestLMSession(unittest.TestCase):
         self.session.properties['z_p'] = 1.
         self.assertNotEqual(self.session.get('z_p'), 1.)
 
-    def test_adopt_announces_what_the_model_changed(self):
-        # a fit changes the model without telling the session
-        self.session.model.properties = dict(z_p=420., n_p=1.6)
-        self.assertEqual(self.session.get('z_p'), 100.)
-        changed = self.session.adopt()
-        self.assertEqual(sorted(changed), ['n_p', 'z_p'])
-        self.assertEqual(self.session.get('z_p'), 420.)
-        self.assertEqual(len(self.announced), 1)
-        self.assertEqual(self.session.adopt(), [])
-
-    def test_restore_undoes_what_the_model_changed(self):
-        self.session.set('z_p', 300.)
-        self.session.model.properties = dict(z_p=999., a_p=3.)
-        self.session.restore()
-        self.assertEqual(self.session.model.particle.z_p, 300.)
-        self.assertNotEqual(self.session.model.particle.a_p, 3.)
-        self.assertEqual(len(self.announced), 1)
-
     def test_parameters_that_are_not_shown_are_fixed(self):
         fixed = []
         self.session.fixedChanged.connect(fixed.append)

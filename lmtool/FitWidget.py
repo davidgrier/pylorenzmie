@@ -1,4 +1,3 @@
-from collections.abc import Callable
 from datetime import datetime
 import logging
 from pathlib import Path
@@ -6,47 +5,19 @@ import warnings
 import numpy as np
 import pandas as pd
 import pyqtgraph as pg
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSignal, pyqtSlot,
-                                  QObject, QRectF, QThread)
+from pyqtgraph.Qt.QtCore import pyqtSignal, pyqtSlot, QRectF
 from pyqtgraph.Qt.QtGui import QShowEvent
 from pyqtgraph.Qt.QtWidgets import QFileDialog
 from pylorenzmie.analysis import Optimizer
-from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.theory import LorenzMie
 
 logger = logging.getLogger(__name__)
 
 
-class _Worker(QObject):
-    '''Background thread worker for a single-argument callable.'''
-
-    finished = pyqtSignal(object)
-    error = pyqtSignal(str)
-
-    def __init__(self, fn: Callable, arg: object) -> None:
-        super().__init__()
-        self._fn = fn
-        self._arg = arg
-
-    @pyqtSlot()
-    def run(self) -> None:
-        try:
-            self.finished.emit(self._fn(self._arg))
-        except Exception as e:
-            logger.exception('Background task failed')
-            self.error.emit(f'{type(e).__name__}: {e}')
-
-
 class FitWidget(pg.GraphicsLayoutWidget):
     '''Three-panel widget showing the ROI, model fit, and normalized residuals.'''
 
-    #: Emitted when an optimization thread is launched.
-    optimizationStarted = pyqtSignal()
-    #: Emitted with the ``pd.Series`` result when optimization succeeds.
-    optimizationFinished = pyqtSignal(object)
-    #: Emitted with an error message string when optimization fails.
-    optimizationError = pyqtSignal(str)
     #: Emitted with the file name when a result has been saved.
     resultSaved = pyqtSignal(str)
     #: Emitted with an error message when a result could not be saved.
@@ -61,9 +32,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.result = None
         self._data = None
         self.rect = None
-        self._thread = None
-        self._worker = None
-        self._opt_hologram = None
+        self.metadata = None
         self._model_hologram = None
 
     def _configurePlot(self) -> None:
@@ -100,88 +69,19 @@ class FitWidget(pg.GraphicsLayoutWidget):
                              pen=pen)
         self.addItem(cb)
 
-    def optimize(self,
-                 data: Image,
-                 coordinates: Coordinates) -> pd.Series:
-        '''Fit the model to data and update the display.
-
-        Blocks the calling thread until the fit completes. For non-blocking
-        use in a GUI context call :meth:`optimizeAsync` instead.
+    def setResult(self, result: pd.Series,
+                  metadata: pd.Series | None = None) -> None:
+        '''Keep the result of a fit, so that it can be saved.
 
         Parameters
         ----------
-        data : ndarray
-            Normalized hologram crop.
-        coordinates : ndarray, shape (2, npts)
-            Pixel coordinates for the crop.
-
-        Returns
-        -------
         result : pandas.Series
-            Fitted parameters and uncertainties.
+            Fitted values, uncertainties and statistics.
+        metadata : pandas.Series, optional
+            The fixed parameters and the settings of the fit.
         '''
-        hologram = Hologram._from_slice(data, coordinates)
-        self.optimizer.mask.exclude = (data == np.max(data))
-        self.result = self.optimizer.optimize(hologram)
-        self._data = data
-        return self.result
-
-    def optimizeAsync(self,
-                      data: Image,
-                      coordinates: Coordinates) -> None:
-        '''Start optimization in a background thread.
-
-        Returns immediately. Emits :attr:`optimizationStarted` on entry,
-        then :attr:`optimizationFinished` (or :attr:`optimizationError`)
-        when the thread completes. Use :meth:`optimize` for synchronous
-        (blocking) operation.
-
-        Parameters
-        ----------
-        data : ndarray
-            Normalized hologram crop.
-        coordinates : ndarray, shape (2, npts)
-            Pixel coordinates for the crop.
-        '''
-        if self._thread is not None and self._thread.isRunning():
-            return
-        hologram = Hologram._from_slice(data, coordinates)
-        self.optimizer.mask.exclude = (data == np.max(data))
-        self._opt_hologram = hologram
-        self._data = data
-        worker = _Worker(self.optimizer.optimize, hologram)
-        thread = QThread()
-        worker.moveToThread(thread)
-        thread.started.connect(worker.run)
-        worker.finished.connect(self._onWorkerFinished)
-        worker.error.connect(self._onWorkerError)
-        worker.finished.connect(thread.quit)
-        worker.error.connect(thread.quit)
-        thread.finished.connect(self._onThreadFinished)
-        self._worker = worker
-        self._thread = thread
-        thread.start()
-        self.optimizationStarted.emit()
-
-    @pyqtSlot(object)
-    def _onWorkerFinished(self, result: pd.Series) -> None:
         self.result = result
-        self.optimizationFinished.emit(result)
-
-    @pyqtSlot(str)
-    def _onWorkerError(self, message: str) -> None:
-        self.optimizationError.emit(message)
-
-    @pyqtSlot()
-    def _onThreadFinished(self) -> None:
-        self._worker = None
-        self._thread = None
-
-    def shutdown(self) -> None:
-        '''Stop any running optimization thread and wait for it to finish.'''
-        if self._thread is not None and self._thread.isRunning():
-            self._thread.quit()
-            self._thread.wait()
+        self.metadata = metadata
 
     def setData(self, data: Image, rect: QRectF,
                 coordinates: Coordinates) -> None:
@@ -246,22 +146,6 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.residuals.setRect(self.rect)
         self._regionPlot.autoRange()
 
-    @pyqtProperty(LorenzMie)
-    def model(self) -> LorenzMie:
-        return self.optimizer.model
-
-    @model.setter
-    def model(self, model: LorenzMie) -> None:
-        self.optimizer.model = model
-
-    @pyqtProperty(dict)
-    def properties(self) -> LorenzMie.Properties:
-        return self.optimizer.model.properties
-
-    @properties.setter
-    def properties(self, properties: LorenzMie.Properties) -> None:
-        self.optimizer.model.properties = properties
-
     @pyqtSlot(str, object)
     def setSetting(self, name: str, value: LorenzMie.Property) -> None:
         # fraction is a direct Optimizer attribute, not part of .settings
@@ -303,18 +187,23 @@ class FitWidget(pg.GraphicsLayoutWidget):
             return
         self.resultSaved.emit(filename)
 
+    def _metadata(self) -> pd.Series:
+        '''The fixed parameters and settings of the fit, and the file.'''
+        metadata = (self.metadata if self.metadata is not None
+                    else self.optimizer.metadata).copy()
+        metadata['datafile'] = self.datafile
+        return metadata
+
     def _saveHdf(self, filename: str) -> None:
         with warnings.catch_warnings():
             warnings.filterwarnings(
                 'ignore', category=pd.errors.PerformanceWarning)
             self.result.to_hdf(filename, key='result', mode='w')
-            metadata = self.optimizer.metadata
-            metadata['datafile'] = self.datafile
+            metadata = self._metadata()
             metadata.to_hdf(filename, key='metadata')
 
     def _saveJson(self, filename: str) -> None:
-        s = pd.concat([self.result, self.optimizer.metadata])
-        s['datafile'] = self.datafile
+        s = pd.concat([self.result, self._metadata()])
         s.to_json(filename, indent=4)
 
     def saveJson(self, filename: str) -> None:

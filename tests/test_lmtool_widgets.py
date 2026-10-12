@@ -348,6 +348,16 @@ class TestLMTool(unittest.TestCase):
 
     IMAGE = Path(__file__).parents[1] / 'docs' / 'tutorials' / 'crop.png'
 
+    @staticmethod
+    def wait(tool, seconds=60):
+        """Run the event loop until the tasks of the tool are done."""
+        import time
+        end = time.time() + seconds
+        while tool.tasks.busy and time.time() < end:
+            mkQApp().processEvents()
+            time.sleep(0.005)
+        mkQApp().processEvents()
+
     def test_a_session(self):
         tool = LMTool(ALMWidget, str(self.IMAGE))
         self.addCleanup(tool.close)
@@ -358,12 +368,14 @@ class TestLMTool(unittest.TestCase):
         self.assertAlmostEqual(properties['x_p'], 195.5, delta=0.1)
         self.assertAlmostEqual(properties['y_p'], 193.2, delta=0.1)
         # a fit changes the shown parameters and not the hidden ones
-        tool.fitWidget.optimizer.model.properties = dict(defocus=0.)
-        result = tool.fitWidget.optimize(*(tool.crop()[0::2]))
+        before = tool.session.properties
+        tool.optimize()
+        self.wait(tool)
         for name in ('defocus', 'coma', 'astigmatism', 'distortion',
                      'x_c', 'y_c', 'spherical', 'piston'):
-            self.assertEqual(tool.fitWidget.model.properties[name], 0.)
-        self.assertTrue(result['success'])
+            self.assertEqual(tool.session.get(name), 0.)
+        self.assertNotEqual(tool.session.get('z_p'), before['z_p'])
+        self.assertTrue(tool.fitWidget.result['success'])
 
     def test_the_roi_starts_on_the_particle(self):
         tool = LMTool(ALMWidget, str(self.IMAGE))
@@ -396,13 +408,13 @@ class TestLMTool(unittest.TestCase):
         # not the default of 0.05
         noise = tool.controls.properties['noise']
         self.assertAlmostEqual(noise, 0.035, delta=0.005)
-        self.assertAlmostEqual(tool.fitWidget.model.instrument.noise, noise,
+        self.assertAlmostEqual(tool.session.model.instrument.noise, noise,
                                delta=1e-3)
 
     def test_a_panel_without_a_noise_control_still_gets_the_estimate(self):
         tool = LMTool(LMWidget, str(self.IMAGE))
         self.addCleanup(tool.close)
-        self.assertAlmostEqual(tool.fitWidget.model.instrument.noise, 0.035,
+        self.assertAlmostEqual(tool.session.model.instrument.noise, 0.035,
                                delta=0.005)
 
     def test_estimate_noise_uses_the_region_of_interest(self):
@@ -418,6 +430,98 @@ class TestLMTool(unittest.TestCase):
         self.assertAlmostEqual(tool.controls.properties['noise'], 0.1,
                                delta=0.01)
         self.assertIn('Noise: 0.1', tool.statusBar().currentMessage())
+
+    def slowly(self, tool, name):
+        """Make the task ``name`` of the tool wait until it is cancelled."""
+        import threading
+        from pylorenzmie.lmtool.tasks import Cancelled
+        started = threading.Event()
+
+        def slow(snapshot, cancel):
+            started.set()
+            cancel.wait(30)
+            raise Cancelled
+
+        patcher = mock.patch(f'pylorenzmie.lmtool.LMTool.run_{name}', slow)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        return started
+
+    def test_cancel_stops_a_fit_and_changes_nothing(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        started = self.slowly(tool, 'fit')
+        before = tool.session.properties
+        self.assertFalse(tool.actionCancel.isEnabled())
+        tool.optimize()
+        self.assertTrue(tool.tasks.busy)
+        self.assertTrue(tool.actionCancel.isEnabled())
+        self.assertFalse(tool.actionOptimize.isEnabled())
+        self.assertTrue(started.wait(10))
+        tool.actionCancel.trigger()
+        self.wait(tool)
+        self.assertFalse(tool.tasks.busy)
+        self.assertEqual(tool.statusBar().currentMessage(), 'Cancelled')
+        self.assertEqual(tool.session.properties, before)
+        self.assertTrue(tool.actionOptimize.isEnabled())
+        self.assertFalse(tool.actionCancel.isEnabled())
+        self.assertIsNone(tool.fitWidget.result)
+
+    def test_cancel_stops_an_estimate_and_leaves_nothing_to_undo(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        started = self.slowly(tool, 'estimate')
+        tool.estimate()
+        self.assertTrue(started.wait(10))
+        tool.tasks.cancel()
+        self.wait(tool)
+        self.assertFalse(tool.actionUndoEstimate.isEnabled())
+        self.assertTrue(tool.actionEstimate.isEnabled())
+
+    def test_a_failed_fit_is_reported(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+
+        def broken(snapshot, cancel):
+            raise ValueError('no good')
+
+        with mock.patch('pylorenzmie.lmtool.LMTool.run_fit', broken):
+            with self.assertLogs(level='ERROR'):
+                tool.optimize()
+                self.wait(tool)
+        self.assertIn('Optimization failed: ValueError: no good',
+                      tool.statusBar().currentMessage())
+        self.assertTrue(tool.actionOptimize.isEnabled())
+
+    def test_a_task_is_not_started_while_another_runs(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        started = self.slowly(tool, 'fit')
+        tool.optimize()
+        self.assertTrue(started.wait(10))
+        tool.optimize()                       # ignored
+        tool.estimate()                       # ignored
+        tool.tasks.cancel()
+        self.wait(tool)
+        self.assertFalse(tool.actionUndoEstimate.isEnabled())
+
+    def test_escape_cancels(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        self.assertEqual(tool.actionCancel.shortcut().toString(), 'Esc')
+
+    def test_the_result_of_a_fit_can_be_saved(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        tool.optimize()
+        self.wait(tool)
+        with tempfile.TemporaryDirectory() as directory:
+            filename = str(Path(directory) / 'result.json')
+            tool.fitWidget.saveJson(filename)
+            saved = json.loads(Path(filename).read_text())
+        self.assertIn('z_p', saved)
+        self.assertIn('wavelength', saved)           # the metadata of the fit
+        self.assertEqual(saved['datafile'], str(self.IMAGE))
 
     def test_one_particle_is_said_to_be_the_only_one(self):
         tool = LMTool(ALMWidget, str(self.IMAGE))

@@ -137,7 +137,9 @@ Workflow
    position :math:`z_p` has the strongest effect on fringe spacing;
    :math:`a_p` and :math:`n_p` affect the contrast.
 4. **Optimize** — press **Ctrl+P** or choose **Optimization → Optimize**.
-   The Fit tab updates to show the fitted model and residuals.
+   The Fit tab updates to show the fitted model and residuals.  An estimate
+   or a fit runs in the background, on a copy of the parameters, and **Cancel**
+   (Esc) stops it and leaves the parameters as they were.
 5. **Save results** — **Optimization → Save Result** writes an HDF5 file to
    ``~/data/lmtool/``; **Save Result As...** lets you choose the path and
    format (HDF5 or JSON).
