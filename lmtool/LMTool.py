@@ -49,6 +49,10 @@ class LMTool(QMainWindow):
 
     uiFile = 'LMTool.ui'
 
+    #: Number of candidate particles that Find Particles keeps, the
+    #: strongest first.  A noisy image can have hundreds of candidates.
+    MAX_CANDIDATES = 10
+
     def __init__(self,
                  controls: type[LMWidget],
                  filename: str | None = None,
@@ -164,7 +168,8 @@ class LMTool(QMainWindow):
             return
         self.statusBar().showMessage('Looking for particles ...')
         try:
-            found = Localizer().localize(self._data)
+            found = Localizer().localize(self._data,
+                                         maxfeatures=self.MAX_CANDIDATES)
         except Exception as error:
             logger.exception('Localization failed')
             self._candidates = None
@@ -191,9 +196,17 @@ class LMTool(QMainWindow):
         radius = int(np.clip(max(width, height) // 2, 30, 250))
         self.imageWidget.setRegion(candidate['x_p'], candidate['y_p'],
                                    radius)
-        self.statusBar().showMessage(
-            f'Particle {self._candidate + 1} of {len(self._candidates)} '
-            f'at ({candidate["x_p"]:.0f}, {candidate["y_p"]:.0f})', 5000)
+        n = len(self._candidates)
+        nfound = self._candidates.attrs.get('nfound', n)
+        where = f'({candidate["x_p"]:.0f}, {candidate["y_p"]:.0f})'
+        if n == 1 and nfound == 1:
+            message = f'Only one particle found, at {where}'
+        else:
+            message = f'Particle {self._candidate + 1} of {n} at {where}'
+            if nfound > n:
+                message += (f', the strongest of {nfound} candidates: '
+                            'the image may be noisy')
+        self.statusBar().showMessage(message, 8000)
 
     @pyqtSlot()
     def readBackground(self, filename: str | None = None) -> None:

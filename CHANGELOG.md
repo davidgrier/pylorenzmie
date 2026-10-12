@@ -11,6 +11,13 @@ All notable changes to pylorenzmie are recorded here. The format follows
 * `lmtool` looks for particles when it loads an image and puts the ROI on the
   first, sized to its fringes. **Particles -> Next Particle** (Ctrl+N) selects
   the others and **Find Particles** (Ctrl+L) searches again.
+* `Localizer.localize` takes `maxfeatures`, which keeps the strongest
+  features first, and returns each feature's `mass` and the number that
+  `trackpy` found in `predictions.attrs['nfound']`. The bounding box of each
+  feature costs about 80 ms on a full frame, so a noisy 1280 x 1024 image with
+  226 candidates took 20 s; limiting them takes one second.
+* `lmtool` keeps the ten strongest candidates, and says in the status bar when
+  there are none, only one, or many.
 * `lmtool` reports the reduced chi-squared of a fit in the status bar, and
   background tasks that fail log their traceback and show the exception type.
 

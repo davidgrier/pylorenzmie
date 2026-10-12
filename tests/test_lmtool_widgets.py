@@ -275,7 +275,7 @@ class TestLMTool(unittest.TestCase):
         self.assertAlmostEqual(properties['x_p'], 195.5, delta=2.)
         self.assertAlmostEqual(properties['y_p'], 193.2, delta=2.)
         self.assertGreaterEqual(tool.imageWidget.radius, 30)
-        self.assertIn('Particle 1 of', tool.statusBar().currentMessage())
+        self.assertIn('Only one particle', tool.statusBar().currentMessage())
 
     def test_next_particle_cycles_through_the_candidates(self):
         import pandas as pd
@@ -292,6 +292,26 @@ class TestLMTool(unittest.TestCase):
         self.assertEqual(tool.imageWidget.radius, 60)
         tool.nextParticle()                       # and around again
         self.assertAlmostEqual(tool.controls.properties['y_p'], 120., delta=1.)
+
+    def test_one_particle_is_said_to_be_the_only_one(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        tool.nextParticle()
+        self.assertIn('Only one particle', tool.statusBar().currentMessage())
+
+    def test_many_candidates_are_limited_and_ranked(self):
+        import numpy as np
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        noise = np.random.default_rng(1).normal(1., 0.03, (400, 400))
+        tool.data = noise
+        tool.findParticles()
+        found = tool._candidates
+        self.assertLessEqual(len(found), tool.MAX_CANDIDATES)
+        self.assertGreater(found.attrs['nfound'], len(found))
+        self.assertEqual(list(found['mass']),
+                         sorted(found['mass'], reverse=True))
+        self.assertIn('noisy', tool.statusBar().currentMessage())
 
     def test_no_particles_is_reported(self):
         import numpy as np

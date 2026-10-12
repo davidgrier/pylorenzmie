@@ -60,7 +60,11 @@ region-of-interest (ROI) marks the area around the particle to be fitted.
 When an image is loaded, lmtool looks for particles and puts the ROI on the
 first one, sized to enclose its fringes.  **Particles → Next Particle**
 (Ctrl+N) moves to the next one, and **Particles → Find Particles** (Ctrl+L)
-looks again.  The ROI can also be set by hand:
+looks again.  A noisy image can have hundreds of candidates, so lmtool keeps
+the ten strongest, strongest first, and the status bar says how many it found;
+many candidates usually means that the image is noisy or badly normalized.  If
+there are none, or only one, the status bar says that as well, and the ROI stays
+where it is.  The ROI can also be set by hand:
 
 * **Drag the ROI centre** to reposition it over the particle.
 * **Drag the ROI edge** to resize it so the rings are enclosed.

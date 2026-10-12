@@ -64,6 +64,7 @@ class Localizer(LMObject):
                  image: Image | list[Image],
                  diameter: int | None = None,
                  nfringes: int | None = None,
+                 maxfeatures: int | None = None,
                  **kwargs) -> pd.DataFrame:
         '''Localize features in a normalized holographic microscopy image.
 
@@ -75,26 +76,38 @@ class Localizer(LMObject):
             Override ``diameter`` for this call.
         nfringes : int, optional
             Override ``nfringes`` for this call.
+        maxfeatures : int, optional
+            Keep only this many features, the strongest ones, strongest
+            first.  A noisy image can have hundreds of candidates, and the
+            bounding box of each one costs time.  Default: all of them,
+            in the order of ``trackpy``.
         **kwargs
             Additional keyword arguments passed to ``trackpy.locate``.
 
         Returns
         -------
         predictions : pandas.DataFrame
-            Columns: ``x_p``, ``y_p``, ``bbox``, with one row per
-            feature; empty if nothing was found.  ``bbox`` is
+            Columns: ``x_p``, ``y_p``, ``bbox``, ``mass``, with one row
+            per feature; empty if nothing was found.  ``bbox`` is
             ``((x0, y0), width, height)`` in whole pixels, inside the
             image, so a box at the edge of the image is not square.
+            ``mass`` is the strength of the feature in the transformed
+            image, which ranks candidates.  ``predictions.attrs['nfound']``
+            is the number of features that ``trackpy`` found, which is
+            larger than ``len(predictions)`` if ``maxfeatures`` applies.
         '''
         if isinstance(image, list):
-            return [self.localize(b, diameter, nfringes, **kwargs)
-                    for b in image]
+            return [self.localize(b, diameter, nfringes, maxfeatures,
+                                  **kwargs) for b in image]
 
         diameter = self.diameter if diameter is None else diameter
         nfringes = self.nfringes if nfringes is None else nfringes
 
         a = self._circletransform.transform(image)
         features = tp.locate(a, diameter, characterize=False, **kwargs)
+        nfound = len(features)
+        if maxfeatures is not None and nfound > maxfeatures:
+            features = features.nlargest(maxfeatures, 'mass')
 
         ny, nx = image.shape
         predictions = []
@@ -106,8 +119,12 @@ class Localizer(LMObject):
             x1 = min(int(np.ceil(r_p[0] + radius)) + 1, nx)
             y1 = min(int(np.ceil(r_p[1] + radius)) + 1, ny)
             bbox = ((x0, y0), x1 - x0, y1 - y0)
-            predictions.append(dict(x_p=r_p[0], y_p=r_p[1], bbox=bbox))
-        return pd.DataFrame(predictions, columns=['x_p', 'y_p', 'bbox'])
+            predictions.append(dict(x_p=r_p[0], y_p=r_p[1], bbox=bbox,
+                                    mass=feature['mass']))
+        result = pd.DataFrame(predictions,
+                              columns=['x_p', 'y_p', 'bbox', 'mass'])
+        result.attrs['nfound'] = nfound
+        return result
 
     @staticmethod
     def _extent(profile: np.ndarray, nfringes: int) -> float:

@@ -159,7 +159,24 @@ class TestLocalizerBoxes(unittest.TestCase):
     def test_featureless_image_gives_an_empty_frame_with_columns(self):
         found = Localizer().localize(np.ones((200, 200)))
         self.assertEqual(len(found), 0)
-        self.assertEqual(list(found.columns), ['x_p', 'y_p', 'bbox'])
+        self.assertEqual(list(found.columns), ['x_p', 'y_p', 'bbox', 'mass'])
+
+    def test_localize_reports_the_strength(self):
+        result = Localizer().localize(self.hologram((200, 200), 100., 100.))
+        self.assertIn('mass', result.columns)
+        self.assertEqual(result.attrs['nfound'], len(result))
+
+    def test_maxfeatures_keeps_the_strongest_first(self):
+        rng = np.random.default_rng(1)
+        noisy = 1. + rng.normal(0., 0.03, (300, 300))
+        localizer = Localizer()
+        everything = localizer.localize(noisy)
+        few = localizer.localize(noisy, maxfeatures=2)
+        self.assertGreater(len(everything), 2)
+        self.assertEqual(len(few), 2)
+        self.assertEqual(few.attrs['nfound'], len(everything))
+        self.assertEqual(list(few['mass']),
+                         sorted(everything['mass'], reverse=True)[:2])
 
 
 if __name__ == '__main__':  # pragma: no cover
