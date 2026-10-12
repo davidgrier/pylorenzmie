@@ -6,6 +6,7 @@ os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 try:
     from pyqtgraph import mkQApp
     from pylorenzmie.lmtool.LMSession import LMSession
+    from pylorenzmie.lmtool.Preview import Preview
     from pylorenzmie.theory import AberratedLorenzMie
     _qt = True
 except Exception:       # no Qt binding, or no usable platform plugin
@@ -98,6 +99,82 @@ class TestLMSession(unittest.TestCase):
         self.session.setFixed('z_p', False)
         self.assertNotIn('z_p', self.session.fixed)
         self.assertEqual(len(fixed), 2)
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestPreview(unittest.TestCase):
+
+    def setUp(self):
+        self.session = LMSession(AberratedLorenzMie)
+        self.preview = Preview(self.session)
+        self.shown = []
+        self.preview.updated.connect(
+            lambda h, p, n: self.shown.append((h, p, n)))
+        self.coordinates = self.session.model.meshgrid((40, 40))[:2]
+        self.preview.setCoordinates(self.coordinates)
+        self.preview.setRadius(30)
+
+    def process(self):
+        mkQApp().processEvents()
+
+    def test_requests_are_computed_once(self):
+        self.process()
+        before = self.preview.count
+        for z in (200., 210., 220., 230.):
+            self.session.set('z_p', z)
+        self.preview.setRadius(25)
+        self.assertEqual(self.preview.count, before)       # not yet
+        self.process()
+        self.assertEqual(self.preview.count, before + 1)
+
+    def test_nothing_is_computed_without_a_request(self):
+        self.process()
+        before = self.preview.count
+        self.process()
+        self.assertEqual(self.preview.count, before)
+
+    def test_the_prediction_has_the_shape_of_the_region_and_the_profile(self):
+        self.preview.refresh()
+        hologram, profile, noise = self.shown[-1]
+        self.assertEqual(hologram.shape, (40 * 40,))
+        self.assertEqual(profile.shape, (30,))
+        self.assertEqual(noise, self.session.get('noise'))
+
+    def test_the_prediction_follows_the_session(self):
+        self.preview.refresh()
+        first = self.shown[-1][0]
+        self.session.update(dict(z_p=300., a_p=1.2, x_p=20., y_p=20.))
+        self.preview.refresh()
+        self.assertGreater(abs(self.shown[-1][0] - first).max(), 1e-3)
+        expected = self.session.cls(coordinates=self.coordinates)
+        expected.properties = self.session.properties
+        self.assertTrue((self.shown[-1][0] == expected.hologram()).all())
+
+    def test_the_profile_is_of_a_particle_at_the_origin(self):
+        self.session.update(dict(z_p=300., x_p=20., y_p=33.))
+        self.preview.refresh()
+        moved = self.shown[-1][1]
+        self.session.update(dict(x_p=5., y_p=7.))
+        self.preview.refresh()
+        self.assertTrue((self.shown[-1][1] == moved).all())
+
+    def test_without_a_region_there_is_only_a_profile(self):
+        preview = Preview(self.session)
+        shown = []
+        preview.updated.connect(lambda h, p, n: shown.append((h, p)))
+        preview.refresh()
+        self.assertIsNone(shown[0][0])
+        self.assertEqual(len(shown[0][1]), 100)
+
+    def test_it_does_not_touch_the_model_of_the_session(self):
+        # the model that a fit changes in another thread is not the preview's
+        model = self.session.model
+        coordinates = model.coordinates.copy()
+        self.session.set('z_p', 250.)
+        self.preview.refresh()
+        self.assertEqual(model.coordinates.shape, coordinates.shape)
+        self.assertTrue((model.coordinates == coordinates).all())
+        self.assertIsNot(self.preview._model, model)
 
 
 if __name__ == '__main__':  # pragma: no cover

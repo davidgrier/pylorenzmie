@@ -64,6 +64,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self._thread = None
         self._worker = None
         self._opt_hologram = None
+        self._model_hologram = None
 
     def _configurePlot(self) -> None:
         self.ci.layout.setContentsMargins(0, 0, 0, 0)
@@ -122,9 +123,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         hologram = Hologram._from_slice(data, coordinates)
         self.optimizer.mask.exclude = (data == np.max(data))
         self.result = self.optimizer.optimize(hologram)
-        self.optimizer.model.coordinates = hologram.flat_coordinates
         self._data = data
-        self._updateFitDisplay()
         return self.result
 
     def optimizeAsync(self,
@@ -167,8 +166,6 @@ class FitWidget(pg.GraphicsLayoutWidget):
     @pyqtSlot(object)
     def _onWorkerFinished(self, result: pd.Series) -> None:
         self.result = result
-        self.optimizer.model.coordinates = self._opt_hologram.flat_coordinates
-        self._updateFitDisplay()
         self.optimizationFinished.emit(result)
 
     @pyqtSlot(str)
@@ -188,7 +185,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
 
     def setData(self, data: Image, rect: QRectF,
                 coordinates: Coordinates) -> None:
-        '''Display data, compute and show the current model prediction.
+        '''Display data and wait for the model prediction.
 
         Parameters
         ----------
@@ -201,7 +198,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         '''
         self._data = data
         self.rect = rect
-        self.optimizer.model.coordinates = coordinates.reshape(2, -1)
+        self._model_hologram = None
         self.region.setImage(data)
         self.region.setRect(rect)
         self._updateFitDisplay()
@@ -210,40 +207,44 @@ class FitWidget(pg.GraphicsLayoutWidget):
         super().showEvent(event)
         self._updateFitDisplay()
 
-    def _updateFitDisplay(self) -> None:
-        '''Recompute the model hologram and refresh all three display panels.
+    def showModel(self, hologram: np.ndarray | None,
+                  noise: float = 0.05) -> None:
+        '''Show the model prediction for the region that is displayed.
 
-        No-op when data has not been loaded or the widget is not visible.
+        Parameters
+        ----------
+        hologram : ndarray or None
+            Model hologram of the region, one value per pixel, in the order
+            of the data; None if there is none to show.
+        noise : float, optional
+            Noise that the residuals are divided by.  Default: 0.05.
         '''
-        if self._data is None or self.rect is None:
+        if hologram is None or self._data is None:
+            self._model_hologram = None
             return
-        if not self.isVisible():
+        if np.size(hologram) != self._data.size:
+            return                    # the prediction is of another region
+        self._model_hologram = (np.reshape(hologram, self._data.shape), noise)
+        self._updateFitDisplay()
+
+    def _updateFitDisplay(self) -> None:
+        '''Refresh all three display panels from the model prediction.
+
+        No-op when there is nothing to show or the widget is not visible.
+        '''
+        if (self._data is None or self.rect is None
+                or self._model_hologram is None or not self.isVisible()):
             return
-        hologram = self.optimizer.model.hologram().reshape(self._data.shape)
+        hologram, noise = self._model_hologram
         # the color scale of the data applies to the model, which is not
         # clipped: the residuals show the whole difference
         levels = (np.min(self._data), np.max(self._data))
         self.region.setLevels(levels)
         self.fit.setImage(hologram, levels=levels)
-        noise = self.optimizer.model.instrument.noise
         self.residuals.setImage((self._data - hologram) / noise)
         self.fit.setRect(self.rect)
         self.residuals.setRect(self.rect)
         self._regionPlot.autoRange()
-
-    def refreshPreview(self, properties: dict | None = None) -> None:
-        '''Recompute and redisplay the model prediction without re-optimizing.
-
-        Parameters
-        ----------
-        properties : dict, optional
-            Model properties to apply before recomputing the hologram.
-        '''
-        if self._data is None:
-            return
-        if properties:
-            self.optimizer.model.properties = properties
-        self._updateFitDisplay()
 
     @pyqtProperty(LorenzMie)
     def model(self) -> LorenzMie:

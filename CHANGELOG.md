@@ -14,6 +14,13 @@ All notable changes to pylorenzmie are recorded here. The format follows
   recomputes the display once instead of four times, and one Optimize three
   times instead of nine. A parameter without a control is part of the session,
   fixed.
+* `lmtool`: a `Preview` computes what the model predicts (the hologram of the
+  region and the radial profile) with models of its own, from the parameters of
+  the session, and only once however many changes came before the event loop ran:
+  an Estimate or an Optimize computes one prediction, and five parameters set
+  in a row compute one. The display no longer reads the model that a fit is
+  changing in another thread, which closes a data race (switching to the Fit tab
+  during a fit).
 * `lmtool`: the parameters of the panel are described by `ParameterSpec`
   entries in `lmtool/parameters.py` (label, range, step, decimals, unit, start
   value, fixed by default), which replace `LMTool.json`. A test checks that every

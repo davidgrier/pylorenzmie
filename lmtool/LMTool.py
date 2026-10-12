@@ -20,6 +20,7 @@ from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.lmtool.FitWidget import _Worker
 from pylorenzmie.lmtool.LMWidget import LMWidget
+from pylorenzmie.lmtool.Preview import Preview
 from pylorenzmie.utilities import Normalizer, estimate_noise
 
 _DIR = Path(__file__).parent
@@ -80,9 +81,11 @@ class LMTool(QMainWindow):
         self.controls.close()
         self.controls = controls
         self.session = controls.session
-        self.profileWidget.model = self.session.cls()
-        self.profileWidget.properties = self.session.properties
+        self.preview = Preview(self.session)
+        self.preview.updated.connect(self._showPreview)
+        self.profileWidget.model = None       # the preview has the model
         self.profileWidget.radius = self.imageWidget.radius
+        self.preview.setRadius(self.imageWidget.radius)
         self.fitWidget.model = self.session.model
         self.optimizerWidget.settings = self.fitWidget.optimizer.settings
 
@@ -141,7 +144,7 @@ class LMTool(QMainWindow):
         self.imageWidget.data = self._data
         self._setNoise(self._data)
         self._updateProfile()
-        self.fitWidget.setData(*self.crop())
+        self._showCrop()
 
     @pyqtSlot()
     def readHologram(self, filename: str | None = None) -> None:
@@ -180,9 +183,8 @@ class LMTool(QMainWindow):
             return
         data, _, _ = self.crop()
         self._setNoise(data)
-        self.fitWidget.refreshPreview()
-        noise = self.fitWidget.model.instrument.noise
-        self.statusBar().showMessage(f'Noise: {noise:.3f}', 5000)
+        self.statusBar().showMessage(
+            f'Noise: {self.session.get("noise"):.3f}', 5000)
 
     @pyqtSlot()
     def findParticles(self) -> None:
@@ -282,14 +284,15 @@ class LMTool(QMainWindow):
         finally:
             self._moving = False
         self._updateProfile()
-        self.fitWidget.setData(*self.crop())
+        self._showCrop()
 
     @pyqtSlot(int)
     def _handleRadiusChanged(self, radius: int) -> None:
         if self._data is None:
             return
         self.profileWidget.radius = radius
-        self.fitWidget.setData(*self.crop())
+        self.preview.setRadius(radius)
+        self._showCrop()
 
     @pyqtSlot(list)
     def _onParametersChanged(self, names: list[str]) -> None:
@@ -301,9 +304,19 @@ class LMTool(QMainWindow):
                 value = self.session.get(name)
                 if abs(getattr(self.imageWidget, name) - value) > 1e-6:
                     setattr(self.imageWidget, name, value)
-        self.profileWidget.properties = {name: self.session.get(name)
-                                         for name in names}
-        self.fitWidget.refreshPreview()
+        # the preview shows the other parameters when the session announces
+        # them
+
+    def _showCrop(self) -> None:
+        '''Show the region of interest and ask for the prediction for it.'''
+        data, rect, coordinates = self.crop()
+        self.fitWidget.setData(data, rect, coordinates)
+        self.preview.setCoordinates(coordinates)
+
+    @pyqtSlot(object, object, float)
+    def _showPreview(self, hologram, profile, noise: float) -> None:
+        self.fitWidget.showModel(hologram, noise)
+        self.profileWidget.showTheory(profile)
 
     def crop(self) -> tuple[Image, QRectF, Coordinates]:
         get = self.imageWidget.roi.getArraySlice

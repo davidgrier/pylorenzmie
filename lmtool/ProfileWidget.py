@@ -7,7 +7,12 @@ from pylorenzmie.theory import LorenzMie
 
 
 class ProfileWidget(pg.PlotWidget):
-    '''Radial-profile plot showing experimental data and model prediction.'''
+    '''Radial-profile plot showing experimental data and model prediction.
+
+    The widget computes the prediction with its own model, which can be
+    replaced.  Without a model (``widget.model = None``) it shows the
+    prediction that it is given with :meth:`showTheory`.
+    '''
 
     def __init__(self,
                  *args,
@@ -54,20 +59,21 @@ class ProfileWidget(pg.PlotWidget):
         # Profile is always centred at the origin, so x_p/y_p are irrelevant.
         properties = {k: v for k, v in properties.items()
                       if k not in ('x_p', 'y_p')}
-        if len(properties) == 0:
+        if self._model is None or len(properties) == 0:
             return
         self.model.properties = properties
         self.plotTheory()
 
     @pyqtProperty(LorenzMie)
-    def model(self) -> LorenzMie:
+    def model(self) -> LorenzMie | None:
         return self._model
 
     @model.setter
-    def model(self, model: LorenzMie) -> None:
+    def model(self, model: LorenzMie | None) -> None:
         # Profile is always computed at the origin; zero the position in-place.
-        model.x_p = 0.0
-        model.y_p = 0.0
+        if model is not None:
+            model.x_p = 0.0
+            model.y_p = 0.0
         self._model = model
 
     @pyqtProperty(tuple)
@@ -86,12 +92,18 @@ class ProfileWidget(pg.PlotWidget):
     @radius.setter
     def radius(self, radius: int) -> None:
         self._radius = radius
-        self.model.coordinates = np.arange(radius)
+        if self._model is not None:
+            self._model.coordinates = np.arange(radius)
         self.plotData()
         self.plotTheory()
 
     def plotTheory(self) -> None:
-        self.theory.setData(self.model.hologram())
+        if self._model is not None:
+            self.theory.setData(self._model.hologram())
+
+    def showTheory(self, profile: np.ndarray) -> None:
+        '''Show a model prediction that was computed elsewhere.'''
+        self.theory.setData(profile)
 
     def plotData(self) -> None:
         if self._data is None:
