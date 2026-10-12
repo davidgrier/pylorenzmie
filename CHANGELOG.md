@@ -4,7 +4,10 @@ All notable changes to pylorenzmie are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.2.0] - 2026-10-12
+
+`lmtool` finds the particles in an image and estimates its noise, saving results
+works again, and `Localizer` can rank and limit its candidates.
 
 ### Added
 
