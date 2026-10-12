@@ -4,7 +4,18 @@ All notable changes to pylorenzmie are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.3.0] - 2026-10-12
+
+`lmtool` is rebuilt around a session that holds the parameters of a fit, with
+estimates, fits and searches for particles that run in the background and can be
+cancelled, and a table of the particles in the image and their results.
+
+### Removed
+
+* `FitWidget.optimize`, `optimizeAsync` and its signals, `FitWidget.model`,
+  `FitWidget.saveResult` and the other ways that it saved, and
+  `lmtool/LMTool.json`. They were internal to `lmtool`; the replacements are
+  below.
 
 ### Changed
 
