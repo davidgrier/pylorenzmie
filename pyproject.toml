@@ -69,7 +69,7 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"pylorenzmie.lmtool"     = ["*.ui", "*.json"]
+"pylorenzmie.lmtool"     = ["*.ui"]
 "pylorenzmie"            = ["py.typed"]
 "pylorenzmie.analysis"   = ["*.joblib"]
 "pylorenzmie.utilities"  = ["data/*.png"]

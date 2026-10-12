@@ -1,4 +1,3 @@
-import json
 from pathlib import Path
 
 from pyqtgraph.Qt import uic
@@ -6,6 +5,7 @@ from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtProperty)
 from pyqtgraph.Qt.QtWidgets import QFrame
 
 from pylorenzmie.lmtool.LMSession import LMSession
+from pylorenzmie.lmtool.parameters import PARAMETERS
 from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
 from pylorenzmie.theory import LorenzMie
 
@@ -15,8 +15,10 @@ _DIR = Path(__file__).parent
 class LMWidget(QFrame):
     '''Parameter-control panel for a LorenzMie model.
 
-    Loads its layout from ``uiFile`` and its parameter configuration
-    from ``configFile`` (both relative to the lmtool package directory).
+    Loads its layout from ``uiFile`` (relative to the lmtool package
+    directory) and configures the controls that the layout has from
+    :attr:`specs`.  A specification without a control describes a hidden
+    parameter, which a fit holds fixed.
 
     The panel is a view of an :class:`~pylorenzmie.lmtool.LMSession.LMSession`,
     which holds the model, the value of every parameter and which parameters
@@ -33,7 +35,7 @@ class LMWidget(QFrame):
 
     cls = LorenzMie
     uiFile = 'LMWidget.ui'
-    configFile = 'LMTool.json'
+    specs = PARAMETERS
 
     #: Emitted with the name and value of a control that the user changed.
     propertyChanged = pyqtSignal(str, float)
@@ -44,7 +46,7 @@ class LMWidget(QFrame):
         uic.loadUi(_DIR / self.uiFile, self)
         self.session = session if session is not None else LMSession(self.cls)
         self._updating = False
-        self._loadConfig()
+        self._setupControls()
         self.session.setShown([c.objectName() for c in self.controls])
         self._startSession()
         self._connectSignals()
@@ -54,10 +56,9 @@ class LMWidget(QFrame):
         '''The model of the session.'''
         return self.session.model
 
-    def _loadConfig(self) -> None:
-        with open(_DIR / self.configFile) as f:
-            config = json.load(f)
-        self.setConfig(config)
+    def _setupControls(self) -> None:
+        """Configure the controls that the layout has, from the specs."""
+        self.setConfig({spec.name: spec.settings() for spec in self.specs})
 
     def _startSession(self) -> None:
         '''Give the session the values and the fixed flags of the controls.'''

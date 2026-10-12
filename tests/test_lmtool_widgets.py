@@ -234,6 +234,56 @@ class TestPanelAndSession(unittest.TestCase):
 
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestParameterSpecifications(unittest.TestCase):
+    '''The specifications, the layouts and the models agree.'''
+
+    def names(self, panel):
+        return {w.objectName() for w in panel.findChildren(ParameterWidget)}
+
+    def test_every_control_has_a_specification(self):
+        from pylorenzmie.lmtool.parameters import PARAMETERS
+        specified = {spec.name for spec in PARAMETERS}
+        for cls in (LMWidget, ALMWidget):
+            with self.subTest(cls.__name__):
+                self.assertEqual(self.names(cls()) - specified, set())
+
+    def test_every_control_is_a_property_of_its_model(self):
+        for cls in (LMWidget, ALMWidget):
+            with self.subTest(cls.__name__):
+                panel = cls()
+                self.assertEqual(self.names(panel) -
+                                 set(panel.model.properties), set())
+
+    def test_the_hidden_parameters_of_the_aberrated_panel(self):
+        panel = ALMWidget()
+        self.assertEqual(sorted(panel.session.hidden),
+                         ['astigmatism', 'coma', 'defocus', 'distortion',
+                          'x_c', 'y_c'])
+
+    def test_the_specifications_are_valid_and_unique(self):
+        from pylorenzmie.lmtool.parameters import PARAMETERS, ParameterSpec
+        names = [spec.name for spec in PARAMETERS]
+        self.assertEqual(len(names), len(set(names)))
+        with self.assertRaises(ValueError):
+            ParameterSpec('a', 'a', (1., 0.), 0.5)
+        with self.assertRaises(ValueError):
+            ParameterSpec('a', 'a', (0., 1.), 2.)
+        with self.assertRaises(ValueError):
+            ParameterSpec('a', 'a', (0., 1.), 0.5, step=0.)
+
+    def test_the_controls_are_configured_from_the_specifications(self):
+        from pylorenzmie.lmtool.parameters import specification
+        panel = ALMWidget()
+        for name in ('wavelength', 'a_p', 'noise', 'piston', 'z_p'):
+            spec, control = specification(name), getattr(panel, name)
+            with self.subTest(name):
+                self.assertEqual(control.range(), list(spec.range))
+                self.assertEqual(control.decimals(), spec.decimals)
+                self.assertEqual(control.fixed(), spec.fixed)
+                self.assertEqual(control.suffix(), spec.suffix)
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
 class TestSavingResults(unittest.TestCase):
 
     def setUp(self):

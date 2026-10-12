@@ -14,6 +14,10 @@ All notable changes to pylorenzmie are recorded here. The format follows
   recomputes the display once instead of four times, and one Optimize three
   times instead of nine. A parameter without a control is part of the session,
   fixed.
+* `lmtool`: the parameters of the panel are described by `ParameterSpec`
+  entries in `lmtool/parameters.py` (label, range, step, decimals, unit, start
+  value, fixed by default), which replace `LMTool.json`. A test checks that every
+  control of every panel has a specification and belongs to its model.
 
 ## [3.2.0] - 2026-10-12
 

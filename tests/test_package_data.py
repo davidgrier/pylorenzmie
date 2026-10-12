@@ -20,7 +20,7 @@ class TestPackageData(unittest.TestCase):
     def test_the_gui_files_are_installed(self):
         lmtool = importlib.import_module('pylorenzmie.lmtool')
         folder = Path(list(lmtool.__path__)[0])    # has no __init__.py
-        for name in ('LMTool.ui', 'LMTool.json', 'ParameterWidget.ui'):
+        for name in ('LMTool.ui', 'ParameterWidget.ui'):
             with self.subTest(name):
                 self.assertTrue((folder / name).exists())
 
