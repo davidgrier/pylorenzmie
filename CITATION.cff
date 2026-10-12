@@ -40,7 +40,7 @@ authors:
 repository-code: https://github.com/davidgrier/pylorenzmie
 license: GPL-3.0-or-later
 url: https://pylorenzmie.readthedocs.io
-version: "3.1.1"
+version: "3.2.0"
 date-released: "2026-10-12"
 doi: 10.5281/zenodo.20784723
 keywords:
