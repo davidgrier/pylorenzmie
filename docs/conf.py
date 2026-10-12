@@ -83,6 +83,8 @@ suppress_warnings = [
 
 nitpick_ignore = [
     ('py:class', '_SeriesLikeCoef_co'),  # numpy internal type, not our code
+    # built on the selected backend, documented as pylorenzmie.theory.Aberrated
+    ('py:class', 'pylorenzmie.theory.AberratedLorenzMie'),
 ]
 
 

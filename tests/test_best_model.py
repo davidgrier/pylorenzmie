@@ -91,5 +91,53 @@ class TestBackendFallback(unittest.TestCase):
                 theory._select_backend('numba')
 
 
+class TestAberratedSelection(unittest.TestCase):
+    '''AberratedLorenzMie follows the backend, like LorenzMie.'''
+
+    def test_it_is_built_on_the_selected_calculator(self):
+        import pylorenzmie.theory as theory
+        self.assertTrue(issubclass(theory.AberratedLorenzMie,
+                                   theory.LorenzMie))
+
+    def test_the_numpy_backend_gives_the_numpy_class(self):
+        import pylorenzmie.theory as theory
+        from pylorenzmie.theory.Aberrated import AberratedLorenzMie as numpy
+        self.assertIs(theory._aberrated(BaseLorenzMie), numpy)
+
+    def test_another_backend_gives_a_class_of_its_own(self):
+        import pylorenzmie.theory as theory
+
+        class Other(BaseLorenzMie):
+            pass
+
+        aberrated = theory._aberrated(Other)
+        self.assertTrue(issubclass(aberrated, Other))
+        self.assertEqual(aberrated.__name__, 'AberratedLorenzMie')
+        self.assertEqual(aberrated.__module__, 'pylorenzmie.theory')
+
+    def test_the_exported_class_can_be_pickled(self):
+        import pickle
+        import pylorenzmie.theory as theory
+        cls = pickle.loads(pickle.dumps(theory.AberratedLorenzMie))
+        self.assertIs(cls, theory.AberratedLorenzMie)
+        model = pickle.loads(pickle.dumps(
+            theory.AberratedLorenzMie(spherical=2.)))
+        self.assertEqual(model.spherical, 2.)
+
+    def test_it_agrees_with_the_numpy_calculator(self):
+        import numpy as np
+        import pylorenzmie.theory as theory
+        from pylorenzmie.theory.Aberrated import AberratedLorenzMie as numpy
+        kwargs = dict(spherical=2., defocus=.5, piston=.3,
+                      coordinates=BaseLorenzMie.meshgrid((40, 40)))
+        a, b = theory.AberratedLorenzMie(**kwargs), numpy(**kwargs)
+        for m in (a, b):
+            m.particle.r_p = [20., 20., 150.]
+        # the torch calculator works in single precision
+        single = 'torch' in theory.LorenzMie.__name__.lower()
+        np.testing.assert_allclose(a.hologram(), b.hologram(),
+                                   atol=1e-3 if single else 1e-9)
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

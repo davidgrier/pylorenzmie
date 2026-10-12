@@ -22,9 +22,11 @@ affected by the refractive index of the medium; it is for instruments in
 which the scattered and unscattered light do not reach the camera with the
 phase that the ideal model assumes.  It is zero by default.
 
-:data:`AberratedLorenzMie` is the aberrated NumPy calculator.  The
-calculators that evaluate the field inside a compiled kernel (Metal and JAX)
-apply the same phase inside the kernel.  Defocus is nearly degenerate with
+:data:`AberratedLorenzMie` is the aberrated NumPy calculator.  The class that
+``pylorenzmie.theory`` exports under that name is built on the calculator that
+``pylorenzmie.theory.LorenzMie`` selects (Numba if it is installed), so it is as
+fast as the plain model.  The calculators that evaluate the field inside a
+compiled kernel (Metal and JAX) apply the same phase inside the kernel.  Defocus is nearly degenerate with
 ``z_p``, so fit it only when the height is constrained by other means.
 '''
 

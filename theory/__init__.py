@@ -7,7 +7,8 @@ from .Sphere import Sphere
 from .Cluster import Cluster
 from .Dimer import Dimer
 from .Instrument import Instrument
-from .Aberrated import (Aberrated, AberratedLorenzMie)
+from .Aberrated import Aberrated
+from .Aberrated import AberratedLorenzMie as _NumpyAberratedLorenzMie
 from .LorenzMie import LorenzMie as _BaseLorenzMie
 
 # Choice of the calculator exported as ``LorenzMie``.
@@ -72,6 +73,29 @@ if _TYPE_CHECKING:
     LorenzMie = _BaseLorenzMie
 else:
     LorenzMie = _select_backend(_os.environ.get('PYLORENZMIE_BACKEND'))
+
+
+
+def _aberrated(base: type) -> type:
+    '''The aberrated calculator for a backend.
+
+    The NumPy one is defined in :mod:`~pylorenzmie.theory.Aberrated`; the
+    others are made here, so that the class can be pickled by name.
+    '''
+    if base is _BaseLorenzMie:
+        return _NumpyAberratedLorenzMie
+    aberrated = Aberrated(base)
+    aberrated.__module__ = __name__
+    aberrated.__qualname__ = aberrated.__name__ = 'AberratedLorenzMie'
+    return aberrated
+
+
+if _TYPE_CHECKING:
+    AberratedLorenzMie = _NumpyAberratedLorenzMie
+else:
+    # ``AberratedLorenzMie`` follows the backend, like ``LorenzMie``; the
+    # NumPy calculator is ``pylorenzmie.theory.Aberrated.AberratedLorenzMie``
+    AberratedLorenzMie = _aberrated(LorenzMie)
 
 # Alias for backward compatibility
 LMHologram = LorenzMie

@@ -160,7 +160,10 @@ and `lorenzmie()`:
   (clusters fall back to NumPy) and it recompiles when the number of partial
   waves changes, so it is slower than Numba on a CPU
 - `AberratedLorenzMie` — adds phase masks for the five primary Seidel
-  aberrations (defocus, spherical, coma, astigmatism, distortion)
+  aberrations (defocus, spherical, coma, astigmatism, distortion) and a
+  constant `piston`; `from pylorenzmie.theory import AberratedLorenzMie` is
+  built on the same calculator as `LorenzMie` (Numba if it works), and the
+  NumPy one is `pylorenzmie.theory.Aberrated.AberratedLorenzMie`
 
 `from pylorenzmie.theory import LorenzMie` is `numbaLorenzMie` when Numba works
 and the NumPy class otherwise. The GPU backends and JAX are never chosen

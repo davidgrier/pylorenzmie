@@ -16,7 +16,10 @@ automatically. Select one by setting the environment variable
 ``PYLORENZMIE_BACKEND`` to ``numpy``, ``numba``, ``torch``, ``jax`` or
 ``cupy`` before importing pylorenzmie (a backend that cannot be loaded
 raises ``ImportError``), or import the class from its module. See
-:doc:`../quickstart` for timings.
+:doc:`../quickstart` for timings. ``pylorenzmie.theory.AberratedLorenzMie``
+(see :func:`~pylorenzmie.theory.Aberrated.Aberrated`) is built on the same
+calculator as ``pylorenzmie.theory.LorenzMie``; the NumPy one is
+``pylorenzmie.theory.Aberrated.AberratedLorenzMie``.
 
 Particles and instrument
 ------------------------
