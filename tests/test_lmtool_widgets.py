@@ -187,6 +187,53 @@ class TestControlPanels(unittest.TestCase):
 
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestPanelAndSession(unittest.TestCase):
+    '''The panel is a view of the session.'''
+
+    def setUp(self):
+        self.panel = ALMWidget()
+        self.session = self.panel.session
+
+    def test_editing_a_control_sets_the_parameter(self):
+        self.panel.a_p.setValue(1.25)
+        self.assertAlmostEqual(self.session.get('a_p'), 1.25, delta=0.01)
+        self.assertAlmostEqual(self.session.model.particle.a_p, 1.25,
+                               delta=0.01)
+
+    def test_a_change_in_the_session_moves_the_control(self):
+        self.session.update(dict(z_p=321., n_p=1.6))
+        self.assertAlmostEqual(self.panel.z_p.value(), 321., delta=0.5)
+        self.assertAlmostEqual(self.panel.n_p.value(), 1.6, delta=0.01)
+
+    def test_the_panel_does_not_echo_what_the_session_announced(self):
+        seen = []
+        self.panel.propertyChanged.connect(lambda n, v: seen.append(n))
+        self.session.update(dict(z_p=321.))
+        self.assertEqual(seen, [])
+        self.panel.z_p.setValue(250.)
+        self.assertEqual(seen, ['z_p'])
+
+    def test_a_value_the_session_holds_exactly_is_not_rounded_by_the_control(
+            self):
+        self.session.update(dict(noise=0.034552))
+        self.assertEqual(self.session.get('noise'), 0.034552)
+        self.assertEqual(self.panel.properties['noise'], 0.034552)
+
+    def test_the_fixed_checkbox_and_the_session_agree(self):
+        self.assertTrue(self.session.isFixed('piston'))   # from the config
+        self.panel.z_p.setFixed(True)
+        self.assertIn('z_p', self.session.fixed)
+        self.session.setFixed('z_p', False)
+        self.assertFalse(self.panel.z_p.fixed())
+
+    def test_two_panels_can_share_a_session(self):
+        other = ALMWidget(session=self.session)
+        self.panel.z_p.setValue(222.)
+        self.assertAlmostEqual(other.z_p.value(), 222., delta=0.5)
+        self.assertIs(other.model, self.panel.model)
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
 class TestSavingResults(unittest.TestCase):
 
     def setUp(self):

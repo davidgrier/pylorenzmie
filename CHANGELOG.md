@@ -4,6 +4,17 @@ All notable changes to pylorenzmie are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+* `lmtool`: the parameters of a fit live in an `LMSession`, which holds the
+  model, the value of every parameter and which parameters are fixed; the
+  controls, the profile and the fit display are views of it. One Estimate
+  recomputes the display once instead of four times, and one Optimize three
+  times instead of nine. A parameter without a control is part of the session,
+  fixed.
+
 ## [3.2.0] - 2026-10-12
 
 `lmtool` finds the particles in an image and estimates its noise, saving results

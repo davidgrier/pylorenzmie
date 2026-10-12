@@ -64,6 +64,7 @@ class LMTool(QMainWindow):
         self._data = None
         self.coordinates = None
         self._pre_estimate = None
+        self._moving = False
         self._candidates = None
         self._candidate = -1
         self._est_worker = None
@@ -78,11 +79,11 @@ class LMTool(QMainWindow):
         layout.replaceWidget(self.controls, controls)
         self.controls.close()
         self.controls = controls
-        self.profileWidget.model = self.controls.cls()
-        self.profileWidget.properties = self.controls.properties
+        self.session = controls.session
+        self.profileWidget.model = self.session.cls()
+        self.profileWidget.properties = self.session.properties
         self.profileWidget.radius = self.imageWidget.radius
-        self.fitWidget.model = controls.model
-        self.fitWidget.properties = self.controls.properties
+        self.fitWidget.model = self.session.model
         self.optimizerWidget.settings = self.fitWidget.optimizer.settings
 
     def _setupStatusBar(self) -> None:
@@ -95,7 +96,7 @@ class LMTool(QMainWindow):
     def _connectSignals(self) -> None:
         self.imageWidget.roiChanged.connect(self._handleROIChanged)
         self.imageWidget.radiusChanged.connect(self._handleRadiusChanged)
-        self.controls.propertyChanged.connect(self._handlePropertyChanged)
+        self.session.parametersChanged.connect(self._onParametersChanged)
         self.actionOpen.triggered.connect(self.readHologram)
         self.actionOpenBackground.triggered.connect(self.readBackground)
         self.actionEstimateNoise.triggered.connect(self.estimateNoise)
@@ -161,13 +162,10 @@ class LMTool(QMainWindow):
 
     def _setNoise(self, image: Image) -> None:
         '''Set the noise of the model to the estimate for ``image``.'''
-        noise = estimate_noise(image)
-        if hasattr(self.controls, 'noise'):
-            low, high = self.controls.noise.range()
-            self.controls.properties = dict(noise=float(np.clip(noise, low,
-                                                                high)))
-        else:                         # a panel without a noise control
-            self.fitWidget.model.instrument.noise = noise
+        low, high = (self.controls.noise.range()
+                     if hasattr(self.controls, 'noise') else (0., np.inf))
+        noise = float(np.clip(estimate_noise(image), low, high))
+        self.session.update(dict(noise=noise))
 
     @pyqtSlot()
     def estimateNoise(self) -> None:
@@ -265,21 +263,24 @@ class LMTool(QMainWindow):
             filename, _ = get(self, 'Save Parameters', '', 'JSON (*.json)')
         if not filename:
             return
-        properties = self.controls.properties
+        properties = self.session.properties
         with open(filename, 'w') as f:
             json.dump(properties, f, indent=4, sort_keys=True)
 
     def _updateProfile(self) -> None:
-        x_p = self.controls.x_p.value()
-        y_p = self.controls.y_p.value()
+        x_p = self.session.get('x_p')
+        y_p = self.session.get('y_p')
         self.profileWidget.data = Azimuthal.std(self._data, (x_p, y_p))
 
     @pyqtSlot(float, float)
     def _handleROIChanged(self, x_p: float, y_p: float) -> None:
         if self._data is None:
             return
-        with QSignalBlocker(self.controls):
-            self.controls.properties = dict(x_p=x_p, y_p=y_p)
+        self._moving = True               # the ROI moved, so do not move it
+        try:
+            self.session.update(dict(x_p=x_p, y_p=y_p))
+        finally:
+            self._moving = False
         self._updateProfile()
         self.fitWidget.setData(*self.crop())
 
@@ -290,13 +291,18 @@ class LMTool(QMainWindow):
         self.profileWidget.radius = radius
         self.fitWidget.setData(*self.crop())
 
-    @pyqtSlot(str, float)
-    def _handlePropertyChanged(self, name: str, value: float) -> None:
-        if name == 'x_p':
-            self.imageWidget.x_p = value
-        elif name == 'y_p':
-            self.imageWidget.y_p = value
-        self.profileWidget.properties = {name: value}
+    @pyqtSlot(list)
+    def _onParametersChanged(self, names: list[str]) -> None:
+        '''Show parameters that changed in the ROI, the profile and the fit.'''
+        if self._moving:
+            return
+        for name in ('x_p', 'y_p'):
+            if name in names:
+                value = self.session.get(name)
+                if abs(getattr(self.imageWidget, name) - value) > 1e-6:
+                    setattr(self.imageWidget, name, value)
+        self.profileWidget.properties = {name: self.session.get(name)
+                                         for name in names}
         self.fitWidget.refreshPreview()
 
     def crop(self) -> tuple[Image, QRectF, Coordinates]:
@@ -312,7 +318,7 @@ class LMTool(QMainWindow):
             return
         if self._est_thread is not None and self._est_thread.isRunning():
             return
-        props = self.controls.properties
+        props = self.session.properties
         # Save only the scalar physical parameters for undo; x_p/y_p are
         # excluded because the user may have moved the ROI since estimating.
         self._pre_estimate = {k: props[k] for k in ('z_p', 'a_p', 'n_p')
@@ -344,15 +350,18 @@ class LMTool(QMainWindow):
                    if k in result
                    and result[k] is not None
                    and np.isfinite(result[k])}
+        # the estimator worked on the model: put back what the session
+        # announced, then announce the estimate
+        self.session.restore()
         if updates:
-            self.controls.properties = updates
-            self.fitWidget.refreshPreview()
+            self.session.update(updates)
         logger.info(f'Estimate: {result}')
         self.statusBar().showMessage('Estimation complete', 2000)
 
     @pyqtSlot(str)
     def _onEstimationError(self, message: str) -> None:
         self._setUIBusy(False)
+        self.session.restore()
         logger.error(f'Estimation failed: {message}')
         self.statusBar().showMessage(f'Estimation failed: {message}', 5000)
 
@@ -365,8 +374,7 @@ class LMTool(QMainWindow):
     def undoEstimate(self) -> None:
         if self._pre_estimate is None:
             return
-        self.controls.properties = self._pre_estimate
-        self.fitWidget.refreshPreview()
+        self.session.update(self._pre_estimate)
         self._pre_estimate = None
         self.actionUndoEstimate.setEnabled(False)
 
@@ -388,8 +396,7 @@ class LMTool(QMainWindow):
         if self._data is None:
             return
         optimizer = self.fitWidget.optimizer
-        optimizer.model.properties = self.controls.properties
-        optimizer.fixed = self.controls.fixed
+        optimizer.fixed = self.session.fixed
         optimizer.robust = self.actionRobust.isChecked()
         data, _, coordinates = self.crop()
         self.fitWidget.optimizeAsync(data, coordinates)
@@ -402,7 +409,7 @@ class LMTool(QMainWindow):
     @pyqtSlot(object)
     def _onOptimizationFinished(self, result: pd.Series) -> None:
         self._setUIBusy(False)
-        self.controls.properties = self.fitWidget.optimizer.model.properties
+        self.session.adopt()
         logger.info(f'Optimization complete\n{result}')
         message = 'Optimization complete'
         if 'redchi' in result:
@@ -420,6 +427,7 @@ class LMTool(QMainWindow):
     @pyqtSlot(str)
     def _onOptimizationError(self, message: str) -> None:
         self._setUIBusy(False)
+        self.session.restore()
         logger.error(f'Optimization failed: {message}')
         self.statusBar().showMessage(f'Optimization failed: {message}', 5000)
 
