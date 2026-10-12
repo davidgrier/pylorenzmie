@@ -146,6 +146,22 @@ class TestControlPanels(unittest.TestCase):
         self.assertNotIn('numerical_aperture', panel.properties)
         self.assertIn('spherical', panel.model.properties)
 
+    def test_the_second_row_of_the_instrument_group(self):
+        panel = ALMWidget()
+        layout = panel.groupInstrument.layout()
+        row = {layout.getItemPosition(i)[1]: layout.itemAt(i).widget()
+               for i in range(layout.count())
+               if layout.getItemPosition(i)[0] == 1}
+        self.assertEqual([row[c].objectName() for c in sorted(row)],
+                         ['noise', 'piston', 'spherical'])
+
+    def test_the_piston_is_held_fixed_until_asked_for(self):
+        panel = ALMWidget()
+        self.assertIn('piston', panel.fixed)
+        self.assertNotIn('spherical', panel.fixed)
+        panel.piston.setValue(0.25)
+        self.assertAlmostEqual(panel.model.piston, 0.25, delta=0.01)
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

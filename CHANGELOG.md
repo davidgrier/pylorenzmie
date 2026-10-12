@@ -4,6 +4,14 @@ All notable changes to pylorenzmie are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+* `lmtool`: the second row of the instrument controls holds noise, piston and
+  spherical aberration, which fills the cell that the removed numerical-aperture
+  control left empty. The piston is held fixed in fits until you free it.
+
 ## [3.1.0] - 2026-10-11
 
 A phase offset for the scattered field, a license file, a `gui` extra, a

@@ -106,6 +106,14 @@
 	"value": 0.0,
 	"decimals": 1
     },
+    "piston": {
+	"text": "piston",
+	"range": [-0.5, 0.5],
+	"step": 0.01,
+	"value": 0.0,
+	"fixed": true,
+	"decimals": 2
+    },
     "x_c": {
 	"text": "x<sub>c</sub>",
 	"suffix": " pixel",

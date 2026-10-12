@@ -128,8 +128,30 @@
         </property>
        </widget>
       </item>
+      <item row="1" column="0">
+       <widget class="ParameterWidget" name="noise">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+          <horstretch>1</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
+        <property name="minimumSize">
+         <size>
+          <width>200</width>
+          <height>52</height>
+         </size>
+        </property>
+        <property name="frameShape">
+         <enum>QFrame::StyledPanel</enum>
+        </property>
+        <property name="frameShadow">
+         <enum>QFrame::Raised</enum>
+        </property>
+       </widget>
+      </item>
       <item row="1" column="1">
-       <widget class="ParameterWidget" name="spherical">
+       <widget class="ParameterWidget" name="piston">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
           <horstretch>1</horstretch>
@@ -151,7 +173,7 @@
        </widget>
       </item>
       <item row="1" column="2">
-       <widget class="ParameterWidget" name="noise">
+       <widget class="ParameterWidget" name="spherical">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
           <horstretch>1</horstretch>
