@@ -57,6 +57,11 @@ Image tab
 The **Image** tab shows the full normalized hologram.  A circular
 region-of-interest (ROI) marks the area around the particle to be fitted.
 
+When an image is loaded, lmtool looks for particles and puts the ROI on the
+first one, sized to enclose its fringes.  **Particles → Next Particle**
+(Ctrl+N) moves to the next one, and **Particles → Find Particles** (Ctrl+L)
+looks again.  The ROI can also be set by hand:
+
 * **Drag the ROI centre** to reposition it over the particle.
 * **Drag the ROI edge** to resize it so the rings are enclosed.
 
@@ -86,7 +91,8 @@ Fit tab
 The **Fit** tab shows three panels sharing the same spatial axes:
 
 * **Left** — raw cropped hologram from the ROI.
-* **Centre** — current model hologram.
+* **Centre** — current model hologram, on the color scale of the data (the
+  model is not clipped).
 * **Right** — normalized residuals ``(data − model) / noise``.
 
 The model and residuals update live as parameters change and again after
@@ -110,8 +116,10 @@ Workflow
 
 1. **Load a hologram** — **File → Open ...** or pass a filename on the
    command line.
-2. **Position the ROI** — drag the circle in the Image tab to centre it on
-   the particle; resize it to enclose the fringe pattern.
+2. **Position the ROI** — lmtool puts it on the first particle it finds;
+   choose another with **Particles → Next Particle**, or drag the circle in
+   the Image tab to centre it on the particle and resize it to enclose the
+   fringe pattern.
 3. **Adjust parameters** — move the sliders until the Profile tab model curve
    (red) matches the data in fringe spacing and amplitude.  The axial
    position :math:`z_p` has the strongest effect on fringe spacing;

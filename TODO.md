@@ -70,16 +70,18 @@
 
 ## lmtool
 
-- [ ] Localizer integration: detect candidate particles in the image; let the
-      user toggle through candidates, running Estimator and Optimizer on each
+- [x] Localizer integration: the ROI goes to the first candidate when an image
+      is loaded, and Particles -> Next Particle toggles through the others
+- [ ] Batch mode: run Estimator and Optimizer on every candidate and collect
+      the results in one table
 - [ ] Estimation feedback: show before/after parameter values in the status bar
       so the user can judge whether the estimate is reasonable before optimizing
-- [ ] Interactive residuals: residual panel currently only updates after a fit;
-      update it live as the user adjusts parameters
+- [x] Interactive residuals: the residual panel updates as parameters change,
+      and the model is no longer clipped to the range of the data
 - [ ] GPU kernels: expose `cupyLorenzMie` and `torchLorenzMie` (CUDA, Metal)
       as options in the GUI
-- [ ] Layout: the NA widget was removed with `numerical_aperture`, which left an
-      empty cell at row 1, column 0 of `ALMWidget.ui`; rearrange the grid
+- [x] Layout: noise, piston and spherical fill the second row of the
+      instrument controls
 - [ ] Gamma correction support
 - [ ] TOML config file for persistent user preferences
 

@@ -91,6 +91,15 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     def radius(self) -> int:
         return self._radius
 
+    def setRegion(self, x_p: float, y_p: float, radius: int) -> None:
+        '''Place the ROI with its center at ``(x_p, y_p)``.
+
+        Emits :attr:`roiChanged` (and :attr:`radiusChanged` if the
+        radius changed) once.
+        '''
+        self.roi.setSize([2*radius, 2*radius], finish=False)
+        self.roi.setPos([x_p - radius, y_p - radius])
+
     def rect(self) -> QRectF:
         pos = self.roi.pos()
         size = self.roi.size()

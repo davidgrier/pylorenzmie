@@ -268,6 +268,39 @@ class TestLMTool(unittest.TestCase):
             self.assertEqual(tool.fitWidget.model.properties[name], 0.)
         self.assertTrue(result['success'])
 
+    def test_the_roi_starts_on_the_particle(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        properties = tool.controls.properties
+        self.assertAlmostEqual(properties['x_p'], 195.5, delta=2.)
+        self.assertAlmostEqual(properties['y_p'], 193.2, delta=2.)
+        self.assertGreaterEqual(tool.imageWidget.radius, 30)
+        self.assertIn('Particle 1 of', tool.statusBar().currentMessage())
+
+    def test_next_particle_cycles_through_the_candidates(self):
+        import pandas as pd
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        tool._candidates = pd.DataFrame(
+            [dict(x_p=100., y_p=120., bbox=((50, 70), 100, 100)),
+             dict(x_p=250., y_p=200., bbox=((190, 140), 120, 120))])
+        tool._candidate = -1
+        tool.nextParticle()
+        self.assertAlmostEqual(tool.controls.properties['x_p'], 100., delta=1.)
+        tool.nextParticle()
+        self.assertAlmostEqual(tool.controls.properties['x_p'], 250., delta=1.)
+        self.assertEqual(tool.imageWidget.radius, 60)
+        tool.nextParticle()                       # and around again
+        self.assertAlmostEqual(tool.controls.properties['y_p'], 120., delta=1.)
+
+    def test_no_particles_is_reported(self):
+        import numpy as np
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        tool.data = np.ones((200, 200))
+        tool.findParticles()
+        self.assertIn('No particles', tool.statusBar().currentMessage())
+
     def test_the_status_bar_reports_a_saved_result(self):
         tool = LMTool(ALMWidget, str(self.IMAGE))
         self.addCleanup(tool.close)

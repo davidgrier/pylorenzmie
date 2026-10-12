@@ -34,7 +34,8 @@ class _Worker(QObject):
         try:
             self.finished.emit(self._fn(self._arg))
         except Exception as e:
-            self.error.emit(str(e))
+            logger.exception('Background task failed')
+            self.error.emit(f'{type(e).__name__}: {e}')
 
 
 class FitWidget(pg.GraphicsLayoutWidget):
@@ -219,8 +220,11 @@ class FitWidget(pg.GraphicsLayoutWidget):
         if not self.isVisible():
             return
         hologram = self.optimizer.model.hologram().reshape(self._data.shape)
-        hologram = np.clip(hologram, np.min(self._data), np.max(self._data))
-        self.fit.setImage(hologram)
+        # the color scale of the data applies to the model, which is not
+        # clipped: the residuals show the whole difference
+        levels = (np.min(self._data), np.max(self._data))
+        self.region.setLevels(levels)
+        self.fit.setImage(hologram, levels=levels)
         noise = self.optimizer.model.instrument.noise
         self.residuals.setImage((self._data - hologram) / noise)
         self.fit.setRect(self.rect)

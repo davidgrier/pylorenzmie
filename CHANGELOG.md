@@ -6,8 +6,18 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+* `lmtool` looks for particles when it loads an image and puts the ROI on the
+  first, sized to its fringes. **Particles -> Next Particle** (Ctrl+N) selects
+  the others and **Find Particles** (Ctrl+L) searches again.
+* `lmtool` reports the reduced chi-squared of a fit in the status bar, and
+  background tasks that fail log their traceback and show the exception type.
+
 ### Changed
 
+* `lmtool`: the model in the Fit tab is no longer clipped to the range of the
+  data, so the residuals show the whole difference.
 * `lmtool`: spherical aberration is held fixed in fits until you free it, like
   the piston.
 

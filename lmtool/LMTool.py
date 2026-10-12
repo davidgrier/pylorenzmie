@@ -14,7 +14,7 @@ from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot,
 from pyqtgraph.Qt.QtGui import QCloseEvent
 from pyqtgraph.Qt.QtWidgets import (QMainWindow, QFileDialog, QProgressBar)
 
-from pylorenzmie.analysis import DEEstimator
+from pylorenzmie.analysis import DEEstimator, Localizer
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
@@ -31,8 +31,6 @@ logger = logging.getLogger(__name__)
 # TODO: support for cuda-accelerated kernels
 # TODO: toml config file
 # TODO: support for gamma correction
-# TODO: use Localizer to detect candidate particles; let user toggle through
-#       candidates, running Estimator and Optimizer on each
 
 
 class LMTool(QMainWindow):
@@ -62,12 +60,14 @@ class LMTool(QMainWindow):
         self._data = None
         self.coordinates = None
         self._pre_estimate = None
+        self._candidates = None
+        self._candidate = -1
         self._est_worker = None
         self._est_thread = None
         self._setupTheory(controls())
         self._setupStatusBar()
-        self.readHologram(filename)
         self._connectSignals()
+        self.readHologram(filename)
 
     def _setupTheory(self, controls: LMWidget) -> None:
         layout = self.controls.parent().layout()
@@ -94,6 +94,8 @@ class LMTool(QMainWindow):
         self.controls.propertyChanged.connect(self._handlePropertyChanged)
         self.actionOpen.triggered.connect(self.readHologram)
         self.actionOpenBackground.triggered.connect(self.readBackground)
+        self.actionFindParticles.triggered.connect(self.findParticles)
+        self.actionNextParticle.triggered.connect(self.nextParticle)
         self.actionEstimate.triggered.connect(self.estimate)
         self.actionUndoEstimate.triggered.connect(self.undoEstimate)
         self.actionSaveParameters.triggered.connect(self.saveParameters)
@@ -115,6 +117,8 @@ class LMTool(QMainWindow):
         self.imageWidget.setEnabled(not busy)
         self.actionOptimize.setEnabled(not busy)
         self.actionEstimate.setEnabled(not busy)
+        self.actionFindParticles.setEnabled(not busy)
+        self.actionNextParticle.setEnabled(not busy)
 
     @pyqtProperty(np.ndarray)
     def data(self) -> Image:
@@ -146,6 +150,50 @@ class LMTool(QMainWindow):
             self.statusBar().showMessage(f'Could not read: {filename}', 5000)
             return
         self.data = data.astype(float)
+        self.findParticles()
+
+    @pyqtSlot()
+    def findParticles(self) -> None:
+        '''Look for particles in the image and select the first one.
+
+        The ROI moves to the selected particle and takes the size of the
+        region that encloses its fringes.  :meth:`nextParticle` selects
+        the others.
+        '''
+        if self._data is None:
+            return
+        self.statusBar().showMessage('Looking for particles ...')
+        try:
+            found = Localizer().localize(self._data)
+        except Exception as error:
+            logger.exception('Localization failed')
+            self._candidates = None
+            self.statusBar().showMessage(
+                f'Localization failed: {type(error).__name__}: {error}', 8000)
+            return
+        self._candidates = found
+        self._candidate = -1
+        if len(found) == 0:
+            self.statusBar().showMessage(
+                'No particles found: move the ROI by hand', 8000)
+            return
+        self.nextParticle()
+
+    @pyqtSlot()
+    def nextParticle(self) -> None:
+        '''Select the next particle that :meth:`findParticles` found.'''
+        if self._candidates is None or len(self._candidates) == 0:
+            self.findParticles()
+            return
+        self._candidate = (self._candidate + 1) % len(self._candidates)
+        candidate = self._candidates.iloc[self._candidate]
+        _, width, height = candidate['bbox']
+        radius = int(np.clip(max(width, height) // 2, 30, 250))
+        self.imageWidget.setRegion(candidate['x_p'], candidate['y_p'],
+                                   radius)
+        self.statusBar().showMessage(
+            f'Particle {self._candidate + 1} of {len(self._candidates)} '
+            f'at ({candidate["x_p"]:.0f}, {candidate["y_p"]:.0f})', 5000)
 
     @pyqtSlot()
     def readBackground(self, filename: str | None = None) -> None:
@@ -313,7 +361,10 @@ class LMTool(QMainWindow):
         self._setUIBusy(False)
         self.controls.properties = self.fitWidget.optimizer.model.properties
         logger.info(f'Optimization complete\n{result}')
-        self.statusBar().showMessage('Optimization complete', 2000)
+        message = 'Optimization complete'
+        if 'redchi' in result:
+            message += f': reduced \u03c7\u00b2 = {result["redchi"]:.2f}'
+        self.statusBar().showMessage(message, 8000)
 
     @pyqtSlot(str)
     def _onResultSaved(self, filename: str) -> None:

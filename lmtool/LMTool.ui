@@ -164,6 +164,13 @@
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
    </widget>
+   <widget class="QMenu" name="menuParticles">
+    <property name="title">
+     <string>Particles</string>
+    </property>
+    <addaction name="actionFindParticles"/>
+    <addaction name="actionNextParticle"/>
+   </widget>
    <widget class="QMenu" name="menuOptimization">
     <property name="title">
      <string>Optimization</string>
@@ -176,6 +183,7 @@
     <addaction name="saveResultAs"/>
    </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuParticles"/>
    <addaction name="menuOptimization"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
@@ -205,6 +213,22 @@
   <action name="actionSave_Parameters_As">
    <property name="text">
     <string>Save Parameters As ...</string>
+   </property>
+  </action>
+  <action name="actionFindParticles">
+   <property name="text">
+    <string>Find Particles</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+L</string>
+   </property>
+  </action>
+  <action name="actionNextParticle">
+   <property name="text">
+    <string>Next Particle</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+N</string>
    </property>
   </action>
   <action name="actionOptimize">
