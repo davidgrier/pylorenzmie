@@ -57,7 +57,16 @@ class LMWidget(QFrame):
 
     @pyqtProperty(list)
     def fixed(self) -> list[str]:
-        return [c.objectName() for c in self.controls if c.fixed()]
+        '''Names of the properties that a fit must hold constant.
+
+        These are the controls that are checked, and every property of the
+        model that has no control: a parameter that the user cannot see
+        (for example, the aberration coefficients that the panel does not
+        show) must not be fitted.
+        '''
+        shown = [c.objectName() for c in self.controls]
+        hidden = [p for p in self.model.properties if p not in shown]
+        return [c.objectName() for c in self.controls if c.fixed()] + hidden
 
     @fixed.setter
     def fixed(self, fixed: list[str]) -> None:

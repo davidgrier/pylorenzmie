@@ -12,6 +12,15 @@ All notable changes to pylorenzmie are recorded here. The format follows
   spherical aberration, which fills the cell that the removed numerical-aperture
   control left empty. The piston is held fixed in fits until you free it.
 
+### Fixed
+
+* `lmtool` freed every model parameter that has no control in the panel. With
+  the aberrated model that meant defocus, coma, astigmatism, distortion and the
+  aberration center, which a fit moved far from the solution (defocus is nearly
+  degenerate with the height, and the center is meaningless without the terms
+  that use it), and the next estimate, made with the model left in that state,
+  was nonsense. Parameters without a control are now held fixed.
+
 ## [3.1.0] - 2026-10-11
 
 A phase offset for the scattered field, a license file, a `gui` extra, a

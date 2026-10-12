@@ -155,6 +155,20 @@ class TestControlPanels(unittest.TestCase):
         self.assertEqual([row[c].objectName() for c in sorted(row)],
                          ['noise', 'piston', 'spherical'])
 
+    def test_properties_without_a_control_are_fixed(self):
+        # a fit must not free parameters that the user cannot see: defocus
+        # is nearly degenerate with the height, and the aberration center
+        # means nothing without coma, astigmatism or distortion
+        from pylorenzmie.analysis import Optimizer
+        panel = ALMWidget()
+        for name in ('defocus', 'coma', 'astigmatism', 'distortion',
+                     'x_c', 'y_c'):
+            self.assertIn(name, panel.fixed)
+        optimizer = Optimizer(model=panel.model)
+        optimizer.fixed = panel.fixed
+        self.assertEqual(optimizer.variables,
+                         ['x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'spherical'])
+
     def test_the_piston_is_held_fixed_until_asked_for(self):
         panel = ALMWidget()
         self.assertIn('piston', panel.fixed)
