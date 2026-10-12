@@ -20,7 +20,7 @@ from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.lmtool.FitWidget import _Worker
 from pylorenzmie.lmtool.LMWidget import LMWidget
-from pylorenzmie.utilities import Normalizer
+from pylorenzmie.utilities import Normalizer, estimate_noise
 
 _DIR = Path(__file__).parent
 
@@ -98,6 +98,7 @@ class LMTool(QMainWindow):
         self.controls.propertyChanged.connect(self._handlePropertyChanged)
         self.actionOpen.triggered.connect(self.readHologram)
         self.actionOpenBackground.triggered.connect(self.readBackground)
+        self.actionEstimateNoise.triggered.connect(self.estimateNoise)
         self.actionFindParticles.triggered.connect(self.findParticles)
         self.actionNextParticle.triggered.connect(self.nextParticle)
         self.actionEstimate.triggered.connect(self.estimate)
@@ -122,6 +123,7 @@ class LMTool(QMainWindow):
         self.actionOptimize.setEnabled(not busy)
         self.actionEstimate.setEnabled(not busy)
         self.actionFindParticles.setEnabled(not busy)
+        self.actionEstimateNoise.setEnabled(not busy)
         self.actionNextParticle.setEnabled(not busy)
 
     @pyqtProperty(np.ndarray)
@@ -136,6 +138,7 @@ class LMTool(QMainWindow):
         self.controls.x_p.setRange((0, data.shape[1]-1))
         self.controls.y_p.setRange((0, data.shape[0]-1))
         self.imageWidget.data = self._data
+        self._setNoise(self._data)
         self._updateProfile()
         self.fitWidget.setData(*self.crop())
 
@@ -155,6 +158,33 @@ class LMTool(QMainWindow):
             return
         self.data = data.astype(float)
         self.findParticles()
+
+    def _setNoise(self, image: Image) -> None:
+        '''Set the noise of the model to the estimate for ``image``.'''
+        noise = estimate_noise(image)
+        if hasattr(self.controls, 'noise'):
+            low, high = self.controls.noise.range()
+            self.controls.properties = dict(noise=float(np.clip(noise, low,
+                                                                high)))
+        else:                         # a panel without a noise control
+            self.fitWidget.model.instrument.noise = noise
+
+    @pyqtSlot()
+    def estimateNoise(self) -> None:
+        '''Estimate the noise from the region of interest.
+
+        The estimate is the width of the pixel-to-pixel variation, which
+        does not include the fringes or a smooth background.  Every
+        residual in the Fit tab is divided by it, so the reduced chi-squared
+        of a fit is meaningful only when it is right.
+        '''
+        if self._data is None:
+            return
+        data, _, _ = self.crop()
+        self._setNoise(data)
+        self.fitWidget.refreshPreview()
+        noise = self.fitWidget.model.instrument.noise
+        self.statusBar().showMessage(f'Noise: {noise:.3f}', 5000)
 
     @pyqtSlot()
     def findParticles(self) -> None:

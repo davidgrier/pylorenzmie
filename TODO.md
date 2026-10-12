@@ -184,6 +184,14 @@
 
 ## detection
 
+- [ ] **Revisit `Localizer`.** It finds only one of the particles in a
+      PS/silica image (`PS_silica.png`) that has several, and many false
+      candidates in a noisy one (`maxfeatures` ranks them and limits the cost;
+      it does not decide what is a particle). The circle transform with
+      `trackpy.locate` and one `diameter` for all sizes is the likely limit;
+      look at multiscale detection, a threshold on `mass`, and verification by
+      a radial profile or a template bank (see the background-estimation item).
+
 - [ ] `Localizer`: `trackpy` returns many false candidates for weak or noisy
       particles (twelve in a synthetic test image of one particle at z = 600
       pixels); add a mass/contrast threshold or a verification step (for

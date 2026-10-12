@@ -99,6 +99,14 @@ The **Fit** tab shows three panels sharing the same spatial axes:
   model is not clipped).
 * **Right** — normalized residuals ``(data − model) / noise``.
 
+The residuals are divided by the **noise** control, which lmtool sets to an
+estimate of the pixel noise when it loads an image, and again from the region of
+interest with **Optimization → Estimate Noise**.  The estimate comes from the
+pixel-to-pixel variation and does not see structure that is correlated over
+several pixels, such as a fixed pattern in the background.  A reduced
+chi-squared in the status bar well above 1 after the fit therefore means that
+something other than noise is left in the residuals.
+
 The model and residuals update live as parameters change and again after
 each optimization.  Well-converged fits show structureless residuals with
 magnitude ≲ 3.

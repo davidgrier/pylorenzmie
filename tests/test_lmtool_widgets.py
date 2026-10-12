@@ -293,6 +293,35 @@ class TestLMTool(unittest.TestCase):
         tool.nextParticle()                       # and around again
         self.assertAlmostEqual(tool.controls.properties['y_p'], 120., delta=1.)
 
+    def test_the_noise_is_estimated_when_an_image_is_loaded(self):
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        # not the default of 0.05
+        noise = tool.controls.properties['noise']
+        self.assertAlmostEqual(noise, 0.035, delta=0.005)
+        self.assertAlmostEqual(tool.fitWidget.model.instrument.noise, noise,
+                               delta=1e-3)
+
+    def test_a_panel_without_a_noise_control_still_gets_the_estimate(self):
+        tool = LMTool(LMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        self.assertAlmostEqual(tool.fitWidget.model.instrument.noise, 0.035,
+                               delta=0.005)
+
+    def test_estimate_noise_uses_the_region_of_interest(self):
+        import numpy as np
+        tool = LMTool(ALMWidget, str(self.IMAGE))
+        self.addCleanup(tool.close)
+        image = 1. + np.random.default_rng(0).normal(0., 0.1, (390, 390))
+        image[:195] = 1. + np.random.default_rng(1).normal(0., 0.02,
+                                                           (195, 390))
+        tool.data = image
+        tool.imageWidget.setRegion(200., 300., 60)   # the noisy half
+        tool.estimateNoise()
+        self.assertAlmostEqual(tool.controls.properties['noise'], 0.1,
+                               delta=0.01)
+        self.assertIn('Noise: 0.1', tool.statusBar().currentMessage())
+
     def test_one_particle_is_said_to_be_the_only_one(self):
         tool = LMTool(ALMWidget, str(self.IMAGE))
         self.addCleanup(tool.close)

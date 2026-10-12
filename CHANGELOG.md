@@ -16,6 +16,14 @@ All notable changes to pylorenzmie are recorded here. The format follows
   `trackpy` found in `predictions.attrs['nfound']`. The bounding box of each
   feature costs about 80 ms on a full frame, so a noisy 1280 x 1024 image with
   226 candidates took 20 s; limiting them takes one second.
+* `pylorenzmie.utilities.estimate_noise` estimates the standard deviation of
+  the pixel noise in an image from a second-difference filter, which ignores the
+  fringes of a hologram and a smooth background. It agrees with white Gaussian
+  noise to 3%.
+* `lmtool` sets the noise of the model with it when an image is loaded, and
+  **Optimization -> Estimate Noise** does it for the ROI. The noise used to be
+  a fixed 0.05, so the residuals and the reduced chi-squared were scaled by a
+  number unrelated to the data.
 * `lmtool` keeps the ten strongest candidates, and says in the status bar when
   there are none, only one, or many.
 * `lmtool` reports the reduced chi-squared of a fit in the status bar, and
