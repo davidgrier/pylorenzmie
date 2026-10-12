@@ -1,13 +1,8 @@
-from datetime import datetime
 import logging
-from pathlib import Path
-import warnings
 import numpy as np
-import pandas as pd
 import pyqtgraph as pg
-from pyqtgraph.Qt.QtCore import pyqtSignal, pyqtSlot, QRectF
+from pyqtgraph.Qt.QtCore import pyqtSlot, QRectF
 from pyqtgraph.Qt.QtGui import QShowEvent
-from pyqtgraph.Qt.QtWidgets import QFileDialog
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.theory import LorenzMie
@@ -18,21 +13,13 @@ logger = logging.getLogger(__name__)
 class FitWidget(pg.GraphicsLayoutWidget):
     '''Three-panel widget showing the ROI, model fit, and normalized residuals.'''
 
-    #: Emitted with the file name when a result has been saved.
-    resultSaved = pyqtSignal(str)
-    #: Emitted with an error message when a result could not be saved.
-    saveFailed = pyqtSignal(str)
-
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._configurePlot()
         self.optimizer = Optimizer(model=LorenzMie())
         self.optimizer.fraction = 0.25
-        self.datafile = None
-        self.result = None
         self._data = None
         self.rect = None
-        self.metadata = None
         self._model_hologram = None
 
     def _configurePlot(self) -> None:
@@ -68,20 +55,6 @@ class FitWidget(pg.GraphicsLayoutWidget):
                              colorMap=cm,
                              pen=pen)
         self.addItem(cb)
-
-    def setResult(self, result: pd.Series,
-                  metadata: pd.Series | None = None) -> None:
-        '''Keep the result of a fit, so that it can be saved.
-
-        Parameters
-        ----------
-        result : pandas.Series
-            Fitted values, uncertainties and statistics.
-        metadata : pandas.Series, optional
-            The fixed parameters and the settings of the fit.
-        '''
-        self.result = result
-        self.metadata = metadata
 
     def setData(self, data: Image, rect: QRectF,
                 coordinates: Coordinates) -> None:
@@ -153,81 +126,3 @@ class FitWidget(pg.GraphicsLayoutWidget):
             self.optimizer.fraction = value
         else:
             self.optimizer.settings[name] = value
-
-    def _output_path(self) -> str:
-        directory = Path('~/data/lmtool').expanduser()
-        directory.mkdir(parents=True, exist_ok=True)
-        timestamp = datetime.now().strftime('%m_%d_%Y-%H_%M_%S')
-        return str(directory / f'result_{timestamp}.h5')
-
-    @pyqtSlot()
-    def saveResult(self, filename: str | None = None) -> None:
-        '''Save the result of the last fit.
-
-        Writes HDF5 if PyTables is installed and JSON otherwise (the file
-        name then has the suffix ``.json``).  Emits :attr:`resultSaved`
-        with the name of the file that was written, or :attr:`saveFailed`
-        with the reason.  Without a ``filename`` the file goes to
-        ``~/data/lmtool`` with a time stamp in its name.
-        '''
-        if self.result is None:
-            self.saveFailed.emit('There is no result to save: optimize first')
-            return
-        try:
-            filename = filename or self._output_path()
-            try:
-                self._saveHdf(filename)
-            except ImportError:
-                logger.warning('tables not installed; saving as JSON instead')
-                filename = str(Path(filename).with_suffix('.json'))
-                self._saveJson(filename)
-        except Exception as error:
-            logger.error(f'Could not save the result: {error!r}')
-            self.saveFailed.emit(f'Could not save the result: {error}')
-            return
-        self.resultSaved.emit(filename)
-
-    def _metadata(self) -> pd.Series:
-        '''The fixed parameters and settings of the fit, and the file.'''
-        metadata = (self.metadata if self.metadata is not None
-                    else self.optimizer.metadata).copy()
-        metadata['datafile'] = self.datafile
-        return metadata
-
-    def _saveHdf(self, filename: str) -> None:
-        with warnings.catch_warnings():
-            warnings.filterwarnings(
-                'ignore', category=pd.errors.PerformanceWarning)
-            self.result.to_hdf(filename, key='result', mode='w')
-            metadata = self._metadata()
-            metadata.to_hdf(filename, key='metadata')
-
-    def _saveJson(self, filename: str) -> None:
-        s = pd.concat([self.result, self._metadata()])
-        s.to_json(filename, indent=4)
-
-    def saveJson(self, filename: str) -> None:
-        '''Save the result of the last fit as JSON.'''
-        if self.result is None:
-            self.saveFailed.emit('There is no result to save: optimize first')
-            return
-        try:
-            self._saveJson(filename)
-        except Exception as error:
-            logger.error(f'Could not save the result: {error!r}')
-            self.saveFailed.emit(f'Could not save the result: {error}')
-            return
-        self.resultSaved.emit(filename)
-
-    @pyqtSlot()
-    def saveResultAs(self) -> None:
-        get = QFileDialog.getSaveFileName
-        filename, _ = get(self, 'Save Results',
-                          self._output_path(),
-                          'HDF5 (*.h5);;JSON (*.json)')
-        if not filename:
-            return
-        if Path(filename).suffix == '.json':
-            self.saveJson(filename)
-        else:
-            self.saveResult(filename)

@@ -15,6 +15,8 @@ tutorial shows how to tune it.  Further keyword arguments of
 :meth:`~Localizer.crop` cuts the box out of the image.
 '''
 
+from collections.abc import Callable
+
 from pylorenzmie.lib import LMObject, Azimuthal, CircleTransform
 from pylorenzmie.lib.lmtypes import Image, Properties
 import numpy as np
@@ -65,6 +67,7 @@ class Localizer(LMObject):
                  diameter: int | None = None,
                  nfringes: int | None = None,
                  maxfeatures: int | None = None,
+                 check: Callable[[], None] | None = None,
                  **kwargs) -> pd.DataFrame:
         '''Localize features in a normalized holographic microscopy image.
 
@@ -81,6 +84,10 @@ class Localizer(LMObject):
             first.  A noisy image can have hundreds of candidates, and the
             bounding box of each one costs time.  Default: all of them,
             in the order of ``trackpy``.
+        check : callable, optional
+            Called with no arguments before the bounding box of each feature
+            is computed, which is where most of the time goes.  It may raise
+            an exception to stop the localization, as a cancel button does.
         **kwargs
             Additional keyword arguments passed to ``trackpy.locate``.
 
@@ -97,7 +104,7 @@ class Localizer(LMObject):
             larger than ``len(predictions)`` if ``maxfeatures`` applies.
         '''
         if isinstance(image, list):
-            return [self.localize(b, diameter, nfringes, maxfeatures,
+            return [self.localize(b, diameter, nfringes, maxfeatures, check,
                                   **kwargs) for b in image]
 
         diameter = self.diameter if diameter is None else diameter
@@ -112,6 +119,8 @@ class Localizer(LMObject):
         ny, nx = image.shape
         predictions = []
         for _, feature in features.iterrows():
+            if check is not None:
+                check()
             r_p = feature[['x', 'y']].to_numpy()
             radius = self._extent(Azimuthal.avg(image, r_p), nfringes)
             x0 = max(int(np.floor(r_p[0] - radius)), 0)

@@ -19,6 +19,12 @@ For a user-oriented guide to launching and using the application, see
 .. automodule:: pylorenzmie.lmtool.tasks
    :members:
 
+.. automodule:: pylorenzmie.lmtool.ParticleTable
+   :members:
+
+.. automodule:: pylorenzmie.lmtool.results
+   :members:
+
 .. automodule:: pylorenzmie.lmtool.LMWidget
    :members:
 

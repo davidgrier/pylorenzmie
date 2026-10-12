@@ -178,6 +178,19 @@ class TestLocalizerBoxes(unittest.TestCase):
         self.assertEqual(list(few['mass']),
                          sorted(everything['mass'], reverse=True)[:2])
 
+    def test_check_is_called_once_per_feature_and_can_stop_the_search(self):
+        noisy = 1. + np.random.default_rng(1).normal(0., 0.03, (300, 300))
+        calls = []
+        result = Localizer().localize(noisy, maxfeatures=4,
+                                      check=lambda: calls.append(1))
+        self.assertEqual(len(calls), len(result))
+
+        def stop():
+            raise InterruptedError
+
+        with self.assertRaises(InterruptedError):
+            Localizer().localize(noisy, check=stop)
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

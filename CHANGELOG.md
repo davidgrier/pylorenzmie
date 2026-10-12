@@ -14,6 +14,17 @@ All notable changes to pylorenzmie are recorded here. The format follows
   recomputes the display once instead of four times, and one Optimize three
   times instead of nine. A parameter without a control is part of the session,
   fixed.
+* `lmtool` looks for particles in the background, and the window stays usable
+  while it does; loading another image replaces a search that is running.
+  `Localizer.localize` takes `check`, a function that it calls before each
+  feature and that can raise to stop it.
+* `lmtool` has a Particles tab, a table of the particles that were found or
+  added (**Particles -> Add Particle**, Ctrl+Shift+A) with a check box to leave
+  one out, the status of each (new, estimated, fitted) and its fit. An estimate
+  or a fit is recorded for the particle that the ROI is on, and clicking a row
+  restores the particle and its parameters. **Save Result** writes the fits of
+  the checked particles, one row each, as HDF5, JSON or CSV, with the metadata
+  of the fits; it used to write one particle.
 * `lmtool`: an estimate or a fit runs in the background on a `Snapshot`, a
   frozen copy of the parameters, the region and the settings, with a model of its
   own; it shares nothing with the interface thread, and the session takes its

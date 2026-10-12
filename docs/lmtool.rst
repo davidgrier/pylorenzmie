@@ -57,20 +57,42 @@ Image tab
 The **Image** tab shows the full normalized hologram.  A circular
 region-of-interest (ROI) marks the area around the particle to be fitted.
 
-When an image is loaded, lmtool looks for particles and puts the ROI on the
-first one, sized to enclose its fringes.  **Particles → Next Particle**
-(Ctrl+N) moves to the next one, and **Particles → Find Particles** (Ctrl+L)
-looks again.  A noisy image can have hundreds of candidates, so lmtool keeps
-the ten strongest, strongest first, and the status bar says how many it found;
-many candidates usually means that the image is noisy or badly normalized.  If
-there are none, or only one, the status bar says that as well, and the ROI stays
-where it is.  The ROI can also be set by hand:
+When an image is loaded, lmtool looks for particles in the background and
+puts the ROI on the first one, sized to enclose its fringes; the window stays
+usable while it looks.  **Particles → Next Particle** (Ctrl+N) moves to the next
+one, and **Particles → Find Particles** (Ctrl+L) looks again.  A noisy image can
+have hundreds of candidates, so lmtool keeps the ten strongest, strongest first,
+and the status bar says how many it found; many candidates usually means that
+the image is noisy or badly normalized.  If there are none, or only one, the
+status bar says that as well, and the ROI stays where it is.  The ROI can also
+be set by hand:
 
 * **Drag the ROI centre** to reposition it over the particle.
 * **Drag the ROI edge** to resize it so the rings are enclosed.
 
 The ROI centre is used as the initial estimate of the particle's lateral
 position (:math:`x_p, y_p`).
+
+Particles tab
+^^^^^^^^^^^^^
+
+The **Particles** tab lists the particles that lmtool knows about: the ones
+that it found, and the ones that you added.  Each row shows where the particle
+is, whether it was found or added, what has been done with it (``new``,
+``estimated`` or ``fitted``), the fitted height, radius and index, and the
+reduced chi-squared of the fit.
+
+* Click a row to move the ROI to the particle and to restore its parameters.
+* Uncheck a row to leave a particle out: Next Particle skips it and Save Result
+  does not write it.  Use this for false detections.
+* **Particles → Add Particle** (Ctrl+Shift+A) adds the ROI as a particle,
+  for one that the search missed; **Remove Particle** (Ctrl+Backspace) removes
+  the selected one.
+* An estimate or a fit is recorded for the particle that the ROI is on, and
+  a fit with the ROI on no particle adds one.
+
+lmtool fits one particle at a time, and the table collects the results.  It does
+not process a whole image or a stream of images by itself.
 
 Profile tab
 ^^^^^^^^^^^
@@ -140,6 +162,10 @@ Workflow
    The Fit tab updates to show the fitted model and residuals.  An estimate
    or a fit runs in the background, on a copy of the parameters, and **Cancel**
    (Esc) stops it and leaves the parameters as they were.
-5. **Save results** — **Optimization → Save Result** writes an HDF5 file to
-   ``~/data/lmtool/``; **Save Result As...** lets you choose the path and
-   format (HDF5 or JSON).
+5. **Repeat** — choose the next particle and repeat steps 2 to 4; the Particles
+   tab keeps what you did.
+6. **Save results** — **Optimization → Save Result** writes the fits of the
+   particles that are checked, one row each, to ``~/data/lmtool/``; **Save
+   Result As...** lets you choose the path and the format: HDF5 (or JSON if
+   PyTables is not installed), JSON or CSV.  The instrument, the fixed
+   parameters, the optimizer settings and the name of the image go with them.

@@ -25,7 +25,7 @@ import numpy as np
 import pandas as pd
 from pyqtgraph.Qt.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
-from pylorenzmie.analysis import DEEstimator, Optimizer
+from pylorenzmie.analysis import DEEstimator, Localizer, Optimizer
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 
@@ -77,6 +77,23 @@ class Snapshot:
         return cls(model_cls, dict(properties), np.array(data, copy=True),
                    np.array(coordinates, copy=True), tuple(fixed or ()),
                    None if settings is None else dict(settings), fraction)
+
+
+@dataclass(frozen=True)
+class LocalizeRequest:
+    '''An image to look for particles in.
+
+    Parameters
+    ----------
+    image : numpy.ndarray
+        Normalized hologram of the whole frame.  It is only read, so a
+        request does not copy it.
+    maxfeatures : int, optional
+        Number of candidates to keep, the strongest first.  Default: 10.
+    '''
+
+    image: np.ndarray
+    maxfeatures: int = 10
 
 
 @dataclass
@@ -152,6 +169,30 @@ def run_estimate(snapshot: Snapshot, cancel: threading.Event) -> pd.Series:
     return DEEstimator(model=model).estimate(_hologram(snapshot))
 
 
+def run_localize(request: LocalizeRequest,
+                 cancel: threading.Event) -> pd.DataFrame:
+    '''Find the particles in an image.
+
+    Returns
+    -------
+    candidates : pandas.DataFrame
+        The output of
+        :meth:`~pylorenzmie.analysis.Localizer.Localizer.localize`.
+
+    Raises
+    ------
+    Cancelled
+        If ``cancel`` is set before the search is done.
+    '''
+    def check() -> None:
+        if cancel.is_set():
+            raise Cancelled
+
+    check()
+    return Localizer().localize(request.image,
+                                maxfeatures=request.maxfeatures, check=check)
+
+
 class _Worker(QObject):
     '''Runs one task in a thread and reports how it ended.'''
 
@@ -203,6 +244,11 @@ class TaskRunner(QObject):
         self._worker = None
         self._event = threading.Event()
         self._retired = []
+
+    @property
+    def name(self) -> str:
+        '''Name of the task that is running, or an empty string.'''
+        return self._name if self.busy else ''
 
     @property
     def busy(self) -> bool:
