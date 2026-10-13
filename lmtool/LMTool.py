@@ -437,8 +437,9 @@ class LMTool(QMainWindow):
         self.tasks.start('estimate', run_estimate, self._snapshot())
 
     def _onEstimated(self, result: pd.Series) -> None:
+        fixed = self.session.fixed
         updates = {k: float(result[k]) for k in ('z_p', 'a_p', 'n_p')
-                   if k in result
+                   if k in result and k not in fixed
                    and result[k] is not None
                    and np.isfinite(result[k])}
         if updates:

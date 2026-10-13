@@ -341,6 +341,16 @@ class TestResults(ToolTestCase):
         self.assertTrue(entry['result']['success'])
         self.assertEqual(tool.particles.count, 1)
 
+    def test_an_estimate_leaves_the_fixed_parameters_alone(self):
+        tool = self.tool()
+        tool.session.update(dict(a_p=1.234, n_p=1.456))
+        tool.session.setFixed('n_p', True)
+        tool.session.setFixed('a_p', False)
+        tool.estimate()
+        self.wait(tool)
+        self.assertEqual(tool.session.get('n_p'), 1.456)
+        self.assertNotEqual(tool.session.get('a_p'), 1.234)
+
     def test_a_fit_away_from_every_particle_adds_one(self):
         tool = self.tool()
         tool.imageWidget.setRegion(120., 280., 60)

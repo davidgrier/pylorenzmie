@@ -129,6 +129,23 @@ class TestTasks(unittest.TestCase):
             self.assertIn(name, result)
         self.assertGreater(result['z_p'], 10.)
 
+    def test_an_estimate_keeps_the_fixed_parameters(self):
+        fixed = snapshot()
+        fixed = Snapshot.take(fixed.cls, fixed.properties, fixed.data,
+                              fixed.coordinates, [*fixed.fixed, 'n_p'])
+        result = run_estimate(fixed, threading.Event())
+        self.assertEqual(result['n_p'], fixed.properties['n_p'])
+        self.assertNotEqual(result['a_p'], fixed.properties['a_p'])
+
+    def test_an_estimate_with_everything_fixed_changes_nothing(self):
+        fixed = snapshot()
+        fixed = Snapshot.take(fixed.cls, fixed.properties, fixed.data,
+                              fixed.coordinates,
+                              [*fixed.fixed, 'z_p', 'a_p', 'n_p'])
+        result = run_estimate(fixed, threading.Event())
+        for name in ('z_p', 'a_p', 'n_p'):
+            self.assertEqual(result[name], fixed.properties[name])
+
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')
 class TestTaskRunner(unittest.TestCase):

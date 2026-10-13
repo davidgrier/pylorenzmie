@@ -26,6 +26,7 @@ import pandas as pd
 from pyqtgraph.Qt.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
 
 from pylorenzmie.analysis import DEEstimator, Localizer, Optimizer
+from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 
@@ -160,13 +161,21 @@ def run_fit(snapshot: Snapshot, cancel: threading.Event) -> FitResult:
 def run_estimate(snapshot: Snapshot, cancel: threading.Event) -> pd.Series:
     '''Estimate the height, radius and index of the particle of a snapshot.
 
+    A parameter that the snapshot holds fixed keeps its value: the search
+    covers only the others, which are estimated for that value.
+
     Raises
     ------
     Cancelled
         If ``cancel`` is set before the search is done.
     '''
     model = _model(snapshot, cancel)
-    return DEEstimator(model=model).estimate(_hologram(snapshot))
+    bounds = {name: limits for name, limits in DEFAULT_BOUNDS.items()
+              if name not in snapshot.fixed}
+    if not bounds:
+        return pd.Series(model.particle.properties)
+    return DEEstimator(model=model, bounds=bounds).estimate(
+        _hologram(snapshot))
 
 
 def run_localize(request: LocalizeRequest,
