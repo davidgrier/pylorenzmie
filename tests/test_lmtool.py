@@ -13,6 +13,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import cv2
 import numpy as np
 import pandas as pd
 
@@ -24,6 +25,7 @@ try:
     from pylorenzmie.lmtool.LMTool import LMTool
     from pylorenzmie.lmtool.LMWidget import LMWidget
     from pylorenzmie.lmtool.tasks import Cancelled
+    from pylorenzmie.utilities import Normalizer
     _qt = True
 except Exception:       # no Qt binding, or no usable platform plugin
     _qt = False
@@ -48,8 +50,8 @@ class ToolTestCase(unittest.TestCase):
             time.sleep(0.005)
         mkQApp().processEvents()
 
-    def tool(self, panel=None):
-        tool = LMTool(panel or ALMWidget, str(IMAGE))
+    def tool(self, panel=None, background=None):
+        tool = LMTool(panel or ALMWidget, str(IMAGE), background)
         self.addCleanup(tool.close)
         self.wait(tool)
         return tool
@@ -420,6 +422,204 @@ class TestResults(ToolTestCase):
             with self.assertLogs(level='ERROR'):
                 tool.saveResults('x.json')
         self.assertIn('disk full', tool.statusBar().currentMessage())
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestOpenDialogs(ToolTestCase):
+    '''The dialogs for opening files start where the last choice was.'''
+
+    def choose(self, tool, method, filename=''):
+        '''Run ``method`` with a dialog that answers ``filename``; return
+        the directory or file that the dialog was told to start at.'''
+        with mock.patch('pylorenzmie.lmtool.LMTool.QFileDialog.'
+                        'getOpenFileName',
+                        return_value=(filename, '')) as dialog:
+            method()
+        return dialog.call_args.args[2]
+
+    def test_a_hologram_starts_at_the_current_file(self):
+        tool = self.tool()
+        self.assertEqual(self.choose(tool, tool.readHologram), str(IMAGE))
+
+    def test_a_hologram_starts_nowhere_without_a_file(self):
+        tool = self.tool()
+        tool._datafile = None
+        self.assertEqual(self.choose(tool, tool.readHologram), '')
+
+    def test_a_cancelled_dialog_keeps_the_current_file(self):
+        tool = self.tool()
+        self.choose(tool, tool.readHologram)
+        self.assertEqual(tool._datafile, str(IMAGE))
+
+    def test_a_background_starts_beside_the_hologram(self):
+        tool = self.tool()
+        self.assertEqual(self.choose(tool, tool.readBackground),
+                         str(IMAGE.parent))
+
+    def test_a_background_starts_at_the_last_background(self):
+        tool = self.tool()
+        self.choose(tool, tool.readBackground, str(IMAGE))
+        self.assertEqual(tool.normalizer.source, str(IMAGE))
+        self.assertEqual(self.choose(tool, tool.readBackground), str(IMAGE))
+
+    def test_a_background_starts_nowhere_without_any_file(self):
+        tool = self.tool()
+        tool._datafile = None
+        self.assertEqual(self.choose(tool, tool.readBackground), '')
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestBackground(ToolTestCase):
+
+    def shown(self, tool):
+        '''The background that the window says it uses.'''
+        return tool._background.text()
+
+    def test_the_median_is_the_default(self):
+        tool = self.tool()
+        self.assertEqual(tool.normalizer.method, 'median')
+        self.assertEqual(self.shown(tool), 'background: median')
+
+    def test_a_number(self):
+        tool = self.tool(background=100)
+        self.assertEqual(tool.normalizer.method, 'reference')
+        self.assertEqual(tool.normalizer.reference, 100.)
+        self.assertIsNone(tool.normalizer.source)
+        np.testing.assert_allclose(tool.data, tool._raw / 100.)
+        self.assertEqual(self.shown(tool), 'background: 100')
+
+    def test_a_number_given_as_text(self):
+        self.assertEqual(self.tool(background='100').normalizer.reference,
+                         100.)
+
+    def test_a_file_at_startup_is_remembered_for_the_dialog(self):
+        tool = self.tool(background=str(IMAGE))
+        self.assertEqual(tool.normalizer.source, str(IMAGE))
+        self.assertEqual(self.shown(tool), f'background: {IMAGE.name}')
+        with mock.patch('pylorenzmie.lmtool.LMTool.QFileDialog.'
+                        'getOpenFileName', return_value=('', '')) as dialog:
+            tool.readBackground()
+        self.assertEqual(dialog.call_args.args[2], str(IMAGE))
+
+    def test_a_background_that_is_not_there_is_reported(self):
+        with self.assertLogs(level='ERROR'):
+            tool = self.tool(background='no-such-file.png')
+        self.assertEqual(tool.normalizer.method, 'median')
+        self.assertIn('not found', self.shown(tool))
+        self.assertTrue(self.shown(tool).startswith('background: median'))
+
+    def test_a_file_that_is_not_an_image_is_reported(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'background.txt'
+            path.write_text('not an image')
+            with self.assertLogs(level='ERROR'):
+                tool = self.tool(background=str(path))
+        self.assertEqual(tool.normalizer.method, 'median')
+        self.assertIn('Could not read', self.shown(tool))
+
+    def test_a_failed_background_keeps_the_previous_one(self):
+        tool = self.tool(background=100)
+        with self.assertLogs(level='ERROR'):
+            self.assertFalse(tool.setBackground('no-such-file.png'))
+        self.assertEqual(tool.normalizer.reference, 100.)
+        self.assertIn('background: 100', self.shown(tool))
+        self.assertIn('not found', tool.statusBar().currentMessage())
+
+    def test_setting_a_background_renormalizes_the_hologram(self):
+        tool = self.tool()
+        before = tool.data.copy()
+        self.assertTrue(tool.setBackground(50))
+        np.testing.assert_allclose(tool.data, tool._raw / 50.)
+        self.assertFalse(np.allclose(tool.data, before))
+
+    def test_a_background_of_another_shape_falls_back_to_the_median(self):
+        tool = self.tool()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'small.png'
+            cv2.imwrite(str(path), np.full((8, 8), 100, dtype=np.uint8))
+            with self.assertLogs(level='ERROR'):
+                self.assertTrue(tool.setBackground(str(path)))
+        self.assertIn('using the median', self.shown(tool))
+        np.testing.assert_allclose(tool.data,
+                                   Normalizer()(tool._raw))
+        # a background of the right shape brings the label back
+        self.assertTrue(tool.setBackground(100))
+        self.assertEqual(self.shown(tool), 'background: 100')
+
+    def test_the_dialog_sets_the_background(self):
+        tool = self.tool()
+        with mock.patch('pylorenzmie.lmtool.LMTool.QFileDialog.'
+                        'getOpenFileName', return_value=(str(IMAGE), '')):
+            tool.readBackground()
+        self.assertEqual(tool.normalizer.source, str(IMAGE))
+
+    def test_a_cancelled_dialog_changes_nothing(self):
+        tool = self.tool(background=100)
+        with mock.patch('pylorenzmie.lmtool.LMTool.QFileDialog.'
+                        'getOpenFileName', return_value=('', '')):
+            tool.readBackground()
+        self.assertEqual(tool.normalizer.reference, 100.)
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestModelChoice(ToolTestCase):
+
+    def parse(self, *argv):
+        from pylorenzmie.lmtool.LMTool import argument_parser
+        return argument_parser().parse_args(argv)
+
+    def test_the_defaults(self):
+        args = self.parse()
+        self.assertFalse(args.distorted)
+        self.assertIsNone(args.backend)
+
+    def test_the_flags(self):
+        args = self.parse('-d', '-B', 'numpy')
+        self.assertTrue(args.distorted)
+        self.assertEqual(args.backend, 'numpy')
+        args = self.parse('--distorted', '--backend', 'numba')
+        self.assertTrue(args.distorted)
+        self.assertEqual(args.backend, 'numba')
+
+    def test_b_is_still_the_background(self):
+        self.assertEqual(self.parse('-b', '100').background, '100')
+
+    def test_an_unknown_backend_is_refused(self):
+        with self.assertRaises(SystemExit):
+            with mock.patch('sys.stderr'):
+                self.parse('--backend', 'fortran')
+
+    def test_an_unusable_choice_is_a_usage_error(self):
+        # reported before a window or an application exists
+        from pylorenzmie.lmtool.LMTool import lmtool
+        argv = ['lmtool', '--distorted', '--backend', 'torch']
+        with mock.patch('sys.argv', argv), mock.patch('sys.stderr') as err:
+            with self.assertRaises(SystemExit) as raised:
+                lmtool()
+        self.assertEqual(raised.exception.code, 2)
+        message = ''.join(call.args[0] for call in err.write.call_args_list)
+        self.assertIn('Distorted does not support', message)
+
+    def test_the_panel_class_uses_the_model(self):
+        from pylorenzmie.theory import model_class
+        model = model_class('numpy', distorted=True)
+        panel = ALMWidget.with_model(model)
+        self.assertTrue(issubclass(panel, ALMWidget))
+        self.assertIs(panel.cls, model)
+        self.assertIsNot(ALMWidget.cls, model)
+
+    def test_a_window_with_a_distorted_model(self):
+        from pylorenzmie.theory import model_class
+        model = model_class('numpy', distorted=True)
+        tool = self.tool(ALMWidget.with_model(model))
+        self.assertIs(tool.session.cls, model)
+        self.assertTrue(hasattr(tool.session.model, 'warp'))
+        tool.session.update(dict(spherical=2.))
+        tool.estimate()
+        self.wait(tool)
+        tool.optimize()
+        self.wait(tool)
+        self.assertIn('spherical', tool.session.properties)
 
 
 if __name__ == '__main__':  # pragma: no cover

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+import argparse
 from datetime import datetime
 import json
 import logging
@@ -13,8 +14,8 @@ from pyqtgraph.Qt import uic
 from pyqtgraph.Qt.QtCore import pyqtProperty, pyqtSlot, QRectF
 from pyqtgraph.Qt.QtGui import QAction, QCloseEvent
 from pyqtgraph.Qt.QtWidgets import (QAbstractItemView, QFileDialog,
-                                     QHeaderView, QMainWindow, QProgressBar,
-                                     QTableView)
+                                     QHeaderView, QLabel, QMainWindow,
+                                     QProgressBar, QTableView)
 
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
@@ -25,6 +26,7 @@ from pylorenzmie.lmtool.results import save_results
 from pylorenzmie.lmtool.tasks import (FitResult, LocalizeRequest, Snapshot,
                                        TaskRunner, run_estimate, run_fit,
                                        run_localize)
+from pylorenzmie.theory import BACKENDS, model_class
 from pylorenzmie.utilities import Normalizer, estimate_noise
 
 _DIR = Path(__file__).parent
@@ -47,9 +49,10 @@ class LMTool(QMainWindow):
         LMWidget subclass (not an instance) providing parameter controls.
     filename : str, optional
         Path to a hologram image to load on startup.
-    normalizer : Normalizer, optional
-        Background normalization strategy. Defaults to median-filter
-        normalization with a 51-pixel kernel.
+    background : str or float, optional
+        Background of the holograms: a number, or the name of an image file
+        (see :meth:`~pylorenzmie.utilities.normalizer.Normalizer.read`).
+        Default: normalize each hologram by its median.
     '''
 
     uiFile = 'LMTool.ui'
@@ -64,10 +67,11 @@ class LMTool(QMainWindow):
     def __init__(self,
                  controls: type[LMWidget],
                  filename: str | None = None,
-                 normalizer: Normalizer | None = None) -> None:
+                 background: str | float | None = None) -> None:
         super().__init__()
         uic.loadUi(_DIR / self.uiFile, self)
-        self.normalizer = normalizer if normalizer is not None else Normalizer()
+        self.normalizer = Normalizer()
+        self._refused = ''        # why the last background was not used
         self._raw = None
         self._data = None
         self.coordinates = None
@@ -84,6 +88,8 @@ class LMTool(QMainWindow):
         self._setupStatusBar()
         self._setupParticles()
         self._connectSignals()
+        if background is not None:
+            self._useBackground(background)
         self.readHologram(filename)
 
     def _setupTheory(self, controls: LMWidget) -> None:
@@ -126,6 +132,28 @@ class LMTool(QMainWindow):
         self._progress.setMaximumWidth(150)
         self._progress.setVisible(False)
         self.statusBar().addPermanentWidget(self._progress)
+        # what the holograms are divided by, and why not what was asked
+        # for: a message would be replaced by the next one
+        self._background = QLabel()
+        self.statusBar().addPermanentWidget(self._background)
+        self._showBackground(self.normalizer)
+
+    def _showBackground(self, normalizer: Normalizer,
+                        fallback: str = '') -> None:
+        '''Show the background that ``normalizer`` divides by, and what is
+        wrong: why a hologram is divided by the median instead
+        (``fallback``), or why the last background was refused.'''
+        if normalizer.method != 'reference':
+            used = normalizer.method
+        elif normalizer.source:
+            used = Path(normalizer.source).name
+        elif np.ndim(normalizer.reference) == 0:
+            used = f'{normalizer.reference:g}'
+        else:
+            used = 'image'
+        problem = fallback or self._refused
+        self._background.setText(f'background: {used}'
+                                 + (f' ({problem})' if problem else ''))
 
     def _connectSignals(self) -> None:
         self.imageWidget.roiChanged.connect(self._handleROIChanged)
@@ -174,7 +202,13 @@ class LMTool(QMainWindow):
     @data.setter
     def data(self, data: Image) -> None:
         self._raw = data
-        self._data = self.normalizer(data)
+        try:
+            self._data = self.normalizer(data)
+            self._showBackground(self.normalizer)
+        except ValueError as error:
+            logger.error(f'Could not normalize by the background: {error}')
+            self._data = Normalizer()(data)
+            self._showBackground(Normalizer(), f'{error}; using the median')
         self.coordinates = LMObject.meshgrid(data.shape, flatten=False)
         self.controls.x_p.setRange((0, data.shape[1]-1))
         self.controls.y_p.setRange((0, data.shape[0]-1))
@@ -187,7 +221,7 @@ class LMTool(QMainWindow):
     def readHologram(self, filename: str | None = None) -> None:
         if not filename:
             get = QFileDialog.getOpenFileName
-            filename, _ = get(self, 'Open Hologram', '',
+            filename, _ = get(self, 'Open Hologram', self._datafile or '',
                               'Images (*.png *.tif *.tiff)')
         if not filename:
             return
@@ -316,25 +350,59 @@ class LMTool(QMainWindow):
             row = self.particles.add(x_p, y_p, self.imageWidget.radius)
         return row
 
+    def _background_start(self) -> str:
+        '''Where the dialog for a background starts: at the last background
+        or, failing that, in the folder of the hologram, which is where a
+        background is likely to be.'''
+        if self.normalizer.source:
+            return self.normalizer.source
+        return str(Path(self._datafile).parent) if self._datafile else ''
+
     @pyqtSlot()
     def readBackground(self, filename: str | None = None) -> None:
         if not filename:
             get = QFileDialog.getOpenFileName
-            filename, _ = get(self, 'Open Background', '',
+            filename, _ = get(self, 'Open Background',
+                              self._background_start(),
                               'Images (*.png *.tif *.tiff)')
-        if not filename:
-            return
-        bg = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
-        if bg is None:
-            logger.error(f'Could not read background: {filename!r}')
-            self.statusBar().showMessage(
-                f'Could not read: {filename}', 5000)
-            return
-        self.normalizer.method = 'reference'
-        bg = bg.astype(float)
-        self.normalizer.reference = bg
+        if filename:
+            self.setBackground(filename)
+
+    def _useBackground(self, background: str | float) -> str | None:
+        '''Normalize by a background; return why it could not, if it could
+        not, and keep the previous background.'''
+        try:
+            self.normalizer = Normalizer.read(background)
+        except (OSError, ValueError) as error:
+            logger.error(f'Could not set the background: {error}')
+            self._refused = str(error)
+            self._showBackground(self.normalizer)
+            return self._refused
+        self._refused = ''
+        self._showBackground(self.normalizer)
         if self._raw is not None:
             self.data = self._raw
+        return None
+
+    def setBackground(self, background: str | float) -> bool:
+        '''Normalize holograms by a background.
+
+        Parameters
+        ----------
+        background : str or float
+            A number, or the name of an image file, as for
+            :meth:`~pylorenzmie.utilities.normalizer.Normalizer.read`.
+
+        Returns
+        -------
+        bool
+            True if the background was set, False if it could not be read,
+            which leaves the previous background and reports the reason.
+        '''
+        error = self._useBackground(background)
+        if error:
+            self.statusBar().showMessage(error, 8000)
+        return error is None
 
     @pyqtSlot()
     def saveParameters(self, filename: str | None = None) -> None:
@@ -586,15 +654,15 @@ class LMTool(QMainWindow):
             self.saveResults(filename)
 
 
-def lmtool() -> None:
-    from pylorenzmie.lmtool.ALMWidget import ALMWidget
-    from pyqtgraph.Qt.QtWidgets import QApplication
-    import sys
-    import argparse
+def argument_parser() -> argparse.ArgumentParser:
+    '''The command line of lmtool.
 
-    logging.basicConfig(level=logging.WARNING,
-                        format='%(name)s: %(levelname)s: %(message)s')
-
+    Returns
+    -------
+    argparse.ArgumentParser
+        Parser of the file to open and of the options ``--background``,
+        ``--distorted`` and ``--backend``.
+    '''
     default_file = str(_DIR.parent / 'docs' / 'tutorials' / 'crop.png')
 
     parser = argparse.ArgumentParser()
@@ -603,27 +671,36 @@ def lmtool() -> None:
     parser.add_argument('-b', '--background', dest='background',
                         default=None, action='store',
                         help='background: image path or intensity value')
+    parser.add_argument('-d', '--distorted', action='store_true',
+                        help='model the aberrations as geometric '
+                        'distortions rather than phase factors '
+                        '(numpy and numba backends)')
+    parser.add_argument('-B', '--backend', choices=BACKENDS, default=None,
+                        help='calculator of the scattering model '
+                        '(default: PYLORENZMIE_BACKEND, else numba '
+                        'if installed, else numpy)')
+    return parser
+
+
+def lmtool() -> None:
+    from pylorenzmie.lmtool.ALMWidget import ALMWidget
+    from pyqtgraph.Qt.QtWidgets import QApplication
+    import sys
+
+    logging.basicConfig(level=logging.WARNING,
+                        format='%(name)s: %(levelname)s: %(message)s')
+
+    parser = argument_parser()
     args, unparsed = parser.parse_known_args()
     qt_args = sys.argv[:1] + unparsed
-
-    normalizer = Normalizer()
-    if args.background is not None:
-        try:
-            value = float(args.background)
-            normalizer = Normalizer(method='reference', reference=value)
-        except ValueError:
-            bg_path = Path(args.background)
-            if bg_path.exists():
-                bg = cv2.imread(str(bg_path),
-                                cv2.IMREAD_GRAYSCALE).astype(float)
-                normalizer = Normalizer(method='reference', reference=bg)
-            else:
-                logger.warning(
-                    f'Background not found: {args.background!r}; '
-                    'using median filter')
+    try:
+        model = model_class(args.backend, args.distorted)
+    except (ValueError, ImportError) as error:
+        parser.error(str(error))
 
     app = QApplication(qt_args)
-    tool = LMTool(ALMWidget, args.filename, normalizer)
+    tool = LMTool(ALMWidget.with_model(model), args.filename,
+                  args.background)
     tool.show()
     sys.exit(app.exec())
 

@@ -40,7 +40,29 @@ known camera offset)::
     lmtool image.png --background 100
 
 A background image can also be loaded after startup via
-**File → Open Background...**.
+**File → Open Background...**.  The status bar shows the background in use.  A
+background that cannot be read is reported there and in the log, and the
+previous one stays.  A background image must have the shape of the hologram:
+otherwise the hologram is divided by its median, and the status bar says so.
+
+Model
+^^^^^
+
+By default lmtool models the aberrations of the microscope as phase factors
+(:func:`~pylorenzmie.theory.Aberrated.Aberrated`) and computes the
+scattering with the fastest calculator that is available.  Two options
+change that::
+
+    lmtool image.png --distorted
+    lmtool image.png --backend numpy
+
+``-d`` or ``--distorted`` models the aberrations as geometric distortions
+(:func:`~pylorenzmie.theory.Distorted.Distorted`), which is exact within the
+operator formalism and costs a little more.  ``-B`` or ``--backend`` chooses
+the calculator: ``numpy``, ``numba``, ``torch``, ``jax`` or ``cupy``.  The
+choice overrides the environment variable ``PYLORENZMIE_BACKEND``.  The
+distorted model works with ``numpy`` and ``numba`` only.  An unavailable
+choice is reported at startup.  (The short option ``-b`` is the background.)
 
 Interface
 ---------
