@@ -102,8 +102,8 @@
 - [ ] `torchLorenzMie`: speed up the Triton kernel as the Metal one was
       (precomputed partial-wave constants, displacement formed in the kernel,
       intensity formed in the kernel, aberration phase in the kernel)
-- [ ] `Distorted`: the exact geometric-flow counterpart of `Aberrated` (patch
-      on hold; see the aberration manuscript)
+- [x] `Distorted`: the exact geometric-flow counterpart of `Aberrated`, with a
+      fused Numba warp kernel; `lmtool --distorted` and `--backend`
 - [ ] Piston (constant relative phase) and explicit saturation handling in
       `Feature`/`Aberrated` (patch on hold: the piston needs a physical
       explanation before it is introduced)

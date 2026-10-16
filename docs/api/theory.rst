@@ -20,6 +20,11 @@ raises ``ImportError``), or import the class from its module. See
 (see :func:`~pylorenzmie.theory.Aberrated.Aberrated`) is built on the same
 calculator as ``pylorenzmie.theory.LorenzMie``; the NumPy one is
 ``pylorenzmie.theory.Aberrated.AberratedLorenzMie``.
+:func:`~pylorenzmie.theory.model_class` returns the aberrated or the distorted
+model for a named backend, which is how the ``--backend`` and ``--distorted``
+options of :doc:`lmtool <../lmtool>` choose theirs.
+
+.. autofunction:: pylorenzmie.theory.model_class
 
 Particles and instrument
 ------------------------
@@ -64,6 +69,18 @@ Aberrated
 ---------
 
 .. automodule:: pylorenzmie.theory.Aberrated
+   :members:
+
+Distorted
+---------
+
+.. automodule:: pylorenzmie.theory.Distorted
+   :members:
+
+generators
+----------
+
+.. automodule:: pylorenzmie.theory.generators
    :members:
 
 cupyLorenzMie

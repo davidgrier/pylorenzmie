@@ -9,6 +9,8 @@ from .Dimer import Dimer
 from .Instrument import Instrument
 from .Aberrated import Aberrated
 from .Aberrated import AberratedLorenzMie as _NumpyAberratedLorenzMie
+from .Distorted import Distorted, supported as _distortable
+from .Distorted import DistortedLorenzMie as _NumpyDistortedLorenzMie
 from .LorenzMie import LorenzMie as _BaseLorenzMie
 
 # Choice of the calculator exported as ``LorenzMie``.
@@ -28,6 +30,9 @@ from .LorenzMie import LorenzMie as _BaseLorenzMie
 # rather than silently falling back to a different one.
 
 
+BACKENDS = ('numpy', 'numba', 'torch', 'jax', 'cupy')
+
+
 def _load(name: str) -> type:
     if name == 'numpy':
         return _BaseLorenzMie
@@ -43,8 +48,8 @@ def _load(name: str) -> type:
     if name == 'cupy':
         from .cupyLorenzMie import cupyLorenzMie
         return cupyLorenzMie
-    raise ValueError(f'Unknown backend {name!r}: choose numpy, numba, '
-                     'torch, jax or cupy')
+    raise ValueError(f'Unknown backend {name!r}: choose from '
+                     + ', '.join(BACKENDS))
 
 
 def _select_backend(requested: str | None = None) -> type:
@@ -56,7 +61,7 @@ def _select_backend(requested: str | None = None) -> type:
             raise
         except Exception as error:
             raise ImportError(
-                f'PYLORENZMIE_BACKEND={requested!r} is not available: '
+                f'The {requested!r} backend is not available: '
                 f'{error}') from error
     try:
         return _load('numba')
@@ -97,8 +102,83 @@ else:
     # NumPy calculator is ``pylorenzmie.theory.Aberrated.AberratedLorenzMie``
     AberratedLorenzMie = _aberrated(LorenzMie)
 
+
+def _distorted(base: type) -> type:
+    '''The distorted calculator for a backend.
+
+    Numba and NumPy are supported.  The GPU and JAX calculators do not
+    evaluate the field from displacements, so they get the NumPy one.
+    '''
+    if base is _BaseLorenzMie or not _distortable(base):
+        return _NumpyDistortedLorenzMie
+    distorted = Distorted(base)
+    distorted.__module__ = __name__
+    distorted.__qualname__ = distorted.__name__ = 'DistortedLorenzMie'
+    return distorted
+
+
+if _TYPE_CHECKING:
+    DistortedLorenzMie = _NumpyDistortedLorenzMie
+else:
+    # follows the backend where it can; see :func:`Distorted`
+    DistortedLorenzMie = _distorted(LorenzMie)
+
+
+def model_class(backend: str | None = None, distorted: bool = False) -> type:
+    '''The microscope model for a back end.
+
+    Parameters
+    ----------
+    backend : str, optional
+        One of ``'numpy'``, ``'numba'``, ``'torch'``, ``'jax'`` or
+        ``'cupy'``.  Default: the calculator that this package exports as
+        :class:`LorenzMie`, which ``PYLORENZMIE_BACKEND`` chooses.
+    distorted : bool, optional
+        If True, return the :func:`Distorted` calculator, with the
+        aberrations as geometric distortions.  Otherwise return the
+        :func:`Aberrated` calculator, with the aberrations as phase
+        factors.  Default: False.
+
+    Returns
+    -------
+    type
+        A subclass of the calculator of the back end.  Asking again for the
+        same back end returns the same class, which pickle can find by its
+        name.
+
+    Raises
+    ------
+    ValueError
+        If *backend* is not the name of a back end, or if *distorted* is
+        True for a back end that cannot evaluate the field at warped
+        coordinates (only ``'numpy'`` and ``'numba'`` can).
+    ImportError
+        If the back end is not available.
+    '''
+    base = _select_backend(backend) if backend else LorenzMie
+    if distorted and not _distortable(base):
+        raise ValueError(f'Distorted does not support {base.__name__}: '
+                         'choose the numpy or numba backend')
+    if base is _BaseLorenzMie:
+        return _NumpyDistortedLorenzMie if distorted \
+            else _NumpyAberratedLorenzMie
+    if base is LorenzMie:
+        return DistortedLorenzMie if distorted else AberratedLorenzMie
+    factory, prefix = (Distorted, 'Distorted') if distorted \
+        else (Aberrated, 'Aberrated')
+    name = prefix + base.__name__
+    if name not in globals():
+        cls = factory(base)
+        # named so that pickle finds the class in this module
+        cls.__module__ = __name__
+        cls.__qualname__ = cls.__name__ = name
+        globals()[name] = cls
+    return globals()[name]
+
+
 # Alias for backward compatibility
 LMHologram = LorenzMie
 
 __all__ = '''Instrument Particle Sphere Cluster Dimer
-          LorenzMie LMHologram Aberrated AberratedLorenzMie'''.split()
+          LorenzMie LMHologram Aberrated AberratedLorenzMie
+          Distorted DistortedLorenzMie model_class BACKENDS'''.split()

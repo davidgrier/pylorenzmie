@@ -54,7 +54,9 @@ The calculators are interchangeable.  Their class attribute ``method``
 ('numpy', 'numba numpy', 'torch numpy', ...) names them, and an optimizer
 checks that its own ``method`` is part of the model's.
 :func:`~pylorenzmie.theory.Aberrated.Aberrated` wraps any calculator with the
-aberrations of the microscope.  Which calculator ``pylorenzmie.theory``
+aberrations of the microscope as phase factors, and
+:func:`~pylorenzmie.theory.Distorted.Distorted` applies them as the exact
+distortions of the operator formalism (NumPy and Numba calculators).  Which calculator ``pylorenzmie.theory``
 exports as ``LorenzMie`` is decided when the package is imported; see the
 theory page of the API reference.
 

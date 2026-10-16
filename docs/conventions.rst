@@ -69,6 +69,17 @@ Coma, astigmatism and distortion depend on the position of the aberration
 center (``x_c``, ``y_c``, in pixels) relative to the particle; defocus and
 spherical aberration do not.  Defocus is nearly degenerate with ``z_p``.
 
+:func:`~pylorenzmie.theory.Distorted.Distorted` uses the same coefficients,
+units and sign, and adds field curvature.  It applies the aberrations as
+flows of the image plane instead of as phase factors.  The flows of different
+aberrations do not commute, so its default ``mode='composed'`` defines the
+coefficients together with the order of the operators (the default is the
+order of ``pylorenzmie.theory.generators.NAMES``; ``order`` changes it).
+``mode='summed'`` integrates one flow of the sum of the generators and does
+not depend on the order.  The two agree to first order in the coefficients
+and differ when the aberration is large or the particle is close to the focal
+plane.  Report the mode and the order with fitted coefficients.
+
 Randomness
 ----------
 
