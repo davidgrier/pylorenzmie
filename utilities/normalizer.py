@@ -11,14 +11,13 @@ median background.  Subtract the dark count of the camera from the image and
 the reference before normalizing.
 '''
 
-import logging
+import os
+from pathlib import Path
+from typing import Self
 
 import numpy as np
 from numpy.typing import NDArray
 from scipy.ndimage import median_filter
-
-
-logger = logging.getLogger(__name__)
 
 
 class Normalizer:
@@ -48,10 +47,27 @@ class Normalizer:
         the largest fringe spacing expected in the holograms. Default: 51.
     reference : ndarray or float, optional
         Background for the ``'reference'`` method: either an image array
-        with the same shape as the input or a scalar intensity value.
+        with the same shape as the input or a positive scalar intensity.
+
+    Raises
+    ------
+    ValueError
+        If *method* is not one of :attr:`methods`, or if *reference* is a
+        scalar that is not positive and finite.
+
+    Notes
+    -----
+    A pixel where the background is not positive has no meaningful
+    normalized value, and is NaN in the result.  Masks exclude such pixels.
+    The normalizer does not guess: calling it with the ``'reference'``
+    method and no reference, or with a reference image of another shape
+    than the image, raises :exc:`ValueError`.
     '''
 
     methods = ('filter', 'median', 'reference')
+
+    #: Name of the file that the reference was read from, if it was.
+    source: str | None = None
 
     def __init__(self,
                  method: str = 'median',
@@ -60,6 +76,83 @@ class Normalizer:
         self.method = method
         self.size = size
         self.reference = reference
+
+    @classmethod
+    def read(cls, background: str | os.PathLike | float, **kwargs) -> Self:
+        '''A normalizer that divides by a background that is read.
+
+        Parameters
+        ----------
+        background : str, path-like or float
+            A number is the intensity of a uniform background.  A string
+            that reads as a number is the same.  Any other string, and a
+            path, is the name of an image file, which is read as 8-bit gray
+            levels, as lmtool reads holograms.
+        **kwargs
+            Passed to the constructor (``size``).
+
+        Returns
+        -------
+        Normalizer
+            With the ``'reference'`` method.  :attr:`source` is the name of
+            the file, if there is one.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the file does not exist.
+        ValueError
+            If the file is not an image that can be read, or the intensity
+            is not positive and finite.
+        '''
+        if not isinstance(background, os.PathLike):
+            try:
+                value = float(background)
+            except (TypeError, ValueError):
+                if not isinstance(background, str):
+                    raise
+            else:
+                return cls('reference', reference=value, **kwargs)
+        path = Path(background)
+        if not path.is_file():
+            raise FileNotFoundError(f'Background not found: {str(path)!r}')
+        import cv2
+        image = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+        if image is None:
+            raise ValueError(f'Could not read the background: {str(path)!r}')
+        normalizer = cls('reference', reference=image.astype(float), **kwargs)
+        normalizer.source = str(path)
+        return normalizer
+
+    @property
+    def method(self) -> str:
+        '''Normalization method, one of :attr:`methods`.'''
+        return self._method
+
+    @method.setter
+    def method(self, method: str) -> None:
+        if method not in self.methods:
+            raise ValueError(f'Unknown method {method!r}: choose from '
+                             + ', '.join(self.methods))
+        self._method = method
+
+    @property
+    def reference(self) -> NDArray[np.floating] | float | None:
+        '''Background of the ``'reference'`` method, an image or a number.'''
+        return self._reference
+
+    @reference.setter
+    def reference(self, reference: NDArray[np.floating] | float | None
+                  ) -> None:
+        if reference is not None:
+            reference = np.asarray(reference, dtype=float)
+            if reference.ndim == 0:
+                if not (np.isfinite(reference) and reference > 0):
+                    raise ValueError('A scalar background must be positive '
+                                     f'and finite, not {float(reference)}')
+                reference = float(reference)
+        self._reference = reference
+        self.source = None
 
     def __call__(self, image: NDArray[np.floating]) -> NDArray[np.floating]:
         '''Return the image divided by its estimated background.
@@ -73,17 +166,24 @@ class Normalizer:
         -------
         normalized : ndarray
             Hologram divided by background; background pixels are ≈ 1.
+            Pixels where the background is not positive are NaN.
+
+        Raises
+        ------
+        ValueError
+            If the method is ``'reference'`` and there is no reference, or
+            the reference is an image of a different shape.
         '''
-        if self.method == 'reference' and self.reference is not None:
+        if self.method == 'reference':
+            if self.reference is None:
+                raise ValueError("The 'reference' method needs a reference")
             background = np.asarray(self.reference)
             if background.ndim > 0 and background.shape != image.shape:
-                logger.warning(
-                    f'Reference shape {background.shape} != '
-                    f'image shape {image.shape}; falling back to median')
-                background = np.median(image)
+                raise ValueError(
+                    f'The reference has shape {background.shape} but the '
+                    f'image has shape {image.shape}')
         elif self.method == 'filter':
             background = median_filter(image, size=self.size)
         else:
             background = np.median(image)
-        safe = np.where(background > 0, background, 1.)
-        return image / safe
+        return image / np.where(background > 0, background, np.nan)
