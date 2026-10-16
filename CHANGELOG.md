@@ -4,6 +4,65 @@ All notable changes to pylorenzmie are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [3.4.0] - 2026-10-16
+
+`Distorted` models the aberrations as the exact distortions of the operator
+formalism, and `lmtool` can use it, and any backend.
+
+### Added
+
+* `pylorenzmie.theory.Distorted.Distorted`, a factory like `Aberrated` whose
+  calculator moves the points of the image along the flow of each aberration
+  and evaluates the scattered field there, instead of multiplying it by a phase
+  factor. It takes the coefficients, units and signs of `Aberrated`, plus
+  `fieldcurvature`, and costs 1.3 to 1.8 times the ideal model in a fit with
+  one to three aberrations. The flows of different aberrations do not commute,
+  so the default `mode='composed'` defines the coefficients together with the
+  `order` of the operators (the order of `generators.NAMES`);
+  `mode='summed'` follows the flow of the sum of the generators and does not
+  depend on the order. The two agree to first order. It works with the NumPy and
+  Numba calculators. The Numba warp kernels are cached on disk, and a model
+  compiles or loads them when it is made, so that no thread compiles one
+  while it is running. `pylorenzmie.theory.DistortedLorenzMie` follows the
+  backend like `AberratedLorenzMie`.
+* `Normalizer.read(background)`, a normalizer that divides by a number or by an
+  image read from a file, and `Normalizer.source`, the name of that file.
+* `pylorenzmie.theory.generators`, the generating function of each aberration
+  and the Runge-Kutta flow.
+* `pylorenzmie.theory.model_class(backend, distorted)` and
+  `pylorenzmie.theory.BACKENDS`: the aberrated or distorted model for a named
+  backend.
+* `lmtool --distorted` (`-d`) and `lmtool --backend` (`-B`; `-b` is still
+  `--background`) choose the model and the calculator. A choice that cannot be
+  used, such as `-d` with torch, is reported at startup. `ALMWidget.with_model`
+  makes the panel class for a model class.
+
+### Fixed
+
+* `lmtool image.png --background file` no longer ends in a traceback when the
+  file exists but is not an image.
+
+### Changed
+
+* `Normalizer` no longer guesses. An unknown `method`, a scalar reference that is
+  not positive and finite, the `'reference'` method without a reference, and a
+  reference image of another shape than the image raise `ValueError`, where they
+  used to fall back to the median, or to a warning in the log, and a pixel where
+  the background is not positive is NaN, where it used to be left in raw counts.
+  `Mask` excludes NaN pixels. Code that relied on the fallbacks must catch the
+  error or give a matching reference.
+* `lmtool`: the background comes from `Normalizer.read`, for `--background` and
+  for **Open Background** alike, so a number, a file name, a missing file and a
+  file that is not an image are handled in one place. The status bar shows the
+  background in use, and says so when a hologram is divided by the median
+  because the background does not fit it or could not be read. The `normalizer`
+  argument of `LMTool` is replaced by `background`.
+* `lmtool`: the dialog for **Open Hologram** starts at the current file, and the
+  dialog for **Open Background** at the last background or, failing that, in
+  the folder of the hologram.
+* The error for a backend that cannot be loaded names the backend, instead of
+  the environment variable `PYLORENZMIE_BACKEND`, which may not have been set.
+
 ## [3.3.1] - 2026-10-12
 
 `lmtool` uses Numba, and so does everything else that uses `AberratedLorenzMie`.
