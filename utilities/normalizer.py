@@ -7,8 +7,10 @@ illumination; a large median filter, which estimates a slowly varying
 background from the image itself; or a recorded reference image, which is the
 most accurate, because it also removes dust and fringes of the optics.  For a
 video, :class:`~pylorenzmie.utilities.vmedian.VMedian` supplies a running
-median background.  Subtract the dark count of the camera from the image and
-the reference before normalizing.
+median background.  A camera adds a constant dark count (black level) to
+every pixel, and the hologram must be divided by the background of the light
+alone: give the dark count to the :class:`Normalizer`, which subtracts it from
+the image and the background before it divides.
 '''
 
 import os
@@ -48,6 +50,13 @@ class Normalizer:
     reference : ndarray or float, optional
         Background for the ``'reference'`` method: either an image array
         with the same shape as the input or a positive scalar intensity.
+        It is a raw background, with the dark count in it.
+    dark : float, optional
+        Dark count of the camera (black level), in the units of the image:
+        the value of a pixel that sees no light.  It is subtracted from the
+        image and from the reference before the division, so that the
+        background is 1 and the fringes have their true contrast.
+        Default: 0.
 
     Raises
     ------
@@ -57,6 +66,16 @@ class Normalizer:
 
     Notes
     -----
+    Dividing by a background that includes a dark count ``d`` reduces the
+    contrast of the fringes by the factor ``(background - d) / background``,
+    which is about two thirds for ``d = 29`` counts on a background of 82.
+    Fits then compensate with a particle that scatters less than the true
+    one (a smaller radius and a larger index).  If the dark count is not
+    known from a dark image, the variance of the pixel noise (from the
+    difference of consecutive frames) is a linear function of the mean
+    level for shot noise, and the mean level at which it extrapolates to
+    zero is the dark count.
+
     A pixel where the background is not positive has no meaningful
     normalized value, and is NaN in the result.  Masks exclude such pixels.
     The normalizer does not guess: calling it with the ``'reference'``
@@ -72,10 +91,12 @@ class Normalizer:
     def __init__(self,
                  method: str = 'median',
                  size: int = 51,
-                 reference: NDArray[np.floating] | float | None = None) -> None:
+                 reference: NDArray[np.floating] | float | None = None,
+                 dark: float = 0.) -> None:
         self.method = method
         self.size = size
         self.reference = reference
+        self.dark = dark
 
     @classmethod
     def read(cls, background: str | os.PathLike | float, **kwargs) -> Self:
@@ -89,7 +110,7 @@ class Normalizer:
             path, is the name of an image file, which is read as 8-bit gray
             levels, as lmtool reads holograms.
         **kwargs
-            Passed to the constructor (``size``).
+            Passed to the constructor (``size``, ``dark``).
 
         Returns
         -------
@@ -137,6 +158,19 @@ class Normalizer:
         self._method = method
 
     @property
+    def dark(self) -> float:
+        '''Dark count that is subtracted before the division.'''
+        return self._dark
+
+    @dark.setter
+    def dark(self, dark: float) -> None:
+        dark = float(dark)
+        if not (np.isfinite(dark) and dark >= 0):
+            raise ValueError('The dark count must be finite and not '
+                             f'negative, not {dark}')
+        self._dark = dark
+
+    @property
     def reference(self) -> NDArray[np.floating] | float | None:
         '''Background of the ``'reference'`` method, an image or a number.'''
         return self._reference
@@ -160,13 +194,15 @@ class Normalizer:
         Parameters
         ----------
         image : ndarray
-            Raw hologram pixel values as a floating-point array.
+            Raw hologram pixel values as a floating-point array, with
+            the dark count in them.
 
         Returns
         -------
         normalized : ndarray
-            Hologram divided by background; background pixels are ≈ 1.
-            Pixels where the background is not positive are NaN.
+            Hologram divided by background, both without the dark count;
+            background pixels are ≈ 1.  Pixels where the background is not
+            positive are NaN.
 
         Raises
         ------
@@ -174,10 +210,11 @@ class Normalizer:
             If the method is ``'reference'`` and there is no reference, or
             the reference is an image of a different shape.
         '''
+        image = image - self.dark
         if self.method == 'reference':
             if self.reference is None:
                 raise ValueError("The 'reference' method needs a reference")
-            background = np.asarray(self.reference)
+            background = np.asarray(self.reference) - self.dark
             if background.ndim > 0 and background.shape != image.shape:
                 raise ValueError(
                     f'The reference has shape {background.shape} but the '

@@ -53,6 +53,11 @@ class LMTool(QMainWindow):
         Background of the holograms: a number, or the name of an image file
         (see :meth:`~pylorenzmie.utilities.normalizer.Normalizer.read`).
         Default: normalize each hologram by its median.
+    dark : float, optional
+        Dark count (black level) of the camera, in gray levels: subtracted
+        from the hologram and the background before the division (see
+        :class:`~pylorenzmie.utilities.normalizer.Normalizer`).
+        Default: 0.
     '''
 
     uiFile = 'LMTool.ui'
@@ -67,10 +72,12 @@ class LMTool(QMainWindow):
     def __init__(self,
                  controls: type[LMWidget],
                  filename: str | None = None,
-                 background: str | float | None = None) -> None:
+                 background: str | float | None = None,
+                 dark: float = 0.) -> None:
         super().__init__()
         uic.loadUi(_DIR / self.uiFile, self)
-        self.normalizer = Normalizer()
+        self.dark = float(dark)
+        self.normalizer = Normalizer(dark=self.dark)
         self._refused = ''        # why the last background was not used
         self._raw = None
         self._data = None
@@ -152,7 +159,8 @@ class LMTool(QMainWindow):
         else:
             used = 'image'
         problem = fallback or self._refused
-        self._background.setText(f'background: {used}'
+        dark = f', dark {normalizer.dark:g}' if normalizer.dark else ''
+        self._background.setText(f'background: {used}{dark}'
                                  + (f' ({problem})' if problem else ''))
 
     def _connectSignals(self) -> None:
@@ -207,8 +215,9 @@ class LMTool(QMainWindow):
             self._showBackground(self.normalizer)
         except ValueError as error:
             logger.error(f'Could not normalize by the background: {error}')
-            self._data = Normalizer()(data)
-            self._showBackground(Normalizer(), f'{error}; using the median')
+            fallback = Normalizer(dark=self.dark)
+            self._data = fallback(data)
+            self._showBackground(fallback, f'{error}; using the median')
         self.coordinates = LMObject.meshgrid(data.shape, flatten=False)
         self.controls.x_p.setRange((0, data.shape[1]-1))
         self.controls.y_p.setRange((0, data.shape[0]-1))
@@ -372,7 +381,7 @@ class LMTool(QMainWindow):
         '''Normalize by a background; return why it could not, if it could
         not, and keep the previous background.'''
         try:
-            self.normalizer = Normalizer.read(background)
+            self.normalizer = Normalizer.read(background, dark=self.dark)
         except (OSError, ValueError) as error:
             logger.error(f'Could not set the background: {error}')
             self._refused = str(error)
@@ -383,6 +392,25 @@ class LMTool(QMainWindow):
         if self._raw is not None:
             self.data = self._raw
         return None
+
+    def setDark(self, dark: float) -> None:
+        '''Subtract a dark count (black level) before normalizing.
+
+        Parameters
+        ----------
+        dark : float
+            Dark count in gray levels, finite and not negative.
+
+        Raises
+        ------
+        ValueError
+            If the dark count is not finite and non-negative.
+        '''
+        self.normalizer.dark = dark        # validates it
+        self.dark = self.normalizer.dark
+        self._showBackground(self.normalizer)
+        if self._raw is not None:
+            self.data = self._raw
 
     def setBackground(self, background: str | float) -> bool:
         '''Normalize holograms by a background.
@@ -673,6 +701,9 @@ def argument_parser() -> argparse.ArgumentParser:
     parser.add_argument('-b', '--background', dest='background',
                         default=None, action='store',
                         help='background: image path or intensity value')
+    parser.add_argument('-D', '--dark', type=float, default=0.,
+                        help='dark count (black level) of the camera, in '
+                        'gray levels, subtracted before normalizing')
     parser.add_argument('-d', '--distorted', action='store_true',
                         help='model the aberrations as geometric '
                         'distortions rather than phase factors '
@@ -702,7 +733,7 @@ def lmtool() -> None:
 
     app = QApplication(qt_args)
     tool = LMTool(ALMWidget.with_model(model), args.filename,
-                  args.background)
+                  args.background, args.dark)
     tool.show()
     sys.exit(app.exec())
 

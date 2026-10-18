@@ -6,6 +6,17 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+* `Normalizer` takes the dark count (black level) of the camera, `dark`, and
+  subtracts it from the image and the reference before it divides. Without it
+  the fringes of a hologram have too little contrast by the factor
+  `(background - dark) / background`, and fits compensate with a particle that
+  scatters less (a smaller radius, a larger index). `lmtool` takes it as
+  `--dark` (`-D`) and `LMTool.setDark`, and shows it in the status bar. The
+  `Normalizer` notes say how to find it from the noise when there is no dark
+  image.
+
 ### Fixed
 
 * `lmtool`: a region of interest that extends past the edge of the image is

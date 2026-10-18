@@ -87,6 +87,37 @@ class TestNormalizer(unittest.TestCase):
             with self.assertRaises(ValueError, msg=str(value)):
                 Normalizer('reference', reference=value)
 
+    def test_the_dark_count_is_subtracted_from_image_and_background(self):
+        dark, background = 30., 90.
+        light = np.full((8, 8), 60.)            # a pixel of the light alone
+        light[3, 4] = 66.                       # a fringe, 10% above
+        raw = light + dark
+        for normalizer in (Normalizer('reference', reference=background,
+                                      dark=dark),
+                           Normalizer('median', dark=dark),
+                           Normalizer('filter', size=5, dark=dark)):
+            out = normalizer(raw)
+            self.assertAlmostEqual(float(out[0, 0]), 1., places=6)
+            self.assertAlmostEqual(float(out[3, 4]), 1.1, places=6)
+        # dividing by the raw background shows the fringe at 6.7%
+        plain = Normalizer('reference', reference=background)(raw)
+        self.assertAlmostEqual(float(plain[3, 4]/plain[0, 0]), 96/90)
+
+    def test_the_dark_count_must_be_finite_and_not_negative(self):
+        self.assertEqual(Normalizer().dark, 0.)
+        for value in (-1., np.nan, np.inf):
+            with self.assertRaises(ValueError, msg=str(value)):
+                Normalizer(dark=value)
+        normalizer = Normalizer(dark=5)
+        with self.assertRaises(ValueError):
+            normalizer.dark = -5
+        self.assertEqual(normalizer.dark, 5.)
+
+    def test_pixels_below_the_dark_count_are_nan(self):
+        out = Normalizer('reference', reference=np.full((4, 4), 20.),
+                         dark=30.)(np.full((4, 4), 50.))
+        self.assertTrue(np.isnan(out).all())
+
     def test_the_reference_can_be_replaced(self):
         normalizer = Normalizer('reference', reference=80.)
         normalizer.reference = np.full((8, 8), 40.)
@@ -126,7 +157,8 @@ class TestRead(unittest.TestCase):
         self.assertAlmostEqual(float(out[2, 3]), 2.)
 
     def test_options_reach_the_constructor(self):
-        self.assertEqual(Normalizer.read(100, size=11).size, 11)
+        normalizer = Normalizer.read(100, size=11, dark=29)
+        self.assertEqual((normalizer.size, normalizer.dark), (11, 29.))
 
     def test_setting_the_reference_forgets_the_file(self):
         normalizer = Normalizer.read(self.path)

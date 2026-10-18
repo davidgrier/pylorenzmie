@@ -541,6 +541,24 @@ class TestBackground(ToolTestCase):
         np.testing.assert_allclose(tool.data, tool._raw / 50.)
         self.assertFalse(np.allclose(tool.data, before))
 
+    def test_the_dark_count_is_subtracted_before_dividing(self):
+        tool = self.tool(background=100)
+        tool.setDark(20.)
+        np.testing.assert_allclose(tool.data, (tool._raw - 20.) / 80.)
+        self.assertEqual(self.shown(tool), 'background: 100, dark 20')
+        # it stays when the background changes
+        tool.setBackground(120)
+        np.testing.assert_allclose(tool.data, (tool._raw - 20.) / 100.)
+        with self.assertRaises(ValueError):
+            tool.setDark(-1.)
+        self.assertEqual(tool.dark, 20.)
+
+    def test_a_dark_count_at_startup(self):
+        tool = LMTool(ALMWidget, str(IMAGE), 100, 20.)
+        self.addCleanup(tool.close)
+        self.wait(tool)
+        np.testing.assert_allclose(tool.data, (tool._raw - 20.) / 80.)
+
     def test_a_background_of_another_shape_falls_back_to_the_median(self):
         tool = self.tool()
         with tempfile.TemporaryDirectory() as directory:
@@ -592,6 +610,11 @@ class TestModelChoice(ToolTestCase):
 
     def test_b_is_still_the_background(self):
         self.assertEqual(self.parse('-b', '100').background, '100')
+
+    def test_the_dark_count_is_an_option(self):
+        self.assertEqual(self.parse().dark, 0.)
+        self.assertEqual(self.parse('-D', '29').dark, 29.)
+        self.assertEqual(self.parse('--dark', '28.5').dark, 28.5)
 
     def test_an_unknown_backend_is_refused(self):
         with self.assertRaises(SystemExit):
