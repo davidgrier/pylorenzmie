@@ -83,6 +83,9 @@ suppress_warnings = [
 
 nitpick_ignore = [
     ('py:class', '_SeriesLikeCoef_co'),  # numpy internal type, not our code
+    # sphinx-autodoc-typehints 3.17 writes it as a class; numpy documents it
+    # as data, so intersphinx does not find it
+    ('py:class', 'numpy.typing.NDArray'),
     # built on the selected backend, documented as pylorenzmie.theory.Aberrated
     ('py:class', 'pylorenzmie.theory.AberratedLorenzMie'),
 ]
