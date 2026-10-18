@@ -116,6 +116,15 @@ class TestSession(ToolTestCase):
                                delta=0.01)
         self.assertIn('Noise: 0.1', tool.statusBar().currentMessage())
 
+    def test_a_region_past_the_edge_is_drawn_where_it_is(self):
+        tool = self.tool()
+        tool.imageWidget.setRegion(20., 195., 60)
+        data, rect, coordinates = tool.crop()
+        self.assertLess(tool.imageWidget.rect().x(), 0.)    # past the edge
+        self.assertEqual(rect.x(), 0.)
+        self.assertEqual((rect.width(), rect.height()), data.shape[::-1])
+        self.assertEqual(coordinates.shape[1:], data.shape)
+
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')
 class TestTasks(ToolTestCase):

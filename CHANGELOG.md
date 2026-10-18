@@ -4,6 +4,14 @@ All notable changes to pylorenzmie are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [semantic versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+* `lmtool`: a region of interest that extends past the edge of the image is
+  drawn where its pixels are, instead of the clipped pixels being stretched
+  over the whole region.
+
 ## [3.4.0] - 2026-10-16
 
 `Distorted` models the aberrations as the exact distortions of the operator

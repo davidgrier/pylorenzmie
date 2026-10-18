@@ -467,9 +467,11 @@ class LMTool(QMainWindow):
     def crop(self) -> tuple[Image, QRectF, Coordinates]:
         get = self.imageWidget.roi.getArraySlice
         (sy, sx), _ = get(self._data, self.imageWidget.image)
-        return (self._data[sy, sx],
-                self.imageWidget.rect(),
-                self.coordinates[:, sy, sx])
+        # the rectangle of the pixels that were cut out: the ROI itself
+        # extends past the image when the particle is near an edge
+        rect = QRectF(sx.start, sy.start,
+                      sx.stop - sx.start, sy.stop - sy.start)
+        return (self._data[sy, sx], rect, self.coordinates[:, sy, sx])
 
     def _busy(self) -> bool:
         '''True, with a message, if a task is running.'''
