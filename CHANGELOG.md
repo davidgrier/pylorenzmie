@@ -19,6 +19,18 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* `Estimator` finds the center of the particle and matches the profile to a
+  sphere to obtain the radius. The radius came from the Fraunhofer
+  approximation and was about 4 um for every sphere in our tests, whatever its
+  size. It is now the radius whose Lorenz-Mie profile at `n_p` best matches the
+  azimuthal average, searched on a grid of radii and of heights about the
+  paraxial estimate, and the height of the match replaces the paraxial one.
+  The profile is taken about the point at which the hologram is most nearly
+  rotationally symmetric, found within `max_shift` (10 pixels by default; zero
+  keeps the center of the crop) of the center of the crop: an error of 10
+  pixels in the center made the radius of a micron-sized sphere too small by
+  25% to 40% and moved a larger one by 25% in the other direction. `x_p` and
+  `y_p` of the result are therefore no longer the center of the crop.
 * The `z_p` bounds of `DEEstimator` and `RadialEstimator` are in micrometers,
   like `a_p`, and the search converts them to pixels with the magnification of
   the instrument. A range in pixels covered a different height in the sample

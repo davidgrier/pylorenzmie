@@ -5,7 +5,8 @@ import cv2
 from pathlib import Path
 
 from pylorenzmie.analysis import Estimator, Hologram, BaseEstimator
-from pylorenzmie.theory import Instrument
+from pylorenzmie.lib import LMObject
+from pylorenzmie.theory import Instrument, LorenzMie
 
 
 THIS_DIR = Path(__file__).parent
@@ -35,21 +36,30 @@ class TestEstimator(unittest.TestCase):
         result = self.estimator.estimate(self.hologram)
         self.assertIsInstance(result, pd.Series)
 
-    def test_estimate_sets_center(self):
-        '''x_p and y_p are set from hologram coordinate means.'''
-        result = self.estimator.estimate(self.hologram)
+    def test_center_of_the_crop_is_kept_without_a_search(self):
+        '''max_shift = 0 puts the particle at the center of the crop.'''
+        estimator = Estimator(instrument=self.instrument, max_shift=0.)
+        result = estimator.estimate(self.hologram)
         self.assertAlmostEqual(result['x_p'],
                                float(self.hologram.coordinates[0].mean()))
         self.assertAlmostEqual(result['y_p'],
                                float(self.hologram.coordinates[1].mean()))
 
-    def test_estimate_center_corner_aware(self):
-        '''Center shifts correctly for a hologram with a non-zero corner.'''
-        corner = (10., 20.)
-        h = Hologram(self.hologram.data, corner=corner)
-        result = self.estimator.estimate(h)
+    def test_center_without_a_search_is_corner_aware(self):
+        '''The center shifts with the corner of the hologram.'''
+        estimator = Estimator(instrument=self.instrument, max_shift=0.)
+        h = Hologram(self.hologram.data, corner=(10., 20.))
+        result = estimator.estimate(h)
         self.assertAlmostEqual(result['x_p'], float(h.coordinates[0].mean()))
         self.assertAlmostEqual(result['y_p'], float(h.coordinates[1].mean()))
+
+    def test_search_is_corner_aware(self):
+        '''The search reports pixel coordinates of the image, not the crop.'''
+        h = Hologram(self.hologram.data, corner=(10., 20.))
+        a = self.estimator.estimate(self.hologram)
+        b = self.estimator.estimate(h)
+        self.assertAlmostEqual(b['x_p'] - a['x_p'], 10.)
+        self.assertAlmostEqual(b['y_p'] - a['y_p'], 20.)
 
     def test_estimate_z_positive(self):
         '''Estimated z_p is positive.'''
@@ -66,6 +76,54 @@ class TestEstimator(unittest.TestCase):
         r1 = self.estimator.estimate(self.hologram)
         r2 = self.estimator.predict(self.hologram)
         self.assertAlmostEqual(r1['z_p'], r2['z_p'], places=3)
+
+
+class TestEstimatorOnSyntheticHolograms(unittest.TestCase):
+    '''The center, height and radius of a sphere from its hologram.'''
+
+    SHAPE = (301, 301)
+
+    def hologram(self, magnification, a_p, z_um, shift=(0., 0.), n_p=1.6):
+        instrument = Instrument()
+        instrument.wavelength = 0.447
+        instrument.magnification = magnification
+        instrument.n_m = 1.34
+        model = LorenzMie(instrument=instrument)
+        model.coordinates = LMObject.meshgrid(self.SHAPE)
+        ny, nx = self.SHAPE
+        self.truth = [nx // 2 + shift[0], ny // 2 + shift[1],
+                      z_um / magnification]
+        model.particle.r_p = self.truth
+        model.particle.a_p = a_p
+        model.particle.n_p = n_p
+        return instrument, Hologram(model.hologram().reshape(self.SHAPE))
+
+    def test_center_is_found_when_the_particle_is_off_center(self):
+        '''A particle 8 pixels from the center of the crop is located.'''
+        instrument, h = self.hologram(0.12, 0.5, 100., shift=(6., -5.))
+        result = Estimator(instrument=instrument, n_p=1.6).estimate(h)
+        self.assertAlmostEqual(result['x_p'], self.truth[0], delta=0.5)
+        self.assertAlmostEqual(result['y_p'], self.truth[1], delta=0.5)
+
+    def test_radius_does_not_depend_on_the_error_in_the_center(self):
+        '''A particle off the center of the crop has the same radius.'''
+        radii = []
+        for shift in ((0., 0.), (7., 0.), (-5., 5.)):
+            instrument, h = self.hologram(0.12, 0.5, 100., shift)
+            result = Estimator(instrument=instrument, n_p=1.6).estimate(h)
+            radii.append(result['a_p'])
+        self.assertLess(max(radii) / min(radii), 1.05)
+
+    def test_radius_and_height_at_any_magnification(self):
+        for magnification, a_p, z_um in ((0.048, 0.75, 10.),
+                                         (0.12, 0.5, 100.),
+                                         (0.12, 1.5, 140.)):
+            with self.subTest(magnification=magnification, a_p=a_p):
+                instrument, h = self.hologram(magnification, a_p, z_um)
+                result = Estimator(instrument=instrument, n_p=1.6).estimate(h)
+                self.assertAlmostEqual(result['a_p'] / a_p, 1., delta=0.1)
+                self.assertAlmostEqual(result['z_p'] / self.truth[2], 1.,
+                                       delta=0.03)
 
 
 if __name__ == '__main__':  # pragma: no cover
