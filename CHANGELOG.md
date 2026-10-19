@@ -17,6 +17,16 @@ All notable changes to pylorenzmie are recorded here. The format follows
   `Normalizer` notes say how to find it from the noise when there is no dark
   image.
 
+### Changed
+
+* The `z_p` bounds of `DEEstimator` and `RadialEstimator` are in micrometers,
+  like `a_p`, and the search converts them to pixels with the magnification of
+  the instrument. A range in pixels covered a different height in the sample
+  at each magnification: the old default of 10 to 600 pixels stopped at 72 um
+  at 0.120 um/pixel, so a particle at 990 pixels (119 um) was out of reach of
+  the estimate in `lmtool`. The default is now 1 to 200 um. Code that passes
+  `bounds={'z_p': ...}` in pixels must give micrometers instead.
+
 ### Fixed
 
 * `lmtool`: a region of interest that extends past the edge of the image is

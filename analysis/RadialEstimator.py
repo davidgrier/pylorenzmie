@@ -10,7 +10,7 @@ from scipy.optimize import differential_evolution
 from pylorenzmie.lib import Azimuthal
 from pylorenzmie.lib.lmtypes import Properties, Result
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
-from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS
+from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS, pixel_bounds
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie
 
@@ -66,8 +66,10 @@ class RadialEstimator(BaseEstimator):
         :class:`~pylorenzmie.analysis.Optimizer.Optimizer`. The particle
         parameters on this model are updated in-place.
     bounds : dict, optional
-        Mapping of parameter name to ``(min, max)`` search range.
-        Default: ``z_p`` (10, 600) pixels, ``a_p`` (0.25, 10.0) μm,
+        Mapping of parameter name to ``(min, max)`` search range.  The
+        height ``z_p`` is given in micrometers, like ``a_p``, and the search
+        converts it to pixels with the magnification of the instrument.
+        Default: ``z_p`` (1, 200) μm, ``a_p`` (0.25, 10.0) μm,
         ``n_p`` (1.0, 3.0).
     popsize : int, optional
         DE population size multiplier (population = popsize ×
@@ -148,7 +150,8 @@ class RadialEstimator(BaseEstimator):
         coords = np.vstack([x_p + radii, np.full(n_radii, y_p)])
 
         de_vars = list(self.bounds.keys())
-        de_bounds = list(self.bounds.values())
+        de_bounds = list(pixel_bounds(
+            self.bounds, self.model.instrument.magnification).values())
 
         saved_coords = self.model.coordinates
         self.model.coordinates = coords

@@ -30,10 +30,39 @@ from scipy.optimize import differential_evolution
 
 
 DEFAULT_BOUNDS: Properties = {
-    'z_p': (10., 600.),
+    'z_p': (1., 200.),
     'a_p': (0.25, 10.0),
     'n_p': (1.0, 3.0),
 }
+
+
+def pixel_bounds(bounds: dict, magnification: float) -> dict:
+    '''Convert the height bounds of a search from micrometers to pixels.
+
+    The heights of a particle are measured in pixels, the unit of the
+    coordinates, but the range that a search should cover is set by the
+    sample, not by the camera.  The bounds therefore give ``z_p`` in
+    micrometers, like ``a_p``, and a search converts it with the
+    magnification of the instrument.
+
+    Parameters
+    ----------
+    bounds : dict
+        Mapping of parameter name to ``(min, max)`` search range, with
+        ``z_p`` in micrometers.
+    magnification : float
+        Size of a pixel in the sample (μm/pixel).
+
+    Returns
+    -------
+    bounds : dict
+        A copy of ``bounds`` with ``z_p`` in pixels.
+    '''
+    converted = dict(bounds)
+    if 'z_p' in converted:
+        lo, hi = converted['z_p']
+        converted['z_p'] = (lo / magnification, hi / magnification)
+    return converted
 
 
 class _DEObjective:
@@ -80,8 +109,11 @@ class DEEstimator(BaseEstimator):
         :class:`~pylorenzmie.analysis.Optimizer.Optimizer`. The particle
         parameters on this model are updated in-place.
     bounds : dict, optional
-        Mapping of parameter name to ``(min, max)`` search range.
-        Default: ``z_p`` (10, 600) pixels, ``a_p`` (0.25, 10.0) μm,
+        Mapping of parameter name to ``(min, max)`` search range.  The
+        height ``z_p`` is given in micrometers, like ``a_p``, and the search
+        converts it to pixels with the magnification of the instrument, so
+        that the range does not change with the camera.
+        Default: ``z_p`` (1, 200) μm, ``a_p`` (0.25, 10.0) μm,
         ``n_p`` (1.0, 3.0).
     fraction : float, optional
         Fraction of pixels used for the DE objective function.
@@ -185,7 +217,8 @@ class DEEstimator(BaseEstimator):
         noise = self.model.instrument.noise
 
         de_vars = list(self.bounds.keys())
-        de_bounds = list(self.bounds.values())
+        de_bounds = list(pixel_bounds(
+            self.bounds, self.model.instrument.magnification).values())
 
         saved_coords = self.model.coordinates
         self.model.coordinates = de_coords

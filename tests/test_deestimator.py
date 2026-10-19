@@ -3,7 +3,8 @@ import numpy as np
 import pandas as pd
 
 from pylorenzmie.analysis import BaseEstimator, Hologram
-from pylorenzmie.analysis.DEEstimator import DEEstimator, DEFAULT_BOUNDS
+from pylorenzmie.analysis.DEEstimator import (DEEstimator, DEFAULT_BOUNDS,
+                                              pixel_bounds)
 from pylorenzmie.theory import LorenzMie
 from pylorenzmie.lib import LMObject
 
@@ -100,9 +101,10 @@ class TestDEEstimator(unittest.TestCase):
 
     def test_custom_bounds(self):
         '''DEEstimator respects custom bounds.'''
+        mag = self.model.instrument.magnification
         custom = DEEstimator(
             model=self.model,
-            bounds={'z_p': (150., 250.)},
+            bounds={'z_p': (150.*mag, 250.*mag)},   # micrometers
             seed=0)
         custom.settings['maxiter'] = 1
         custom.settings['workers'] = 1
@@ -125,6 +127,29 @@ class TestDEEstimator(unittest.TestCase):
     def test_exclude_none_by_default(self):
         '''exclude defaults to None.'''
         self.assertIsNone(self.estimator.exclude)
+
+    def test_height_bounds_are_converted_to_pixels(self):
+        '''z_p is bounded in micrometers; the search runs in pixels.'''
+        bounds = pixel_bounds({'z_p': (10., 100.), 'a_p': (0.25, 10.)}, 0.1)
+        self.assertEqual(bounds['z_p'], (100., 1000.))
+        self.assertEqual(bounds['a_p'], (0.25, 10.))
+
+    def test_pixel_bounds_leaves_its_argument_alone(self):
+        bounds = {'z_p': (10., 100.)}
+        pixel_bounds(bounds, 0.1)
+        self.assertEqual(bounds, {'z_p': (10., 100.)})
+
+    def test_search_range_follows_the_magnification(self):
+        '''The same bounds cover the same height in the sample.'''
+        self.model.instrument.magnification = 0.24
+        self.model.particle.r_p = [50., 50., 100.]    # 24 um
+        hologram = Hologram(self.model.hologram().reshape((101, 101)))
+        custom = DEEstimator(model=self.model, seed=0,
+                             bounds={'z_p': (20., 30.)})
+        custom.settings.update(maxiter=1, workers=1)
+        z_p = custom.estimate(hologram)['z_p']
+        self.assertGreaterEqual(z_p*0.24, 20.)
+        self.assertLessEqual(z_p*0.24, 30.)
 
 
 if __name__ == '__main__':  # pragma: no cover

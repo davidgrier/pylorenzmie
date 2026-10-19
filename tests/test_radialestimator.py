@@ -78,9 +78,10 @@ class TestRadialEstimator(unittest.TestCase):
 
     def test_custom_bounds(self):
         '''RadialEstimator respects custom bounds.'''
+        mag = self.model.instrument.magnification
         custom = RadialEstimator(
             model=self.model,
-            bounds={'z_p': (150., 250.)},
+            bounds={'z_p': (150.*mag, 250.*mag)},   # micrometers
             seed=0)
         custom.settings['maxiter'] = 1
         custom.settings['workers'] = 1
