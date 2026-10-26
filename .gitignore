@@ -6,8 +6,8 @@ plots
 *.pyc
 .idea/
 *.png
-!docs/simulated pair holograms/*.png
 .DS_Store
 *~
 *.txt
 devel/mlp_training_data.npz
+docs/tutorials/simulated pair holograms/
