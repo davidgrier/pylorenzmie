@@ -22,25 +22,42 @@ class Localizer(LMObject):
     nfringes : int, optional
         Number of interference fringes to enclose in each bounding box.
         Default: 20.
+    percentile : int, optional
+        ``trackpy.locate`` brightness cutoff: a detected peak must be
+        brighter than pixels in this percentile.  Lower values admit
+        fainter (e.g. more out-of-focus) features.  Default: 64
+        (``trackpy.locate``'s own default).
+    separation : float, optional
+        Minimum pixel separation ``trackpy.locate`` requires between
+        two detections.  Default: ``None`` (``trackpy.locate``'s own
+        default, ``diameter`` + 1).
     '''
 
     def __init__(self,
                  diameter: int = 31,
-                 nfringes: int = 20) -> None:
+                 nfringes: int = 20,
+                 percentile: int = 64,
+                 separation: float | None = None) -> None:
         super().__init__()
         self.diameter = diameter
         self.nfringes = nfringes
+        self.percentile = percentile
+        self.separation = separation
         self._circletransform = CircleTransform()
 
     @LMObject.properties.getter
     def properties(self) -> Properties:
-        '''Localization parameters: nfringes and diameter.'''
-        return dict(nfringes=self.nfringes, diameter=self.diameter)
+        '''Localization parameters: nfringes, diameter, percentile,
+        and separation.'''
+        return dict(nfringes=self.nfringes, diameter=self.diameter,
+                    percentile=self.percentile, separation=self.separation)
 
     def localize(self,
                  image: Image | list[Image],
                  diameter: int | None = None,
                  nfringes: int | None = None,
+                 percentile: int | None = None,
+                 separation: float | None = None,
                  **kwargs) -> pd.DataFrame:
         '''Localize features in a normalized holographic microscopy image.
 
@@ -52,6 +69,10 @@ class Localizer(LMObject):
             Override :attr:`diameter` for this call.
         nfringes : int, optional
             Override :attr:`nfringes` for this call.
+        percentile : int, optional
+            Override :attr:`percentile` for this call.
+        separation : float, optional
+            Override :attr:`separation` for this call.
         **kwargs
             Additional keyword arguments passed to ``trackpy.locate``.
 
@@ -62,14 +83,19 @@ class Localizer(LMObject):
             ``bbox`` is ``((x0, y0), width, height)``.
         '''
         if isinstance(image, list):
-            return [self.localize(b, diameter, nfringes, **kwargs)
+            return [self.localize(b, diameter, nfringes, percentile,
+                                  separation, **kwargs)
                     for b in image]
 
         diameter = self.diameter if diameter is None else diameter
         nfringes = self.nfringes if nfringes is None else nfringes
+        percentile = self.percentile if percentile is None else percentile
+        separation = self.separation if separation is None else separation
 
         a = self._circletransform.transform(image)
-        features = tp.locate(a, diameter, characterize=False, **kwargs)
+        features = tp.locate(a, diameter, characterize=False,
+                             percentile=percentile, separation=separation,
+                             **kwargs)
 
         predictions = []
         for _, feature in features.iterrows():
