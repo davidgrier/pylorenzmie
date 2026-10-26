@@ -51,6 +51,61 @@ class TestMask(unittest.TestCase):
         self.mask.from_json(s)
         self.assertAlmostEqual(self.mask.fraction, 0.3)
 
+    # --- determinism ---
+
+    def test_exact_pixel_count(self):
+        self.mask.fraction = 0.1
+        expected = round(0.1 * self.shape[0] * self.shape[1])
+        for _ in range(5):
+            self.mask.update()
+            self.assertEqual(int(self.mask().sum()), expected)
+
+    def test_exact_count_with_exclusions(self):
+        exclude = np.zeros(self.shape, dtype=bool)
+        exclude[:, :64] = True
+        mask = Mask(shape=self.shape, fraction=0.25, exclude=exclude)
+        self.assertEqual(int(mask().sum()), round(0.25 * 64 * 128))
+        self.assertFalse(np.any(mask()[exclude]))
+
+    def test_seed_makes_the_mask_reproducible(self):
+        a = Mask(shape=self.shape, fraction=0.2, seed=7)
+        b = Mask(shape=self.shape, fraction=0.2, seed=7)
+        np.testing.assert_array_equal(a(), b())
+        first = a().copy()
+        a.update()                      # redrawn, but from the same seed
+        np.testing.assert_array_equal(a(), first)
+
+    def test_different_seeds_differ(self):
+        a = Mask(shape=self.shape, fraction=0.2, seed=1)
+        b = Mask(shape=self.shape, fraction=0.2, seed=2)
+        self.assertFalse(np.array_equal(a(), b()))
+
+    def test_seed_applies_to_apply(self):
+        hologram = Hologram(np.random.rand(*self.shape))
+        self.mask.seed = 3
+        d1, c1 = self.mask.apply(hologram)
+        d2, c2 = self.mask.apply(hologram)
+        np.testing.assert_array_equal(d1, d2)
+        np.testing.assert_array_equal(c1, c2)
+
+    def test_unseeded_draws_differ(self):
+        a = Mask(shape=self.shape, fraction=0.2)
+        b = Mask(shape=self.shape, fraction=0.2)
+        self.assertFalse(np.array_equal(a(), b()))
+
+    def test_global_random_state_is_neither_used_nor_disturbed(self):
+        np.random.seed(0)
+        before = np.random.get_state()[1].copy()
+        Mask(shape=self.shape, fraction=0.2)
+        Mask(shape=self.shape, fraction=0.2, seed=5)
+        np.testing.assert_array_equal(np.random.get_state()[1], before)
+        # and the global seed does not control the mask
+        np.random.seed(0)
+        a = Mask(shape=self.shape, fraction=0.2)
+        np.random.seed(0)
+        b = Mask(shape=self.shape, fraction=0.2)
+        self.assertFalse(np.array_equal(a(), b()))
+
     # --- apply ---
 
     def test_apply_returns_tuple(self):

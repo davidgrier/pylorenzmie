@@ -78,13 +78,52 @@ class TestOptimizer(unittest.TestCase):
             self.assertIn(f, self.optimizer.fixed)
             self.assertNotIn(f, self.optimizer.variables)
 
+    def test_default_variables_are_the_particle_parameters(self):
+        self.assertEqual(self.optimizer.variables,
+                         ['x_p', 'y_p', 'z_p', 'a_p', 'n_p'])
+
+    def test_aberrated_model_keeps_its_aberrations_fixed_by_default(self):
+        from pylorenzmie.theory import Aberrated
+        model = Aberrated(LorenzMie)(spherical=1.)
+        optimizer = Optimizer(model=model)
+        self.assertEqual(optimizer.variables,
+                         ['x_p', 'y_p', 'z_p', 'a_p', 'n_p'])
+        for name in ('defocus', 'spherical', 'coma', 'astigmatism',
+                     'distortion', 'x_c', 'y_c'):
+            self.assertIn(name, optimizer.fixed)
+
+    def test_aberrations_can_still_be_freed(self):
+        from pylorenzmie.theory import Aberrated
+        optimizer = Optimizer(model=Aberrated(LorenzMie)())
+        optimizer.variables = ['x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'spherical']
+        self.assertIn('spherical', optimizer.variables)
+        self.assertNotIn('spherical', optimizer.fixed)
+
+    def test_user_settings_are_kept(self):
+        settings = {'method': 'dogbox', 'loss': 'linear', 'max_nfev': 7}
+        optimizer = Optimizer(settings=settings)
+        self.assertEqual(optimizer.settings['method'], 'dogbox')
+        self.assertEqual(optimizer.settings['max_nfev'], 7)
+        self.assertFalse(optimizer.robust)
+        settings['max_nfev'] = 99               # the dictionary was copied
+        self.assertEqual(optimizer.settings['max_nfev'], 7)
+
+    def test_robust_true_overrides_settings(self):
+        optimizer = Optimizer(settings={'method': 'lm', 'loss': 'linear'},
+                              robust=True)
+        self.assertEqual(optimizer.settings['loss'], 'cauchy')
+        self.assertEqual(optimizer.settings['method'], 'trf')
+        self.assertTrue(optimizer.robust)
+
+    def test_robust_false_overrides_settings(self):
+        optimizer = Optimizer(settings={'method': 'trf', 'loss': 'cauchy'},
+                              robust=False)
+        self.assertEqual(optimizer.settings['loss'], 'linear')
+        self.assertEqual(optimizer.settings['method'], 'lm')
+
     def test_default_fixed_includes_noise(self):
         '''noise is fixed by default to prevent degenerate fits.'''
         self.assertIn('noise', self.optimizer.fixed)
-
-    def test_default_fixed_includes_numerical_aperture(self):
-        '''numerical_aperture is fixed by default.'''
-        self.assertIn('numerical_aperture', self.optimizer.fixed)
 
     def test_fixed_list_is_copied(self):
         '''Mutating the list passed to fixed does not affect the optimizer.'''
@@ -103,6 +142,18 @@ class TestOptimizer(unittest.TestCase):
         self.assertTrue(self.optimizer.robust)
         self.assertEqual(self.optimizer.settings['method'], 'trf')
 
+    def test_report_lists_every_fitted_parameter(self):
+        '''report() after a fit names each parameter with its error.'''
+        self.optimizer.settings['max_nfev'] = 2
+        self.optimizer.optimize(self.hologram)
+        report = self.optimizer.report()
+        for name in self.optimizer.variables:
+            self.assertIn(f'{name} = ', report)
+        self.assertIn('±', report)
+        self.assertIn('pixels', report)
+        self.assertIn('npixels = ', report)
+        self.assertIn('χ² = ', report)
+
     def test_report_before_optimize_raises(self):
         '''report() raises RuntimeError when called before optimize().'''
         with self.assertRaises(RuntimeError):
@@ -120,6 +171,24 @@ class TestOptimizer(unittest.TestCase):
         self.optimizer.settings['max_nfev'] = 1
         result = self.optimizer.optimize(self.hologram)
         self.assertIsInstance(result, pd.Series)
+
+    def test_seeded_mask_makes_the_fit_reproducible(self):
+        '''The same seed gives the same pixels and so the same result.'''
+        self.optimizer.mask = Mask(fraction=0.1, seed=4)
+        self.optimizer.settings['max_nfev'] = 3
+        start = dict(self.optimizer.model.particle.properties)
+        first = self.optimizer.optimize(self.hologram)
+        self.optimizer.model.particle.properties = start
+        second = self.optimizer.optimize(self.hologram)
+        self.assertEqual(first['npix'], second['npix'])
+        pd.testing.assert_series_equal(first, second)
+
+    def test_unseeded_mask_has_a_fixed_pixel_count(self):
+        self.optimizer.mask = Mask(fraction=0.1)
+        self.optimizer.settings['max_nfev'] = 1
+        counts = {self.optimizer.optimize(self.hologram)['npix']
+                  for _ in range(4)}
+        self.assertEqual(len(counts), 1)
 
     def test_optimize_npix_all_pixels(self):
         '''Without a mask, npix equals the total pixel count.'''

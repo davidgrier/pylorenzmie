@@ -4,7 +4,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 
-Coordinates = NDArray[float]
+Coordinates = NDArray[np.floating]
 
 
 def meshgrid(shape: tuple[int, int],

@@ -1,3 +1,18 @@
+'''Lorenz-Mie scattered field computed on an NVIDIA GPU with CuPy.
+
+:class:`cupyLorenzMie` replaces the partial-wave sum of
+:class:`~pylorenzmie.theory.LorenzMie.LorenzMie` with a CUDA kernel, in single
+or double precision, and keeps the field on the GPU if asked to.  It needs the
+``cupy`` package for a CUDA 12 GPU (``pip install pylorenzmie[gpu]``) and
+raises :exc:`ImportError` if it is missing.  It is used with
+:class:`~pylorenzmie.analysis.cupyOptimizer.cupyOptimizer`, which keeps the
+residual of a fit on the GPU.  The class attribute ``method`` is
+``'cupy numpy'``.
+
+For a GPU on Apple silicon, or for an AMD or Intel GPU, see
+:class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie`.
+'''
+
 from pylorenzmie.theory.LorenzMie import LorenzMie
 import cupy as cp
 import logging

@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylorenzmie"
-version = "1.3.0"
+version = "3.4.0"
 description = "Python tools for Lorenz-Mie holographic microscopy"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "David G. Grier", email = "david.grier@nyu.edu" },
 ]
@@ -21,9 +21,10 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Scientific/Engineering :: Physics",
     "Topic :: Scientific/Engineering :: Image Processing",
     "Topic :: Software Development :: Libraries :: Python Modules",
@@ -50,9 +51,10 @@ lmtool = "pylorenzmie.lmtool.LMTool:lmtool"
 
 [project.optional-dependencies]
 gpu   = ["cupy-cuda12x"]
+gui   = ["PyQt6", "tables"]
 jax   = ["jax[cpu]"]
 numba = ["numba"]
-torch = ["torch", "triton"]
+torch = ["torch", "triton; sys_platform == 'linux'"]
 dev   = ["pytest", "pytest-cov", "opencv-python"]
 docs    = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints"]
 
@@ -67,8 +69,10 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"pylorenzmie.lmtool"     = ["*.ui", "*.json"]
+"pylorenzmie.lmtool"     = ["*.ui"]
+"pylorenzmie"            = ["py.typed"]
 "pylorenzmie.analysis"   = ["*.joblib"]
+"pylorenzmie.utilities"  = ["data/*.png"]
 
 [tool.setuptools.package-dir]
 "pylorenzmie"            = "."
@@ -80,7 +84,8 @@ packages = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--ignore=tests/slow"
+# the JAX tests run only when asked for: pytest tests/test_jaxlorenzmie.py
+addopts = "--ignore=tests/slow --ignore=tests/test_jaxlorenzmie.py"
 
 [tool.coverage.run]
 source = ["pylorenzmie"]
@@ -98,3 +103,6 @@ exclude_lines = [
     "@classmethod",
 ]
 show_missing = true
+# the Python-only code; the accelerated kernels and the GPU paths are invisible
+# to coverage or skipped without the hardware
+fail_under = 62

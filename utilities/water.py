@@ -5,16 +5,22 @@ from numpy.polynomial import Polynomial
 from numpy.typing import NDArray
 
 
-Value = float | NDArray[float]
+Value = float | NDArray[np.floating]
 
 
 def density(temperature: float = 24.) -> float:
     '''Returns the density of water
 
-    Accounts for dependence of density on temperature
+    Accounts for dependence of density on temperature, for air-free water
+    at atmospheric pressure, with the formula of Kell.  It agrees with the
+    IAPWS-95 equation of state to 0.01 kg/m^3 from 0 to 80 celsius.
 
-    Source: CRC Handbook of Chemistry and Physics:
-    Thermophysical properties of water and steam.
+    Source: G. S. Kell, "Density, thermal expansivity, and compressibility
+    of liquid water from 0 to 150 C: correlations and tables for
+    atmospheric pressure and saturation reviewed and expressed on 1968
+    temperature scale," *Journal of Chemical and Engineering Data* **20**,
+    97-105 (1975); CRC Handbook of Chemistry and Physics: Thermophysical
+    properties of water and steam.
 
     Parameters
     ----------
@@ -27,8 +33,8 @@ def density(temperature: float = 24.) -> float:
         Density of water [kg/m^3].
     '''
     p = Polynomial([999.83952, 16.945176, -7.9870401e-3,
-                    46.170461e-6, 105.56302e-9, -280.54235e-12])
-    return p(temperature) * 1.000028/(1. + 16.879850e-3 * temperature)
+                    -46.170461e-6, 105.56302e-9, -280.54253e-12])
+    return p(temperature) / (1. + 16.879850e-3 * temperature)
 
 
 def refractiveindex(wavelength: Value = 0.589,

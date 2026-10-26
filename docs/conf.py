@@ -65,6 +65,16 @@ intersphinx_mapping = {
 
 exclude_patterns = ['_build']
 
+# Check every cross-reference, so that a broken one fails the build (Read the
+# Docs treats warnings as errors).  The names of the optional libraries that
+# conf.py mocks, and of types that have no documentation page to link to, are
+# left as plain text.
+nitpicky = True
+nitpick_ignore_regex = [
+    (r'py:.*', r'(torch|jax|cupy|numba|trackpy|pyqtgraph|sklearn)(\..*)?'),
+    (r'py:.*', r'numpy\._typing\..*'),
+]
+
 # Suppress warnings that cannot be fixed in source
 suppress_warnings = [
     'sphinx_autodoc_typehints.local_function',   # AberratedLorenzMie factory
@@ -73,6 +83,11 @@ suppress_warnings = [
 
 nitpick_ignore = [
     ('py:class', '_SeriesLikeCoef_co'),  # numpy internal type, not our code
+    # sphinx-autodoc-typehints 3.17 writes it as a class; numpy documents it
+    # as data, so intersphinx does not find it
+    ('py:class', 'numpy.typing.NDArray'),
+    # built on the selected backend, documented as pylorenzmie.theory.Aberrated
+    ('py:class', 'pylorenzmie.theory.AberratedLorenzMie'),
 ]
 
 

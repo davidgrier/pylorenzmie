@@ -24,7 +24,7 @@ class Hologram:
     Notes
     -----
     Pixel coordinates are generated automatically from ``data.shape``
-    and ``corner`` via :func:`~pylorenzmie.lib.meshgrid` and stored as
+    and ``corner`` via :func:`~pylorenzmie.lib.meshgrid.meshgrid` and stored as
     a ``(2, ny, nx)`` array.  Two flat views are provided for use by
     scattering models and numerical solvers:
 
@@ -62,22 +62,22 @@ class Hologram:
         return self.data.shape
 
     @property
-    def coordinates(self) -> NDArray[float]:
+    def coordinates(self) -> NDArray[np.floating]:
         '''Pixel coordinates, shape ``(2, ny, nx)``.'''
         return self._coordinates
 
     @property
-    def flat_data(self) -> NDArray[float]:
+    def flat_data(self) -> NDArray[np.floating]:
         '''Pixel values as a 1-D view, shape ``(npts,)``.'''
         return self.data.ravel()
 
     @property
-    def flat_coordinates(self) -> NDArray[float]:
+    def flat_coordinates(self) -> NDArray[np.floating]:
         '''Pixel coordinates as a 2-D view, shape ``(2, npts)``.'''
         return self._coordinates.reshape(2, -1)
 
     @staticmethod
-    def _from_slice(data: Image, coordinates: NDArray[float]) -> 'Hologram':
+    def _from_slice(data: Image, coordinates: NDArray[np.floating]) -> 'Hologram':
         '''Create a Hologram from pre-computed coordinates (no meshgrid call).
 
         The corner is read directly from the coordinate array so that the

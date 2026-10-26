@@ -1,3 +1,12 @@
+'''Least-squares fitting with the residual on an NVIDIA GPU.
+
+:class:`cupyOptimizer` is an :class:`~pylorenzmie.analysis.Optimizer.Optimizer`
+for the :class:`~pylorenzmie.theory.cupyLorenzMie.cupyLorenzMie` calculator.
+The hologram and the residual are computed on the GPU, and only the residual
+vector is copied to the processor for the solver.  It needs the ``cupy``
+package.
+'''
+
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.theory.cupyLorenzMie import cupyLorenzMie
 import cupy as cp
@@ -6,9 +15,10 @@ import cupy as cp
 class cupyOptimizer(Optimizer):
     '''GPU-accelerated optimizer using CuPy.
 
-    Subclass of :class:`Optimizer` that keeps hologram computation and
-    residual evaluation on the GPU.  Only the final residual vector is
-    transferred to the CPU for scipy's Levenberg-Marquardt solver.
+    Subclass of :class:`~pylorenzmie.analysis.Optimizer.Optimizer` that keeps
+    hologram computation and residual evaluation on the GPU.  Only the final
+    residual vector is transferred to the CPU for scipy's Levenberg-Marquardt
+    solver.
 
     Inherits from :class:`~pylorenzmie.analysis.Optimizer`.
 
@@ -17,7 +27,7 @@ class cupyOptimizer(Optimizer):
     double_precision : bool, optional
         If True (default), use double-precision arithmetic on the GPU.
     *args, **kwargs
-        Passed to :class:`Optimizer`.
+        Passed to :class:`~pylorenzmie.analysis.Optimizer.Optimizer`.
 
     Notes
     -----

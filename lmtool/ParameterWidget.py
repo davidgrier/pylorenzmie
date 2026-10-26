@@ -15,6 +15,8 @@ class ParameterWidget(QFrame):
     '''
 
     valueChanged = pyqtSignal(float)
+    #: Emitted when the lock checkbox changes.
+    fixedChanged = pyqtSignal(bool)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -23,6 +25,7 @@ class ParameterWidget(QFrame):
 
     def _connectSignals(self) -> None:
         self.slider.valueChanged.connect(self._reportChange)
+        self.checkbox.toggled.connect(self.fixedChanged)
 
     @pyqtSlot(float)
     def _reportChange(self, value: float) -> None:

@@ -1,3 +1,14 @@
+'''Characterization results collected over a series of frames.
+
+A :class:`Trajectory` stores the table that
+:class:`~pylorenzmie.analysis.Frame.Frame` returns for each frame of a video
+and combines them in one :class:`pandas.DataFrame` (``data``) that can be
+written to a file.  It records the measurements and nothing else: tagging each
+row with its frame number, and linking the measurements of one particle in
+successive frames into a track, for example with :func:`trackpy.link`, is left
+to the caller, as the video tutorial shows.
+'''
+
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import Properties, Results
 import pandas as pd
@@ -35,8 +46,8 @@ class Trajectory(LMObject):
         Parameters
         ----------
         results : pandas.DataFrame or pandas.Series
-            Output from :meth:`Frame.optimize` or
-            :meth:`Frame.analyze`.
+            Output from :meth:`~pylorenzmie.analysis.Frame.Frame.optimize` or
+            :meth:`~pylorenzmie.analysis.Frame.Frame.analyze`.
         '''
         if isinstance(results, pd.Series):
             results = results.to_frame().T
@@ -55,7 +66,7 @@ class Trajectory(LMObject):
             Destination file path.
         **kwargs
             Additional keyword arguments passed to
-            :func:`pandas.DataFrame.to_csv`.
+            :meth:`pandas.DataFrame.to_csv`.
         '''
         self.data.to_csv(path, **kwargs)
 

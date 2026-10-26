@@ -26,6 +26,9 @@ Lorenz-Mie theory.
    :caption: Contents
 
    quickstart
+   architecture
+   conventions
+   extending
    lmtool
    api/lib
    api/theory

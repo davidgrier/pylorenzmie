@@ -16,9 +16,6 @@ class TestInstrument(unittest.TestCase):
     def test_default_magnification(self):
         self.assertAlmostEqual(self.instrument.magnification, 0.048)
 
-    def test_default_numerical_aperture(self):
-        self.assertAlmostEqual(self.instrument.numerical_aperture, 1.45)
-
     def test_default_noise(self):
         self.assertAlmostEqual(self.instrument.noise, 0.05)
 
@@ -35,10 +32,6 @@ class TestInstrument(unittest.TestCase):
         self.instrument.magnification = 0.120
         self.assertAlmostEqual(self.instrument.magnification, 0.120)
 
-    def test_set_numerical_aperture(self):
-        self.instrument.numerical_aperture = 1.20
-        self.assertAlmostEqual(self.instrument.numerical_aperture, 1.20)
-
     def test_set_noise(self):
         self.instrument.noise = 0.1
         self.assertAlmostEqual(self.instrument.noise, 0.1)
@@ -51,8 +44,7 @@ class TestInstrument(unittest.TestCase):
 
     def test_properties_keys(self):
         props = self.instrument.properties
-        for key in ('wavelength', 'magnification',
-                    'numerical_aperture', 'noise', 'n_m'):
+        for key in ('wavelength', 'magnification', 'noise', 'n_m'):
             self.assertIn(key, props)
 
     def test_properties_roundtrip(self):

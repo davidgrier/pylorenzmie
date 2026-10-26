@@ -21,7 +21,7 @@ class CircleTransform:
     def __init__(self) -> None:
         self._kernel = np.ones((1, 1))
 
-    def kernel(self, shape: tuple[int, int]) -> NDArray[complex]:
+    def kernel(self, shape: tuple[int, int]) -> NDArray[np.complexfloating]:
         '''Fourier-space orientation alignment kernel.
 
         Parameters
@@ -45,7 +45,7 @@ class CircleTransform:
         self._kernel = kernel
         return kernel
 
-    def transform(self, image: NDArray[float]) -> NDArray[float]:
+    def transform(self, image: NDArray[np.floating]) -> NDArray[np.floating]:
         '''Apply the orientation alignment transform.
 
         Parameters
@@ -74,7 +74,7 @@ class CircleTransform:
 _transform = CircleTransform()
 
 
-def circletransform(image: NDArray[float]) -> NDArray[float]:
+def circletransform(image: NDArray[np.floating]) -> NDArray[np.floating]:
     '''Transform an image to emphasize ring-like features.
 
     Convenience wrapper around :class:`CircleTransform` that reuses a

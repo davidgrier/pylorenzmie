@@ -1,3 +1,23 @@
+'''A holographic feature: one particle, its model and its fit.
+
+A :class:`Feature` is a :class:`~pylorenzmie.analysis.Hologram.Hologram` of one
+particle, usually a crop of a larger image, together with a
+:class:`~pylorenzmie.theory.LorenzMie.LorenzMie` model, an estimator that
+finds starting values and an optimizer that fits the model to the data.
+:meth:`~Feature.estimate` runs the estimator, which sets the properties of the
+model's particle, and :meth:`~Feature.optimize` runs the optimizer from there
+and returns the fitted values with their uncertainties.
+:meth:`~Feature.predicted` and :meth:`~Feature.residuals` give the fitted
+hologram and its difference from the data.
+
+The pixels that the fit uses are those that
+the :class:`~pylorenzmie.analysis.Mask.Mask` in :attr:`~Feature.mask` selects.
+By default the mask leaves out the pixels with the largest value of the
+crop (saturated pixels) and any NaN or infinite ones.  A feature is also
+what :class:`~pylorenzmie.analysis.Frame.Frame` creates for each particle that
+it finds.
+'''
+
 import numpy as np
 import pandas as pd
 from pylorenzmie.analysis import Mask, DEEstimator, PairEstimator, Optimizer
@@ -90,10 +110,10 @@ class Feature(Hologram):
     def mask(self) -> Mask:
         '''Shared pixel exclusion mask for estimator and optimizer.
 
-        Bad pixels (saturated, dead) set via :attr:`~Mask.exclude` are
-        excluded from both the DE estimation and the LM optimization.
-        Each component controls its own pixel fraction independently.
-        '''
+        Bad pixels (saturated, dead) set via
+        :attr:`~pylorenzmie.analysis.Mask.Mask.exclude` are excluded from both
+        the DE estimation and the LM optimization. Each component controls its
+        own pixel fraction independently. '''
         return self.optimizer.mask
 
     @mask.setter
@@ -144,8 +164,9 @@ class Feature(Hologram):
 
         Notes
         -----
-        When a mask with ``fraction < 1.0`` is set, a fresh random pixel
-        subsample is drawn on every call.
+        When a mask with ``fraction < 1.0`` is set, a new random pixel
+        subsample is drawn on every call, unless the mask has a ``seed``,
+        in which case the same pixels are used every time.
         '''
         return self.optimizer.optimize(self)
 

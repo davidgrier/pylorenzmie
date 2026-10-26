@@ -1,3 +1,19 @@
+'''Base class for scatterers in Lorenz-Mie microscopy.
+
+A :class:`Particle` has a position ``r_p = (x_p, y_p, z_p)`` in pixels, where
+``z_p`` is the distance from the focal plane, and the origin ``r_0`` of its
+local coordinate system, which a
+:class:`~pylorenzmie.theory.Cluster.Cluster` uses to translate its members.
+The particle behaves like a sequence that holds itself, so that the
+calculators treat one particle and a list of particles alike.  Subclasses
+supply the Mie scattering coefficients through :meth:`~Particle.ab`.
+
+See Also
+--------
+~pylorenzmie.theory.Sphere.Sphere : homogeneous sphere.
+~pylorenzmie.theory.Cluster.Cluster : group of particles.
+'''
+
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 import numpy as np
@@ -13,9 +29,9 @@ class Particle(LMObject):
     coordinate system.  Subclasses add the physical parameters needed
     to compute Mie scattering coefficients via :meth:`ab`.
 
-    ``Particle`` implements the sequence protocol (``__len__``,
-    ``__iter__``, ``__getitem__``) so that a single particle and a list
-    of particles are interchangeable in :meth:`LorenzMie.field`.
+    ``Particle`` implements the sequence protocol (``__len__``, ``__iter__``,
+    ``__getitem__``) so that a single particle and a list of particles are
+    interchangeable in :meth:`~pylorenzmie.theory.LorenzMie.LorenzMie.field`.
 
     Attributes
     ----------
@@ -34,10 +50,10 @@ class Particle(LMObject):
 
     Notes
     -----
-    All coordinates are in pixels.  ``r_0`` is set by :class:`Cluster`
-    to translate each constituent particle into the cluster's local
-    frame; it is not an adjustable parameter and is excluded from
-    ``properties``.
+    All coordinates are in pixels.  ``r_0`` is set by
+    :class:`~pylorenzmie.theory.Cluster.Cluster` to translate each constituent
+    particle into the cluster's local frame; it is not an adjustable parameter
+    and is excluded from ``properties``.
     '''
 
     x_p: float = 0.

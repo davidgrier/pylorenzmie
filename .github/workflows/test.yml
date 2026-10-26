@@ -8,15 +8,21 @@ on:
 
 jobs:
   test:
-    name: Python ${{ matrix.python-version }}
+    name: Python ${{ matrix.python-version }} [${{ matrix.extras }}]
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13", "3.14"]
+        extras: ["dev,numba"]
+        include:
+          # without Numba the NumPy calculator is the default backend
+          - python-version: "3.12"
+            extras: "dev"
 
     steps:
       - uses: actions/checkout@v4
@@ -32,7 +38,72 @@ jobs:
           sudo apt-get install -y -q libgl1
 
       - name: Install package and test dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[${{ matrix.extras }}]"
 
       - name: Run tests
+        if: ${{ !(matrix.python-version == '3.12' && matrix.extras == 'dev,numba') }}
         run: python -m pytest --tb=short -q
+
+      # one job also measures coverage and fails below the threshold in
+      # pyproject.toml
+      - name: Run tests with coverage
+        if: ${{ matrix.python-version == '3.12' && matrix.extras == 'dev,numba' }}
+        run: python -m pytest --cov --tb=short -q
+
+  docs:
+    # Read the Docs builds with Python 3.12, without the optional libraries
+    # (which docs/conf.py mocks) and with warnings as errors; build the same
+    # way here so that a failure shows up before the badge turns red
+    name: Documentation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgl1
+
+      - name: Install package and documentation dependencies
+        run: pip install ".[docs]"
+
+      - name: Build the documentation
+        run: python -m sphinx -W --keep-going -b html docs docs/_build/html
+
+  gui:
+    # the widgets of lmtool, with Qt drawing to no display
+    name: GUI (offscreen Qt)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      QT_QPA_PLATFORM: offscreen
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgl1 libegl1 libglib2.0-0 libxkbcommon0 \
+            libdbus-1-3 libfontconfig1
+
+      - name: Install package and test dependencies
+        run: pip install -e ".[dev,gui]"
+
+      - name: Run the GUI tests
+        run: python -m pytest tests/test_lmtool_widgets.py --tb=short -q

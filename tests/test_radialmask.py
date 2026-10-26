@@ -9,6 +9,13 @@ class TestRadialMask(unittest.TestCase):
     def setUp(self):
         self.shape = (101, 121)
 
+    def test_seed_makes_the_mask_reproducible(self):
+        a = RadialMask(shape=self.shape, fraction=0.3, seed=11)
+        b = RadialMask(shape=self.shape, fraction=0.3, seed=11)
+        np.testing.assert_array_equal(a(), b())
+        self.assertFalse(np.array_equal(
+            a(), RadialMask(shape=self.shape, fraction=0.3, seed=12)()))
+
     def test_output_shape(self):
         mask = RadialMask(shape=self.shape, fraction=0.5)
         self.assertEqual(mask().shape, self.shape)

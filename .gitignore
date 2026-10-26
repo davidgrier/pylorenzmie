@@ -1,13 +1,30 @@
 theory/devel/
 former_scripts
+# local-only helpers (git hooks etc.), not part of the distribution
+scripts/
 plot
 plots
 .ipynb_checkpoints
 *.pyc
 .idea/
 *.png
+!utilities/data/*.png
 .DS_Store
 *~
 *.txt
 devel/mlp_training_data.npz
 docs/tutorials/simulated pair holograms/
+.coverage
+htmlcov/
+.pytest_cache/
+docs/_build/
+*.nbi
+*.nbc
+# virtual environments (Python 3.13+ also writes a .gitignore into each)
+.venv/
+venv/
+.lm/
+# build and editor leftovers
+*.egg-info/
+\#*\#
+*.bak

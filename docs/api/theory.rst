@@ -1,6 +1,34 @@
 Theory (``pylorenzmie.theory``)
 ================================
 
+Calculators
+-----------
+
+:class:`~pylorenzmie.theory.LorenzMie.LorenzMie` is the reference
+implementation in NumPy. The accelerated calculators below are subclasses
+that replace the inner calculation. ``pylorenzmie.theory.LorenzMie`` is
+:class:`~pylorenzmie.theory.numbaLorenzMie.numbaLorenzMie` if Numba works and
+the NumPy class otherwise. The GPU calculators
+(:class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie`,
+:class:`~pylorenzmie.theory.cupyLorenzMie.cupyLorenzMie`) and
+:class:`~pylorenzmie.theory.jaxLorenzMie.jaxLorenzMie` are never chosen
+automatically. Select one by setting the environment variable
+``PYLORENZMIE_BACKEND`` to ``numpy``, ``numba``, ``torch``, ``jax`` or
+``cupy`` before importing pylorenzmie (a backend that cannot be loaded
+raises ``ImportError``), or import the class from its module. See
+:doc:`../quickstart` for timings. ``pylorenzmie.theory.AberratedLorenzMie``
+(see :func:`~pylorenzmie.theory.Aberrated.Aberrated`) is built on the same
+calculator as ``pylorenzmie.theory.LorenzMie``; the NumPy one is
+``pylorenzmie.theory.Aberrated.AberratedLorenzMie``.
+:func:`~pylorenzmie.theory.model_class` returns the aberrated or the distorted
+model for a named backend, which is how the ``--backend`` and ``--distorted``
+options of :doc:`lmtool <../lmtool>` choose theirs.
+
+.. autofunction:: pylorenzmie.theory.model_class
+
+Particles and instrument
+------------------------
+
 Instrument
 ----------
 
@@ -43,6 +71,18 @@ Aberrated
 .. automodule:: pylorenzmie.theory.Aberrated
    :members:
 
+Distorted
+---------
+
+.. automodule:: pylorenzmie.theory.Distorted
+   :members:
+
+generators
+----------
+
+.. automodule:: pylorenzmie.theory.generators
+   :members:
+
 cupyLorenzMie
 -------------
 
@@ -65,4 +105,10 @@ torchLorenzMieBatch
 -------------------
 
 .. automodule:: pylorenzmie.theory.torchLorenzMieBatch
+   :members:
+
+jaxLorenzMie
+------------
+
+.. automodule:: pylorenzmie.theory.jaxLorenzMie
    :members:

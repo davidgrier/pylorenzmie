@@ -3,15 +3,24 @@ import unittest
 import numpy as np
 
 try:
-    from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie
-    from pylorenzmie.theory.torchLorenzMieBatch import TorchLorenzMieBatch
     import torch as _torch
-    _torch_available = _torch.cuda.is_available()
+    from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie, get_device
+    _device = get_device().type          # 'cuda' or 'mps'
 except Exception:
-    _torch_available = False
+    _device = None
+
+try:
+    from pylorenzmie.theory.torchLorenzMieBatch import TorchLorenzMieBatch
+    _batch_available = _device in ('cuda', 'xpu')
+except Exception:
+    _batch_available = False
+
+# float32 on the GPU against float64 on the CPU
+ATOL = 1e-4
 
 
-@unittest.skipUnless(_torch_available, 'torch/triton/CUDA not available')
+@unittest.skipUnless(_device, 'torch with a CUDA or Apple (MPS) GPU '
+                              'not available')
 class TestTorchLorenzMie(unittest.TestCase):
 
     def setUp(self) -> None:
@@ -52,14 +61,153 @@ class TestTorchLorenzMie(unittest.TestCase):
     def test_hologram_matches_numpy(self) -> None:
         h_torch = self.model.hologram()
         h_np = self.ref.hologram()
-        np.testing.assert_allclose(h_torch, h_np, rtol=1e-4, atol=1e-6)
+        np.testing.assert_allclose(h_torch, h_np, rtol=1e-4, atol=ATOL)
+
+    def test_device(self) -> None:
+        self.assertEqual(self.model.device.type, _device)
+
+    def test_field_conventions_match_numpy(self) -> None:
+        for kwargs in (dict(), dict(cartesian=False), dict(bohren=False),
+                       dict(cartesian=False, bohren=False)):
+            with self.subTest(**kwargs):
+                f = self.model.field(**kwargs).cpu().numpy()
+                np.testing.assert_allclose(f, self.ref.field(**kwargs),
+                                           atol=ATOL)
+
+    def test_particle_below_focal_plane(self) -> None:
+        for model in (self.model, self.ref):
+            model.particle.z_p = -150.
+        np.testing.assert_allclose(self.model.hologram(),
+                                   self.ref.hologram(), atol=ATOL)
+
+    def test_cluster_matches_numpy(self) -> None:
+        from pylorenzmie.theory import Cluster, Sphere
+        particles = [Sphere(a_p=.5, n_p=1.5, x_p=20., y_p=32., z_p=200.),
+                     Sphere(a_p=.7, n_p=1.4, x_p=44., y_p=32., z_p=210.)]
+        for model in (self.model, self.ref):
+            model.particle = Cluster(particles=list(particles))
+        np.testing.assert_allclose(self.model.hologram(),
+                                   self.ref.hologram(), atol=ATOL)
+
+    def test_repeated_calls_follow_the_particle(self) -> None:
+        # nothing stale may survive from one call to the next
+        rng = np.random.default_rng(0)
+        for _ in range(20):
+            for model in (self.model, self.ref):
+                model.particle.properties = dict(
+                    a_p=rng.uniform(.3, 1.2), n_p=rng.uniform(1.4, 1.7))
+            self.ref.particle.properties = self.model.particle.properties
+            np.testing.assert_allclose(self.model.hologram(),
+                                       self.ref.hologram(), atol=1e-3)
+
+    def test_aberrated_matches_numpy(self) -> None:
+        from pylorenzmie.theory import Aberrated
+        kwargs = dict(spherical=2., defocus=.5, coma=.3, x_c=40., y_c=20.)
+        torch_model = Aberrated(TorchLorenzMie)(
+            coordinates=self.model.coordinates, **kwargs)
+        numpy_model = Aberrated(LorenzMie)(
+            coordinates=self.model.coordinates, **kwargs)
+        for model in (torch_model, numpy_model):
+            model.particle.properties = self.model.particle.properties
+        np.testing.assert_allclose(torch_model.hologram(),
+                                   numpy_model.hologram(), atol=ATOL)
+
+    def test_single_particle_fast_path_matches_the_field_route(self) -> None:
+        # on Apple GPUs a single particle's hologram is formed in the kernel
+        for kwargs in (dict(), dict(cartesian=False), dict(bohren=False)):
+            fast = self.model.hologram(**kwargs)
+            field = self.model.field(**kwargs).cpu()
+            slow = (field.real**2 + field.imag**2).sum(0) + 2*field[0].real + 1
+            np.testing.assert_allclose(fast, slow.double().numpy(),
+                                       atol=1e-5, err_msg=str(kwargs))
+
+    def _aberrated_pair(self, **aberrations):
+        from pylorenzmie.theory import Aberrated
+        models = [Aberrated(cls)(coordinates=self.model.coordinates,
+                                 **aberrations)
+                  for cls in (TorchLorenzMie, LorenzMie)]
+        for model in models:
+            model.particle.properties = self.model.particle.properties
+        return models
+
+    def test_each_aberration_matches_numpy(self) -> None:
+        names = ('defocus', 'spherical', 'coma', 'astigmatism', 'distortion')
+        for name in names:
+            with self.subTest(name):
+                torch_model, numpy_model = self._aberrated_pair(
+                    **{name: 6.}, x_c=2., y_c=2.)
+                # the aberration must matter, or agreement means nothing
+                self.assertGreater(
+                    np.abs(numpy_model.hologram() -
+                           self.ref.hologram()).max(), 100 * ATOL)
+                np.testing.assert_allclose(torch_model.hologram(),
+                                           numpy_model.hologram(), atol=ATOL)
+
+    def test_piston_matches_numpy(self) -> None:
+        for kwargs in (dict(piston=.7), dict(piston=-1., spherical=3.)):
+            with self.subTest(**kwargs):
+                torch_model, numpy_model = self._aberrated_pair(**kwargs)
+                self.assertGreater(
+                    np.abs(numpy_model.hologram() -
+                           self.ref.hologram()).max(), 100 * ATOL)
+                np.testing.assert_allclose(torch_model.hologram(),
+                                           numpy_model.hologram(), atol=ATOL)
+
+    def test_aberration_center_on_the_particle(self) -> None:
+        x_p, y_p = self.model.particle.x_p, self.model.particle.y_p
+        torch_model, numpy_model = self._aberrated_pair(
+            spherical=2., coma=.5, astigmatism=.3, distortion=.2,
+            x_c=x_p, y_c=y_p)
+        np.testing.assert_allclose(torch_model.hologram(),
+                                   numpy_model.hologram(), atol=ATOL)
+
+    def test_aberrated_particle_below_focal_plane(self) -> None:
+        torch_model, numpy_model = self._aberrated_pair(
+            spherical=2., coma=.5, x_c=10., y_c=50.)
+        for model in (torch_model, numpy_model):
+            model.particle.z_p = -150.
+        np.testing.assert_allclose(torch_model.hologram(),
+                                   numpy_model.hologram(), atol=ATOL)
+
+    def test_aberrated_field_matches_numpy(self) -> None:
+        torch_model, numpy_model = self._aberrated_pair(
+            spherical=2., coma=.5, x_c=10., y_c=50.)
+        for kwargs in (dict(), dict(cartesian=False), dict(bohren=False)):
+            with self.subTest(**kwargs):
+                np.testing.assert_allclose(
+                    torch_model.field(**kwargs).cpu().numpy(),
+                    numpy_model.field(**kwargs), atol=ATOL)
+
+    def test_aberrated_hologram_matches_its_field_route(self) -> None:
+        # on Apple GPUs hologram() forms the intensity in the kernel
+        torch_model, _ = self._aberrated_pair(spherical=2., coma=.5,
+                                              x_c=10., y_c=50.)
+        field = torch_model.field().cpu()
+        slow = (field.real**2 + field.imag**2).sum(0) + 2*field[0].real + 1
+        np.testing.assert_allclose(torch_model.hologram(),
+                                   slow.double().numpy(), atol=1e-5)
+
+    def test_unsupported_device_raises(self) -> None:
+        with self.assertRaises(ValueError):
+            TorchLorenzMie(device='cpu')
+
+    def test_get_device_rejects_unknown_preference(self) -> None:
+        with self.assertRaises(ValueError):
+            get_device('tpu')
+
+    def test_device_preference_is_honored(self) -> None:
+        self.assertEqual(get_device(_device).type, _device)
+        self.assertEqual(TorchLorenzMie(device=_device).device.type, _device)
+        for other in {'cuda', 'xpu', 'mps'} - {_device}:
+            with self.assertRaises(RuntimeError):
+                get_device(other)
 
     def test_repr(self) -> None:
         r = repr(self.model)
         self.assertIsInstance(r, str)
 
 
-@unittest.skipUnless(_torch_available, 'torch/triton/CUDA not available')
+@unittest.skipUnless(_batch_available, 'torch/triton/CUDA not available')
 class TestTorchLorenzMieBatch(unittest.TestCase):
 
     def setUp(self) -> None:

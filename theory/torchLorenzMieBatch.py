@@ -3,22 +3,23 @@
 This module extends :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie`
 with a batched computation path that generates B holograms in a single Triton
 kernel launch, which is substantially faster than calling
-:meth:`~TorchLorenzMie.hologram` B times in a loop.
+:meth:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie.hologram` B times in a
+loop.
 
 Key components
 --------------
 _batch_lorenzmie_kernel
     Triton kernel — 2-D grid variant that handles N particles simultaneously.
 TorchLorenzMieBatch
-    Subclass of :class:`TorchLorenzMie` that adds :meth:`batch_hologram` and
-    :meth:`batch_field` for generating many holograms in a single GPU call.
+    Subclass of :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie` that
+    adds ``batch_hologram`` and ``batch_field`` for generating many
+    holograms in a single GPU call.
 '''
 
 from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie
 import torch
 import triton
 import triton.language as tl
-import triton.language.extra.cuda.libdevice as tl_libdevice
 import logging
 
 logger = logging.getLogger(__name__)
@@ -80,12 +81,14 @@ def _batch_lorenzmie_kernel(
 
     krho      = tl.sqrt(kx*kx + ky*ky)
     kr        = tl.sqrt(krho*krho + kz*kz)
-    phi       = tl_libdevice.atan2(ky, kx)
-    cos_phi   = tl.cos(phi)
-    sin_phi   = tl.sin(phi)
-    theta     = tl_libdevice.atan2(krho, kz)
-    cos_theta = tl.cos(theta)
-    sin_theta = tl.sin(theta)
+    # direction cosines from ratios, as in the Numba and Metal kernels; on
+    # the axis (krho = 0) the azimuth is undefined and any value will do.
+    # This avoids atan2, which exists only in the CUDA-specific libdevice.
+    cos_theta = kz / kr
+    sin_theta = krho / kr
+    off_axis  = krho > 0.0
+    cos_phi   = tl.where(off_axis, kx / krho, 1.0)
+    sin_phi   = tl.where(off_axis, ky / krho, 0.0)
     sinkr     = tl.sin(kr)
     coskr     = tl.cos(kr)
 
@@ -218,10 +221,10 @@ def _batch_lorenzmie_kernel(
 class TorchLorenzMieBatch(TorchLorenzMie):
     '''Batched GPU-accelerated Lorenz-Mie hologram calculator.
 
-    Extends :class:`TorchLorenzMie` with a batched computation path that
-    generates B holograms in a single Triton kernel launch.  All other
-    behavior (single-hologram API, device selection, coordinate handling)
-    is inherited unchanged.
+    Extends :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie` with a
+    batched computation path that generates B holograms in a single Triton
+    kernel launch.  All other behavior (single-hologram API, device selection,
+    coordinate handling) is inherited unchanged.
 
     Additional methods
     ------------------
@@ -451,7 +454,6 @@ class TorchLorenzMieBatch(TorchLorenzMie):
 
         instrument = Instrument()
         instrument.magnification = 0.048
-        instrument.numerical_aperture = 1.45
         instrument.wavelength = 0.447
         instrument.n_m = 1.340
 

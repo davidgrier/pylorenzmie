@@ -2,18 +2,32 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Development environment
+
+Keep the virtual environment **outside the repository**, for example in
+`~/python/venvs/pylorenzmie`. A venv inside the tree is swept by bulk edits
+(`grep -r`, `sed`, `find`), which once rewrote a line of llvmlite inside one,
+and `git clean -xdf` deletes it. Recreate it rather than move it, since venvs
+contain absolute paths:
+
+```bash
+python3 -m venv ~/python/venvs/pylorenzmie
+make dev PYTHON=~/python/venvs/pylorenzmie/bin/python   # editable install
+make test PYTHON=~/python/venvs/pylorenzmie/bin/python
+```
+
+`make dev` installs the `dev`, `numba` and `docs` extras. The `torch`, `jax`
+and `gpu` extras are optional and not needed for the default test run; CI
+installs `dev,numba` (and `dev` alone on one Python version). To check
+the code without Numba, use a throwaway venv with `pip install -e ".[dev]"`.
+
 ## Commands
 
 ```bash
-# Install in editable mode with test dependencies
-pip install -e ".[dev]"
+# Install in editable mode with test dependencies (or: make dev)
+pip install -e ".[dev,numba,docs]"
 
-# Install the post-merge git hook (one-time per clone); auto-updates
-# ~/texmf/bibtex/bib/grier.bib after every git pull
-ln -sf ../../scripts/update_bib.py .git/hooks/post-merge
-chmod +x .git/hooks/post-merge
-
-# Run all tests
+# Run all tests (or: make test; make cov for coverage; make docs)
 python -m pytest
 
 # Run a single test file
@@ -62,7 +76,10 @@ The tag push triggers two CI workflows automatically:
   GitHub Release (do not run `gh release create` manually).
 - `update-citation.yml` updates `CITATION.cff` and commits it back.
 
-The GitHub Release event fires Zenodo's webhook and mints a DOI.
+The GitHub Release event fires Zenodo's webhook and mints a version DOI.
+`CITATION.cff` carries the project (concept) DOI, 10.5281/zenodo.20784723,
+which always resolves to the latest version, so nothing needs updating after
+a release.
 
 ## Architecture
 
@@ -107,9 +124,8 @@ holographic ring patterns.
 ### `theory/` — Physical models
 
 **`Instrument`** — dataclass with microscope parameters: `wavelength` (μm),
-`magnification` (μm/pixel), `numerical_aperture`, `n_m` (medium refractive
-index), `noise`. Only the first four appear in `properties` and are therefore
-adjustable during fitting.
+`magnification` (μm/pixel), `n_m` (medium refractive index), `noise`. All four
+appear in `properties` and are therefore adjustable during fitting.
 
 **`Particle`** — abstract dataclass base for scatterers; holds 3D position
 `r_p = [x_p, y_p, z_p]` and offset `r_0`. Implements `__len__`, `__iter__`,
@@ -130,8 +146,30 @@ compatible `Optimizer` instances.
 **Accelerated subclasses** all inherit `LorenzMie` and override `_allocate()`
 and `lorenzmie()`:
 - `cupyLorenzMie` — CuPy (CUDA GPU), `method = 'cupy numpy'`
-- `numbaLorenzMie` — Numba JIT, CPU
-- `AberratedLorenzMie` — adds spherical aberration support
+- `numbaLorenzMie` — Numba JIT, CPU; pointwise kernel, multi-threaded by
+  default (`parallel = True`; fall back with `parallel = False` when the
+  calling code is already parallel, see its docstring)
+- `TorchLorenzMie` — GPU via PyTorch, `method = 'torch numpy'`: a Triton
+  kernel on CUDA, a Metal kernel on Apple GPUs (MPS); single precision
+  (hologram error about 1e-5 for a 0.5 um sphere, up to about 1e-3 for
+  radii of a few um). On an M1 Pro it matches Numba for fits of 4,000
+  pixels and is 2 to 3 times faster above about 25,000 pixels. The Metal
+  kernel applies the `Aberrated` phase itself (the Triton path still
+  multiplies by the mask in Python)
+- `jaxLorenzMie` — JAX JIT with an analytical Jacobian; single spheres only
+  (clusters fall back to NumPy) and it recompiles when the number of partial
+  waves changes, so it is slower than Numba on a CPU
+- `AberratedLorenzMie` — adds phase masks for the five primary Seidel
+  aberrations (defocus, spherical, coma, astigmatism, distortion) and a
+  constant `piston`; `from pylorenzmie.theory import AberratedLorenzMie` is
+  built on the same calculator as `LorenzMie` (Numba if it works), and the
+  NumPy one is `pylorenzmie.theory.Aberrated.AberratedLorenzMie`
+
+`from pylorenzmie.theory import LorenzMie` is `numbaLorenzMie` when Numba works
+and the NumPy class otherwise. The GPU backends and JAX are never chosen
+automatically; select one with the environment variable
+`PYLORENZMIE_BACKEND` (`numpy`, `numba`, `torch`, `jax` or `cupy`; an unavailable choice raises `ImportError`) or import
+the class from its module.
 
 ### `analysis/` — Fitting pipeline
 
@@ -142,7 +180,9 @@ returns bounding boxes as `pandas.DataFrame` with columns `x_p`, `y_p`, `bbox`.
 feature image using azimuthal analysis of the fringe pattern.
 
 **`Mask`** — selects which pixels participate in the fit (excludes
-saturated/NaN pixels; supports random subsampling via `fraction`).
+saturated/NaN pixels; supports random subsampling via `fraction`: exactly
+`round(fraction * n)` of the usable pixels, drawn from a private generator;
+`seed` makes the draw reproducible).
 
 **`Optimizer(LMObject)`** — wraps `scipy.optimize.least_squares`. The `method`
 attribute must be compatible with the model's `method`. Properties `fixed` and

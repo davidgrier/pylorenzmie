@@ -89,6 +89,24 @@ class TestLorenzMie(unittest.TestCase):
     def test_field_both(self) -> None:
         self.test_field(bohren=True, cartesian=True)
 
+    def test_field_on_axis_pixel_is_finite(self) -> None:
+        # kx = ky = 0: the azimuth is undefined (0/0), but the field is not
+        p = self.method.particle
+        p.a_p = 1.
+        p.n_p = 1.4
+        p.r_p = [0., 0., 100.]
+        self.method.coordinates = np.array([[0., 3., 0.],
+                                            [0., 0., 4.],
+                                            [0., 0., 0.]])
+        for cartesian in (False, True):
+            field = self.method.field(cartesian=cartesian)
+            self.assertTrue(np.isfinite(field).all())
+        # on the axis the field is x-polarized: no y or z component
+        field = self.method.field(cartesian=True)
+        self.assertAlmostEqual(abs(field[1, 0]), 0.)
+        self.assertAlmostEqual(abs(field[2, 0]), 0.)
+        self.assertGreater(abs(field[0, 0]), 0.)
+
     def test_hologram(self) -> None:
         p = self.method.particle
         p.a_p = 1.
