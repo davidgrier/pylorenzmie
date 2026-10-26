@@ -101,7 +101,6 @@ class Pair(Cluster):
         coordinates = LorenzMie.meshgrid(shape)
         instrument = Instrument()
         instrument.magnification = 0.048
-        instrument.numerical_aperture = 1.45
         instrument.wavelength = 0.447
         instrument.n_m = 1.340
         pair = cls(x_p1=85., y_p1=100., z_p1=250., a_p1=0.5, n_p1=1.42,

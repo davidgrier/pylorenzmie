@@ -61,13 +61,12 @@ def _load(image: str) -> np.ndarray:
 
 
 # Tutorial microscope (docs/tutorials/*.png).
-INSTRUMENT = dict(wavelength=0.447, magnification=0.048,
-                  numerical_aperture=1.45, n_m=1.34)
+INSTRUMENT = dict(wavelength=0.447, magnification=0.048, n_m=1.34)
 
 
 def run_pipeline(name: str = 'random_particles.png',
                  show: bool = True,
-                 nfringes: int | None = 18,
+                 nfringes: int | None = 1,
                  diameter: int | None = 41,
                  percentile: int | None = 20,
                  separation: float | None = 50,
@@ -93,13 +92,19 @@ def run_pipeline(name: str = 'random_particles.png',
         Fringes enclosed in each detection box.  Smaller boxes are less
         likely to merge dense fields into 3+ clusters that
         :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`
-        discards.  Default: 18.  The :class:`Localizer` default (20)
-        unnecessarily discards several features in both
-        ``random_particles.png`` and ``random_particles_2.png``.  17
-        also stays clean for both, but 16 starts splitting a genuine
-        pair in ``random_particles_2.png`` into two contaminated
-        singles (one redchi jumps to ~5.7); 18 keeps a bit of margin
-        above that.
+        discards.  Default: 1.  :class:`Localizer` redefined
+        ``nfringes`` (box half-width is now the ``2 * nfringes``-th
+        fringe crossing, not the ``nfringes``-th) and dropped its own
+        default from 20 to 4; under the new scaling, box size grows
+        much faster per unit of ``nfringes`` than before, so the old
+        tuned value of 18 now merges nearly every particle in
+        ``random_particles.png``/``random_particles_2.png`` into one
+        discarded 3+ cluster.  1 is the smallest usable value (0 maps
+        to the outermost crossing, i.e. the whole profile) and keeps
+        27/29 and 32/35 particles respectively; 2 already loses more
+        particles and introduces an outright collapsed single fit
+        (``a_p`` negative, ``z_p`` in the thousands) that 1 does not
+        have.
     diameter : int, optional
         ``trackpy.locate`` feature diameter, in pixels.  Default: 41.
         The :class:`Localizer` default (31) misses the blended core of

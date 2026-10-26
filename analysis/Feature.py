@@ -28,8 +28,7 @@ from pylorenzmie.lib.lmtypes import Image
 
 # Optimizer.fixed for a Pair: the single-sphere default names 'k_p',
 # which a Pair does not have; hold both spheres' absorption instead.
-_PAIR_FIXED = ('wavelength magnification numerical_aperture '
-               'n_m noise k_p1 k_p2').split()
+_PAIR_FIXED = 'wavelength magnification n_m noise k_p1 k_p2'.split()
 
 
 class Feature(Hologram):

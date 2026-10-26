@@ -67,7 +67,7 @@ DOCS = Path(__file__).resolve().parent.parent / 'docs'
 OUTDIR = DOCS / 'tutorials' / 'simulated pair holograms'
 
 INSTRUMENT = dict(wavelength=0.447, magnification=0.048,
-                  numerical_aperture=1.45, n_m=1.340, noise=0.05)
+                  n_m=1.340, noise=0.05)
 
 SHAPE = (1024, 1024)
 CENTER = (SHAPE[1] / 2., SHAPE[0] / 2.)

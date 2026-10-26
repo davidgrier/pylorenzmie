@@ -84,6 +84,9 @@ class TestFrame(unittest.TestCase):
         from pylorenzmie.analysis import PairEstimator
         from pylorenzmie.theory import Pair
         self.frame.instrument.wavelength = 0.447
+        # Wide enough that the two particles' boxes overlap (6 already
+        # suffices; the default of 4 keeps them separate).
+        self.frame.localizer.nfringes = 10
         self.frame.data = self.data
         n = self.frame.detect()
         self.assertEqual(n, 1)
@@ -109,12 +112,16 @@ class TestFrame(unittest.TestCase):
         truth.coordinates = LorenzMie.meshgrid((201, 201))
         frame.data = truth.hologram().reshape(201, 201)
         frame.bboxes = ((0, 0), 201, 201)
+        # Pin the DE search's own seed rather than relying on the
+        # ambient global RandomState scipy falls back to when an
+        # estimator's seed is None -- that fallback made this fixture
+        # sensitive to whatever other tests ran earlier in the suite.
+        frame.features[0].estimator.seed = 0
         return frame
 
     def test_poor_single_fit_splits_into_pair(self):
         '''High-redchi single fit of two spheres is refit as a Pair.'''
         from pylorenzmie.theory import Pair
-        np.random.seed(0)
         frame = self._pair_frame()
         frame.estimate()
         results = frame.optimize()
@@ -123,7 +130,6 @@ class TestFrame(unittest.TestCase):
 
     def test_split_disabled_keeps_single(self):
         '''split_redchi=None leaves a single-particle fit alone.'''
-        np.random.seed(0)
         frame = self._pair_frame(split_redchi=None)
         frame.estimate()
         frame.optimize()
