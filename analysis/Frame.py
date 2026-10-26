@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 from pylorenzmie.lib import meshgrid
 from pylorenzmie.theory import Instrument, LorenzMie
@@ -29,6 +30,12 @@ class Frame(Hologram):
         Default: ``Instrument()``.
     localizer : Localizer, optional
         Feature detection backend.  Default: ``Localizer()``.
+    split_redchi : float or None, optional
+        Reduced chi-squared above which a single-particle fit is
+        suspected to be two particles and is refit as a
+        :class:`~pylorenzmie.theory.Pair`.  The pair fit replaces the
+        single fit only if it has a lower redchi.  ``None`` disables
+        this check.  Default: 2.0.
 
     Attributes
     ----------
@@ -45,9 +52,11 @@ class Frame(Hologram):
                  data: Image | None = None,
                  corner: tuple[float, float] = (0., 0.),
                  instrument: Instrument | None = None,
-                 localizer: Localizer | None = None) -> None:
+                 localizer: Localizer | None = None,
+                 split_redchi: float | None = 2.0) -> None:
         self.instrument = instrument or Instrument()
         self.localizer = localizer or Localizer()
+        self.split_redchi = split_redchi
         self._features: list[Feature] = []
         self._bboxes: list = []
         self._results: pd.DataFrame = pd.DataFrame()
@@ -182,8 +191,90 @@ class Frame(Hologram):
         for feature in self.features:
             feature.estimate()
 
+    def _split(self, feature: Feature) -> Feature:
+        '''Refit an optimized single-particle feature as a Pair.
+
+        The single fit's center is taken as the midpoint of the pair.
+        Two starting centers are placed on either side of it, at four
+        angles and two offsets (1/16 and 1/8 of the crop size).  The
+        pair search pins its starting centers, so neither the true
+        separation nor the best angle is known in advance; each
+        candidate is estimated and optimized, and the one with the
+        lowest redchi is returned.  1/16 catches badly-blended pairs
+        (true separation well under the ~25%-of-crop-size candidate
+        that 1/8 alone produces) where the wider candidate starts
+        local refinement too far from the true spacing to converge
+        correctly.  A wider 1/4 offset was tried and dropped: a pair
+        that separated is normally resolved as two boxes by
+        :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`
+        before ever reaching this single-to-pair promotion, so a
+        feature that got this far is already blended tightly enough
+        that 1/4 of the crop size overshoots past any separation it
+        is likely to have.
+
+        Parameters
+        ----------
+        feature : Feature
+            Single-particle feature that has already been optimized.
+
+        Returns
+        -------
+        pair : Feature
+            Optimized pair feature with the lowest redchi.
+        '''
+        fit = feature.optimizer.result
+        size = max(feature.shape)
+        best = None
+        for fraction in (1 / 16, 1 / 8):
+            offset = fraction * size
+            for angle in np.deg2rad((0., 45., 90., 135.)):
+                dx, dy = offset * np.cos(angle), offset * np.sin(angle)
+                centers = [(fit.x_p - dx, fit.y_p - dy),
+                           (fit.x_p + dx, fit.y_p + dy)]
+                pair = Feature(feature,
+                               model=LorenzMie(instrument=self.instrument),
+                               centers=centers)
+                pair.mask = feature.mask
+                pair.estimator.seed = feature.estimator.seed
+                pair.estimate()
+                pair.optimize()
+                if (best is None or
+                        pair.optimizer.result.redchi <
+                        best.optimizer.result.redchi):
+                    best = pair
+        return best
+
+    def split_suspects(self) -> int:
+        '''Refit suspect single-particle features as two-particle Pairs.
+
+        A single-particle feature whose redchi exceeds
+        :attr:`split_redchi` is refit as a
+        :class:`~pylorenzmie.theory.Pair` (see :meth:`_split`).  The
+        pair replaces the feature only if its redchi is lower.  Call
+        after the features have been optimized.
+
+        Returns
+        -------
+        nsplit : int
+            Number of features replaced by a pair.
+        '''
+        if self.split_redchi is None:
+            return 0
+        nsplit = 0
+        for i, feature in enumerate(self.features):
+            result = feature.optimizer.result
+            if feature.centers is None and result.redchi > self.split_redchi:
+                pair = self._split(feature)
+                if pair.optimizer.result.redchi < result.redchi:
+                    self._features[i] = pair
+                    nsplit += 1
+        return nsplit
+
     def optimize(self) -> Results:
         '''Optimize parameters for all current features.
+
+        Suspect single-particle fits are then refit as pairs, as in
+        :meth:`split_suspects`.
 
         Returns
         -------
@@ -191,8 +282,11 @@ class Frame(Hologram):
             Fitted values, uncertainties, and goodness-of-fit for each
             feature.
         '''
-        results = [feature.optimize() for feature in self.features]
-        self._results = pd.DataFrame(results)
+        for feature in self.features:
+            feature.optimize()
+        self.split_suspects()
+        self._results = pd.DataFrame(
+            [feature.optimizer.result for feature in self.features])
         return self._results
 
     def analyze(self, data: Image | None = None) -> Results:

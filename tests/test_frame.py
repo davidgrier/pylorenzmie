@@ -94,6 +94,41 @@ class TestFrame(unittest.TestCase):
         # shared instrument still reaches the feature's model
         self.assertAlmostEqual(feature.model.instrument.wavelength, 0.447)
 
+    def _pair_frame(self, split_redchi=2.0):
+        '''Frame with one box around a noiseless two-sphere hologram.'''
+        from pylorenzmie.theory import LorenzMie, Pair
+        frame = Frame(split_redchi=split_redchi)
+        frame.instrument.wavelength = 0.447
+        frame.instrument.magnification = 0.048
+        frame.instrument.n_m = 1.34
+        truth = LorenzMie(
+            particle=Pair(x_p1=85., y_p1=85., z_p1=250., a_p1=0.5,
+                          n_p1=1.42, x_p2=115., y_p2=115., z_p2=250.,
+                          a_p2=0.6, n_p2=1.40),
+            instrument=frame.instrument)
+        truth.coordinates = LorenzMie.meshgrid((201, 201))
+        frame.data = truth.hologram().reshape(201, 201)
+        frame.bboxes = ((0, 0), 201, 201)
+        return frame
+
+    def test_poor_single_fit_splits_into_pair(self):
+        '''High-redchi single fit of two spheres is refit as a Pair.'''
+        from pylorenzmie.theory import Pair
+        np.random.seed(0)
+        frame = self._pair_frame()
+        frame.estimate()
+        results = frame.optimize()
+        self.assertIsInstance(frame.features[0].particle, Pair)
+        self.assertLess(results.redchi.iloc[0], 2.0)
+
+    def test_split_disabled_keeps_single(self):
+        '''split_redchi=None leaves a single-particle fit alone.'''
+        np.random.seed(0)
+        frame = self._pair_frame(split_redchi=None)
+        frame.estimate()
+        frame.optimize()
+        self.assertIsNone(frame.features[0].centers)
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()
