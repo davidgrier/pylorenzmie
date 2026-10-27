@@ -17,6 +17,22 @@ All notable changes to pylorenzmie are recorded here. The format follows
   and the start-up in `pylorenzmie.lmtool.launch`, so that nothing slow is
   imported before the splash screen appears. `BACKENDS` is defined in
   `pylorenzmie.backends` and is still exported by `pylorenzmie.theory`.
+* Two overlapping particles can be fitted together. `Pair`
+  (`pylorenzmie.theory`) is a `Cluster` of two spheres with independent
+  positions, radii and indices, for particles that do not touch (touching
+  ones are a `Dimer`). `PairEstimator` extends `DEEstimator` to it: it takes
+  the two centers from the caller (or from the pair) and searches `z_p`, `a_p`
+  and `n_p` of both spheres with the bounds of `DEEstimator`.
+  `Feature(centers=[(x1, y1), (x2, y2)])` builds a pair feature.
+  `pair_grouping.group_overlapping` merges the localized boxes that overlap
+  into one box with `n_particles` equal to 2.
+* `Frame.split_redchi` (default 2.0) and `Frame.split_suspects()`: a
+  single-particle fit whose reduced chi-squared exceeds `split_redchi` is
+  refit as a pair, from eight starting arrangements about the single fit, and
+  the pair replaces it only if its reduced chi-squared is lower. `None`
+  switches the check off.
+* `Localizer` takes `percentile` and `separation`, which it passes to
+  `trackpy.locate`, as attributes and as overrides in `localize`.
 * `Normalizer` takes the dark count (black level) of the camera, `dark`, and
   subtracts it from the image and the reference before it divides. Without it
   the fringes of a hologram have too little contrast by the factor
@@ -28,6 +44,16 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* `Frame.detect` groups overlapping boxes with `group_overlapping`: two
+  overlapping boxes become one pair feature, and three or more are discarded,
+  since a box that holds pixels of a third particle cannot be fitted as a
+  single particle or a pair. `Frame.optimize` then calls `split_suspects`, so
+  the results of a frame can contain pairs by default; pass
+  `split_redchi=None` for the previous behavior.
+* `Mask.apply` returns C-contiguous coordinates, because the CuPy backend read
+  the non-contiguous slice incorrectly. `Feature` runs the differential
+  evolution on one worker with the CuPy and JAX backends, so that it does not
+  fork the state of the GPU.
 * The `lmtool` command, `python -m pylorenzmie.lmtool` and the entry point
   start through `pylorenzmie.lmtool.launch`. `argument_parser` and `lmtool`
   are no longer in `pylorenzmie.lmtool.LMTool`; reinstall the package
