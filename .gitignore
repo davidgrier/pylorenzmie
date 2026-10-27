@@ -9,6 +9,7 @@ plots
 .idea/
 *.png
 !utilities/data/*.png
+!lmtool/splash.png
 .DS_Store
 *~
 *.txt

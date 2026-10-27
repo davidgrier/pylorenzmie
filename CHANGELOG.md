@@ -6,8 +6,17 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-27
+
 ### Added
 
+* `lmtool` shows a splash screen, a hologram of a particle rendered with
+  `LorenzMie` (`devel/make_splash.py` makes `lmtool/splash.png`), while the
+  analysis pipeline loads, which takes seconds and longer on the first run
+  after an installation. The command line is in `pylorenzmie.lmtool.arguments`
+  and the start-up in `pylorenzmie.lmtool.launch`, so that nothing slow is
+  imported before the splash screen appears. `BACKENDS` is defined in
+  `pylorenzmie.backends` and is still exported by `pylorenzmie.theory`.
 * `Normalizer` takes the dark count (black level) of the camera, `dark`, and
   subtracts it from the image and the reference before it divides. Without it
   the fringes of a hologram have too little contrast by the factor
@@ -19,6 +28,10 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* The `lmtool` command, `python -m pylorenzmie.lmtool` and the entry point
+  start through `pylorenzmie.lmtool.launch`. `argument_parser` and `lmtool`
+  are no longer in `pylorenzmie.lmtool.LMTool`; reinstall the package
+  (`pip install -e .`) to update the `lmtool` script.
 * `Estimator` finds the center of the particle and matches the profile to a
   sphere to obtain the radius. The radius came from the Fraunhofer
   approximation and was about 4 um for every sphere in our tests, whatever its

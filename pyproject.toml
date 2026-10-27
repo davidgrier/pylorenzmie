@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "pylorenzmie"
-version = "3.4.0"
+version = "3.5.0"
 description = "Python tools for Lorenz-Mie holographic microscopy"
 readme = "README.md"
 license = { text = "GPL-3.0-or-later" }
@@ -69,7 +69,7 @@ packages = [
 ]
 
 [tool.setuptools.package-data]
-"pylorenzmie.lmtool"     = ["*.ui"]
+"pylorenzmie.lmtool"     = ["*.ui", "*.png"]
 "pylorenzmie"            = ["py.typed"]
 "pylorenzmie.analysis"   = ["*.joblib"]
 "pylorenzmie.utilities"  = ["data/*.png"]
