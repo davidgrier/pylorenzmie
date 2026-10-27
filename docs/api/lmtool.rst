@@ -7,6 +7,12 @@ For a user-oriented guide to launching and using the application, see
 .. automodule:: pylorenzmie.lmtool.LMTool
    :members:
 
+.. automodule:: pylorenzmie.lmtool.launch
+   :members:
+
+.. automodule:: pylorenzmie.lmtool.arguments
+   :members:
+
 .. automodule:: pylorenzmie.lmtool.LMSession
    :members:
 

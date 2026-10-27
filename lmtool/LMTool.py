@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import argparse
 from datetime import datetime
 import json
 import logging
@@ -26,7 +25,6 @@ from pylorenzmie.lmtool.results import save_results
 from pylorenzmie.lmtool.tasks import (FitResult, LocalizeRequest, Snapshot,
                                        TaskRunner, run_estimate, run_fit,
                                        run_localize)
-from pylorenzmie.theory import BACKENDS, model_class
 from pylorenzmie.utilities import Normalizer, estimate_noise
 
 _DIR = Path(__file__).parent
@@ -682,61 +680,3 @@ class LMTool(QMainWindow):
                           'HDF5 (*.h5);;JSON (*.json);;CSV (*.csv)')
         if filename:
             self.saveResults(filename)
-
-
-def argument_parser() -> argparse.ArgumentParser:
-    '''The command line of lmtool.
-
-    Returns
-    -------
-    argparse.ArgumentParser
-        Parser of the file to open and of the options ``--background``,
-        ``--distorted`` and ``--backend``.
-    '''
-    default_file = str(_DIR.parent / 'docs' / 'tutorials' / 'crop.png')
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('filename', type=str, default=default_file,
-                        nargs='?', action='store')
-    parser.add_argument('-b', '--background', dest='background',
-                        default=None, action='store',
-                        help='background: image path or intensity value')
-    parser.add_argument('-D', '--dark', type=float, default=0.,
-                        help='dark count (black level) of the camera, in '
-                        'gray levels, subtracted before normalizing')
-    parser.add_argument('-d', '--distorted', action='store_true',
-                        help='model the aberrations as geometric '
-                        'distortions rather than phase factors '
-                        '(numpy and numba backends)')
-    parser.add_argument('-B', '--backend', choices=BACKENDS, default=None,
-                        help='calculator of the scattering model '
-                        '(default: PYLORENZMIE_BACKEND, else numba '
-                        'if installed, else numpy)')
-    return parser
-
-
-def lmtool() -> None:
-    from pylorenzmie.lmtool.ALMWidget import ALMWidget
-    from pyqtgraph.Qt.QtWidgets import QApplication
-    import sys
-
-    logging.basicConfig(level=logging.WARNING,
-                        format='%(name)s: %(levelname)s: %(message)s')
-
-    parser = argument_parser()
-    args, unparsed = parser.parse_known_args()
-    qt_args = sys.argv[:1] + unparsed
-    try:
-        model = model_class(args.backend, args.distorted)
-    except (ValueError, ImportError) as error:
-        parser.error(str(error))
-
-    app = QApplication(qt_args)
-    tool = LMTool(ALMWidget.with_model(model), args.filename,
-                  args.background, args.dark)
-    tool.show()
-    sys.exit(app.exec())
-
-
-if __name__ == '__main__':  # pragma: no cover
-    lmtool()

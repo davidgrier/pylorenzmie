@@ -592,7 +592,7 @@ class TestBackground(ToolTestCase):
 class TestModelChoice(ToolTestCase):
 
     def parse(self, *argv):
-        from pylorenzmie.lmtool.LMTool import argument_parser
+        from pylorenzmie.lmtool.arguments import argument_parser
         return argument_parser().parse_args(argv)
 
     def test_the_defaults(self):
@@ -623,7 +623,7 @@ class TestModelChoice(ToolTestCase):
 
     def test_an_unusable_choice_is_a_usage_error(self):
         # reported before a window or an application exists
-        from pylorenzmie.lmtool.LMTool import lmtool
+        from pylorenzmie.lmtool.launch import lmtool
         argv = ['lmtool', '--distorted', '--backend', 'torch']
         with mock.patch('sys.argv', argv), mock.patch('sys.stderr') as err:
             with self.assertRaises(SystemExit) as raised:

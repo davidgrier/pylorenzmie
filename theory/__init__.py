@@ -2,6 +2,8 @@ import logging as _logging
 import os as _os
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 
+from pylorenzmie.backends import BACKENDS
+
 from .Particle import Particle
 from .Sphere import Sphere
 from .Cluster import Cluster
@@ -29,9 +31,6 @@ from .LorenzMie import LorenzMie as _BaseLorenzMie
 # ``from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie``.
 # A backend that is requested explicitly but cannot be loaded raises an error
 # rather than silently falling back to a different one.
-
-
-BACKENDS = ('numpy', 'numba', 'torch', 'jax', 'cupy')
 
 
 def _load(name: str) -> type:

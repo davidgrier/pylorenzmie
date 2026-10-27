@@ -47,7 +47,7 @@ Documentation = "https://pylorenzmie.readthedocs.io"
 "Bug Tracker" = "https://github.com/davidgrier/pylorenzmie/issues"
 
 [project.scripts]
-lmtool = "pylorenzmie.lmtool.LMTool:lmtool"
+lmtool = "pylorenzmie.lmtool.launch:lmtool"
 
 [project.optional-dependencies]
 gpu   = ["cupy-cuda12x"]
