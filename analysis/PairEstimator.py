@@ -12,18 +12,18 @@ from scipy.optimize import differential_evolution
 class PairEstimator(DEEstimator):
     '''Estimate initial parameters of a two-particle Pair by global search.
 
-    Extends :class:`DEEstimator` to a :class:`~pylorenzmie.theory.Pair`
-    model: rather than pinning a single ``x_p``/``y_p`` to the crop's
-    coordinate mean and searching one set of ``z_p``, ``a_p``, ``n_p``,
-    it pins both particles' centers from caller-supplied estimates and
-    searches ``z_p1``/``a_p1``/``n_p1`` and ``z_p2``/``a_p2``/``n_p2``
-    together using the same :attr:`~DEEstimator.bounds` for each.
+    Extends :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` to a
+    :class:`~pylorenzmie.theory.Pair.Pair` model: rather than pinning a
+    single ``x_p``/``y_p`` to the crop's coordinate mean and searching one
+    set of ``z_p``, ``a_p``, ``n_p``, it pins both particles' centers from
+    caller-supplied estimates and searches ``z_p1``/``a_p1``/``n_p1`` and
+    ``z_p2``/``a_p2``/``n_p2`` together using the same ``bounds`` for each.
 
-    Inherits from :class:`DEEstimator`.
+    Inherits from :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator`.
 
     Notes
     -----
-    ``model.particle`` must be a :class:`~pylorenzmie.theory.Pair`.
+    ``model.particle`` must be a :class:`~pylorenzmie.theory.Pair.Pair`.
     The rough centers passed to :meth:`estimate` typically come from
     the ``x_p``/``y_p`` lists that
     :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`
@@ -51,7 +51,7 @@ class PairEstimator(DEEstimator):
         -------
         result : pandas.Series
             Estimated Pair properties (same keys as
-            :attr:`~pylorenzmie.theory.Pair.properties`).
+            ``Pair.properties``).
         '''
         if centers is None:
             p = self.model.particle

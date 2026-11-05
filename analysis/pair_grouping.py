@@ -91,7 +91,7 @@ def group_overlapping(predictions: pd.DataFrame) -> pd.DataFrame:
     Parameters
     ----------
     predictions : pandas.DataFrame
-        Output of :meth:`~pylorenzmie.analysis.Localizer.localize`.
+        Output of :meth:`~pylorenzmie.analysis.Localizer.Localizer.localize`.
         Columns: ``x_p``, ``y_p``, ``bbox``.
 
     Returns

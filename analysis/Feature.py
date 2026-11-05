@@ -38,8 +38,9 @@ class Feature(Hologram):
     optimizer for localizing and characterizing its particle(s).  With
     ``centers`` omitted it models a single :class:`~pylorenzmie.theory.Sphere`
     and estimates with :class:`~pylorenzmie.analysis.DEEstimator`.  Given
-    two centers it models a :class:`~pylorenzmie.theory.Pair` and
-    estimates with :class:`~pylorenzmie.analysis.PairEstimator`.
+    two centers it models a :class:`~pylorenzmie.theory.Pair.Pair` and
+    estimates with
+    :class:`~pylorenzmie.analysis.PairEstimator.PairEstimator`.
 
     Parameters
     ----------
@@ -50,7 +51,8 @@ class Feature(Hologram):
     centers : list[tuple[float, float]], optional
         Rough ``(x_p, y_p)`` pixel centers of the particles in the crop.
         ``None`` (default) or one center configures a single-particle
-        feature; two centers configure a :class:`~pylorenzmie.theory.Pair`.
+        feature; two centers configure a
+        :class:`~pylorenzmie.theory.Pair.Pair`.
     fixed : list[str], optional
         Model properties held constant during fitting.  Default: the
         Optimizer default for a single particle, or ``k_p1``/``k_p2``
@@ -141,8 +143,10 @@ class Feature(Hologram):
     def estimate(self) -> pd.Series:
         '''Estimate initial particle parameters from the hologram crop.
 
-        For a two-particle feature the :class:`PairEstimator` reads the
-        pinned :attr:`centers` off the model's :class:`Pair` particle.
+        For a two-particle feature the
+        :class:`~pylorenzmie.analysis.PairEstimator.PairEstimator` reads
+        the pinned :attr:`centers` off the model's
+        :class:`~pylorenzmie.theory.Pair.Pair` particle.
         The estimated values are written onto :attr:`particle` in place,
         ready for :meth:`optimize`.
 

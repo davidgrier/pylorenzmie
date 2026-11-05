@@ -72,8 +72,8 @@ class Localizer(LMObject):
 
     @LMObject.properties.getter
     def properties(self) -> Properties:
-        '''Localization parameters: nfringes, diameter, percentile,
-        and separation.'''
+        '''The nfringes, diameter, percentile and separation of the
+        localizer.'''
         return dict(nfringes=self.nfringes, diameter=self.diameter,
                     percentile=self.percentile, separation=self.separation)
 
@@ -106,9 +106,9 @@ class Localizer(LMObject):
             is computed, which is where most of the time goes.  It may raise
             an exception to stop the localization, as a cancel button does.
         percentile : int, optional
-            Override :attr:`percentile` for this call.
+            Override ``percentile`` for this call.
         separation : float, optional
-            Override :attr:`separation` for this call.
+            Override ``separation`` for this call.
         **kwargs
             Additional keyword arguments passed to ``trackpy.locate``.
 

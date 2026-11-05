@@ -59,6 +59,12 @@ Dimer
 .. automodule:: pylorenzmie.theory.Dimer
    :members:
 
+Pair
+----
+
+.. automodule:: pylorenzmie.theory.Pair
+   :members:
+
 LorenzMie
 ---------
 

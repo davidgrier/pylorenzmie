@@ -55,6 +55,18 @@ MLPEstimator
 .. automodule:: pylorenzmie.analysis.MLPEstimator
    :members:
 
+PairEstimator
+-------------
+
+.. automodule:: pylorenzmie.analysis.PairEstimator
+   :members:
+
+pair_grouping
+-------------
+
+.. automodule:: pylorenzmie.analysis.pair_grouping
+   :members:
+
 Optimizer
 ---------
 

@@ -40,8 +40,9 @@ class Pair(Cluster):
     Notes
     -----
     The cluster-level ``x_p``, ``y_p``, ``z_p`` inherited from
-    :class:`Particle` are held fixed at the origin: sphere positions
-    are absolute pixel coordinates, not offsets from a cluster center.
+    :class:`~pylorenzmie.theory.Particle.Particle` are held fixed at the
+    origin: sphere positions are absolute pixel coordinates, not offsets
+    from a cluster center.
 
     :class:`~pylorenzmie.analysis.Optimizer`'s default ``fixed`` list
     names ``k_p``, which does not appear in :attr:`properties`. Pass

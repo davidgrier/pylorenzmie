@@ -53,7 +53,7 @@ class Frame(Hologram):
     split_redchi : float or None, optional
         Reduced chi-squared above which a single-particle fit is
         suspected to be two particles and is refit as a
-        :class:`~pylorenzmie.theory.Pair`.  The pair fit replaces the
+        :class:`~pylorenzmie.theory.Pair.Pair`.  The pair fit replaces the
         single fit only if it has a lower redchi.  ``None`` disables
         this check.  Default: 2.0.
 
@@ -172,10 +172,11 @@ class Frame(Hologram):
 
         Localized bounding boxes are passed through
         :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`:
-        an isolated box becomes a single-particle :class:`Feature`,
+        an isolated box becomes a single-particle
+        :class:`~pylorenzmie.analysis.Feature.Feature`,
         while two mutually overlapping boxes are merged into one
-        :class:`Feature` configured for a
-        :class:`~pylorenzmie.theory.Pair`.
+        :class:`~pylorenzmie.analysis.Feature.Feature` configured for a
+        :class:`~pylorenzmie.theory.Pair.Pair`.
 
         Returns
         -------
@@ -268,8 +269,8 @@ class Frame(Hologram):
         '''Refit suspect single-particle features as two-particle Pairs.
 
         A single-particle feature whose redchi exceeds
-        :attr:`split_redchi` is refit as a
-        :class:`~pylorenzmie.theory.Pair` (see :meth:`_split`).  The
+        ``split_redchi`` is refit as a
+        :class:`~pylorenzmie.theory.Pair.Pair`.  The
         pair replaces the feature only if its redchi is lower.  Call
         after the features have been optimized.
 
