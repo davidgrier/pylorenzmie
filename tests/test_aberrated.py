@@ -112,7 +112,8 @@ class TestAberratedLorenzMie(unittest.TestCase):
         n_m = Instrument().n_m
         dx, dy, r, u = self.geometry()
         sin_theta = np.divide(dy, r, out=np.zeros_like(u), where=r > 0)
-        return n_m, d / self.zp, u, sin_theta
+        inst = Instrument()
+        return n_m, d * inst.magnification / inst.wavelength, u, sin_theta
 
     def test_table_frame_coma(self):
         # includes points with sin(theta) < 0, which fix the sign
@@ -157,8 +158,9 @@ class TestAberratedLorenzMie(unittest.TestCase):
         perpendicular = (dy == 0) & (dx == 10.)
         self.assertEqual(along.sum(), 1)
         self.assertEqual(perpendicular.sum(), 1)
-        expected = (6.*np.pi*n_m**3 * c * (d / self.zp) *
-                    np.sqrt(u[along])**3)
+        inst = Instrument()
+        eta = d * inst.magnification / inst.wavelength
+        expected = 6.*np.pi*n_m**3 * c * eta * np.sqrt(u[along])**3
         self.assertAlmostEqual(float(phase[along][0]), float(expected[0]))
         self.assertAlmostEqual(float(phase[perpendicular][0]), 0.)
 
@@ -201,9 +203,11 @@ class TestAberratedKernelHooks(unittest.TestCase):
         self.model.distortion = 0.3
         self.model.x_c = 7.
         self.model.y_c = 9.
+        inst = self.model.instrument
         np.testing.assert_array_equal(
             self.model._aberration_coefficients(),
-            [0.5, 2., 0.1, 0.2, 0.3, 7., 9.])
+            [0.5, 2., 0.1, 0.2, 0.3, 7., 9.,
+             inst.wavelength / inst.magnification])
 
     def test_a_calculator_that_applies_the_phase_itself_is_not_multiplied(self):
         class InKernel(type(self.model)):

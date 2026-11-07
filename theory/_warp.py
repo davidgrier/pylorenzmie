@@ -55,7 +55,7 @@ def PARALLEL_LOCK() -> threading.Lock:
 # Each generator g_n(x, y) is the vector field whose flow is one aberration.
 # (x, y) is the in-plane displacement from the particle [pixels], z2 = z_p**2,
 # n_m is the refractive index of the medium, and (q0, q1) is the displacement
-# of the particle from the aberration center in units of z_p.  The function
+# of the particle from the aberration center in vacuum wavelengths.  The function
 # returns the (x, y) components of g_n; see generators.generator.
 @njit(inline='always', fastmath=True, cache=True)
 def _p(x: float, y: float, z2: float, n_m: float) -> Pair:

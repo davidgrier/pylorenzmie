@@ -134,8 +134,11 @@ class TestTorchLorenzMie(unittest.TestCase):
         names = ('defocus', 'spherical', 'coma', 'astigmatism', 'distortion')
         for name in names:
             with self.subTest(name):
+                # the center is about one vacuum wavelength from the
+                # particle (eta = 1), which keeps the float32 phase of
+                # the field-dependent terms moderate
                 torch_model, numpy_model = self._aberrated_pair(
-                    **{name: 6.}, x_c=2., y_c=2.)
+                    **{name: 6.}, x_c=26., y_c=26.)
                 # the aberration must matter, or agreement means nothing
                 self.assertGreater(
                     np.abs(numpy_model.hologram() -

@@ -247,42 +247,39 @@ def _jax_aberration_phase(r_p, coordinates, n_m, coefficients):
 
     JAX counterpart of :meth:`Aberrated._aberration`, written without
     branches so that it can be traced and differentiated with respect to
-    ``r_p``.  Square roots and quotients are guarded where their
-    arguments vanish (a pixel on the particle's axis, an aberration
-    center on the particle), because their derivatives would otherwise
-    be NaN there.
+    ``r_p``.  The field-dependent terms are written without dividing by
+    the distance to the particle's axis or to the aberration center, so
+    their derivatives are exact where those distances vanish.
 
     Parameters
     ----------
-    coefficients : jnp.ndarray, shape (7,)
+    coefficients : jnp.ndarray, shape (8,)
         defocus, spherical, coma, astigmatism, distortion [wavelengths],
-        then x_c, y_c [pixels].
+        then x_c, y_c [pixels] and the vacuum wavelength [pixels].
     '''
-    defocus, spherical, coma, astigmatism, distortion, x_c, y_c = coefficients
+    (defocus, spherical, coma, astigmatism, distortion,
+     x_c, y_c, scale) = coefficients
     dx = coordinates[0] - r_p[0]
     dy = coordinates[1] - r_p[1]
     rsq = dx*dx + dy*dy
-    u = rsq / (rsq + r_p[2]**2)
+    R = jnp.sqrt(rsq + r_p[2]**2)
+    u = rsq / (R*R)
 
-    on_axis = rsq > 0.
-    r = jnp.where(on_axis, jnp.sqrt(jnp.where(on_axis, rsq, 1.)), 0.)
-    root_u = jnp.where(on_axis, jnp.sqrt(jnp.where(on_axis, u, 1.)), 0.)
-
+    # With eta = r_c/scale, cos(phi - psi) = w/(r r_c) and
+    # w = dx*dxc + dy*dyc, every field-dependent term is a polynomial in
+    # (dx, dy, dxc, dyc) over a power of R.  Written that way, nothing
+    # divides by r or r_c, so the gradient is exact at a pixel on the
+    # particle's axis and at an aberration center on the particle.
     dxc = r_p[0] - x_c
     dyc = r_p[1] - y_c
+    w = dx*dxc + dy*dyc
     rcsq = dxc*dxc + dyc*dyc
-    has_center = rcsq > 0.
-    rc = jnp.where(has_center, jnp.sqrt(jnp.where(has_center, rcsq, 1.)), 0.)
-    both = on_axis & has_center
-    cos_rel = jnp.where(both,
-                        (dx*dxc + dy*dyc) / jnp.where(both, r*rc, 1.), 0.)
-    eta = rc / r_p[2]       # zero at the aberration center: no coma etc.
 
     return (defocus * (4.*jnp.pi*n_m**2) * u +
             spherical * (8.*jnp.pi*n_m**4) * u**2 +
-            coma * (6.*jnp.pi*n_m**3) * eta * root_u**3 * cos_rel +
-            astigmatism * (4.*jnp.pi*n_m**2) * eta**2 * u * cos_rel**2 +
-            distortion * (2.*jnp.pi*n_m) * eta**3 * root_u * cos_rel)
+            coma * (6.*jnp.pi*n_m**3) * w * rsq / (scale * R**3) +
+            astigmatism * (4.*jnp.pi*n_m**2) * w**2 / (scale*R)**2 +
+            distortion * (2.*jnp.pi*n_m) * rcsq * w / (scale**3 * R))
 
 
 def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,
@@ -305,7 +302,7 @@ def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,
         Pixel coordinates at which to evaluate the hologram.
     nmax : int
         Number of Mie terms (static).
-    aberration : jnp.ndarray, shape (7,), or None
+    aberration : jnp.ndarray, shape (8,), or None
         Aberration coefficients (see :func:`_jax_aberration_phase`).
         ``None`` (the default) compiles the unaberrated model.
     piston : JAX float scalar

@@ -53,7 +53,7 @@ kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
                       constant float&     phim    [[buffer(12)]],
                       device float*       inten   [[buffer(13)]],  // (npts)
                       constant uint&      mode    [[buffer(14)]],
-                      device const float* aberr   [[buffer(15)]],  // (7)
+                      device const float* aberr   [[buffer(15)]],  // (8)
                       constant uint&      has_ab  [[buffer(16)]],
                       constant float&     nm      [[buffer(17)]],
                       uint i [[thread_position_in_grid]]) {
@@ -107,7 +107,8 @@ kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
     if (has_ab != 0) {
         // Seidel aberration phase (Aberrated._aberration): defocus,
         // spherical, coma, astigmatism, distortion [wavelengths], then
-        // the aberration center x_c, y_c [pixels]
+        // the aberration center x_c, y_c [pixels], then the vacuum
+        // wavelength [pixels]
         float dx = coords[i] - xp;
         float dy = coords[npts + i] - yp;
         float rsq = dx*dx + dy*dy;
@@ -118,7 +119,7 @@ kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
         float r = sqrt(rsq);
         float cos_rel = (r > 0.0f && rc > 0.0f)
                         ? (dx*dxc + dy*dyc) / (r*rc) : 0.0f;
-        float eta = (rc > 0.0f) ? rc / zp : 0.0f;
+        float eta = (rc > 0.0f) ? rc / aberr[7] : 0.0f;
         float root_u = sqrt(u);
         float phase = aberr[0] * (4.0f*M_PI_F*nm*nm) * u
                     + aberr[1] * (8.0f*M_PI_F*nm*nm*nm*nm) * u*u
@@ -301,7 +302,7 @@ class TorchLorenzMie(LorenzMie):
                 npts, dtype=torch.float32, device=self._device)
             self._metal_table = None      # device copy of the Mie table
             self._metal_aberration = torch.zeros(
-                7, dtype=torch.float32, device=self._device)
+                8, dtype=torch.float32, device=self._device)
             self._host_tables = []        # see _scattered_field_metal
         self._field_t  = torch.zeros(
             shape, dtype=torch.complex64, device=self._device)

@@ -5,8 +5,9 @@ Each aberration is the flow of a dimensionless vector field
 plane, where :math:`\\vec{\\rho}` is the in-plane displacement from the
 scattering particle, :math:`R = \\sqrt{\\rho^2 + z_p^2}`, the
 canonical momentum is :math:`\\vec{p} = n_m \\vec{\\rho} / R`, and
-:math:`\\vec{q} = (\\vec{r}_p - \\vec{r}_c) / z_p` is the displacement
-of the particle from the aberration center in units of its height.
+:math:`\\vec{q} = (\\vec{r}_p - \\vec{r}_c) / \\lambda` is the displacement
+of the particle from the aberration center in units of the vacuum
+wavelength, :math:`\\vec{\\eta}` of Gronert et al.
 The generators :math:`D_n` are those of Table I of Gronert et al.
 '''
 from collections.abc import Callable, Sequence
@@ -36,7 +37,7 @@ def generator(name: str,
         Refractive index of the medium.
     q : array_like, shape (2,), optional
         Displacement of the particle from the aberration center,
-        divided by *z_p*. Default: ``(0, 0)``.
+        in vacuum wavelengths. Default: ``(0, 0)``.
         Used by the field-dependent aberrations only.
 
     Returns

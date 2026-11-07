@@ -169,7 +169,8 @@ class TestDistortedLorenzMie(unittest.TestCase):
             inst = m.instrument
             r_p = np.array([self.xp, self.yp, self.zp])
             rho = self.coordinates[:2] - r_p[:2, None]
-            q = np.array([self.xp - xc, self.yp - yc]) / self.zp
+            q = (np.array([self.xp - xc, self.yp - yc]) *
+                 inst.magnification / inst.wavelength)
             g = generator(name, rho, self.zp, inst.n_m, q)
             R = np.sqrt(np.sum(rho**2, axis=0) + self.zp**2)
             alpha = c * inst.wavelength / inst.magnification

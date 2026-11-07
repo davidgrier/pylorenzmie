@@ -6,6 +6,26 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-11-07
+
+### Changed
+
+* The field-dependent aberrations (coma, astigmatism, distortion, and field
+  curvature in `Distorted`) now scale with
+  `eta = (distance from the aberration center) / (vacuum wavelength)` instead
+  of `/ z_p`, so that their coefficients are instrumental constants that do
+  not depend on the particle's height or on the refractive index of the
+  medium. Fitted coma, astigmatism and distortion coefficients from earlier
+  versions are not comparable; defocus, spherical aberration and piston are
+  unchanged. The JAX and Metal kernels take the vacuum wavelength in pixels
+  as an eighth aberration coefficient.
+
+### Fixed
+
+* The JAX aberration phase has exact gradients at a pixel on the particle's
+  axis; the distortion term's derivative there was previously zeroed by a
+  guard.
+
 ## [3.5.0] - 2026-10-27
 
 ### Added

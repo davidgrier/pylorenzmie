@@ -234,7 +234,8 @@ def Distorted(base_class: type) -> type:
             z_p = r_p[2]
             n_m = inst.n_m
             scale = inst.wavelength / inst.magnification
-            q = np.array([r_p[0] - self.x_c, r_p[1] - self.y_c]) / z_p
+            # displacement from the aberration center in vacuum wavelengths
+            q = np.array([r_p[0] - self.x_c, r_p[1] - self.y_c]) / scale
             if self.kernel and _warp is not None:
                 return self._kernel_warp(rho, active, scale, z_p, q)
             if self.mode == 'summed':

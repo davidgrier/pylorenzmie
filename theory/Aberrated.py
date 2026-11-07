@@ -134,9 +134,12 @@ def Aberrated(base_class: type) -> type:
         ``coma``, ``astigmatism``, and ``distortion``,
         :math:`u = r^2/(r^2+z_p^2)` with :math:`r` the in-plane
         distance from the particle to the field point,
-        :math:`\\eta = r_c/z_p` with :math:`r_c` the in-plane distance
+        :math:`\\eta = r_c/\\lambda` with :math:`r_c` the in-plane distance
         between the particle and the aberration center
-        :math:`(x_c, y_c)`, :math:`\\varphi` is the azimuth of the field
+        :math:`(x_c, y_c)` in units of the vacuum wavelength,
+        independent of :math:`z_p` and of :math:`n_m`, so that the
+        coefficients are instrumental constants,
+        :math:`\\varphi` is the azimuth of the field
         point about the particle, and :math:`\\psi` is the azimuth of
         the displacement from the aberration center to the particle.
         Defocus and spherical aberration are rotationally symmetric
@@ -220,7 +223,8 @@ def Aberrated(base_class: type) -> type:
                     # explicitly.
                     cos_rel = np.divide(dx*dxc + dy*dyc, r*rc,
                                         out=np.zeros_like(u), where=r > 0)
-                    eta = rc / r_p[2]
+                    inst = self.instrument
+                    eta = rc * inst.magnification / inst.wavelength
                     root_u = np.sqrt(u)  # r / sqrt(r^2 + z_p^2)
                     if self.coma:
                         phase = phase + self.coma * (6.*np.pi*n_m**3) * \
@@ -250,7 +254,9 @@ def Aberrated(base_class: type) -> type:
                 return None
             return np.array([self.defocus, self.spherical, self.coma,
                              self.astigmatism, self.distortion,
-                             self.x_c, self.y_c], dtype=float)
+                             self.x_c, self.y_c,
+                             self.instrument.wavelength /
+                             self.instrument.magnification], dtype=float)
 
         def scattered_field(self,
                             particle: Particle,
