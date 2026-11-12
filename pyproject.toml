@@ -30,6 +30,7 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
+    "dgimage>=0.2.0",
     "numpy",
     "scipy",
     "pandas",

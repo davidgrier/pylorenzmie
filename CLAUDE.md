@@ -101,11 +101,12 @@ It provides:
   shape `(2, npts)` by default; pass `flatten=False` for `(2, ny, nx)`.
 
 **`Azimuthal`** — module of functions (`avg`, `std`, `med`, `mad`) that compute
-azimuthal statistics of 2-D images. Decorated with `@azimuthaloperator` so they
-accept `(data, center)` and handle coordinate generation internally.
-Radial geometry (integer-radius array, sort order, bin boundaries) is cached
-per `(shape, center)` via `lru_cache`; repeated calls on the same crop shape
-pay no recomputation cost.
+azimuthal statistics of 2-D images. They come from the `dgimage` package (the
+image transformations that pylorenzmie shares with QVideo; edit them there, in
+`~/python/imagetransforms`, not here): `lib/Azimuthal.py` only re-exports
+them. Decorated with `@azimuthaloperator` so they accept `(data, center)` and
+handle coordinate generation internally. Radial geometry is cached per
+`(shape, center)`; the sort that only `med` and `mad` need is made lazily.
 
 Other Python packages provide related functionality but do not substitute here:
 - **pyFAI** — high-performance azimuthal integration for X-ray/neutron
@@ -119,7 +120,10 @@ Other Python packages provide related functionality but do not substitute here:
   `ndimage.median` is ~40% slower than the current loop-based `med`.
 
 **`CircleTransform`** — ring-finding transform used by `Localizer` to detect
-holographic ring patterns.
+holographic ring patterns.  It comes from `dgimage` too (`lib/CircleTransform.py`
+re-exports it, with the example).  The `Localizer` uses the default, double
+precision transform; `dgimage` also offers `dtype=np.float32` and `binning=n`,
+which trade accuracy for speed and are for a live display, not for fits.
 
 ### `theory/` — Physical models
 

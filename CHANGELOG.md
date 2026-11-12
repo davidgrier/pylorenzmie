@@ -6,6 +6,21 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+* `Azimuthal` and `CircleTransform` now come from
+  [dgimage](https://github.com/davidgrier/dgimage), the small library of image
+  transformations (numpy and scipy only) that pylorenzmie shares with QVideo
+  and other projects of the group, so that there is one implementation of
+  each.  `pylorenzmie.lib.Azimuthal` and `pylorenzmie.lib.CircleTransform`
+  keep their names and their numbers (identical to rounding, tested).
+  `dgimage>=0.2.0` is a new dependency.  Two things come with it: the average
+  of an image about a center that has not been used takes 9 ms instead of
+  88 ms for 1280 x 1024 (the sort by radius, which only `med` and `mad` need,
+  is made lazily and with a radix sort), which helps every search that moves a
+  center, and `dgimage.circletransform` has options (`dtype=np.float32`,
+  `binning`) for a faster transform that the `Localizer` does not use.
+
 ### Fixed
 
 * The tutorials (`SingleFrame` and `Video_analysis`) gave the `z_p` bounds of
