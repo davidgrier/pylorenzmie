@@ -6,6 +6,13 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+* The tutorials (`SingleFrame` and `Video_analysis`) gave the `z_p` bounds of
+  the estimator in pixels. Since 3.5.0 they are micrometers, so the fits of
+  the notebooks were sent thousands of pixels away. The ranges are converted
+  at 0.048 um/pixel (`(4.8, 16.8)` and `(2.9, 14.4)` um).
+
 ## [3.5.1] - 2026-11-07
 
 ### Changed
