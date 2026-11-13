@@ -100,6 +100,10 @@ def Distorted(base_class: type) -> type:
             distortion and is applied after the warp. Default: 0.
         x_c, y_c : float, optional
             Aberration center [pixels]. Default: 0.
+            Coma, astigmatism, field curvature and distortion depend on
+            the position of each ray in the image plane relative to this
+            center, in units of the vacuum wavelength, and not on the
+            position of the particle alone.
         order : sequence of str, optional
             Order in which the operators act on the wave, first
             listed first. The flows do not commute, so the order is
@@ -234,7 +238,10 @@ def Distorted(base_class: type) -> type:
             z_p = r_p[2]
             n_m = inst.n_m
             scale = inst.wavelength / inst.magnification
-            # displacement from the aberration center in vacuum wavelengths
+            # displacement of the particle from the aberration center in
+            # vacuum wavelengths; the generators add the displacement
+            # (rho / scale) of each point from the particle to find the
+            # position of the ray in the image plane
             q = np.array([r_p[0] - self.x_c, r_p[1] - self.y_c]) / scale
             if self.kernel and _warp is not None:
                 return self._kernel_warp(rho, active, scale, z_p, q)
@@ -243,12 +250,12 @@ def Distorted(base_class: type) -> type:
                     total = 0.
                     for name, c in active:
                         total = total + c * scale * generator(
-                            name, x, z_p, n_m, q)
+                            name, x, z_p, n_m, q, scale)
                     return total
                 return flow(rho, 1., g, self.nsteps)
             for name, c in reversed(active):
                 def g(x: Coordinates, name: str = name) -> Coordinates:
-                    return generator(name, x, z_p, n_m, q)
+                    return generator(name, x, z_p, n_m, q, scale)
                 rho = flow(rho, c * scale, g, self.nsteps)
             return rho
 
@@ -266,7 +273,8 @@ def Distorted(base_class: type) -> type:
             args = (np.ascontiguousarray(rho[0]),
                     np.ascontiguousarray(rho[1]),
                     kinds, alphas, int(self.nsteps), float(z_p),
-                    float(self.instrument.n_m), float(q[0]), float(q[1]))
+                    float(self.instrument.n_m), float(q[0]), float(q[1]),
+                    1. / float(scale))
             if _warp.parallel_allowed(self, rho.shape[1]):
                 func = (_warp.warp_summed_parallel if summed
                         else _warp.warp_composed_parallel)

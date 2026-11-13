@@ -130,15 +130,26 @@ class TestTorchLorenzMie(unittest.TestCase):
             model.particle.properties = self.model.particle.properties
         return models
 
+    def _coefficient(self, name, peak=10.):
+        '''Coefficient [wavelengths] whose phase peaks at ``peak`` rad.
+
+        The field-dependent coefficients are small, because the ray
+        coordinate is measured in vacuum wavelengths and the image spans
+        many of them; a fixed coefficient would give an enormous phase
+        that float32 cannot resolve.
+        '''
+        numpy_model = self._aberrated_pair(**{name: 1e-9}, x_c=26.,
+                                           y_c=26.)[1]
+        r_p = numpy_model.particle.r_p
+        unit = np.abs(np.angle(numpy_model._aberration(r_p))).max() / 1e-9
+        return peak / unit
+
     def test_each_aberration_matches_numpy(self) -> None:
         names = ('defocus', 'spherical', 'coma', 'astigmatism', 'distortion')
         for name in names:
             with self.subTest(name):
-                # the center is about one vacuum wavelength from the
-                # particle (eta = 1), which keeps the float32 phase of
-                # the field-dependent terms moderate
                 torch_model, numpy_model = self._aberrated_pair(
-                    **{name: 6.}, x_c=26., y_c=26.)
+                    **{name: self._coefficient(name)}, x_c=26., y_c=26.)
                 # the aberration must matter, or agreement means nothing
                 self.assertGreater(
                     np.abs(numpy_model.hologram() -

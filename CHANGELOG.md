@@ -6,6 +6,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-11-13
+
 ### Changed
 
 * `Azimuthal` and `CircleTransform` now come from
@@ -20,6 +22,25 @@ All notable changes to pylorenzmie are recorded here. The format follows
   is made lazily and with a radix sort), which helps every search that moves a
   center, and `dgimage.circletransform` has options (`dtype=np.float32`,
   `binning`) for a faster transform that the `Localizer` does not use.
+
+* **Coma, astigmatism, field curvature and distortion now use the position of
+  each ray in the image plane**, ``(r - r_c) / wavelength``, in
+  `Aberrated`, `Distorted`, their kernels (Numba, JAX and Metal) and
+  `generators.generator`.  Earlier versions used one constant for the
+  whole hologram, the displacement of the particle from the aberration
+  center, which evaluated the ray coordinate at the particle but the
+  momentum at the image plane.  The aberrations of the optical train act on
+  the field in the image plane, so the position of the ray there is the
+  right coordinate (Table I of Gronert et al.).  **The numerical values of the
+  coefficients of these aberrations change**: they are instrumental constants
+  and are much smaller than before (the image spans many wavelengths).
+  Defocus and spherical aberration, and the results that use them only, are
+  unaffected.  An aberration centered on the particle no longer vanishes.
+  `generators.generator` takes the vacuum wavelength in pixels as the new
+  argument `scale`, and the Numba warp kernels take `1 / scale` as an extra
+  last argument.  A coefficient `c` of the unreleased convention is the
+  Seidel coefficient `W_klm / wavelength = l NA^l (H / wavelength)^k c`; see
+  the docstring of `Aberrated`.
 
 ### Fixed
 

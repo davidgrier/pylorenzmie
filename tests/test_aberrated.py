@@ -48,13 +48,43 @@ class TestAberratedLorenzMie(unittest.TestCase):
         # GPU code detects 'no aberration' with isinstance(mask, float)
         self.assertIsInstance(self.mask(), float)
 
+    def ray_phase(self, name, c, xc, yc):
+        '''Expected phase [rad] for a field-dependent aberration.
+
+        Written from Table I of the paper, with explicit vectors: the
+        ray coordinate eta = (r - r_c) / lambda at each field point, and
+        r_hat the unit vector from the particle to the field point.
+        '''
+        inst = Instrument()
+        n_m = inst.n_m
+        scale = inst.wavelength / inst.magnification       # pixels
+        dx, dy, r, u = self.geometry()
+        etax = (self.x - xc) / scale
+        etay = (self.y - yc) / scale
+        rx = np.divide(dx, r, out=np.zeros_like(u), where=r > 0)
+        ry = np.divide(dy, r, out=np.zeros_like(u), where=r > 0)
+        r_eta = rx * etax + ry * etay                      # r_hat . eta
+        eta2 = etax**2 + etay**2
+        sin_beta = np.sqrt(u)
+        if name == 'coma':
+            return 6.*np.pi*n_m**3 * c * sin_beta**3 * r_eta
+        if name == 'astigmatism':
+            return 4.*np.pi*n_m**2 * c * sin_beta**2 * r_eta**2
+        if name == 'distortion':
+            return 2.*np.pi*n_m * c * sin_beta * eta2 * r_eta
+        raise ValueError(name)
+
     def test_center_at_particle_is_finite(self):
-        # degenerate aberration direction: the guards must prevent NaN.
-        # With no displacement the off-axis terms contribute no phase.
-        m = self.mask(coma=1., astigmatism=1., distortion=1.,
-                      x_c=self.xp, y_c=self.yp)
-        self.assertTrue(np.all(np.isfinite(m)))
-        self.assertTrue(np.allclose(m, 1.))
+        # The ray coordinate is the position of the ray at each field
+        # point, so an aberration centered on the particle is not zero:
+        # eta = rho / lambda.  The guards must prevent NaN where r = 0.
+        for name, c in (('coma', 0.5), ('astigmatism', 0.05),
+                        ('distortion', 0.01)):
+            m = self.mask(**{name: c}, x_c=self.xp, y_c=self.yp)
+            self.assertTrue(np.all(np.isfinite(m)), name)
+            expected = self.ray_phase(name, c, self.xp, self.yp)
+            self.assertGreater(np.abs(expected).max(), 0.1, name)
+            self.assertTrue(np.allclose(m, np.exp(1j * expected)), name)
 
     def test_piston_only_is_pure_phase(self):
         m = self.mask(piston=0.7)
@@ -103,66 +133,49 @@ class TestAberratedLorenzMie(unittest.TestCase):
         self.assertTrue(np.allclose(m, np.exp(1j * 8.*np.pi*n_m**4 *
                                               0.3 * u**2)))
 
-    def table_frame(self, d=20.):
-        '''Return (n_m, eta, u, sin_theta) for the Table I frame.
+    def test_field_dependent_phases_follow_table_one(self):
+        # a center displaced from the particle along -y, as in the paper
+        d = 20.
+        for name, c in (('coma', 0.5), ('astigmatism', 0.05),
+                        ('distortion', 0.01)):
+            expected = self.ray_phase(name, c, self.xp, self.yp - d)
+            self.assertGreater(np.abs(expected).max(), 0.1, name)
+            m = self.mask(**{name: c}, x_c=self.xp, y_c=self.yp - d)
+            self.assertTrue(np.allclose(m, np.exp(1j * expected)), name)
 
-        The particle is displaced along +y from the aberration center,
-        so cos(phi - psi) = sin(theta) = dy/r.
-        '''
+    def test_far_center_recovers_the_particle_centered_terms(self):
+        # For a center much farther from the particle than the field
+        # point, the ray coordinate is nearly the displacement of the
+        # particle from the center, and the phases reduce to the leading
+        # terms: eta = d / lambda with d along +y gives
+        # coma ~ 6 pi n^3 c eta sin^3(beta) sin(theta) and so on.
         n_m = Instrument().n_m
+        inst = Instrument()
+        scale = inst.wavelength / inst.magnification
+        d = 1e6
         dx, dy, r, u = self.geometry()
         sin_theta = np.divide(dy, r, out=np.zeros_like(u), where=r > 0)
-        inst = Instrument()
-        return n_m, d * inst.magnification / inst.wavelength, u, sin_theta
-
-    def test_table_frame_coma(self):
-        # includes points with sin(theta) < 0, which fix the sign
-        d = 20.
-        c = 0.7
-        n_m, eta, u, sin_theta = self.table_frame(d)
-        expected = 6.*np.pi*n_m**3 * c * eta * u**1.5 * sin_theta
-        m = self.mask(coma=c, x_c=self.xp, y_c=self.yp - d)
-        self.assertTrue(np.allclose(m, np.exp(1j * expected)))
-
-    def test_table_frame_astigmatism(self):
-        d = 20.
-        a = 0.7
-        n_m, eta, u, sin_theta = self.table_frame(d)
-        expected = 4.*np.pi*n_m**2 * a * eta**2 * u * sin_theta**2
-        m = self.mask(astigmatism=a, x_c=self.xp, y_c=self.yp - d)
-        self.assertTrue(np.allclose(m, np.exp(1j * expected)))
+        eta = d / scale
+        sin_beta = np.sqrt(u)
+        # coefficients that give phases of order one
+        c = {'coma': 1. / eta, 'astigmatism': 1. / eta**2,
+             'distortion': 1. / eta**3}
+        expected = {
+            'coma': 6.*np.pi*n_m**3 * c['coma'] * eta * sin_beta**3 *
+            sin_theta,
+            'astigmatism': (4.*np.pi*n_m**2 * c['astigmatism'] * eta**2 *
+                            u * sin_theta**2),
+            'distortion': (2.*np.pi*n_m * c['distortion'] * eta**3 *
+                           sin_beta * sin_theta)}
+        for name in c:
+            m = self.mask(**{name: c[name]}, x_c=self.xp, y_c=self.yp - d)
+            self.assertGreater(np.abs(expected[name]).max(), 0.1, name)
+            np.testing.assert_allclose(np.angle(m), expected[name],
+                                       rtol=1e-3, atol=1e-4, err_msg=name)
 
     def test_pickle_class(self):
         cls = pickle.loads(pickle.dumps(AberratedLorenzMie))
         self.assertIs(cls, AberratedLorenzMie)
-
-    def test_table_frame_distortion(self):
-        d = 20.
-        t = 0.7
-        n_m, eta, u, sin_theta = self.table_frame(d)
-        expected = 2.*np.pi*n_m * t * eta**3 * np.sqrt(u) * sin_theta
-        m = self.mask(distortion=t, x_c=self.xp, y_c=self.yp - d)
-        self.assertTrue(np.allclose(m, np.exp(1j * expected)))
-
-    def test_orientation_follows_displacement(self):
-        # The odd phase is largest for field points along the displacement
-        # of the particle from the aberration center and vanishes for
-        # points perpendicular to it.  The particle is displaced along +y.
-        d = 20.
-        dx, dy, r, u = self.geometry()
-        n_m = Instrument().n_m
-        c = 0.5
-        m = self.mask(coma=c, x_c=self.xp, y_c=self.yp - d)
-        phase = np.angle(m)
-        along = (dx == 0) & (dy == 10.)
-        perpendicular = (dy == 0) & (dx == 10.)
-        self.assertEqual(along.sum(), 1)
-        self.assertEqual(perpendicular.sum(), 1)
-        inst = Instrument()
-        eta = d * inst.magnification / inst.wavelength
-        expected = 6.*np.pi*n_m**3 * c * eta * np.sqrt(u[along])**3
-        self.assertAlmostEqual(float(phase[along][0]), float(expected[0]))
-        self.assertAlmostEqual(float(phase[perpendicular][0]), 0.)
 
     def test_rotation_covariance(self):
         # Rotating the aberration center about the particle rotates the

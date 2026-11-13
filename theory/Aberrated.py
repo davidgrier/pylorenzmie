@@ -9,8 +9,9 @@ Each coefficient is expressed in wavelengths of the illumination in vacuum
 and enters through the phase factor of the operator formalism for the
 aberration, which depends on the particle's height ``z_p`` and on the
 distance from the particle in the image.  Coma, astigmatism and distortion
-also depend on the position of the aberration center (``x_c``, ``y_c``, in
-pixels) relative to the particle.
+also depend on the position of each ray in the image plane relative to the
+aberration center (``x_c``, ``y_c``, in pixels), in units of the vacuum
+wavelength.
 
 A sixth parameter, ``piston``, is the constant term of the phase.  It is the
 phase of the scattered field relative to the reference wave, in wavelengths
@@ -111,8 +112,13 @@ def Aberrated(base_class: type) -> type:
         medium's refractive index: for example, ``spherical = 1``
         corresponds to :math:`8\\pi n_m^4 \\approx 12.9` wavelengths
         (at :math:`n_m = 1.34`) of classical edge-of-pupil OPD, not 1.
-        This is a deliberate choice: coefficients fitted here are the
-        same numbers reported in [1]_, with no further conversion.
+        This is a deliberate choice: the coefficients of defocus and
+        spherical aberration fitted here are the same numbers reported
+        in [1]_, with no further conversion.  For simplicity, the position
+        of a ray is measured in units of the vacuum wavelength here,
+        and in units of the radius :math:`H` of the field of view in [1]_,
+        so that the coefficients of coma, astigmatism and distortion
+        differ by the factor :math:`(H/\\lambda)^k` given below.
 
         The phase contributed by each term, for a particle at pixel
         position :math:`\\vec{r}_p = (x_p, y_p, z_p)`, is
@@ -124,34 +130,54 @@ def Aberrated(base_class: type) -> type:
             \\Phi_\\text{spherical} &=
                 8\\pi n_m^4\\, s\\, u^2 \\\\
             \\Phi_\\text{coma} &=
-                6\\pi n_m^3\\, c\\, \\eta\\, u^{3/2} \\cos(\\varphi-\\psi) \\\\
+                6\\pi n_m^3\\, c\\, u^{3/2}\\,
+                \\hat{\\vec{r}}\\cdot\\vec{\\eta} \\\\
             \\Phi_\\text{astigmatism} &=
-                4\\pi n_m^2\\, a\\, \\eta^2\\, u \\cos^2(\\varphi-\\psi) \\\\
+                4\\pi n_m^2\\, a\\, u\\,
+                (\\hat{\\vec{r}}\\cdot\\vec{\\eta})^2 \\\\
             \\Phi_\\text{distortion} &=
-                2\\pi n_m\\, t\\, \\eta^3\\, u^{1/2} \\cos(\\varphi-\\psi)
+                2\\pi n_m\\, t\\, u^{1/2}\\, \\left|\\vec{\\eta}\\right|^2\\,
+                \\hat{\\vec{r}}\\cdot\\vec{\\eta}
 
         where :math:`d, s, c, a, t` are ``defocus``, ``spherical``,
         ``coma``, ``astigmatism``, and ``distortion``,
         :math:`u = r^2/(r^2+z_p^2)` with :math:`r` the in-plane
         distance from the particle to the field point,
-        :math:`\\eta = r_c/\\lambda` with :math:`r_c` the in-plane distance
-        between the particle and the aberration center
-        :math:`(x_c, y_c)` in units of the vacuum wavelength,
-        independent of :math:`z_p` and of :math:`n_m`, so that the
-        coefficients are instrumental constants,
-        :math:`\\varphi` is the azimuth of the field
-        point about the particle, and :math:`\\psi` is the azimuth of
-        the displacement from the aberration center to the particle.
+        :math:`\\hat{\\vec{r}}` is the unit vector from the particle to the
+        field point, and
+        :math:`\\vec{\\eta} = (\\vec{r} - \\vec{r}_c)/\\lambda` is the
+        position of the ray at the field point :math:`\\vec{r}`, measured
+        from the aberration center :math:`\\vec{r}_c = (x_c, y_c)` in
+        units of the vacuum wavelength.  The ray coordinate
+        :math:`\\vec{\\eta}` takes a different value at each point of the
+        image, so that it is not the position of the particle: the
+        aberrations of the optical train act on the field in the image
+        plane, and a ray at that plane has the position and the momentum
+        that these factors use.  The coefficients are
+        instrumental constants, independent of the particle and of its
+        position.
         Defocus and spherical aberration are rotationally symmetric
         about the optical axis and do not depend on :math:`(x_c, y_c)`.
 
         Table I of [1]_ gives the generating functions and phase
-        factors in a frame where :math:`\\hat{\\vec{y}}` is oriented
-        along the aberration offset; the expressions above are the
-        same formulas generalized to an arbitrary aberration center.
-        In that frame :math:`\\psi = \\pi/2`, so
-        :math:`\\cos(\\varphi-\\psi)` reduces to the table's
-        :math:`\\sin\\theta`.
+        factors in terms of the same quantities.
+
+        The coefficients are related to the Seidel coefficients
+        :math:`W_{k\\ell m}` of lens design, the optical path differences
+        at the edge of the pupil and of the field, by
+
+        .. math::
+
+            W_{k\\ell m} / \\lambda =
+                \\ell\\, \\text{NA}^\\ell\\, (H/\\lambda)^k\\, c_n
+
+        where :math:`c_n` is the coefficient (in wavelengths),
+        NA the numerical aperture of the objective,
+        :math:`H` the radius of its field of view, and :math:`k` and
+        :math:`\\ell` the degrees of the term in :math:`\\vec{\\eta}` and in
+        the canonical momentum :math:`n_m \\sin\\beta`:
+        :math:`(k, \\ell) = (0, 2), (0, 4), (1, 3), (2, 2), (3, 1)` for
+        defocus, spherical aberration, coma, astigmatism and distortion.
 
         References
         ----------
@@ -212,29 +238,28 @@ def Aberrated(base_class: type) -> type:
                 phase = phase + self.spherical * (8.*np.pi*n_m**4) * u**2
 
             if self.coma or self.astigmatism or self.distortion:
-                dxc = r_p[0] - self.x_c
-                dyc = r_p[1] - self.y_c
-                rc = np.hypot(dxc, dyc)
-                if rc > 0:
-                    r = np.sqrt(rsq)
-                    # cos(phi - psi) = cos(phi)cos(psi) + sin(phi)sin(psi),
-                    # from cos(phi)=dx/r, sin(phi)=dy/r, cos(psi)=dxc/rc,
-                    # sin(psi)=dyc/rc -- avoids calling arctan2/cos
-                    # explicitly.
-                    cos_rel = np.divide(dx*dxc + dy*dyc, r*rc,
-                                        out=np.zeros_like(u), where=r > 0)
-                    inst = self.instrument
-                    eta = rc * inst.magnification / inst.wavelength
-                    root_u = np.sqrt(u)  # r / sqrt(r^2 + z_p^2)
-                    if self.coma:
-                        phase = phase + self.coma * (6.*np.pi*n_m**3) * \
-                            eta * root_u**3 * cos_rel
-                    if self.astigmatism:
-                        phase = phase + self.astigmatism * \
-                            (4.*np.pi*n_m**2) * eta**2 * u * cos_rel**2
-                    if self.distortion:
-                        phase = phase + self.distortion * \
-                            (2.*np.pi*n_m) * eta**3 * root_u * cos_rel
+                # ray coordinate eta = (d + rho)/scale at each point, with
+                # d the particle's displacement from the aberration center
+                # and rho its displacement from the particle.  With
+                # w = rho . (d + rho) = scale rho . eta, every term is
+                # a polynomial in (dx, dy, dxc, dyc) over a power of R, so
+                # nothing divides by r.
+                inst = self.instrument
+                scale = inst.wavelength / inst.magnification
+                ex = (r_p[0] - self.x_c) + dx
+                ey = (r_p[1] - self.y_c) + dy
+                w = dx*ex + dy*ey
+                R = np.sqrt(rsq + zpsq)
+                if self.coma:
+                    phase = phase + self.coma * (6.*np.pi*n_m**3) * \
+                        rsq * w / (scale * R**3)
+                if self.astigmatism:
+                    phase = phase + self.astigmatism * \
+                        (4.*np.pi*n_m**2) * w**2 / (scale * R)**2
+                if self.distortion:
+                    phase = phase + self.distortion * \
+                        (2.*np.pi*n_m) * (ex*ex + ey*ey) * w / \
+                        (scale**3 * R)
 
             mask = np.exp(1j * (phase + 2.*np.pi*self.piston))
             if hasattr(self, '_device'):

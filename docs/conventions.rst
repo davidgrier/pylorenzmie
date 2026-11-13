@@ -65,9 +65,23 @@ expressed in **wavelengths of the illumination in vacuum**: a coefficient of 1
 corresponds to the amplitude :math:`\alpha_n = \lambda` of the operator
 formalism, not to one wavelength of classical wavefront error at the edge of
 the pupil.  The two differ by a power of the refractive index of the medium.
-Coma, astigmatism and distortion depend on the position of the aberration
-center (``x_c``, ``y_c``, in pixels) relative to the particle; defocus and
-spherical aberration do not.  Defocus is nearly degenerate with ``z_p``.
+Coma, astigmatism and distortion (and field curvature in
+:func:`~pylorenzmie.theory.Distorted.Distorted`) depend on the position
+:math:`\vec{\eta} = (\vec{r} - \vec{r}_c)/\lambda` of each ray in the image
+plane, measured from the aberration center (``x_c``, ``y_c``, in pixels) in
+units of the vacuum wavelength.  The position takes a different value at each
+pixel and is not the position of the particle, so the coefficients are
+instrumental constants that do not depend on the particle or on its position.
+Defocus and spherical aberration do not depend on the center.  Defocus is
+nearly degenerate with ``z_p``.
+
+The field-dependent coefficients are small numbers, because the image spans
+many wavelengths: ``coma``, ``astigmatism`` and ``distortion`` scale as
+:math:`(H/\lambda)^{-k}` with the degree :math:`k = 1, 2, 3` in
+:math:`\vec{\eta}`, for the field radius :math:`H` of the objective.  The
+docstring of :func:`~pylorenzmie.theory.Aberrated.Aberrated` gives the
+conversion to the Seidel coefficients :math:`W_{k\ell m}` of lens design, and
+fits are best conditioned in the scaled variables.
 
 :func:`~pylorenzmie.theory.Distorted.Distorted` uses the same coefficients,
 units and sign, and adds field curvature.  It applies the aberrations as

@@ -5,9 +5,13 @@ Each aberration is the flow of a dimensionless vector field
 plane, where :math:`\\vec{\\rho}` is the in-plane displacement from the
 scattering particle, :math:`R = \\sqrt{\\rho^2 + z_p^2}`, the
 canonical momentum is :math:`\\vec{p} = n_m \\vec{\\rho} / R`, and
-:math:`\\vec{q} = (\\vec{r}_p - \\vec{r}_c) / \\lambda` is the displacement
-of the particle from the aberration center in units of the vacuum
-wavelength, :math:`\\vec{\\eta}` of Gronert et al.
+:math:`\\vec{\\eta} = (\\vec{r} - \\vec{r}_c) / \\lambda
+= \\vec{q} + \\vec{\\rho} / \\lambda` is the position of the ray in the
+image plane, measured from the aberration center in units of the vacuum
+wavelength :math:`\\lambda`.  The ray coordinate :math:`\\vec{\\eta}`
+differs from point to point of the image;
+:math:`\\vec{q} = (\\vec{r}_p - \\vec{r}_c) / \\lambda` is its value at the
+particle.
 The generators :math:`D_n` are those of Table I of Gronert et al.
 '''
 from collections.abc import Callable, Sequence
@@ -22,7 +26,8 @@ def generator(name: str,
               rho: np.ndarray,
               z_p: float,
               n_m: float,
-              q: Sequence[float] = (0., 0.)) -> np.ndarray:
+              q: Sequence[float] = (0., 0.),
+              scale: float = 1.) -> np.ndarray:
     '''Generating function g_n(rho).
 
     Parameters
@@ -39,13 +44,16 @@ def generator(name: str,
         Displacement of the particle from the aberration center,
         in vacuum wavelengths. Default: ``(0, 0)``.
         Used by the field-dependent aberrations only.
+    scale : float, optional
+        Vacuum wavelength [pixels]. The ray coordinate at ``rho`` is
+        ``q + rho / scale``. Default: 1.
+        Used by the field-dependent aberrations only.
 
     Returns
     -------
     g : numpy.ndarray, shape (2, npts)
         Dimensionless displacement per unit coefficient.
     '''
-    q = np.asarray(q, dtype=float)
     R = np.sqrt(rho[0]**2 + rho[1]**2 + z_p**2)
     p = n_m * rho / R
     p2 = p[0]**2 + p[1]**2
@@ -53,16 +61,17 @@ def generator(name: str,
         return 2. * p
     if name == 'spherical':                    # D = |p|^4
         return 4. * p2 * p
-    pq = p[0] * q[0] + p[1] * q[1]
-    q2 = q[0]**2 + q[1]**2
-    if name == 'coma':                         # D = |p|^2 (p.q)
-        return 2. * pq * p + p2 * q[:, None]
-    if name == 'astigmatism':                  # D = (p.q)^2
-        return 2. * pq * q[:, None]
-    if name == 'fieldcurvature':               # D = |p|^2 |q|^2
-        return 2. * q2 * p
-    if name == 'distortion':                   # D = (p.q) |q|^2
-        return q2 * q[:, None] * np.ones_like(p2)
+    eta = np.asarray(q, dtype=float)[:, None] + rho / scale
+    pe = p[0] * eta[0] + p[1] * eta[1]
+    e2 = eta[0]**2 + eta[1]**2
+    if name == 'coma':                         # D = |p|^2 (p.eta)
+        return 2. * pe * p + p2 * eta
+    if name == 'astigmatism':                  # D = (p.eta)^2
+        return 2. * pe * eta
+    if name == 'fieldcurvature':               # D = |p|^2 |eta|^2
+        return 2. * e2 * p
+    if name == 'distortion':                   # D = (p.eta) |eta|^2
+        return e2 * eta
     raise ValueError(f'unknown aberration: {name!r}')
 
 

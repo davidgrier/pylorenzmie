@@ -4,11 +4,18 @@ import unittest
 
 import numpy as np
 
-from pylorenzmie.theory import Sphere
+from pylorenzmie.theory import Instrument, Sphere
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Aberrated import AberratedLorenzMie
 from pylorenzmie.theory.Distorted import Distorted, DistortedLorenzMie
 from pylorenzmie.theory.generators import NAMES, generator, flow
+
+
+# coefficients [wavelengths] that displace the points of the test image by a
+# few pixels each; the field-dependent ones are small because the ray
+# coordinate is measured in vacuum wavelengths, of which the image spans many
+COEFFICIENTS = dict(defocus=3., spherical=8., coma=1., astigmatism=0.03,
+                    fieldcurvature=0.03, distortion=1.5e-3)
 
 
 class TestDistortedLorenzMie(unittest.TestCase):
@@ -63,6 +70,39 @@ class TestDistortedLorenzMie(unittest.TestCase):
             self.assertGreater(effect, 1e-4, name)
             self.assertLess(error, 0.1 * effect, name)
 
+    def test_field_dependent_coefficients_match_eikonal(self):
+        # As for spherical aberration, the exact and eikonal models agree
+        # for the field-dependent aberrations, with the aberration center
+        # on the particle and far from it.  The coefficients give a peak
+        # phase of 3 rad.
+        mag = 0.1
+        x = np.arange(-300., 301., 6.)
+        X, Y = np.meshgrid(x, x)
+        coordinates = np.stack([X.ravel(), Y.ravel(), np.zeros(X.size)])
+        particle = Sphere(a_p=0.337, n_p=1.61, x_p=0., y_p=0., z_p=1400.)
+
+        def make(cls, **kwargs):
+            m = cls(coordinates=coordinates, **kwargs)
+            m.instrument.magnification = mag
+            m.particle = particle
+            return m
+
+        ideal = make(LorenzMie).hologram()
+        for center in ((0., 0.), (0., -400.)):
+            for name in ('coma', 'astigmatism', 'distortion'):
+                kw = dict(x_c=center[0], y_c=center[1])
+                tiny = make(AberratedLorenzMie, **{name: 1e-9}, **kw)
+                peak = np.abs(np.angle(
+                    tiny._aberration(particle.r_p))).max() / 1e-9
+                c = 3. / peak
+                exact = make(DistortedLorenzMie, **{name: c}, **kw).hologram()
+                eikonal = make(AberratedLorenzMie,
+                               **{name: c}, **kw).hologram()
+                effect = np.sqrt(np.mean((exact - ideal)**2))
+                error = np.sqrt(np.mean((exact - eikonal)**2))
+                self.assertGreater(effect, 1e-3, (name, center))
+                self.assertLess(error, 0.05 * effect, (name, center))
+
     def test_warp_only_moves_points_for_nonzero_coefficients(self):
         m = self.model(coma=0.)
         rho = self.coordinates[:2] - np.array([[self.xp], [self.yp]])
@@ -104,18 +144,21 @@ class TestDistortedLorenzMie(unittest.TestCase):
 
     def test_flow_has_an_exact_inverse(self):
         rho = self.coordinates[:2] - np.array([[self.xp], [self.yp]])
+        inst = Instrument()
+        scale = inst.wavelength / inst.magnification
+        q = (0.1, 0.05)
         for name in NAMES:
-            q = (0.1, 0.05)
-
             def g(x, name=name):
-                return generator(name, x, self.zp, 1.34, q)
+                return generator(name, x, self.zp, inst.n_m, q, scale)
 
-            there = flow(rho, 20., g, 16)
-            back = flow(there, -20., g, 16)
+            alpha = 5. / np.abs(g(rho)).max()
+            there = flow(rho, alpha, g, 16)
+            back = flow(there, -alpha, g, 16)
+            self.assertGreater(np.abs(there - rho).max(), 1., name)
             self.assertTrue(np.allclose(back, rho, atol=1e-8), name)
 
     def test_runge_kutta_steps_converge(self):
-        kw = dict(defocus=3., spherical=8., coma=2.,
+        kw = dict(defocus=3., spherical=8., coma=1.,
                   x_c=self.xp - 20., y_c=self.yp)
         ref = self.model(nsteps=16, **kw).hologram()
         coarse = self.model(nsteps=2, **kw).hologram()
@@ -123,13 +166,21 @@ class TestDistortedLorenzMie(unittest.TestCase):
         self.assertLess(np.abs(default - ref).max(), 1e-6)
         self.assertLess(np.abs(coarse - ref).max(), 1e-4)
 
-    def test_field_dependent_aberrations_vanish_at_the_center(self):
-        # with the particle on the aberration center q = 0 and the
-        # field-dependent generators vanish
+    def test_field_dependent_warp_is_radial_about_a_centered_particle(self):
+        # With the particle on the aberration center, the ray coordinate
+        # at each point is along the displacement from the particle, and
+        # every generator is radial.  The aberration does not vanish:
+        # the ray coordinate is the position of the ray in the image.
+        rho = self.coordinates[:2] - np.array([[self.xp], [self.yp]])
         kw = dict(x_c=self.xp, y_c=self.yp)
         for name in ('coma', 'astigmatism', 'fieldcurvature', 'distortion'):
-            h = self.model(**{name: 5.}, **kw).hologram()
-            self.assertTrue(np.allclose(h, self.ideal()), name)
+            m = self.model(**{name: COEFFICIENTS[name]}, kernel=False, **kw)
+            warped = m.warp(self.particle)
+            self.assertGreater(np.abs(warped - rho).max(), 0.5, name)
+            cross = rho[0] * warped[1] - rho[1] * warped[0]
+            self.assertLess(np.abs(cross).max(), 1e-8, name)
+            h = m.hologram()
+            self.assertGreater(np.abs(h - self.ideal()).max(), 1e-3, name)
 
     def test_options_are_not_fit_variables(self):
         props = self.model().properties
@@ -161,17 +212,18 @@ class TestDistortedLorenzMie(unittest.TestCase):
         # Aberrated keeps closed-form masks for speed. This checks that
         # they equal exp(i k alpha g . rho / R) built from the shared
         # generating functions, for an off-center aberration center.
-        xc, yc, c = 10., 20., 0.7
+        xc, yc = 10., 20.
         for name in ('defocus', 'spherical', 'coma', 'astigmatism',
                      'distortion'):
+            c = COEFFICIENTS[name] / 3.
             m = self.model(AberratedLorenzMie, x_c=xc, y_c=yc,
                            **{name: c})
             inst = m.instrument
             r_p = np.array([self.xp, self.yp, self.zp])
             rho = self.coordinates[:2] - r_p[:2, None]
-            q = (np.array([self.xp - xc, self.yp - yc]) *
-                 inst.magnification / inst.wavelength)
-            g = generator(name, rho, self.zp, inst.n_m, q)
+            scale = inst.wavelength / inst.magnification
+            q = np.array([self.xp - xc, self.yp - yc]) / scale
+            g = generator(name, rho, self.zp, inst.n_m, q, scale)
             R = np.sqrt(np.sum(rho**2, axis=0) + self.zp**2)
             alpha = c * inst.wavelength / inst.magnification
             phase = alpha * inst.wavenumber() * np.sum(g * rho / R, axis=0)
@@ -179,9 +231,7 @@ class TestDistortedLorenzMie(unittest.TestCase):
                                         m._aberration(r_p)), name)
 
     def kernel_pair(self, **kwargs):
-        kw = dict(defocus=3., spherical=8., coma=2., astigmatism=1.,
-                  fieldcurvature=1.5, distortion=4.,
-                  x_c=self.xp - 20., y_c=self.yp + 5.)
+        kw = dict(COEFFICIENTS, x_c=self.xp - 20., y_c=self.yp + 5.)
         kw.update(kwargs)
         slow = self.model(kernel=False, **kw)
         fast = self.model(kernel=True, **kw)
@@ -197,7 +247,8 @@ class TestDistortedLorenzMie(unittest.TestCase):
     def test_kernel_matches_numpy_warp_for_each_aberration(self):
         for name in NAMES:
             zero = {n: 0. for n in NAMES}
-            slow, fast = self.kernel_pair(**{**zero, name: 6.})
+            slow, fast = self.kernel_pair(
+                **{**zero, name: 2. * COEFFICIENTS[name]})
             self.assertTrue(np.allclose(slow, fast, atol=1e-9), name)
 
     def test_kernel_respects_the_order(self):

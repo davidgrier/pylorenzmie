@@ -248,8 +248,8 @@ def _jax_aberration_phase(r_p, coordinates, n_m, coefficients):
     JAX counterpart of :meth:`Aberrated._aberration`, written without
     branches so that it can be traced and differentiated with respect to
     ``r_p``.  The field-dependent terms are written without dividing by
-    the distance to the particle's axis or to the aberration center, so
-    their derivatives are exact where those distances vanish.
+    the distance to the particle's axis, so their derivatives are exact
+    where that distance vanishes.
 
     Parameters
     ----------
@@ -265,21 +265,22 @@ def _jax_aberration_phase(r_p, coordinates, n_m, coefficients):
     R = jnp.sqrt(rsq + r_p[2]**2)
     u = rsq / (R*R)
 
-    # With eta = r_c/scale, cos(phi - psi) = w/(r r_c) and
-    # w = dx*dxc + dy*dyc, every field-dependent term is a polynomial in
-    # (dx, dy, dxc, dyc) over a power of R.  Written that way, nothing
-    # divides by r or r_c, so the gradient is exact at a pixel on the
-    # particle's axis and at an aberration center on the particle.
-    dxc = r_p[0] - x_c
-    dyc = r_p[1] - y_c
-    w = dx*dxc + dy*dyc
-    rcsq = dxc*dxc + dyc*dyc
+    # The ray coordinate is eta = (d + rho)/scale, with d = r_p - r_c and
+    # rho the displacement from the particle.  With
+    # w = rho . (d + rho) = scale rho . eta, every field-dependent term is
+    # a polynomial in (dx, dy, dxc, dyc) over a power of R.  Written that
+    # way, nothing divides by r, so the gradient is exact at a pixel on the
+    # particle's axis.
+    ex = (r_p[0] - x_c) + dx
+    ey = (r_p[1] - y_c) + dy
+    w = dx*ex + dy*ey
 
     return (defocus * (4.*jnp.pi*n_m**2) * u +
             spherical * (8.*jnp.pi*n_m**4) * u**2 +
             coma * (6.*jnp.pi*n_m**3) * w * rsq / (scale * R**3) +
             astigmatism * (4.*jnp.pi*n_m**2) * w**2 / (scale*R)**2 +
-            distortion * (2.*jnp.pi*n_m) * rcsq * w / (scale**3 * R))
+            distortion * (2.*jnp.pi*n_m) * (ex*ex + ey*ey) * w /
+            (scale**3 * R))
 
 
 def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,

@@ -113,22 +113,20 @@ kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
         float dy = coords[npts + i] - yp;
         float rsq = dx*dx + dy*dy;
         float u = rsq / (rsq + zp*zp);
-        float dxc = xp - aberr[5];
-        float dyc = yp - aberr[6];
-        float rc = sqrt(dxc*dxc + dyc*dyc);
-        float r = sqrt(rsq);
-        float cos_rel = (r > 0.0f && rc > 0.0f)
-                        ? (dx*dxc + dy*dyc) / (r*rc) : 0.0f;
-        float eta = (rc > 0.0f) ? rc / aberr[7] : 0.0f;
-        float root_u = sqrt(u);
+        // ray coordinate eta = (d + rho)/scale; w = rho . (d + rho)
+        float ex = (xp - aberr[5]) + dx;
+        float ey = (yp - aberr[6]) + dy;
+        float w = dx*ex + dy*ey;
+        float R = sqrt(rsq + zp*zp);
+        float scale = aberr[7];
         float phase = aberr[0] * (4.0f*M_PI_F*nm*nm) * u
                     + aberr[1] * (8.0f*M_PI_F*nm*nm*nm*nm) * u*u
                     + aberr[2] * (6.0f*M_PI_F*nm*nm*nm)
-                      * eta * root_u*root_u*root_u * cos_rel
+                      * rsq * w / (scale * R*R*R)
                     + aberr[3] * (4.0f*M_PI_F*nm*nm)
-                      * eta*eta * u * cos_rel*cos_rel
+                      * w*w / (scale*R*scale*R)
                     + aberr[4] * (2.0f*M_PI_F*nm)
-                      * eta*eta*eta * root_u * cos_rel;
+                      * (ex*ex + ey*ey) * w / (scale*scale*scale * R);
         ph = cmul(ph, float2(precise::cos(phase), precise::sin(phase)));
     }
     if (mode != 0) {
