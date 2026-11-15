@@ -17,11 +17,12 @@ tutorial shows how to tune it.  Further keyword arguments of
 
 from collections.abc import Callable
 
-from pylorenzmie.lib import LMObject, Azimuthal, CircleTransform
-from pylorenzmie.lib.lmtypes import Image, Properties
 import numpy as np
 import trackpy as tp
 import pandas as pd
+
+from pylorenzmie.lib import LMObject, Azimuthal, CircleTransform
+from pylorenzmie.lib.lmtypes import Image, Properties
 
 
 class Localizer(LMObject):

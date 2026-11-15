@@ -25,13 +25,14 @@ with several Python threads is described in the documentation of
 :class:`numbaLorenzMie`.
 '''
 
-from pylorenzmie.lib.lmtypes import Coefficients, Coordinates, Field
-from pylorenzmie.theory.LorenzMie import LorenzMie
-import numpy as np
 import os
 import threading
 
+import numpy as np
 from numba import njit, prange
+
+from pylorenzmie.lib.lmtypes import Coefficients, Coordinates, Field
+from pylorenzmie.theory.LorenzMie import LorenzMie
 
 
 def _partial_wave_constants(ab):

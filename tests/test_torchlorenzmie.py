@@ -1,6 +1,8 @@
-from pylorenzmie.theory.LorenzMie import LorenzMie
 import unittest
+
 import numpy as np
+
+from pylorenzmie.theory.LorenzMie import LorenzMie
 
 try:
     import torch as _torch

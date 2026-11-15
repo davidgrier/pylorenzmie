@@ -13,9 +13,11 @@ For a GPU on Apple silicon, or for an AMD or Intel GPU, see
 :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie`.
 '''
 
-from pylorenzmie.theory.LorenzMie import LorenzMie
-import cupy as cp
 import logging
+
+import cupy as cp
+
+from pylorenzmie.theory.LorenzMie import LorenzMie
 
 
 logger = logging.getLogger(__name__)

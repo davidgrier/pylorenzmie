@@ -7,8 +7,9 @@ The pixels are chosen independently, so the number of pixels varies from draw
 to draw, and the ``seed`` of the mask makes the draw reproducible.
 '''
 
-from pylorenzmie.analysis.Mask import Mask
 import numpy as np
+
+from pylorenzmie.analysis.Mask import Mask
 
 
 class RadialMask(Mask):

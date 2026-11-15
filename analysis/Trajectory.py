@@ -9,9 +9,10 @@ successive frames into a track, for example with :func:`trackpy.link`, is left
 to the caller, as the video tutorial shows.
 '''
 
+import pandas as pd
+
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import Properties, Results
-import pandas as pd
 
 
 class Trajectory(LMObject):

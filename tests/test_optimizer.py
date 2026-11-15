@@ -1,19 +1,20 @@
 import unittest
+from pathlib import Path
+
+import cv2
+import numpy as np
+import pandas as pd
 
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
+from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import LorenzMie
 try:
     from pylorenzmie.theory.jaxLorenzMie import jaxLorenzMie
     _jax_available = True
 except Exception:
     _jax_available = False
-from pylorenzmie.lib import LMObject
-from pathlib import Path
-import cv2
-import numpy as np
-import pandas as pd
 
 
 THIS_DIR = Path(__file__).parent.resolve()

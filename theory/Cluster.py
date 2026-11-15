@@ -14,9 +14,10 @@ own.  :class:`~pylorenzmie.theory.Dimer.Dimer` is a cluster of two touching
 spheres.
 '''
 
+from dataclasses import dataclass, field
+
 from pylorenzmie.theory.Particle import Particle
 from pylorenzmie.lib.lmtypes import Properties
-from dataclasses import dataclass, field
 
 
 @dataclass

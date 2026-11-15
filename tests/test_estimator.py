@@ -1,8 +1,9 @@
 import unittest
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import cv2
-from pathlib import Path
 
 from pylorenzmie.analysis import Estimator, Hologram, BaseEstimator
 from pylorenzmie.lib import LMObject

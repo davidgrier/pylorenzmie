@@ -7,9 +7,10 @@ vector is copied to the processor for the solver.  It needs the ``cupy``
 package.
 '''
 
+import cupy as cp
+
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.theory.cupyLorenzMie import cupyLorenzMie
-import cupy as cp
 
 
 class cupyOptimizer(Optimizer):

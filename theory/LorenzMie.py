@@ -28,11 +28,12 @@ The class attribute ``method`` names the calculator, and an
 can work with the model.
 '''
 
+import numpy as np
+
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import (Coordinates, Coefficients, Field,
                                    Image, Properties)
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
-import numpy as np
 
 
 class LorenzMie(LMObject):

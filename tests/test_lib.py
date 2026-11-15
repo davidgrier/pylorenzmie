@@ -1,7 +1,9 @@
 import unittest
+from pathlib import Path
+
 import numpy as np
 import cv2
-from pathlib import Path
+
 from pylorenzmie.lib import (Azimuthal, circletransform)
 from pylorenzmie.theory import Sphere, Instrument
 

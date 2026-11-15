@@ -19,9 +19,11 @@ See Also
 '''
 
 from dataclasses import dataclass
+
+import numpy as np
+
 from pylorenzmie.theory import Particle
 from pylorenzmie.lib.lmtypes import Coefficients, Properties
-import numpy as np
 
 
 @dataclass

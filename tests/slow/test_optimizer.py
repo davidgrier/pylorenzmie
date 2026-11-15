@@ -1,12 +1,13 @@
 import unittest
+from pathlib import Path
+
+import cv2
+import numpy as np
 
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie
 from pylorenzmie.lib import LMObject
-from pathlib import Path
-import cv2
-import numpy as np
 
 
 THIS_DIR = Path(__file__).parent.parent

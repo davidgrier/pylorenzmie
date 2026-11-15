@@ -1,6 +1,8 @@
-from pylorenzmie.theory.LorenzMie import LorenzMie
 import unittest
+
 import numpy as np
+
+from pylorenzmie.theory.LorenzMie import LorenzMie
 
 
 class TestLorenzMie(unittest.TestCase):

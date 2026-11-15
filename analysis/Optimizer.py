@@ -22,16 +22,17 @@ and a reduced chi-squared well above 1 means that the model leaves structure in
 the data.
 '''
 
-from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.lmtypes import Image, Properties, Result
-from pylorenzmie.analysis.Hologram import Hologram
-from pylorenzmie.analysis.Mask import Mask
-from pylorenzmie.theory import LorenzMie
 import numpy as np
 from numpy.typing import NDArray
 from scipy.optimize import least_squares
 from scipy.linalg import svd
 import pandas as pd
+
+from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.lmtypes import Image, Properties, Result
+from pylorenzmie.analysis.Hologram import Hologram
+from pylorenzmie.analysis.Mask import Mask
+from pylorenzmie.theory import LorenzMie
 
 
 class Optimizer(LMObject):

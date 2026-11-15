@@ -8,11 +8,13 @@ radians.  The center is the cluster position, so a dimer has the parameters of
 a sphere together with the two angles.
 '''
 
+from dataclasses import dataclass
+
+import numpy as np
+
 from pylorenzmie.theory.Cluster import Cluster
 from pylorenzmie.theory.Sphere import Sphere
 from pylorenzmie.lib.lmtypes import Properties
-from dataclasses import dataclass
-import numpy as np
 
 
 @dataclass

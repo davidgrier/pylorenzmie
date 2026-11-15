@@ -9,11 +9,12 @@ Raises :exc:`ImportError` if JAX is not installed, or a JAX
 (e.g., version mismatch between JAX and jax-metal / jax-cuda).
 '''
 
-from pylorenzmie.theory.LorenzMie import LorenzMie
-from pylorenzmie.theory.Sphere import Sphere
 import numpy as np
 import jax
 import jax.numpy as jnp
+
+from pylorenzmie.theory.LorenzMie import LorenzMie
+from pylorenzmie.theory.Sphere import Sphere
 
 jax.config.update('jax_enable_x64', True)
 # Verify the active backend can execute a trivial float64 op.

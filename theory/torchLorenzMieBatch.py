@@ -16,11 +16,13 @@ TorchLorenzMieBatch
     holograms in a single GPU call.
 '''
 
-from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie
+import logging
+
 import torch
 import triton
 import triton.language as tl
-import logging
+
+from pylorenzmie.theory.torchLorenzMie import TorchLorenzMie
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)

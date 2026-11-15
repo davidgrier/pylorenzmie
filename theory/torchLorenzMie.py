@@ -11,14 +11,16 @@ Both work in single precision.  Only CUDA (NVIDIA) and MPS (Apple) have been
 tested; ROCm and XPU should work but have not been run.
 '''
 
+import cmath
+import logging
+from typing import Union
+
+import numpy as np
+import torch
+
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Particle import Particle
 from pylorenzmie.lib.lmtypes import Image
-import cmath
-import numpy as np
-import torch
-import logging
-from typing import Union
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)

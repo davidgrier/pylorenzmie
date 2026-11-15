@@ -1,9 +1,10 @@
 import unittest
-
-from pylorenzmie.analysis import Frame
 from pathlib import Path
+
 import cv2
 import pandas as pd
+
+from pylorenzmie.analysis import Frame
 
 
 THIS_DIR = Path(__file__).parent.parent

@@ -23,11 +23,12 @@ to the focal plane.
 
 from collections.abc import Sequence
 
+import numpy as np
+
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Particle import Particle
 from pylorenzmie.theory.generators import NAMES, generator, flow
 from pylorenzmie.lib.lmtypes import Coordinates, Field, Properties
-import numpy as np
 
 try:
     from pylorenzmie.theory import _warp

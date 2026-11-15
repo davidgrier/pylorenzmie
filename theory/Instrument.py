@@ -14,9 +14,11 @@ number in the units that the calculators use.
 '''
 
 from dataclasses import dataclass
+
+import numpy as np
+
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import Properties
-import numpy as np
 
 
 @dataclass

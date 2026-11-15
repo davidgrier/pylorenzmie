@@ -23,14 +23,16 @@ network).
 '''
 
 from dataclasses import dataclass
+
+import pandas as pd
+import numpy as np
+from scipy.signal import argrelmin, argrelmax
+
 from pylorenzmie.lib import Azimuthal
 from pylorenzmie.lib.lmtypes import Properties, Result
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import Instrument, LorenzMie, Sphere
-import pandas as pd
-import numpy as np
-from scipy.signal import argrelmin, argrelmax
 
 
 _NPIXELS = 20000      # pixels used to find the center

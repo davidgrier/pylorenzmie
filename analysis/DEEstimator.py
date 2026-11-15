@@ -18,15 +18,17 @@ holograms.
 '''
 
 from dataclasses import dataclass, field
+
+import numpy as np
+from numpy.typing import NDArray
+import pandas as pd
+from scipy.optimize import differential_evolution
+
 from pylorenzmie.lib.lmtypes import Image, Properties, Result
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import LorenzMie
-import numpy as np
-from numpy.typing import NDArray
-import pandas as pd
-from scipy.optimize import differential_evolution
 
 
 DEFAULT_BOUNDS: Properties = {

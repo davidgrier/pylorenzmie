@@ -1,11 +1,13 @@
 from dataclasses import dataclass
+
+import numpy as np
+import pandas as pd
+from scipy.optimize import differential_evolution
+
 from pylorenzmie.lib.lmtypes import Result
 from pylorenzmie.analysis.DEEstimator import DEEstimator, _DEObjective
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
-import numpy as np
-import pandas as pd
-from scipy.optimize import differential_evolution
 
 
 @dataclass

@@ -1,8 +1,8 @@
 import unittest
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-
-from pathlib import Path
 import cv2
 
 from pylorenzmie.analysis import Feature

@@ -1,7 +1,8 @@
+from dataclasses import dataclass
+
 from pylorenzmie.theory.Cluster import Cluster
 from pylorenzmie.theory.Sphere import Sphere
 from pylorenzmie.lib.lmtypes import Properties
-from dataclasses import dataclass
 
 
 @dataclass
