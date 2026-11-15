@@ -105,9 +105,13 @@ update it when the role or contents of the directory change.
 - `pyproject.toml` lists every package; `tests/test_packaging.py` checks the
   list, because a package that is missing from it works in a checkout and is
   absent from the wheel.
-- `pyright` checks `lib/`, `utilities/` and `tools/`; `theory/`, `analysis/`
-  and `lmtool/` report the optional libraries (Torch, JAX, CuPy, Numba, Qt)
-  as missing, and are not checked yet.
+- `pyright` checks everything but `lmtool/` and the backends that need Torch,
+  Triton, JAX or CuPy (CI installs Numba only).  Fix what it reports rather
+  than silencing it; a `# pyright: ignore` says why.  A model that can scatter
+  from a list of particles has no position of its own, so code that reads or
+  sets one asks `model.single()` (or `model.single(Sphere)`), which raises a
+  `TypeError` for a list.  `lmtool/` is not checked yet: its widgets are made
+  with `uic` from `pyqtgraph.Qt`, whose types pyright cannot follow.
 - Docstrings use NumPy style with `Parameters`, `Returns`, `Raises`, and `Notes`
   sections as appropriate.
 - Default values and units always noted in the Parameters section.

@@ -19,7 +19,7 @@ jobs:
       - run: ruff check .
 
   types:
-    name: Types (pyright on lib/)
+    name: Types (pyright)
     runs-on: ubuntu-latest
     # Pyright is pinned: a newer version finds new things, and they are for
     # us to fix when we choose to move (change the pin and the code together).
@@ -28,7 +28,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev]" pyright==1.1.414
+      - run: pip install -e ".[dev,numba]" pyright==1.1.414
       - run: pyright
 
   test:

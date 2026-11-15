@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import differential_evolution
 
-from pylorenzmie.lib.lmtypes import Result
 from pylorenzmie.analysis.DEEstimator import DEEstimator, _DEObjective
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
+from pylorenzmie.theory import Pair
 
 
 @dataclass
@@ -36,7 +36,7 @@ class PairEstimator(DEEstimator):
                  hologram: Hologram,
                  centers: tuple[tuple[float, float],
                                 tuple[float, float]] | None = None
-                 ) -> Result:
+                 ) -> pd.Series:
         '''Estimate Pair parameters by differential evolution.
 
         Parameters
@@ -55,14 +55,14 @@ class PairEstimator(DEEstimator):
             Estimated Pair properties (same keys as
             ``Pair.properties``).
         '''
+        pair = self.model.single(Pair)
         if centers is None:
-            p = self.model.particle
-            centers = ((p.x_p1, p.y_p1), (p.x_p2, p.y_p2))
+            centers = ((pair.x_p1, pair.y_p1), (pair.x_p2, pair.y_p2))
         (x_p1, y_p1), (x_p2, y_p2) = centers
-        self.model.particle.x_p1 = float(x_p1)
-        self.model.particle.y_p1 = float(y_p1)
-        self.model.particle.x_p2 = float(x_p2)
-        self.model.particle.y_p2 = float(y_p2)
+        pair.x_p1 = float(x_p1)
+        pair.y_p1 = float(y_p1)
+        pair.x_p2 = float(x_p2)
+        pair.y_p2 = float(y_p2)
 
         mask = Mask(fraction=self.fraction)
         if self.exclude is not None:
@@ -81,13 +81,13 @@ class PairEstimator(DEEstimator):
                 result = differential_evolution(objective,
                                                 de_bounds,
                                                 popsize=self.popsize,
-                                                seed=self.seed,
+                                                seed=self.seed,  # pyright: ignore
                                                 **self.settings)
         finally:
             self.model.coordinates = saved_coords
 
         self.model.properties = dict(zip(de_vars, result.x, strict=True))
-        return pd.Series(self.model.particle.properties)
+        return pd.Series(pair.properties)
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
@@ -99,7 +99,7 @@ class PairEstimator(DEEstimator):
         model.instrument.wavelength = 0.447
         model.instrument.magnification = 0.048
         model.instrument.n_m = 1.34
-        model.particle.properties = dict(x_p1=85.,
+        model.single().properties = dict(x_p1=85.,
                                          y_p1=100.,
                                          z_p1=250.,
                                          a_p1=0.5,

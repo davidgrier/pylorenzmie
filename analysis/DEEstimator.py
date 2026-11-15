@@ -24,21 +24,21 @@ from numpy.typing import NDArray
 import pandas as pd
 from scipy.optimize import differential_evolution
 
-from pylorenzmie.lib.lmtypes import Image, Properties, Result
+from pylorenzmie.lib.lmtypes import Bounds, Image, Properties
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import LorenzMie
 
 
-DEFAULT_BOUNDS: Properties = {
+DEFAULT_BOUNDS: Bounds = {
     'z_p': (1., 200.),
     'a_p': (0.25, 10.0),
     'n_p': (1.0, 3.0),
 }
 
 
-def pixel_bounds(bounds: dict, magnification: float) -> dict:
+def pixel_bounds(bounds: Bounds, magnification: float) -> Bounds:
     '''Convert the height bounds of a search from micrometers to pixels.
 
     The heights of a particle are measured in pixels, the unit of the
@@ -176,7 +176,7 @@ class DEEstimator(BaseEstimator):
     :class:`~pylorenzmie.analysis.Optimizer.Optimizer` to converge. '''
 
     model: LorenzMie
-    bounds: dict = field(default_factory=DEFAULT_BOUNDS.copy)
+    bounds: Bounds = field(default_factory=DEFAULT_BOUNDS.copy)
     fraction: float = 0.02
     exclude: NDArray[np.bool_] | None = None
     popsize: int = 10
@@ -194,7 +194,7 @@ class DEEstimator(BaseEstimator):
                     bounds=self.bounds,
                     settings=self.settings)
 
-    def estimate(self, hologram: Hologram) -> Result:
+    def estimate(self, hologram: Hologram) -> pd.Series:
         '''Estimate particle parameters by differential evolution.
 
         Parameters
@@ -208,8 +208,9 @@ class DEEstimator(BaseEstimator):
             Estimated particle properties (same keys as
             :attr:`~pylorenzmie.theory.Particle.Particle.properties`).
         '''
-        self.model.particle.x_p = float(hologram.coordinates[0].mean())
-        self.model.particle.y_p = float(hologram.coordinates[1].mean())
+        particle = self.model.single()
+        particle.x_p = float(hologram.coordinates[0].mean())
+        particle.y_p = float(hologram.coordinates[1].mean())
 
         # seeded with the estimator, so that a seed makes the whole
         # estimate reproducible
@@ -231,13 +232,13 @@ class DEEstimator(BaseEstimator):
                 result = differential_evolution(objective,
                                                 de_bounds,
                                                 popsize=self.popsize,
-                                                seed=self.seed,
+                                                seed=self.seed,  # pyright: ignore
                                                 **self.settings)
         finally:
             self.model.coordinates = saved_coords
 
         self.model.properties = dict(zip(de_vars, result.x, strict=True))
-        return pd.Series(self.model.particle.properties)
+        return pd.Series(self.model.single().properties)
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

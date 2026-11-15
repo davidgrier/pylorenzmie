@@ -129,12 +129,24 @@ testpaths = ["tests"]
 addopts = "--ignore=tests/slow --ignore=tests/test_jaxlorenzmie.py"
 
 [tool.pyright]
-# Type checking of lib/, utilities/ and tools/, the best-typed parts, as in
-# QVideo and QHOT; a CI job runs it with a pinned version.  theory/, analysis/
-# and lmtool/ report the optional libraries (torch, jax, cupy, numba, Qt) as
-# missing, and are not checked yet.
+# Type checking, as in QVideo and QHOT; a CI job runs it with a pinned version,
+# in an environment with Numba (``pip install -e ".[dev,numba]"``).  The
+# backends that need Torch, Triton, JAX or CuPy are left out, because their
+# libraries are too large for the job and their types are unknown without
+# them.  lmtool/ is not checked yet: the widgets are made with ``uic`` from
+# ``pyqtgraph.Qt``, whose types pyright cannot follow.
 # pyright cannot read ``__all__ = 'a b'.split()``, which is the style.
-include = ["lib", "utilities", "tools"]
+include = ["lib", "theory", "analysis", "utilities", "tools"]
+exclude = [
+    "**/__pycache__",
+    "**/devel",
+    "theory/torchLorenzMie.py",
+    "theory/torchLorenzMieBatch.py",
+    "theory/_tritonkernel.py",
+    "theory/jaxLorenzMie.py",
+    "theory/cupyLorenzMie.py",
+    "analysis/cupyOptimizer.py",
+]
 pythonVersion = "3.11"
 extraPaths = [".."]
 reportPrivateImportUsage = "none"

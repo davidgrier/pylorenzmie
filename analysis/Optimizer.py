@@ -22,17 +22,20 @@ and a reduced chi-squared well above 1 means that the model leaves structure in
 the data.
 '''
 
+from collections.abc import Sequence
+from typing import Any, cast
+
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import least_squares
+from scipy.optimize import OptimizeResult, least_squares
 from scipy.linalg import svd
 import pandas as pd
 
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.lmtypes import Image, Properties, Result
+from pylorenzmie.lib.lmtypes import Image, Properties, Settings
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory import LorenzMie, Sphere
 
 
 class Optimizer(LMObject):
@@ -87,7 +90,7 @@ class Optimizer(LMObject):
                  mask: Mask | None = None,
                  robust: bool | None = None,
                  fixed: list[str] | None = None,
-                 settings: Properties | None = None,
+                 settings: Settings | None = None,
                  **kwargs) -> None:
         self.model = model or LorenzMie(**kwargs)
         if self.method not in self.model.method:
@@ -96,13 +99,13 @@ class Optimizer(LMObject):
         self.settings = settings
         if fixed is None:
             fixed = [p for p in self.model.properties
-                     if p not in self.model.particle.properties]
+                     if p not in self.model.single().properties]
             fixed.append('k_p')
         self.fixed = fixed
         if robust is not None:
             self.robust = robust
         self._data: Image | None = None
-        self._result = None
+        self._result: OptimizeResult | None = None
 
     @property
     def properties(self) -> Properties:
@@ -116,7 +119,7 @@ class Optimizer(LMObject):
                 setattr(self, name, value)
 
     @property
-    def settings(self) -> Properties:
+    def settings(self) -> Settings:
         '''Settings forwarded to ``scipy.optimize.least_squares``.
 
         Notes
@@ -133,7 +136,7 @@ class Optimizer(LMObject):
         return self._settings
 
     @settings.setter
-    def settings(self, settings: Properties | None) -> None:
+    def settings(self, settings: Settings | None) -> None:
         if settings is None:
             settings = {'method': 'lm',
                         'ftol': 1e-4,
@@ -179,7 +182,7 @@ class Optimizer(LMObject):
         return self._fixed
 
     @fixed.setter
-    def fixed(self, fixed: list[str]) -> None:
+    def fixed(self, fixed: Sequence[str]) -> None:
         self._fixed = list(fixed)
         self._variables = [p for p in self.model.properties
                            if p not in fixed]
@@ -190,7 +193,7 @@ class Optimizer(LMObject):
         return self._variables
 
     @variables.setter
-    def variables(self, variables: list[str]) -> None:
+    def variables(self, variables: Sequence[str]) -> None:
         self._variables = list(variables)
         self._fixed = [p for p in self.model.properties
                        if p not in variables]
@@ -206,15 +209,18 @@ class Optimizer(LMObject):
         '''
         if self._result is None:
             return None
+        return self._summary(self._result)
+
+    def _summary(self, fit: OptimizeResult) -> pd.Series:
+        '''The fitted values, their uncertainties and the statistics.'''
         a = self.variables
         b = ['d' + v for v in a]
         keys = list(sum(zip(a, b, strict=True), ()))
         keys.extend('success npix redchi'.split())
-        values = list(self._result.x)
-        npix = self._data.size
-        redchi, uncertainties = self._statistics()
+        values: list[Any] = list(fit.x)
+        redchi, uncertainties = self._statistics(fit)
         values = list(sum(zip(values, uncertainties, strict=True), ()))
-        values.extend([self._result.success, npix, redchi])
+        values.extend([fit.success, self._pixels.size, redchi])
         return pd.Series(dict(zip(keys, values, strict=True)))
 
     @property
@@ -225,7 +231,7 @@ class Optimizer(LMObject):
         metadata.update(self.settings)
         return pd.Series(metadata)
 
-    def optimize(self, hologram: Hologram) -> Result:
+    def optimize(self, hologram: Hologram) -> pd.Series:
         '''Fit model to hologram.
 
         Parameters
@@ -250,8 +256,9 @@ class Optimizer(LMObject):
         jac_params = getattr(self.model, 'jac_params', None)
         if jac_params is not None and set(self.variables) <= jac_params:
             settings['jac'] = self._analytical_jac
-        self._result = least_squares(self._residuals, p0, **settings)
-        return self.result
+        fit = least_squares(self._residuals, p0, **settings)
+        self._result = fit
+        return self._summary(fit)
 
     def report(self) -> str:
         '''Format fitting results as a human-readable string.
@@ -283,24 +290,31 @@ class Optimizer(LMObject):
     def _analytical_jac(self, values: NDArray[np.floating]
                         ) -> NDArray[np.floating]:
         self.model.properties = dict(zip(self.variables, values, strict=True))
-        J = self.model.jac()
+        J = cast(Any, self.model).jac()
         noise = self.model.instrument.noise
         return np.column_stack([J[p] for p in self.variables]) / noise
 
     def _residuals(self, values: NDArray[np.floating]) -> Image:
         self.model.properties = dict(zip(self.variables, values, strict=True))
         noise = self.model.instrument.noise
-        return (self.model.hologram() - self._data) / noise
+        return (self.model.hologram() - self._pixels) / noise
 
-    def _statistics(self) -> tuple[float, NDArray[np.floating]]:
+    @property
+    def _pixels(self) -> Image:
+        '''The pixels that are being fitted.'''
+        if self._data is None:
+            raise RuntimeError('there is no data: call optimize() first')
+        return self._data
+
+    def _statistics(self, res: OptimizeResult
+                    ) -> tuple[float, NDArray[np.floating]]:
         '''Reduced chi-squared and parameter uncertainties.
 
         Uncertainties are square roots of the diagonal of the covariance
         matrix, estimated from the Jacobian via Moore-Penrose SVD with
         small singular values discarded.
         '''
-        res = self._result
-        ndeg = self._data.size - res.x.size
+        ndeg = self._pixels.size - res.x.size
         redchi = 2. * res.cost / ndeg
         _, s, VT = svd(res.jac, full_matrices=False)
         threshold = np.finfo(float).eps * max(res.jac.shape) * s[0]
@@ -319,9 +333,10 @@ class Optimizer(LMObject):
         shape = (201, 201)
         model = LorenzMie()
         model.coordinates = model.meshgrid(shape)
-        model.particle.a_p = 0.75
-        model.particle.n_p = 1.42
-        model.particle.r_p = [100., 100., 225.]
+        sphere = model.single(Sphere)
+        sphere.a_p = 0.75
+        sphere.n_p = 1.42
+        sphere.r_p = [100., 100., 225.]
         print(cls.__name__ + ' example:')
         print('* Ground truth:')
         print(model.particle)

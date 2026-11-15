@@ -28,7 +28,8 @@ from pylorenzmie.lib.lmtypes import Image
 
 # Optimizer.fixed for a Pair: the single-sphere default names 'k_p',
 # which a Pair does not have; hold both spheres' absorption instead.
-_PAIR_FIXED = 'wavelength magnification n_m noise k_p1 k_p2'.split()
+_PAIR_FIXED = ['wavelength', 'magnification', 'n_m', 'noise', 'k_p1',
+               'k_p2']
 
 
 class Feature(Hologram):
@@ -74,11 +75,12 @@ class Feature(Hologram):
         self._centers = (None if centers is None else
                          [(float(x), float(y)) for x, y in centers])
         pair = self._centers is not None and len(self._centers) == 2
-        if pair:
-            self.model.particle = Pair()
+        if self._centers is not None and pair:
+            particles = Pair()
+            self.model.particle = particles
             (x_p1, y_p1), (x_p2, y_p2) = self._centers
-            self.model.particle.x_p1, self.model.particle.y_p1 = x_p1, y_p1
-            self.model.particle.x_p2, self.model.particle.y_p2 = x_p2, y_p2
+            particles.x_p1, particles.y_p1 = x_p1, y_p1
+            particles.x_p2, particles.y_p2 = x_p2, y_p2
 
         m = Mask()
         m.shape = self.data.shape
@@ -115,7 +117,10 @@ class Feature(Hologram):
         :attr:`~pylorenzmie.analysis.Mask.Mask.exclude` are excluded from both
         the DE estimation and the LM optimization. Each component controls its
         own pixel fraction independently. '''
-        return self.optimizer.mask
+        mask = self.optimizer.mask
+        if mask is None:
+            raise RuntimeError('the optimizer has no mask')
+        return mask
 
     @mask.setter
     def mask(self, mask: Mask) -> None:
@@ -125,7 +130,7 @@ class Feature(Hologram):
     @property
     def particle(self) -> Particle:
         '''Particle associated with the scattering model.'''
-        return self.model.particle
+        return self.model.single()
 
     @particle.setter
     def particle(self, particle: Particle) -> None:

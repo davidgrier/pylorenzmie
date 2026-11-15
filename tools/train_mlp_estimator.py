@@ -85,8 +85,9 @@ def _make_model() -> Calculator:
     model.instrument.n_m           = INSTRUMENT['n_m']
     radii = np.arange(N_FEATURES, dtype=float)
     model.coordinates = np.vstack([radii, np.zeros(N_FEATURES)])
-    model.particle.x_p = 0.
-    model.particle.y_p = 0.
+    sphere = model.single(Sphere)
+    sphere.x_p = 0.
+    sphere.y_p = 0.
     return model
 
 

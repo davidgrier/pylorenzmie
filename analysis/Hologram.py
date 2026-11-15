@@ -67,7 +67,7 @@ class Hologram:
         return self._coordinates
 
     @property
-    def flat_data(self) -> NDArray[np.floating]:
+    def flat_data(self) -> Image:
         '''Pixel values as a 1-D view, shape ``(npts,)``.'''
         return self.data.ravel()
 
@@ -112,7 +112,7 @@ class Hologram:
     def example(cls) -> None:  # pragma: no cover
         '''Run a demonstration of the class, for use as a script.'''
         from pylorenzmie.utilities import example_hologram
-        hologram = cls(example_hologram())
+        hologram = example_hologram()
         print(f'Hologram: shape={hologram.shape}, corner={hologram.corner}')
         print(f'coordinates: {hologram.coordinates.shape}')
         crop = hologram[50:150, 50:150]

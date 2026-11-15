@@ -8,7 +8,7 @@ import pandas as pd
 from scipy.optimize import differential_evolution
 
 from pylorenzmie.lib import Azimuthal
-from pylorenzmie.lib.lmtypes import Properties, Result
+from pylorenzmie.lib.lmtypes import Bounds, Properties
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
 from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS, pixel_bounds
 from pylorenzmie.analysis.Hologram import Hologram
@@ -107,7 +107,7 @@ class RadialEstimator(BaseEstimator):
     non-spherical particles or when rotational symmetry cannot be assumed. '''
 
     model: LorenzMie
-    bounds: dict = field(default_factory=DEFAULT_BOUNDS.copy)
+    bounds: Bounds = field(default_factory=DEFAULT_BOUNDS.copy)
     popsize: int = 10
     seed: int | None = None
     settings: dict = field(default_factory=lambda: {'tol': 0.01,
@@ -122,7 +122,7 @@ class RadialEstimator(BaseEstimator):
                     bounds=self.bounds,
                     settings=self.settings)
 
-    def estimate(self, hologram: Hologram) -> Result:
+    def estimate(self, hologram: Hologram) -> pd.Series:
         '''Estimate particle parameters from the azimuthal radial profile.
 
         Parameters
@@ -138,8 +138,9 @@ class RadialEstimator(BaseEstimator):
         '''
         x_p = float(hologram.coordinates[0].mean())
         y_p = float(hologram.coordinates[1].mean())
-        self.model.particle.x_p = x_p
-        self.model.particle.y_p = y_p
+        particle = self.model.single()
+        particle.x_p = x_p
+        particle.y_p = y_p
 
         cx, cy = hologram.corner
         profile = Azimuthal.avg(hologram.data,
@@ -162,13 +163,13 @@ class RadialEstimator(BaseEstimator):
                 result = differential_evolution(objective,
                                                 de_bounds,
                                                 popsize=self.popsize,
-                                                seed=self.seed,
+                                                seed=self.seed,  # pyright: ignore
                                                 **self.settings)
         finally:
             self.model.coordinates = saved_coords
 
         self.model.properties = dict(zip(de_vars, result.x, strict=True))
-        return pd.Series(self.model.particle.properties)
+        return pd.Series(self.model.single().properties)
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

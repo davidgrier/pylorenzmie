@@ -14,7 +14,7 @@ See Also
 ~pylorenzmie.theory.Cluster.Cluster : group of particles.
 '''
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass, field
 import numpy as np
 from pylorenzmie.lib import LMObject
@@ -86,7 +86,7 @@ class Particle(LMObject):
         return np.asarray([self.x_p, self.y_p, self.z_p])
 
     @r_p.setter
-    def r_p(self, r_p: Coordinates) -> None:
+    def r_p(self, r_p: Sequence[float] | Coordinates) -> None:
         self.x_p, self.y_p, self.z_p = r_p
 
     @property

@@ -12,7 +12,7 @@ to the caller, as the video tutorial shows.
 import pandas as pd
 
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.lmtypes import Properties, Results
+from pylorenzmie.lib.lmtypes import Properties
 
 
 class Trajectory(LMObject):
@@ -41,7 +41,7 @@ class Trajectory(LMObject):
             return pd.DataFrame()
         return pd.concat(self._frames, ignore_index=True)
 
-    def append(self, results: Results) -> None:
+    def append(self, results: pd.DataFrame | pd.Series) -> None:
         '''Append one frame of results.
 
         Parameters

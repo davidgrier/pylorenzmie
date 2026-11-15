@@ -10,10 +10,12 @@ from .Cluster import Cluster
 from .Dimer import Dimer
 from .Pair import Pair
 from .Instrument import Instrument
-from .Aberrated import Aberrated
+# a class that has the name of its module comes last, so that type checkers
+# bind the name to the class and not to the module
 from .Aberrated import AberratedLorenzMie as _NumpyAberratedLorenzMie
-from .Distorted import Distorted, supported as _distortable
+from .Aberrated import Aberrated
 from .Distorted import DistortedLorenzMie as _NumpyDistortedLorenzMie
+from .Distorted import Distorted, supported as _distortable
 from .LorenzMie import LorenzMie as _BaseLorenzMie
 
 # Choice of the calculator exported as ``LorenzMie``.
@@ -74,8 +76,10 @@ def _select_backend(requested: str | None = None) -> type:
 
 
 if _TYPE_CHECKING:
-    # the calculator is chosen at run time, but type checkers need a class
-    LorenzMie = _BaseLorenzMie
+    # chosen at run time; type checkers see the NumPy calculator, whose
+    # interface all of the backends share
+    class LorenzMie(_BaseLorenzMie):
+        pass
 else:
     LorenzMie = _select_backend(_os.environ.get('PYLORENZMIE_BACKEND'))
 
@@ -96,7 +100,10 @@ def _aberrated(base: type) -> type:
 
 
 if _TYPE_CHECKING:
-    AberratedLorenzMie = _NumpyAberratedLorenzMie
+    # chosen at run time; type checkers see the NumPy calculator, whose
+    # interface all of the backends share
+    class AberratedLorenzMie(_NumpyAberratedLorenzMie):
+        pass
 else:
     # ``AberratedLorenzMie`` follows the backend, like ``LorenzMie``; the
     # NumPy calculator is ``pylorenzmie.theory.Aberrated.AberratedLorenzMie``
@@ -118,7 +125,10 @@ def _distorted(base: type) -> type:
 
 
 if _TYPE_CHECKING:
-    DistortedLorenzMie = _NumpyDistortedLorenzMie
+    # chosen at run time; type checkers see the NumPy calculator, whose
+    # interface all of the backends share
+    class DistortedLorenzMie(_NumpyDistortedLorenzMie):
+        pass
 else:
     # follows the backend where it can; see :func:`Distorted`
     DistortedLorenzMie = _distorted(LorenzMie)

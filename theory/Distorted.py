@@ -247,13 +247,13 @@ def Distorted(base_class: type) -> type:
             if self.kernel and _warp is not None:
                 return self._kernel_warp(rho, active, scale, z_p, q)
             if self.mode == 'summed':
-                def g(x: Coordinates) -> Coordinates:
-                    total = 0.
+                def summed(x: Coordinates) -> Coordinates:
+                    total = np.zeros_like(x)
                     for name, c in active:
                         total = total + c * scale * generator(
                             name, x, z_p, n_m, q, scale)
                     return total
-                return flow(rho, 1., g, self.nsteps)
+                return flow(rho, 1., summed, self.nsteps)
             for name, c in reversed(active):
                 def g(x: Coordinates, name: str = name) -> Coordinates:
                     return generator(name, x, z_p, n_m, q, scale)
@@ -267,6 +267,9 @@ def Distorted(base_class: type) -> type:
                          z_p: float,
                          q: np.ndarray) -> Coordinates:
             '''Warp with the fused numba kernel.'''
+            kernels = _warp
+            if kernels is None:
+                raise RuntimeError('the numba kernels are not available')
             kinds = np.array([NAMES.index(name) for name, _ in active],
                              dtype=np.int64)
             alphas = np.array([c * scale for _, c in active])
@@ -276,13 +279,13 @@ def Distorted(base_class: type) -> type:
                     kinds, alphas, int(self.nsteps), float(z_p),
                     float(self.instrument.n_m), float(q[0]), float(q[1]),
                     1. / float(scale))
-            if _warp.parallel_allowed(self, rho.shape[1]):
-                func = (_warp.warp_summed_parallel if summed
-                        else _warp.warp_composed_parallel)
-                with _warp.PARALLEL_LOCK():
+            if kernels.parallel_allowed(self, rho.shape[1]):
+                func = (kernels.warp_summed_parallel if summed
+                        else kernels.warp_composed_parallel)
+                with kernels.PARALLEL_LOCK():
                     x, y = func(*args)
             else:
-                func = _warp.warp_summed if summed else _warp.warp_composed
+                func = kernels.warp_summed if summed else kernels.warp_composed
                 x, y = func(*args)
             return np.vstack([x, y])
 

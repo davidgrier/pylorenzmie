@@ -29,7 +29,7 @@ import numpy as np
 from scipy.signal import argrelmin, argrelmax
 
 from pylorenzmie.lib import Azimuthal
-from pylorenzmie.lib.lmtypes import Properties, Result
+from pylorenzmie.lib.lmtypes import Properties
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import Instrument, LorenzMie, Sphere
@@ -205,15 +205,15 @@ class Estimator(BaseEstimator):
         A match needs the right center: the profile of a feature with
         the wrong one is smeared, which :meth:`_find_center` avoids.
         '''
-        if not np.isfinite(self.z_p) or self.z_p <= 0.:
+        z_p = self.z_p
+        if z_p is None or not np.isfinite(z_p) or z_p <= 0.:
             self.logger.warning(
                 'No fringes found; a_p could not be estimated')
             return
         r, profile, n = self._profile_about_center()
         model = LorenzMie(coordinates=np.vstack([r, np.zeros_like(r)]),
                           instrument=self.instrument)
-        if hasattr(model, 'parallel'):
-            model.parallel = False
+        model.parallel = False
         sphere = Sphere(n_p=self.n_p, k_p=self.k_p)
         k = self.instrument.wavenumber()
         weight = np.sqrt(n)
@@ -225,7 +225,8 @@ class Estimator(BaseEstimator):
             The Mie coefficients depend on the radius only, so they are
             computed once for all of the heights.
             '''
-            best = (np.inf, None, None)
+            best_cost = np.inf
+            best: tuple[float, float] | None = None
             for a in radii:
                 sphere.a_p = a
                 ab = sphere.ab(self.instrument.n_m,
@@ -237,18 +238,19 @@ class Estimator(BaseEstimator):
                     field[0] += np.exp(1.j * k * z)
                     holo = np.sum(field.real**2 + field.imag**2, axis=0)
                     cost = float(np.sum((weight * (holo - profile))**2))
-                    if cost < best[0]:
-                        best = (cost, a, z)
-            return best[1:]
+                    if cost < best_cost:
+                        best_cost, best = cost, (a, z)
+            if best is None:
+                raise ValueError('the profile matches no sphere')
+            return best
 
-        z_p = self.z_p
         a_p, z_p = search(np.geomspace(*_RADII, 60),
                           z_p * np.linspace(.6, 1.4, 17))
         a_p, z_p = search(a_p * np.geomspace(.93, 1.07, 15),
                           z_p * np.linspace(.96, 1.04, 9))
         self.a_p, self.z_p = float(a_p), float(z_p)
 
-    def estimate(self, hologram: Hologram) -> Result:
+    def estimate(self, hologram: Hologram) -> pd.Series:
         '''Estimate particle properties from a normalized hologram.
 
         Parameters

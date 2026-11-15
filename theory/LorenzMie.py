@@ -28,12 +28,16 @@ The class attribute ``method`` names the calculator, and an
 can work with the model.
 '''
 
+from typing import TypeVar, overload
+
 import numpy as np
 
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import (Coordinates, Coefficients, Field,
                                    Image, Properties)
 from pylorenzmie.theory import (Particle, Sphere, Instrument)
+
+P = TypeVar('P', bound=Particle)
 
 
 class LorenzMie(LMObject):
@@ -82,6 +86,10 @@ class LorenzMie(LMObject):
 
     method: str = 'numpy'
 
+    #: Whether a calculator may use several threads.  Only the Numba one
+    #: does; turn it off when the calling code is already parallel.
+    parallel: bool = False
+
     def __init__(self,
                  coordinates: Coordinates | None = None,
                  particle: Particle | list[Particle] | None = None,
@@ -98,9 +106,45 @@ class LorenzMie(LMObject):
         part = f'particle={self.particle!r}'.replace(',', ',\n\t')
         return '\n    '.join([r, inst, part])
 
+    @overload
+    def single(self) -> Particle: ...
+
+    @overload
+    def single(self, kind: type[P]) -> P: ...
+
+    def single(self, kind=Particle):
+        '''Return the particle, which must be a single particle.
+
+        A model can scatter from a list of particles, which has no position
+        or properties of its own.  Code that reads or sets those asks for
+        the particle with this method, so that a list is reported at once.
+
+        Parameters
+        ----------
+        kind : type, optional
+            The class that the particle must have.  Default: Particle.
+
+        Returns
+        -------
+        Particle
+            The particle, typed as *kind*.
+
+        Raises
+        ------
+        TypeError
+            If the model has a list of particles, or a particle that is not
+            a *kind*.
+        '''
+        particle = self.particle
+        if not isinstance(particle, kind):
+            raise TypeError(
+                f'the model needs a single {kind.__name__}, '
+                f'not a {type(particle).__name__}')
+        return particle
+
     @property
     def properties(self) -> Properties:
-        return {**self.particle.properties,
+        return {**self.single().properties,
                 **self.instrument.properties}
 
     @properties.setter
@@ -132,7 +176,7 @@ class LorenzMie(LMObject):
             c = np.atleast_2d(coordinates)
         ndim, npts = c.shape
         if ndim > 3:
-            raise ValueError(f'Incompatible shape: {coordinates.shape=}')
+            raise ValueError(f'Incompatible shape: {c.shape=}')
         self._coordinates = np.vstack([c, np.zeros((3-ndim, npts))])
         self._allocate()
 

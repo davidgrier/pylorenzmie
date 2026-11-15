@@ -25,7 +25,15 @@ from pylorenzmie.theory import Instrument, LorenzMie
 from pylorenzmie.analysis import Localizer, Feature
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.pair_grouping import group_overlapping
-from pylorenzmie.lib.lmtypes import Image, Results
+from pylorenzmie.lib.lmtypes import Image
+
+
+def _fit(feature: Feature) -> pd.Series:
+    '''The fit of a feature that has been optimized.'''
+    result = feature.optimizer.result
+    if result is None:
+        raise RuntimeError('the feature has not been optimized')
+    return result
 
 
 class Frame(Hologram):
@@ -116,7 +124,7 @@ class Frame(Hologram):
         return self._data.shape
 
     @property
-    def results(self) -> Results:
+    def results(self) -> pd.DataFrame:
         '''Optimized parameters from the most recent fit.'''
         return self._results
 
@@ -243,7 +251,7 @@ class Frame(Hologram):
         pair : Feature
             Optimized pair feature with the lowest redchi.
         '''
-        fit = feature.optimizer.result
+        fit = _fit(feature)
         size = max(feature.shape)
         best = None
         for fraction in (1 / 16, 1 / 8):
@@ -259,10 +267,10 @@ class Frame(Hologram):
                 pair.estimator.seed = feature.estimator.seed
                 pair.estimate()
                 pair.optimize()
-                if (best is None or
-                        pair.optimizer.result.redchi <
-                        best.optimizer.result.redchi):
+                if best is None or _fit(pair).redchi < _fit(best).redchi:
                     best = pair
+        if best is None:
+            raise RuntimeError('no pair was tried')
         return best
 
     def split_suspects(self) -> int:
@@ -283,15 +291,15 @@ class Frame(Hologram):
             return 0
         nsplit = 0
         for i, feature in enumerate(self.features):
-            result = feature.optimizer.result
+            result = _fit(feature)
             if feature.centers is None and result.redchi > self.split_redchi:
                 pair = self._split(feature)
-                if pair.optimizer.result.redchi < result.redchi:
+                if _fit(pair).redchi < result.redchi:
                     self._features[i] = pair
                     nsplit += 1
         return nsplit
 
-    def optimize(self) -> Results:
+    def optimize(self) -> pd.DataFrame:
         '''Optimize parameters for all current features.
 
         Suspect single-particle fits are then refit as pairs, as in
@@ -310,7 +318,7 @@ class Frame(Hologram):
             [feature.optimizer.result for feature in self.features])
         return self._results
 
-    def analyze(self, data: Image | None = None) -> Results:
+    def analyze(self, data: Image | None = None) -> pd.DataFrame:
         '''Detect features, estimate parameters, and optimize fits.
 
         Parameters
@@ -324,7 +332,7 @@ class Frame(Hologram):
             Optimized parameters of the generative model for each
             detected feature.
         '''
-        self.data = data
+        self.data = data  # pyright: ignore[reportIncompatibleVariableOverride]
         self.detect()
         self.estimate()
         return self.optimize()

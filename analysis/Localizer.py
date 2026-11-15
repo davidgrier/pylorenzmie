@@ -16,6 +16,7 @@ tutorial shows how to tune it.  Further keyword arguments of
 '''
 
 from collections.abc import Callable
+from typing import overload
 
 import numpy as np
 import trackpy as tp
@@ -80,6 +81,15 @@ class Localizer(LMObject):
                     percentile=self.percentile,
                     separation=self.separation)
 
+    @overload
+    def localize(self, image: Image, *args, **kwargs) -> pd.DataFrame: ...
+
+    @overload
+    def localize(self,
+                 image: list[Image],
+                 *args,
+                 **kwargs) -> list[pd.DataFrame]: ...
+
     def localize(self,
                  image: Image | list[Image],
                  diameter: int | None = None,
@@ -88,7 +98,7 @@ class Localizer(LMObject):
                  check: Callable[[], None] | None = None,
                  percentile: int | None = None,
                  separation: float | None = None,
-                 **kwargs) -> pd.DataFrame:
+                 **kwargs) -> pd.DataFrame | list[pd.DataFrame]:
         '''Localize features in a normalized holographic microscopy image.
 
         Parameters

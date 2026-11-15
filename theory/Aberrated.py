@@ -32,6 +32,8 @@ Defocus is nearly degenerate with ``z_p``, so fit it only when the height is
 constrained by other means.
 '''
 
+from typing import Any
+
 import numpy as np
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
@@ -220,8 +222,12 @@ def Aberrated(base_class: type) -> type:
                     'x_c': self.x_c,
                     'y_c': self.y_c}
 
-        def _aberration(self, r_p: Coordinates) -> Field:
-            '''Aberration phase mask for a particle at r_p.'''
+        def _aberration(self, r_p: Coordinates) -> Any:
+            '''Aberration phase mask for a particle at r_p.
+
+            It is 1 without aberrations, and otherwise an array, or a
+            tensor on a Torch backend.
+            '''
             if not (self.defocus or self.spherical or self.coma or
                     self.astigmatism or self.distortion or self.piston):
                 return 1.
@@ -265,7 +271,7 @@ def Aberrated(base_class: type) -> type:
 
             mask = np.exp(1j * (phase + 2.*np.pi*self.piston))
             if hasattr(self, '_device'):
-                import torch
+                import torch  # pyright: ignore[reportMissingImports]
                 # single precision: Apple GPUs have no complex128
                 return torch.as_tensor(mask,
                                        dtype=torch.complex64,
@@ -298,7 +304,7 @@ def Aberrated(base_class: type) -> type:
 
         # lets a back end that applies the phase in its kernel (Metal) keep
         # its fast path for aberrated models
-        scattered_field._kernel_aberration = True
+        scattered_field._kernel_aberration = True  # pyright: ignore
 
     return AberratedLorenzMie
 

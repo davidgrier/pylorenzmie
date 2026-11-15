@@ -9,10 +9,10 @@ import pandas as pd
 import joblib
 
 from pylorenzmie.lib import Azimuthal
-from pylorenzmie.lib.lmtypes import Properties, Result
+from pylorenzmie.lib.lmtypes import Properties
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
 from pylorenzmie.analysis.Hologram import Hologram
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory import LorenzMie, Sphere
 
 
 def _default_weights() -> Path:
@@ -107,7 +107,7 @@ class MLPEstimator(BaseEstimator):
         '''MLPEstimator configuration.'''
         return dict(weights=str(self.weights), n_features=self.n_features)
 
-    def estimate(self, hologram: Hologram) -> Result:
+    def estimate(self, hologram: Hologram) -> pd.Series:
         '''Estimate particle parameters from the azimuthal radial profile.
 
         Parameters
@@ -135,13 +135,14 @@ class MLPEstimator(BaseEstimator):
         z_p, a_p, n_p = self._pipeline.predict(
             features.reshape(1, -1))[0]
 
-        self.model.particle.x_p = x_p
-        self.model.particle.y_p = y_p
-        self.model.particle.z_p = float(np.clip(z_p,   10.,   600.))
-        self.model.particle.a_p = float(np.clip(a_p,   0.1,    10.))
-        self.model.particle.n_p = float(np.clip(n_p,   1.0,     3.0))
+        particle = self.model.single(Sphere)
+        particle.x_p = x_p
+        particle.y_p = y_p
+        particle.z_p = float(np.clip(z_p,   10.,   600.))
+        particle.a_p = float(np.clip(a_p,   0.1,    10.))
+        particle.n_p = float(np.clip(n_p,   1.0,     3.0))
 
-        return pd.Series(self.model.particle.properties)
+        return pd.Series(particle.properties)
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

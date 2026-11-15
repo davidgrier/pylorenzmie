@@ -85,14 +85,17 @@ class Pair(Cluster):
         '''Push x_p1..k_p2 onto the two constituent spheres.'''
         if len(self.particles) != 2:
             return
-        self.particles[0].r_p = [self.x_p1, self.y_p1, self.z_p1]
-        self.particles[0].a_p = self.a_p1
-        self.particles[0].n_p = self.n_p1
-        self.particles[0].k_p = self.k_p1
-        self.particles[1].r_p = [self.x_p2, self.y_p2, self.z_p2]
-        self.particles[1].a_p = self.a_p2
-        self.particles[1].n_p = self.n_p2
-        self.particles[1].k_p = self.k_p2
+        first, second = self.particles
+        if not (isinstance(first, Sphere) and isinstance(second, Sphere)):
+            raise TypeError('a Pair is made of two spheres')
+        first.r_p = [self.x_p1, self.y_p1, self.z_p1]
+        first.a_p = self.a_p1
+        first.n_p = self.n_p1
+        first.k_p = self.k_p1
+        second.r_p = [self.x_p2, self.y_p2, self.z_p2]
+        second.a_p = self.a_p2
+        second.n_p = self.n_p2
+        second.k_p = self.k_p2
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

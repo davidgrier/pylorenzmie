@@ -1,8 +1,10 @@
 '''Abstract base class for hologram parameter estimators.'''
 
 from abc import abstractmethod
+
+import pandas as pd
+
 from pylorenzmie.lib import LMObject
-from pylorenzmie.lib.lmtypes import Result
 from pylorenzmie.analysis.Hologram import Hologram
 
 
@@ -22,7 +24,7 @@ class BaseEstimator(LMObject):
     '''
 
     @abstractmethod
-    def estimate(self, hologram: Hologram) -> Result:
+    def estimate(self, hologram: Hologram) -> pd.Series:
         '''Estimate particle parameters from a normalized hologram.
 
         Parameters

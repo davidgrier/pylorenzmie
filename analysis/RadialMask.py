@@ -32,6 +32,8 @@ class RadialMask(Mask):
         f = self.fraction
         a, b = (0., 2. * f) if (f < 0.5) else (2. * f - 1., 2. * (1. - f))
 
+        if self.shape is None:
+            return
         h, w = self.shape
         x = 2. * np.arange(w) / (w - 1.) - 1.
         y = 2. * np.arange(h) / (h - 1.) - 1.
