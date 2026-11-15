@@ -127,21 +127,25 @@ class FitResult:
 
 
 def _model(snapshot: Snapshot, cancel: threading.Event) -> LorenzMie:
-    '''A model for the snapshot that stops when ``cancel`` is set.'''
-    model = snapshot.cls()
-    model.properties = snapshot.properties
-    hologram, jac = model.hologram, model.jac
+    '''A model for the snapshot that stops when ``cancel`` is set.
 
-    def checked(function: Callable) -> Callable:
-        def wrapper(*args: Any, **kwargs: Any) -> Any:
+    The model is of a subclass of the class of the snapshot that looks at
+    ``cancel`` before each evaluation of the hologram or of its Jacobian,
+    which is where a fit or a search spends its time.
+    '''
+    class Cancellable(snapshot.cls):
+        def hologram(self, *args: Any, **kwargs: Any) -> Any:
             if cancel.is_set():
                 raise Cancelled
-            return function(*args, **kwargs)
-        return wrapper
+            return super().hologram(*args, **kwargs)
 
-    model.hologram = checked(hologram)
-    if model.jac_params:
-        model.jac = checked(jac)
+        def jac(self) -> Any:
+            if cancel.is_set():
+                raise Cancelled
+            return super().jac()
+
+    model = Cancellable()
+    model.properties = snapshot.properties
     return model
 
 

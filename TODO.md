@@ -276,9 +276,9 @@ Open findings of the review of the code base; the notes behind them are in
       them).
 - [ ] The macOS GUI job hung once (the stack was in `LMTool._onCurrentParticle`
       during the event loop) and has not since; a stuck test now ends the run
-      after five minutes with the stacks of its threads.  Watch the next runs.
-- [ ] `tasks._model` stops a search by replacing `model.hologram` on the
-      instance; give the model a way to be cancelled.
+      after five minutes with the stacks of its threads.  Watch the next runs; the `TaskRunner` fix
+      (a worker destroyed in its thread while the main thread held the GIL)
+      may be the cause.
 
 ## api
 

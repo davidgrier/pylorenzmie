@@ -109,12 +109,27 @@ All notable changes to pylorenzmie are recorded here. The format follows
   with a differential-evolution search for each of eight candidates, and on
   this image no pair is better.  Those tests turn the split off and take two
   seconds; the split has tests of its own.
+* `Feature` and `Frame` call `Hologram.__init__` in place of setting its
+  attributes themselves.  `Hologram` makes its coordinates when they are first
+  needed, so a `Frame` that has no image has none, and a crop takes those of
+  its parent.
+* A task of `lmtool` is cancelled by a model of a subclass of the calculator
+  that checks the flag before each hologram and each Jacobian, in place of
+  one whose methods were replaced on the instance.
 * Imports within a module are grouped as the standard library, third-party
   libraries, `pylorenzmie`, and siblings.  Argument lists are one line, or
   one argument to a line.
 
 ### Fixed
 
+* `lmtool` could stop for good, about once in a thousand background tasks.
+  `TaskRunner` let go of the worker of a task while its thread was still
+  running, so that the event loop of the thread destroyed it, and the
+  destructor asked for the GIL while it held the lock that Qt keeps for its
+  signals; the main thread, which held the GIL, was waiting for that lock.
+  The worker now stays with its thread until the thread is done.  This may
+  also be the cause of the hang that the macOS job of CI showed twice, with
+  the main thread in `LMTool._onCurrentParticle`.
 * The Mie coefficients were inaccurate for large spheres of a high index.
   The downward recurrence for the logarithmic derivative `D1` started at the
   highest order that the sum keeps (`nstop` of Wiscombe and Yang), where the
@@ -163,6 +178,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Removed
 
+* `compute_field_jit` of `pylorenzmie.theory.numbaLorenzMie`, a wrapper that
+  nothing but its test called (its `scratch` argument did nothing).
 * `lib/obsolete/` and `theory/obsolete/`, 26 files that nothing imported
   (the history has them), and the untracked scratch directory `devel/` is
   ignored by git.
