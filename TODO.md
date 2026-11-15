@@ -242,10 +242,34 @@ Open findings of the review of the code base; the notes behind them are in
       After the unit fix both features of `image0010.png` become pairs
       (3.6 to 2.6 and 3.9 to 2.8), which may be overfitting.  Decide a margin
       (or an F-test) and look at how many splits survive on the test images.
-- [ ] **Large spheres converge badly**: in a simulated fit (2% noise,
-      polystyrene in water, start 2% off in radius) 3 and 5 um spheres end
-      0.05 um from the truth, with the old and the new Mie coefficients: a
-      local minimum or a poor start.  Investigate before CATCH.
+- [ ] **Estimation of large spheres** (investigated 2026-11-15; a decision is
+      open).  Simulated holograms (201x201, 2% noise, polystyrene or silica in
+      water, 0.5-5 um, z = 150-600 px, centered or 3 px off) show that the LM
+      fit is not the problem: given a start inside the valley it recovers the
+      truth to under 1 nm.  The valley is narrow for large spheres (the cost
+      has a local minimum every 15-30 nm in `a_p` at 3 um, and the valley of
+      the truth is about 12 nm wide), so the start must be good.  The
+      estimators decide:
+      * the default `DEEstimator` (bounds: 1-200 um, 0.25-10 um, n 1-3)
+        recovers the radius to 5 nm in 103 of 180 fits (57%, 12 of 36 at 5 um)
+        and takes 0.57 s; more pixels, a larger population or a tighter `tol`
+        help little (5 of 8 at 4 um with `popsize=30`, at three times the cost);
+        narrow bounds help a lot (3 and 5 um: 8 of 8 with
+        `z_p` 150-450 px, `a_p` 0.5-6 um, `n_p` 1.3-1.8), which is why the
+        tutorials work;
+      * the analytic `Estimator` recovers 172 of 180 (96%) in 0.09 s, but on
+        the real holograms of `tests/data` and `utilities/data` it ends at
+        reduced chi-squared 13-26 against 3.6-5.5 for `DEEstimator`;
+      * fitting from both and keeping the lower reduced chi-squared gives 172
+        of 180 on the simulations and picks `DEEstimator` on all five real
+        features, at 0.66 s a fit.
+      Options: that combination in `Feature.estimate`; guidance in the
+      documentation to narrow the bounds for spheres above 2 um; a narrower
+      default height range.  Not yet tried: a staged fit on growing radius
+      (`RadialMask`), a multi-start in `a_p`, and real data of large spheres.
+      `DEEstimator` returned `n_p = 2.65` for one real feature
+      (`image0400.png`, reduced chi-squared 9.6), an unphysical solution that
+      a bound on `n_p` would reject.
 - [ ] `Feature` and `Frame` subclass the `Hologram` dataclass but skip its
       `__init__` and set private attributes; hold a `Hologram` instead, or
       let `Hologram` exist without data.  An API change.
