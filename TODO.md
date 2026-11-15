@@ -65,7 +65,7 @@
 
 - [x] **MLP estimator**: `analysis/MLPEstimator.py` implemented; pre-trained
       weights ship as `analysis/mlp_estimator.joblib` (bundled via
-      `package-data`). Retrain with `devel/train_mlp_estimator.py`.
+      `package-data`). Retrain with `tools/train_mlp_estimator.py`.
       `scikit-learn` and `joblib` added as core dependencies.
 
 ## lmtool
@@ -203,8 +203,8 @@
 
 - [x] MLP estimator: implemented in `analysis/MLPEstimator.py`. Pre-trained
       weights for 447 nm laser / 0.048 μm px / water shipped as
-      `analysis/mlp_estimator.joblib`. Retrain via `devel/train_mlp_estimator.py`
-      (caches generated data in `devel/mlp_training_data.npz` to avoid
+      `analysis/mlp_estimator.joblib`. Retrain via `tools/train_mlp_estimator.py`
+      (caches generated data in `tools/mlp_training_data.npz` to avoid
       regeneration on re-runs).
 - [ ] CNN characterization (CATCH revival): re-implement the CATCH compact CNN
       (Altman & Grier 2020/2023) in PyTorch. Input: normalized 201×201 hologram

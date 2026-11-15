@@ -56,7 +56,7 @@ class MLPEstimator(BaseEstimator):
     *n_p* ∈ [1.3, 2.5].  Each profile is randomly truncated during
     training so the network handles both large and small crops gracefully.
     Pre-trained weights cover the default instrument (447 nm laser,
-    0.048 μm/px, water). Retrain with ``devel/train_mlp_estimator.py``
+    0.048 μm/px, water). Retrain with ``tools/train_mlp_estimator.py``
     for other configurations.
 
     Inherits from :class:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator`.

@@ -21,7 +21,7 @@ from pylorenzmie.lmtool.arguments import argument_parser
 def _splash() -> QSplashScreen:
     '''A hologram of a particle, with the name and version on top.
 
-    The image is rendered by ``devel/make_splash.py``, at twice the size
+    The image is rendered by ``tools/make_splash.py``, at twice the size
     on the screen, so that it is sharp on high-resolution displays.
     '''
     pixmap = QPixmap(str(Path(__file__).parent / 'splash.png'))

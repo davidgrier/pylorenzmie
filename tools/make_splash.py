@@ -3,7 +3,7 @@
 The splash screen appears before pylorenzmie.theory is imported, so the
 hologram is computed once, here, and shipped as lmtool/splash.png.
 
-Usage: python devel/make_splash.py
+Usage: python tools/make_splash.py
 '''
 
 from pathlib import Path

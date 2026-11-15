@@ -72,9 +72,9 @@ HIDDEN = (256, 128, 64)
 
 # ── paths ─────────────────────────────────────────────────────────────────────
 
-_DEVEL  = Path(__file__).parent
-OUTPUT  = _DEVEL.parent / 'analysis' / 'mlp_estimator.joblib'
-_CACHE  = _DEVEL / 'mlp_training_data.npz'
+_HERE  = Path(__file__).parent
+OUTPUT  = _HERE.parent / 'analysis' / 'mlp_estimator.joblib'
+_CACHE  = _HERE / 'mlp_training_data.npz'
 
 
 def _make_model() -> LorenzMie:

@@ -94,7 +94,6 @@ omit = [
     "*/tests/*",
     "*/__pycache__/*",
     "*/docs/*",
-    "*/obsolete/*",
 ]
 
 [tool.coverage.report]
