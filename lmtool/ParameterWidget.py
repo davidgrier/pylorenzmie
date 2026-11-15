@@ -14,6 +14,7 @@ class ParameterWidget(QFrame):
     connections in ``ParameterWidget.ui``.
     '''
 
+    #: Emitted with the new value when the slider or the spinbox changes.
     valueChanged = pyqtSignal(float)
     #: Emitted when the lock checkbox changes.
     fixedChanged = pyqtSignal(bool)

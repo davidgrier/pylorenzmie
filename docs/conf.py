@@ -73,6 +73,7 @@ exclude_patterns = ['_build']
 nitpicky = True
 nitpick_ignore_regex = [
     (r'py:.*', r'(torch|jax|cupy|numba|trackpy|pyqtgraph|sklearn)(\..*)?'),
+    (r'py:.*', r'(PyQt[56]|PySide6)(\..*)?|Q[A-Z][A-Za-z]+'),
     (r'py:.*', r'numpy\._typing\..*'),
 ]
 

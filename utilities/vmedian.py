@@ -115,7 +115,7 @@ class VMedian:
 
     @property
     def order(self) -> int:
-        '''Order of the filter: a median of medians, nested this deep.'''
+        '''Order of the filter, the depth of its nesting of medians.'''
         return self._order
 
     @order.setter
