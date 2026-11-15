@@ -1,27 +1,33 @@
-from pyqtgraph.Qt.QtWidgets import QDoubleSpinBox
-from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
+from qtpy.QtWidgets import QDoubleSpinBox
+from qtpy.QtCore import Signal, Slot
+
+from pylorenzmie.lmtool.required import required
 
 
 class DoubleSpinBox(QDoubleSpinBox):
     '''QDoubleSpinBox with float-valued editingFinished and buttonClicked
     signals.'''
 
-    buttonClicked = pyqtSignal(float)
-    editingFinished = pyqtSignal(float)
+    buttonClicked = Signal(float)
+    editingFinished = Signal(float)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        super().editingFinished.connect(self._editingFinished)
+        # the signal of the base class is hidden by the float signal that
+        # this class declares, so listen to the line edit, which has the
+        # same triggers: the Return key, and the loss of focus
+        required(self.lineEdit()).editingFinished.connect(
+            self._editingFinished)
 
-    def stepBy(self, step: float) -> None:
+    def stepBy(self, step: int) -> None:
         value = self.value()
         super().stepBy(step)
         if self.value() != value:
             self.buttonClicked.emit(self.value())
 
-    @pyqtSlot()
+    @Slot()
     def _editingFinished(self) -> None:
-        self.editingFinished[float].emit(self.value())
+        self.editingFinished.emit(self.value())
 
     @classmethod
     def example(cls) -> None:

@@ -1,7 +1,7 @@
 '''The model prediction that lmtool shows while the user changes parameters.'''
 
 import numpy as np
-from pyqtgraph.Qt.QtCore import QObject, QTimer, pyqtSignal
+from qtpy.QtCore import QObject, QTimer, Signal
 
 from pylorenzmie.lmtool.LMSession import LMSession
 from pylorenzmie.lib.lmtypes import Coordinates
@@ -30,7 +30,7 @@ class Preview(QObject):
 
     #: Emitted with the model hologram of the region (a flat array, or None
     #: if there is no region yet), the model's radial profile, and the noise.
-    updated = pyqtSignal(object, object, float)
+    updated = Signal(object, object, float)
 
     def __init__(self, session: LMSession) -> None:
         super().__init__()

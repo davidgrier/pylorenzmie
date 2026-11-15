@@ -30,8 +30,22 @@ All notable changes to pylorenzmie are recorded here. The format follows
   makes.  A `.pre-commit-config.yaml` runs the quick ones before a commit.
   `ruff` is in the `dev` extra.
 
+* `lmtool` runs on PyQt6, PyQt5 and PySide6, and CI tests all three, and
+  macOS.  Install `pylorenzmie[pyqt6]` (the same as `[gui]`), `[pyqt5]` or
+  `[pyside6]`; the environment variable `QT_API` chooses among the bindings
+  that are installed.  `qtpy` is a new dependency.  Without a binding, the
+  `lmtool` command says which extra to install.
+
 ### Changed
 
+* `lmtool` imports Qt through `qtpy`, with `Signal`, `Slot` and `from qtpy
+  import uic`, and `qtpy` is imported before `pyqtgraph` everywhere, so that
+  `QT_API` is honored.  The widgets have plain Python properties in place of
+  `pyqtProperty`, and `DoubleSlider` and `DoubleSpinBox` no longer connect to
+  the signals of their base classes, which PySide6 does not allow.
+  `ProfileWidget.upper` and `ProfileWidget.lower`, the curves of the band,
+  are `upperLimit` and `lowerLimit`, because `lower` hid `QWidget.lower`.
+  `FitWidget.rect` is private for the same reason.
 * `Property` (`pylorenzmie.lib.lmtypes`) is what a `properties` dict holds:
   numbers and strings, `None` for a value that is not known yet, and the lists
   and dicts of a configuration.  `Estimator.estimate` and the other estimators
@@ -55,6 +69,10 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Fixed
 
+* `lmtool` worked on PyQt6 only: on PyQt5, toggling a particle in the table
+  of particles raised an error.
+* A `ProfileWidget` did not move the particle of its model to the origin: it
+  set an attribute on the model, not on the particle.
 * The analytical Jacobian of `jaxLorenzMie` is finite at the pixel that lies
   exactly on the axis of the particle, where the gradient of the distance
   was 0/0.  A fit of a particle centered on a pixel failed with `array must

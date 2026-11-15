@@ -8,6 +8,7 @@ import numpy as np
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 try:
+    import qtpy     # chooses the Qt binding (QT_API) before pyqtgraph can
     from pyqtgraph import mkQApp
     from pylorenzmie.lmtool.tasks import (Cancelled, Snapshot, TaskRunner,
                                           run_estimate, run_fit)

@@ -4,6 +4,7 @@ import unittest
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 try:
+    import qtpy     # chooses the Qt binding (QT_API) before pyqtgraph can
     from pyqtgraph import mkQApp
     from pylorenzmie.lmtool.LMSession import LMSession
     from pylorenzmie.lmtool.Preview import Preview

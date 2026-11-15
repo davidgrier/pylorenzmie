@@ -1,10 +1,11 @@
 from pathlib import Path
 
-from pyqtgraph.Qt import uic
-from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtProperty)
-from pyqtgraph.Qt.QtWidgets import QFrame
+from qtpy import uic
+from qtpy.QtCore import Signal
+from qtpy.QtWidgets import QFrame
 
 from pylorenzmie.lmtool.LMSession import LMSession
+from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
 from pylorenzmie.lmtool.parameters import PARAMETERS
 from pylorenzmie.theory import LorenzMie
 
@@ -36,8 +37,19 @@ class LMWidget(QFrame):
     uiFile = 'LMWidget.ui'
     specs = PARAMETERS
 
+    # the controls that the layout in LMWidget.ui makes
+    wavelength: ParameterWidget
+    magnification: ParameterWidget
+    n_m: ParameterWidget
+    a_p: ParameterWidget
+    n_p: ParameterWidget
+    x_p: ParameterWidget
+    y_p: ParameterWidget
+    z_p: ParameterWidget
+    k_p: ParameterWidget
+
     #: Emitted with the name and value of a control that the user changed.
-    propertyChanged = pyqtSignal(str, float)
+    propertyChanged = Signal(str, float)
 
     def __init__(self, *args,
                  session: LMSession | None = None,
@@ -106,17 +118,17 @@ class LMWidget(QFrame):
         finally:
             self._updating = False
 
-    @pyqtProperty(dict)
-    def properties(self) -> LorenzMie.Properties:
+    @property
+    def properties(self) -> dict[str, float]:
         '''Values of the parameters that have controls.'''
         return {control.objectName(): self.session.get(control.objectName())
                 for control in self.controls}
 
     @properties.setter
-    def properties(self, properties: LorenzMie.Properties) -> None:
+    def properties(self, properties: dict[str, float]) -> None:
         self.session.update(properties)
 
-    @pyqtProperty(list)
+    @property
     def fixed(self) -> list[str]:
         '''Names of the properties that a fit must hold constant.
 

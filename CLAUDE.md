@@ -106,13 +106,14 @@ update it when the role or contents of the directory change.
 - `pyproject.toml` lists every package; `tests/test_packaging.py` checks the
   list, because a package that is missing from it works in a checkout and is
   absent from the wheel.
-- `pyright` checks everything but `lmtool/` and the backends that need Torch,
-  Triton, JAX or CuPy (CI installs Numba only).  Fix what it reports rather
-  than silencing it; a `# pyright: ignore` says why.  A model that can scatter
-  from a list of particles has no position of its own, so code that reads or
-  sets one asks `model.single()` (or `model.single(Sphere)`), which raises a
-  `TypeError` for a list.  `lmtool/` is not checked yet: its widgets are made
-  with `uic` from `pyqtgraph.Qt`, whose types pyright cannot follow.
+- `pyright` checks everything but the backends that need Torch, Triton, JAX
+  or CuPy (CI installs Numba and PyQt6 only).  Run it in an environment with
+  exactly one Qt binding, PyQt6 (6.12.0: 6.12.1 types every `Signal(...)` as
+  missing an argument), because pyright reads the stubs of a second one.  Fix
+  what it reports rather than silencing it; a `# pyright: ignore` says why.
+  A model that can scatter from a list of particles has no position of its
+  own, so code that reads or sets one asks `model.single()` (or
+  `model.single(Sphere)`), which raises a `TypeError` for a list.
 - Docstrings use NumPy style with `Parameters`, `Returns`, `Raises`, and `Notes`
   sections as appropriate.
 - Default values and units always noted in the Parameters section.
@@ -145,6 +146,28 @@ The GitHub Release event fires Zenodo's webhook and mints a version DOI.
 `CITATION.cff` carries the project (concept) DOI, 10.5281/zenodo.20784723,
 which always resolves to the latest version, so nothing needs updating after
 a release.
+
+## Qt bindings
+
+`lmtool` imports Qt through `qtpy` (`Signal`, `Slot`, `from qtpy import uic`),
+never from `pyqtgraph.Qt` or a binding.  PyQt6, PyQt5 and PySide6 are tested
+in CI (`pip install pylorenzmie[pyqt6]`, `[pyqt5]` or `[pyside6]`;
+`[gui]` is `[pyqt6]`), and the environment variable `QT_API` chooses among
+the ones that are installed.  `pyqtgraph` is a core dependency.
+
+* Import `qtpy` before `pyqtgraph` in every module, script and example:
+  `qtpy` honors `QT_API`, but `pyqtgraph` chooses a binding of its own when
+  it is imported first, and `qtpy` then follows it.  A test file that does
+  not import `lmtool` first has `import qtpy` ahead of `from pyqtgraph import
+  mkQApp`.  `tests/test_qtpy_first.py` checks the text of every source file.
+* A widget does not redefine a signal of its base class: PySide6 does not
+  allow it.  `DoubleSlider` catches the change of its value in
+  `sliderChange`, and `DoubleSpinBox` listens to its line edit.
+* There are no Qt properties (`Property`): a property is a Python `property`.
+* The stubs of the bindings type many getters as returning `None`;
+  `pylorenzmie.lmtool.required.required` says that Qt made the object.  The
+  widgets that `uic.loadUi` makes are declared as annotations on the class,
+  with the names and classes of the `.ui` file.
 
 ## Architecture
 

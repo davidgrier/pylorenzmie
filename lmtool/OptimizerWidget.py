@@ -1,7 +1,7 @@
 import logging
 
+from qtpy.QtCore import Slot, Signal
 from pyqtgraph.parametertree import (Parameter, ParameterTree)
-from pyqtgraph.Qt.QtCore import (pyqtProperty, pyqtSlot, pyqtSignal)
 
 from pylorenzmie.lib import LMObject
 
@@ -18,7 +18,7 @@ class OptimizerWidget(ParameterTree):
     '''
 
     #: Emitted with ``(name, value)`` whenever a solver setting changes.
-    settingChanged = pyqtSignal(str, object)
+    settingChanged = Signal(str, object)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -68,18 +68,20 @@ class OptimizerWidget(ParameterTree):
         for p in self.params:
             p.sigValueChanged.connect(self._handleValueChanged)
 
-    @pyqtSlot(object, object)
+    @Slot(object, object)
     def _updateLoss(self, widget: Parameter, value: LMObject.Property):
         self._consistencyCheck()
 
-    @pyqtSlot(object, object)
+    @Slot(object, object)
     def _handleValueChanged(self, widget: Parameter,
                             value: LMObject.Property):
         logger.debug(f'emitting {widget.name()} {value}')
         self.settingChanged.emit(widget.name(), value)
 
-    @pyqtProperty(dict)
+    @property
     def settings(self) -> dict[str, LMObject.Property]:
+        '''The solver settings that are shown, by name.  Setting it changes
+        the ones that are named, and ignores the others.'''
         return {p.name(): p.value() for p in self.params}
 
     @settings.setter

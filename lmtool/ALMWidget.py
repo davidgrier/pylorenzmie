@@ -1,4 +1,5 @@
 from pylorenzmie.lmtool.LMWidget import LMWidget
+from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
 from pylorenzmie.theory import AberratedLorenzMie
 
 
@@ -12,6 +13,11 @@ class ALMWidget(LMWidget):
 
     cls = AberratedLorenzMie
     uiFile = 'ALMWidget.ui'
+
+    # the controls that ALMWidget.ui adds to those of LMWidget
+    noise: ParameterWidget
+    piston: ParameterWidget
+    spherical: ParameterWidget
 
     @classmethod
     def with_model(cls, model: type) -> type['ALMWidget']:

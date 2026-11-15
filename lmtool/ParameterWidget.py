@@ -1,7 +1,12 @@
+from collections.abc import Sequence
 from pathlib import Path
-from pyqtgraph.Qt.QtWidgets import QFrame
-from pyqtgraph.Qt import uic
-from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
+
+from qtpy import uic
+from qtpy.QtCore import Signal, Slot
+from qtpy.QtWidgets import QCheckBox, QFrame, QLabel
+
+from pylorenzmie.lmtool.DoubleSlider import DoubleSlider
+from pylorenzmie.lmtool.DoubleSpinBox import DoubleSpinBox
 
 _DIR = Path(__file__).parent
 
@@ -14,10 +19,16 @@ class ParameterWidget(QFrame):
     connections in ``ParameterWidget.ui``.
     '''
 
+    # what the layout in ParameterWidget.ui makes
+    label: QLabel
+    spinbox: DoubleSpinBox
+    checkbox: QCheckBox
+    slider: DoubleSlider
+
     #: Emitted with the new value when the slider or the spinbox changes.
-    valueChanged = pyqtSignal(float)
+    valueChanged = Signal(float)
     #: Emitted when the lock checkbox changes.
-    fixedChanged = pyqtSignal(bool)
+    fixedChanged = Signal(bool)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -28,7 +39,7 @@ class ParameterWidget(QFrame):
         self.slider.valueChanged.connect(self._reportChange)
         self.checkbox.toggled.connect(self.fixedChanged)
 
-    @pyqtSlot(float)
+    @Slot(float)
     def _reportChange(self, value: float) -> None:
         self.valueChanged.emit(value)
 
@@ -60,7 +71,7 @@ class ParameterWidget(QFrame):
         '''Return the limits of the value as ``[minimum, maximum]``.'''
         return [self.minimum(), self.maximum()]
 
-    def setRange(self, limits: list[float]) -> None:
+    def setRange(self, limits: Sequence[float]) -> None:
         '''Set the limits of the slider and the spinbox.'''
         self.slider.setRange(*limits)
         self.spinbox.setRange(*limits)

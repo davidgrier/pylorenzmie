@@ -3,6 +3,7 @@
 import json
 import logging
 from pathlib import Path
+from typing import cast
 import warnings
 
 import pandas as pd
@@ -60,6 +61,7 @@ def _save_hdf(results: pd.DataFrame, metadata: pd.Series, path: Path) -> None:
 
 
 def _save_json(results: pd.DataFrame, metadata: pd.Series, path: Path) -> None:
-    document = dict(metadata=json.loads(metadata.to_json()),
-                    results=json.loads(results.to_json(orient='records')))
+    document = dict(metadata=json.loads(cast(str, metadata.to_json())),
+                    results=json.loads(
+                        cast(str, results.to_json(orient='records'))))
     path.write_text(json.dumps(document, indent=4))

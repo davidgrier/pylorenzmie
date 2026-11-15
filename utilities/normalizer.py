@@ -21,6 +21,8 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.ndimage import median_filter
 
+from pylorenzmie.lib.lmtypes import Image
+
 
 class Normalizer:
     '''Normalize a hologram image by its estimated background illumination.
@@ -188,14 +190,14 @@ class Normalizer:
         self._reference = reference
         self.source = None
 
-    def __call__(self, image: NDArray[np.floating]) -> NDArray[np.floating]:
+    def __call__(self, image: Image) -> NDArray[np.floating]:
         '''Return the image divided by its estimated background.
 
         Parameters
         ----------
         image : ndarray
-            Raw hologram pixel values as a floating-point array, with
-            the dark count in them.
+            Raw hologram pixel values, with the dark count in them.  An
+            integer image becomes floating point.
 
         Returns
         -------

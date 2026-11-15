@@ -10,9 +10,15 @@ import logging
 from pathlib import Path
 import sys
 
-from pyqtgraph.Qt.QtCore import Qt
-from pyqtgraph.Qt.QtGui import QColor, QFont, QPainter, QPixmap
-from pyqtgraph.Qt.QtWidgets import QApplication, QSplashScreen
+try:
+    from qtpy.QtCore import Qt
+    from qtpy.QtGui import QColor, QFont, QPainter, QPixmap
+    from qtpy.QtWidgets import QApplication, QSplashScreen
+except ImportError as error:
+    raise ImportError(
+        'lmtool needs a Qt binding: install pylorenzmie with the extra '
+        'pyqt6, pyqt5 or pyside6, as in pip install "pylorenzmie[pyqt6]"'
+    ) from error
 
 from pylorenzmie import __version__
 from pylorenzmie.lmtool.arguments import argument_parser

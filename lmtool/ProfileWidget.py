@@ -1,8 +1,9 @@
 import numpy as np
 from numpy.typing import NDArray
+from qtpy.QtCore import Qt
 import pyqtgraph as pg
-from pyqtgraph.Qt.QtCore import (Qt, pyqtProperty)
 
+from pylorenzmie.lmtool.required import required
 from pylorenzmie.theory import LorenzMie
 
 
@@ -22,8 +23,8 @@ class ProfileWidget(pg.PlotWidget):
         super().__init__(*args, **kwargs)
         self._configurePlot()
         self.model = LorenzMie() if model is None else model
-        self._data = None
-        self._stdev = None
+        self._data: NDArray[np.floating] | None = None
+        self._stdev: NDArray[np.floating] | None = None
         self.radius = radius
 
     def _configurePlot(self) -> None:
@@ -40,19 +41,25 @@ class ProfileWidget(pg.PlotWidget):
         self.theory = pg.PlotCurveItem(pen=pg.mkPen('r', width=3))
         self.experiment = pg.PlotCurveItem(pen=pg.mkPen('k', width=3))
         pen = pg.mkPen('k', width=1, style=Qt.PenStyle.DashLine)
-        self.upper = pg.PlotCurveItem(pen=pen)
-        self.lower = pg.PlotCurveItem(pen=pen)
+        self.upperLimit = pg.PlotCurveItem(pen=pen)
+        self.lowerLimit = pg.PlotCurveItem(pen=pen)
         brush = pg.mkBrush(255, 165, 0, 128)
-        self.region = pg.FillBetweenItem(self.upper, self.lower, brush)
+        self.region = pg.FillBetweenItem(self.upperLimit,
+                                         self.lowerLimit,
+                                         brush)
         self.addItem(self.theory)
         self.addItem(self.experiment)
-        self.addItem(self.upper)
-        self.addItem(self.lower)
+        self.addItem(self.upperLimit)
+        self.addItem(self.lowerLimit)
         self.addItem(self.region)
 
-    @pyqtProperty(dict)
+    @property
     def properties(self) -> dict[str, LorenzMie.Property]:
-        return self.model.properties
+        '''Properties of the model that computes the theory curve.
+
+        Setting them leaves out the position, because the profile is
+        always centered.'''
+        return required(self.model).properties
 
     @properties.setter
     def properties(self, properties: dict[str, LorenzMie.Property]) -> None:
@@ -61,39 +68,48 @@ class ProfileWidget(pg.PlotWidget):
                       if k not in ('x_p', 'y_p')}
         if self._model is None or len(properties) == 0:
             return
-        self.model.properties = properties
+        self._model.properties = properties
         self.plotTheory()
 
-    @pyqtProperty(LorenzMie)
+    @property
     def model(self) -> LorenzMie | None:
+        '''The model that computes the theory curve, or None if the curve is
+        given with :meth:`showTheory`.  A model is moved to the origin.'''
         return self._model
 
     @model.setter
     def model(self, model: LorenzMie | None) -> None:
         # Profile is always computed at the origin; zero the position in-place.
         if model is not None:
-            model.x_p = 0.0
-            model.y_p = 0.0
+            particle = model.single()
+            particle.x_p = 0.0
+            particle.y_p = 0.0
         self._model = model
 
-    @pyqtProperty(tuple)
-    def data(self) -> tuple[NDArray[float], NDArray[float]]:
+    @property
+    def data(self) -> tuple[NDArray[np.floating] | None,
+                            NDArray[np.floating] | None]:
+        '''The azimuthal average of the hologram and its standard deviation.
+
+        Both are None until they are set.'''
         return (self._data, self._stdev)
 
     @data.setter
-    def data(self, data: tuple[NDArray[float], NDArray[float]]) -> None:
+    def data(self,
+             data: tuple[NDArray[np.floating], NDArray[np.floating]]) -> None:
         self._data, self._stdev = data
         self.plotData()
 
-    @pyqtProperty(int)
+    @property
     def radius(self) -> int:
+        '''Number of pixels of the profile that are shown.'''
         return self._radius
 
     @radius.setter
     def radius(self, radius: int) -> None:
         self._radius = radius
         if self._model is not None:
-            self._model.coordinates = np.arange(radius)
+            self._model.coordinates = np.arange(radius, dtype=float)
         self.plotData()
         self.plotTheory()
 
@@ -109,14 +125,14 @@ class ProfileWidget(pg.PlotWidget):
     def plotData(self) -> None:
         '''Show the azimuthal profile of the data, with its standard
         deviation.'''
-        if self._data is None:
+        if self._data is None or self._stdev is None:
             return
         radius = min(self.radius, len(self._data))
         data = self._data[0:radius]
         stdev = self._stdev[0:radius]
         self.experiment.setData(data)
-        self.upper.setData(data + stdev)
-        self.lower.setData(data - stdev)
+        self.upperLimit.setData(data + stdev)
+        self.lowerLimit.setData(data - stdev)
 
     @classmethod
     def example(cls) -> None:

@@ -13,7 +13,7 @@ the session, fixed.
 import logging
 
 import numpy as np
-from pyqtgraph.Qt.QtCore import QObject, pyqtSignal
+from qtpy.QtCore import QObject, Signal
 
 from pylorenzmie.theory import LorenzMie
 
@@ -43,9 +43,9 @@ class LMSession(QObject):
     '''
 
     #: Emitted with the names of the parameters whose values changed.
-    parametersChanged = pyqtSignal(list)
+    parametersChanged = Signal(list)
     #: Emitted with the names of the fixed parameters when they change.
-    fixedChanged = pyqtSignal(list)
+    fixedChanged = Signal(list)
 
     #: Values closer than this are the same value.
     tolerance = 1e-9

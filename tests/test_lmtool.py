@@ -20,6 +20,7 @@ import pandas as pd
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 try:
+    import qtpy     # chooses the Qt binding (QT_API) before pyqtgraph can
     from pyqtgraph import mkQApp
     from pylorenzmie.lmtool.ALMWidget import ALMWidget
     from pylorenzmie.lmtool.LMTool import LMTool
@@ -230,7 +231,7 @@ class TestParticles(ToolTestCase):
         self.assertAlmostEqual(tool.controls.properties['y_p'], 120., delta=1.)
 
     def test_a_particle_that_is_not_checked_is_skipped(self):
-        from pyqtgraph.Qt.QtCore import Qt
+        from qtpy.QtCore import Qt
         tool = self.tool()
         tool.particles.setFound(pd.DataFrame(
             [dict(x_p=100., y_p=120., bbox=((50, 70), 100, 100)),
@@ -244,7 +245,7 @@ class TestParticles(ToolTestCase):
         self.assertAlmostEqual(tool.controls.properties['x_p'], 300., delta=1.)
 
     def test_no_particle_checked(self):
-        from pyqtgraph.Qt.QtCore import Qt
+        from qtpy.QtCore import Qt
         tool = self.tool()
         tool.particles.setData(tool.particles.index(0, 0),
                                Qt.CheckState.Unchecked,
@@ -386,7 +387,7 @@ class TestResults(ToolTestCase):
         self.assertEqual(results.index.name, 'particle')
 
     def test_a_particle_that_is_not_checked_is_not_in_the_results(self):
-        from pyqtgraph.Qt.QtCore import Qt
+        from qtpy.QtCore import Qt
         tool = self.tool()
         tool.optimize()
         self.wait(tool)

@@ -23,9 +23,9 @@ import threading
 
 import numpy as np
 import pandas as pd
-from pyqtgraph.Qt.QtCore import QObject, QThread, pyqtSignal, pyqtSlot
+from qtpy.QtCore import QObject, QThread, Signal, Slot
 
-from pylorenzmie.analysis import DEEstimator, Localizer, Optimizer
+from pylorenzmie.analysis import DEEstimator, Localizer, Mask, Optimizer
 from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib.lmtypes import Coordinates, Image
@@ -156,12 +156,13 @@ def run_fit(snapshot: Snapshot, cancel: threading.Event) -> FitResult:
         If ``cancel`` is set before the fit is done.
     '''
     model = _model(snapshot, cancel)
+    # a pixel at the maximum is taken to be saturated
+    mask = Mask(fraction=snapshot.fraction)
+    mask.exclude = snapshot.data == np.max(snapshot.data)
     optimizer = Optimizer(model=model,
+                          mask=mask,
                           fixed=list(snapshot.fixed),
                           settings=snapshot.settings)
-    optimizer.fraction = snapshot.fraction
-    # a pixel at the maximum is taken to be saturated
-    optimizer.mask.exclude = snapshot.data == np.max(snapshot.data)
     result = optimizer.optimize(_hologram(snapshot))
     return FitResult(dict(model.properties), result, optimizer.metadata)
 
@@ -214,19 +215,19 @@ def run_localize(request: LocalizeRequest,
 class _Worker(QObject):
     '''Runs one task in a thread and reports how it ended.'''
 
-    finished = pyqtSignal(object)
-    cancelled = pyqtSignal()
-    error = pyqtSignal(str)
+    finished = Signal(object)
+    cancelled = Signal()
+    error = Signal(str)
 
     def __init__(self, function: Callable,
-                 snapshot: Snapshot,
+                 snapshot: Snapshot | LocalizeRequest,
                  cancel: threading.Event) -> None:
         super().__init__()
         self._function = function
         self._snapshot = snapshot
         self._cancel = cancel
 
-    @pyqtSlot()
+    @Slot()
     def run(self) -> None:
         try:
             result = self._function(self._snapshot, self._cancel)
@@ -248,13 +249,13 @@ class TaskRunner(QObject):
     '''
 
     #: Emitted with the name of the task when it starts.
-    started = pyqtSignal(str)
+    started = Signal(str)
     #: Emitted with the name of the task and its result.
-    finished = pyqtSignal(str, object)
+    finished = Signal(str, object)
     #: Emitted with the name of the task and the reason when it fails.
-    failed = pyqtSignal(str, str)
+    failed = Signal(str, str)
     #: Emitted with the name of the task when it stops because it was asked to.
-    cancelled = pyqtSignal(str)
+    cancelled = Signal(str)
 
     def __init__(self) -> None:
         super().__init__()
@@ -274,7 +275,10 @@ class TaskRunner(QObject):
         '''True while a task is running.'''
         return self._thread is not None
 
-    def start(self, name: str, function: Callable, snapshot: Snapshot) -> bool:
+    def start(self,
+              name: str,
+              function: Callable,
+              snapshot: Snapshot | LocalizeRequest) -> bool:
         '''Start a task; returns False, and does nothing, if one is running.'''
         if self.busy:
             return False
@@ -314,18 +318,18 @@ class TaskRunner(QObject):
         self._thread = self._worker = None
         return name
 
-    @pyqtSlot(object)
+    @Slot(object)
     def _onFinished(self, result: object) -> None:
         self.finished.emit(self._release(), result)
 
-    @pyqtSlot()
+    @Slot()
     def _onCancelled(self) -> None:
         self.cancelled.emit(self._release())
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _onError(self, message: str) -> None:
         self.failed.emit(self._release(), message)
 
-    @pyqtSlot()
+    @Slot()
     def _onThreadFinished(self) -> None:
         self._retired = [t for t in self._retired if t.isRunning()]

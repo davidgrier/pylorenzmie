@@ -1,20 +1,22 @@
-import pyqtgraph as pg
-from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot, pyqtProperty, QRectF)
+from typing import Any
+
 import numpy as np
 from numpy.typing import NDArray
+from qtpy.QtCore import Signal, Slot, QRectF
+import pyqtgraph as pg
 
 
 class ImageWidget(pg.GraphicsLayoutWidget):
     '''Image display with a circular ROI for selecting a particle region.'''
 
     #: Emitted with ``(x, y)`` centre coordinates when the ROI moves.
-    roiChanged = pyqtSignal(float, float)
+    roiChanged = Signal(float, float)
     #: Emitted with the new radius in pixels when the ROI is resized.
-    radiusChanged = pyqtSignal(int)
+    radiusChanged = Signal(int)
 
     def __init__(self,
                  *args,
-                 data: NDArray[float] | None = None,
+                 data: NDArray[np.floating] | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self._radius = 100
@@ -27,7 +29,9 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         pen = pg.mkPen('k', width=2)
         self.image = pg.ImageItem(border=pen)
         self.image.axisOrder = 'row-major'
-        plot = self.addPlot(row=0, col=0)
+        # a PlotItem forwards the methods of its ViewBox at run time, which
+        # the stubs of pyqtgraph do not show
+        plot: Any = self.ci.addPlot(row=0, col=0)
         plot.addItem(self.image)
         plot.getAxis('bottom').setPen(pen)
         plot.getAxis('left').setPen(pen)
@@ -45,7 +49,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     def _connectSignals(self) -> None:
         self.roi.sigRegionChangeFinished.connect(self._handleChange)
 
-    @pyqtSlot(object)
+    @Slot(object)
     def _handleChange(self, roi) -> None:
         radius = int(self.roi.size()[0]) // 2
         x0, y0 = roi.pos()
@@ -54,12 +58,14 @@ class ImageWidget(pg.GraphicsLayoutWidget):
             self.radiusChanged.emit(radius)
         self.roiChanged.emit(x0 + radius, y0 + radius)
 
-    @pyqtProperty(np.ndarray)
-    def data(self) -> NDArray[float]:
+    @property
+    def data(self) -> NDArray[np.floating]:
+        '''The image that is shown.  Setting it keeps the ROI where it is if
+        the new image has the shape of the old one.'''
         return self._data
 
     @data.setter
-    def data(self, data: NDArray[float]) -> None:
+    def data(self, data: NDArray[np.floating]) -> None:
         prev_data = getattr(self, '_data', None)
         self._data = data
         self.image.setImage(data)
@@ -69,8 +75,9 @@ class ImageWidget(pg.GraphicsLayoutWidget):
             self.roi.setPos([0, 0])
             self.roi.setSize([200, 200])
 
-    @pyqtProperty(float)
+    @property
     def x_p(self) -> float:
+        '''Horizontal position of the center of the ROI, in pixels.'''
         return self.roi.pos()[0] + self._radius
 
     @x_p.setter
@@ -79,8 +86,9 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         pos[0] = x_p - self._radius
         self.roi.setPos(pos)
 
-    @pyqtProperty(float)
+    @property
     def y_p(self) -> float:
+        '''Vertical position of the center of the ROI, in pixels.'''
         return self.roi.pos()[1] + self._radius
 
     @y_p.setter
@@ -89,8 +97,9 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         pos[1] = y_p - self._radius
         self.roi.setPos(pos)
 
-    @pyqtProperty(int)
+    @property
     def radius(self) -> int:
+        '''Radius of the ROI, in pixels.'''
         return self._radius
 
     def setRegion(self, x_p: float, y_p: float, radius: int) -> None:
@@ -102,7 +111,8 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.roi.setSize([2*radius, 2*radius], finish=False)
         self.roi.setPos([x_p - radius, y_p - radius])
 
-    def rect(self) -> QRectF:
+    def rect(self) -> QRectF:  # pyright: ignore[reportIncompatibleMethodOverride]
+        '''The rectangle of the ROI, in pixels of the image.'''
         pos = self.roi.pos()
         size = self.roi.size()
         return QRectF(*pos, *size)

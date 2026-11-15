@@ -21,8 +21,9 @@ PACKAGES = ('pylorenzmie', 'pylorenzmie.lib', 'pylorenzmie.theory',
 OPTIONAL = ('cupy', 'jax', 'jaxlib', 'torch', 'triton', 'numba', 'tables',
             'PyQt5', 'PyQt6', 'PySide6')
 MISSING = re.compile(r"No module named '(\w+)")
-#: What pyqtgraph says when there is no Qt binding for it to use.
-NO_QT = 'PyQtGraph requires one of'
+#: What qtpy, pyqtgraph and lmtool say when there is no Qt binding.
+NO_QT = ('No Qt bindings could be found', 'PyQtGraph requires one of',
+         'lmtool needs a Qt binding')
 
 
 def modules() -> list[str]:
@@ -44,7 +45,7 @@ def modules() -> list[str]:
 
 def optional_missing(error: str) -> str | None:
     '''Return the optional library that an import failed for, if any.'''
-    if NO_QT in error:
+    if any(message in error for message in NO_QT):
         return 'Qt'
     missing = MISSING.search(error)
     if missing and missing.group(1) in OPTIONAL:
@@ -81,11 +82,12 @@ class TestFirstImport(unittest.TestCase):
             optional_missing("ModuleNotFoundError: No module named 'torch'"),
             'torch',
         )
-        self.assertEqual(
-            optional_missing('ImportError: PyQtGraph requires one of PyQt5, '
-                             'PyQt6, PySide2 or PySide6'),
-            'Qt',
-        )
+        for message in ('ImportError: PyQtGraph requires one of PyQt5, '
+                        'PyQt6, PySide2 or PySide6',
+                        'qtpy.QtBindingsNotFoundError: No Qt bindings could '
+                        'be found',
+                        'ImportError: lmtool needs a Qt binding: install'):
+            self.assertEqual(optional_missing(message), 'Qt')
         self.assertIsNone(optional_missing(
             "ModuleNotFoundError: No module named 'pylorenzmie'"))
         self.assertIsNone(optional_missing(

@@ -8,9 +8,12 @@ import unittest
 
 import numpy as np
 
+from pylorenzmie.theory import LorenzMie
+
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 try:
+    import qtpy     # chooses the Qt binding (QT_API) before pyqtgraph can
     from pyqtgraph import mkQApp
     from pylorenzmie.lmtool.DoubleSlider import DoubleSlider
     from pylorenzmie.lmtool.DoubleSpinBox import DoubleSpinBox
@@ -193,8 +196,17 @@ class TestProfileWidget(unittest.TestCase):
         self.assertEqual(len(self.curve(self.widget.theory)), 50)
 
     def test_the_model_is_centered_at_the_origin(self):
-        self.assertEqual(self.widget.model.x_p, 0.)
-        self.assertEqual(self.widget.model.y_p, 0.)
+        particle = self.widget.model.single()
+        self.assertEqual(particle.x_p, 0.)
+        self.assertEqual(particle.y_p, 0.)
+
+    def test_a_model_is_moved_to_the_origin(self):
+        model = LorenzMie()
+        model.single().r_p = [50., 60., 200.]
+        self.widget.model = model
+        self.assertEqual(model.single().x_p, 0.)
+        self.assertEqual(model.single().y_p, 0.)
+        self.assertEqual(model.single().z_p, 200.)
 
     def test_data_are_plotted_with_their_standard_deviation(self):
         profile = np.linspace(1., 2., 80)
@@ -202,9 +214,9 @@ class TestProfileWidget(unittest.TestCase):
         self.widget.data = (profile, stdev)
         np.testing.assert_allclose(self.curve(self.widget.experiment),
                                    profile[:50])
-        np.testing.assert_allclose(self.curve(self.widget.upper),
+        np.testing.assert_allclose(self.curve(self.widget.upperLimit),
                                    profile[:50] + 0.1)
-        np.testing.assert_allclose(self.curve(self.widget.lower),
+        np.testing.assert_allclose(self.curve(self.widget.lowerLimit),
                                    profile[:50] - 0.1)
 
     def test_a_short_profile_limits_the_radius_that_is_plotted(self):
@@ -224,7 +236,7 @@ class TestProfileWidget(unittest.TestCase):
     def test_the_position_in_properties_is_ignored(self):
         before = self.widget.model.properties['z_p']
         self.widget.properties = {'x_p': 99., 'y_p': 99.}
-        self.assertEqual(self.widget.model.x_p, 0.)
+        self.assertEqual(self.widget.model.single().x_p, 0.)
         self.assertEqual(self.widget.model.properties['z_p'], before)
 
     def test_properties_change_the_prediction(self):

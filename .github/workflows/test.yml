@@ -28,7 +28,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e ".[dev,numba]" pyright==1.1.414
+      # one Qt binding, and no other: with PyQt5 beside it, pyright reads the
+      # stubs of PyQt5
+      # PyQt6 6.12.1 types every Signal(...) as missing an argument; stay on
+      # 6.12.0 until a release has the stubs right
+      - run: pip install -e ".[dev,numba,pyqt6]" pyright==1.1.414 PyQt6==6.12.0 PyQt6-Qt6==6.12.0
       - run: pyright
 
   test:
@@ -98,13 +102,25 @@ jobs:
 
   gui:
     # the whole suite with the widgets of lmtool, with Qt drawing to no
-    # display, and the coverage of the Python code
-    name: GUI and coverage (offscreen Qt)
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # display, on each Qt binding, and on macOS, where lmtool is used
+    name: GUI ${{ matrix.binding }} / ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    # PySide6 is new to lmtool; its failures do not fail the workflow yet
+    continue-on-error: ${{ matrix.binding == 'pyside6' }}
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
       QT_QPA_PLATFORM: offscreen
+      QT_API: ${{ matrix.binding }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ["ubuntu-latest"]
+        binding: ["pyqt6", "pyqt5", "pyside6"]
+        include:
+          - os: macos-latest
+            binding: pyqt6
 
     steps:
       - uses: actions/checkout@v4
@@ -115,15 +131,21 @@ jobs:
           python-version: "3.12"
 
       - name: Install system dependencies
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q libgl1 libegl1 libglib2.0-0 libxkbcommon0 \
             libdbus-1-3 libfontconfig1
 
       - name: Install package and test dependencies
-        run: pip install -e ".[dev,numba,gui]"
+        run: pip install -e ".[dev,numba,${{ matrix.binding }}]"
 
-      # The one job that measures coverage, because it runs the whole suite
-      # with Numba and Qt; pyproject.toml sets the floor.
+      # One job measures coverage, because it runs the whole suite with
+      # Numba and Qt; pyproject.toml sets the floor.
       - name: Run the tests with coverage
+        if: matrix.binding == 'pyqt6' && runner.os == 'Linux'
         run: python -m pytest --cov --tb=short -q
+
+      - name: Run the tests
+        if: ${{ !(matrix.binding == 'pyqt6' && runner.os == 'Linux') }}
+        run: python -m pytest --tb=short -q

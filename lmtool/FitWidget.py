@@ -1,10 +1,14 @@
 import logging
+from typing import Any, cast
+
 import numpy as np
+from qtpy.QtCore import Slot, QRectF
+from qtpy.QtGui import QShowEvent
 import pyqtgraph as pg
-from pyqtgraph.Qt.QtCore import pyqtSlot, QRectF
-from pyqtgraph.Qt.QtGui import QShowEvent
+
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.lib.lmtypes import Coordinates, Image
+from pylorenzmie.lmtool.required import required
 from pylorenzmie.theory import LorenzMie
 
 logger = logging.getLogger(__name__)
@@ -19,25 +23,27 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.optimizer = Optimizer(model=LorenzMie())
         self.optimizer.fraction = 0.25
         self._data = None
-        self.rect = None
+        self._rect = None
         self._model_hologram = None
 
     def _configurePlot(self) -> None:
-        self.ci.layout.setContentsMargins(0, 0, 0, 0)
+        self.ci.layout.setContentsMargins(  # pyright: ignore
+            0, 0, 0, 0)
         self.setBackground('w')
         pen = pg.mkPen('k', width=2)
-        plots = [self.addPlot(row=0, column=0),
-                 self.addPlot(row=0, column=1),
-                 self.addPlot(row=0, column=2)]
+        # a PlotItem forwards the methods of its ViewBox at run time, which
+        # the stubs of pyqtgraph do not show
+        plots: list[Any] = [self.ci.addPlot(row=0, col=0),
+                            self.ci.addPlot(row=0, col=1),
+                            self.ci.addPlot(row=0, col=2)]
         for plot in plots:
             plot.getAxis('bottom').setPen(pen)
             plot.getAxis('left').setPen(pen)
             plot.setAspectLocked()
             plot.enableAutoRange(axis='xy', enable=True)
-        options = dict(border=pen, axisOrder='row-major')
-        self.region = pg.ImageItem(**options)
-        self.fit = pg.ImageItem(**options)
-        self.residuals = pg.ImageItem(**options)
+        self.region = pg.ImageItem(border=pen, axisOrder='row-major')
+        self.fit = pg.ImageItem(border=pen, axisOrder='row-major')
+        self.residuals = pg.ImageItem(border=pen, axisOrder='row-major')
         plots[0].addItem(self.region)
         plots[1].addItem(self.fit)
         plots[2].addItem(self.residuals)
@@ -45,15 +51,15 @@ class FitWidget(pg.GraphicsLayoutWidget):
         plots[2].setXLink(plots[0])
         plots[1].setYLink(plots[0])
         plots[2].setYLink(plots[0])
-        self._regionPlot = plots[0]
-        cm = pg.colormap.get('CET-D1')
+        self._regionPlot: Any = plots[0]
+        cm = required(pg.colormap.get('CET-D1'))
         self.residuals.setColorMap(cm)
         self.residuals.setLevels((-10, 10))
         cb = pg.ColorBarItem(values=(-10, 10),
                              limits=(-10, 10),
                              interactive=False,
                              colorMap=cm,
-                             pen=pen)
+                             pen=pen)  # pyright: ignore
         self.addItem(cb)
 
     def setData(self, data: Image,
@@ -71,13 +77,13 @@ class FitWidget(pg.GraphicsLayoutWidget):
             Pixel coordinates for the cropped region.
         '''
         self._data = data
-        self.rect = rect
+        self._rect = rect
         self._model_hologram = None
         self.region.setImage(data)
         self.region.setRect(rect)
         self._updateFitDisplay()
 
-    def showEvent(self, event: QShowEvent) -> None:
+    def showEvent(self, event: QShowEvent | None) -> None:
         super().showEvent(event)
         self._updateFitDisplay()
 
@@ -106,7 +112,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
 
         No-op when there is nothing to show or the widget is not visible.
         '''
-        if (self._data is None or self.rect is None
+        if (self._data is None or self._rect is None
                 or self._model_hologram is None or not self.isVisible()):
             return
         hologram, noise = self._model_hologram
@@ -116,11 +122,11 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.region.setLevels(levels)
         self.fit.setImage(hologram, levels=levels)
         self.residuals.setImage((self._data - hologram) / noise)
-        self.fit.setRect(self.rect)
-        self.residuals.setRect(self.rect)
+        self.fit.setRect(self._rect)
+        self.residuals.setRect(self._rect)
         self._regionPlot.autoRange()
 
-    @pyqtSlot(str, object)
+    @Slot(str, object)
     def setSetting(self, name: str, value: LorenzMie.Property) -> None:
         # fraction is a direct Optimizer attribute, not part of .settings
         '''Set a setting of the optimizer by name.
@@ -128,6 +134,6 @@ class FitWidget(pg.GraphicsLayoutWidget):
         ``fraction`` is an attribute of the optimizer itself, and the
         other names are keys of its ``settings``.'''
         if name == 'fraction':
-            self.optimizer.fraction = value
+            self.optimizer.fraction = cast(float, value)
         else:
             self.optimizer.settings[name] = value

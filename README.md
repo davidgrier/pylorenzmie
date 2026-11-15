@@ -54,8 +54,9 @@ pip install pylorenzmie
 Optional extras add faster calculators:
 `pip install pylorenzmie[numba]` (recommended: a fast CPU calculator),
 `pylorenzmie[torch]` (GPUs, including Apple silicon), `pylorenzmie[gpu]`
-(NVIDIA GPUs with CuPy), `pylorenzmie[jax]` and `pylorenzmie[gui]` (PyQt6 and PyTables, which
-the `lmtool` application needs).
+(NVIDIA GPUs with CuPy), `pylorenzmie[jax]`, and one of `pylorenzmie[pyqt6]`, `[pyqt5]` and
+`[pyside6]` (a Qt binding and PyTables, which the `lmtool` application
+needs; `[gui]` is the same as `[pyqt6]`).
 Extras can be combined, as in `pip install pylorenzmie[numba,torch]`.
 
 ## Example

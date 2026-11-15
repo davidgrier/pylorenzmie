@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-from pyqtgraph.Qt.QtCore import (QAbstractTableModel, QModelIndex, Qt,
-                                 pyqtSignal)
+from qtpy.QtCore import (QAbstractTableModel, QModelIndex, Qt,
+                         Signal)
 
 _ROOT = QModelIndex()    # the parent of the rows of a table
+# what a view passes for a checked box: the enumerations of PyQt6 have a
+# value, those of PyQt5 are integers
+_CHECKED = getattr(Qt.CheckState.Checked, 'value', Qt.CheckState.Checked)
 
 
 def radius_of(bbox: tuple, low: int = 30, high: int = 250) -> int:
@@ -29,7 +32,7 @@ class ParticleTable(QAbstractTableModel):
     '''
 
     #: Emitted with the row of the current particle, or -1 for none.
-    currentChanged = pyqtSignal(int)
+    currentChanged = Signal(int)
 
     COLUMNS = ('', 'x_p', 'y_p', 'source', 'status', 'z_p', 'a_p', 'n_p',
                'chi2')
@@ -96,8 +99,7 @@ class ParticleTable(QAbstractTableModel):
                 role: int = Qt.ItemDataRole.EditRole) -> bool:
         if index.column() == 0 and role == Qt.ItemDataRole.CheckStateRole:
             self._rows[index.row()]['include'] = (
-                value == Qt.CheckState.Checked.value
-                or value == Qt.CheckState.Checked)
+                value == _CHECKED or value == Qt.CheckState.Checked)
             self.dataChanged.emit(index, index, [role])
             return True
         return False
@@ -158,8 +160,12 @@ class ParticleTable(QAbstractTableModel):
         '''
         added = [row for row in self._rows if row['source'] == 'added']
         self.beginResetModel()
-        self._rows = [self._new(c.x_p, c.y_p, radius_of(c.bbox), 'found')
-                      for c in candidates.itertuples()] + added
+        found = zip(candidates['x_p'],
+                    candidates['y_p'],
+                    candidates['bbox'],
+                    strict=True)
+        self._rows = [self._new(x_p, y_p, radius_of(bbox), 'found')
+                      for x_p, y_p, bbox in found] + added
         self._current = -1
         self.endResetModel()
         self.currentChanged.emit(-1)

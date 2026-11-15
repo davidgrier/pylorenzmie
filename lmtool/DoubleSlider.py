@@ -1,8 +1,8 @@
 import logging
 
 import numpy as np
-from pyqtgraph.Qt.QtCore import (pyqtSignal, pyqtSlot)
-from pyqtgraph.Qt.QtWidgets import QSlider
+from qtpy.QtCore import Signal, Slot
+from qtpy.QtWidgets import QAbstractSlider, QSlider
 
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ class DoubleSlider(QSlider):
         Upper bound of the float range. Default 100.0.
     '''
 
-    valueChanged = pyqtSignal(float)
+    valueChanged = Signal(float)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -32,7 +32,6 @@ class DoubleSlider(QSlider):
         super().setMaximum(self._imax)
         self._minimum = 0.
         self._maximum = 100.
-        super().valueChanged[int].connect(self._valueChanged)
 
     def _i2f(self, ivalue: int) -> float:
         '''Convert integer slider value to floating point'''
@@ -44,20 +43,26 @@ class DoubleSlider(QSlider):
         frac = (value - self._minimum) / (self._maximum - self._minimum)
         return int(frac * (self._imax - self._imin) + self._imin)
 
-    @pyqtSlot(int)
-    def _valueChanged(self, value: int) -> None:
-        '''Overload valueChanged signal'''
-        self.valueChanged[float].emit(self._i2f(value))
+    def sliderChange(self, change: QAbstractSlider.SliderChange) -> None:
+        '''Emit ``valueChanged`` with the float value.
 
-    def value(self) -> float:
+        The signal of the base class, ``valueChanged(int)``, is hidden by
+        the float signal that this class declares, so the change of the
+        value is caught here instead.
+        '''
+        super().sliderChange(change)
+        if change == QAbstractSlider.SliderChange.SliderValueChange:
+            self.valueChanged.emit(self.value())
+
+    def value(self) -> float:  # pyright: ignore[reportIncompatibleMethodOverride]
         return self._i2f(super().value())
 
-    @pyqtSlot(float)
+    @Slot(float)
     def setValue(self, value: float) -> None:
         value = float(np.clip(value, self._minimum, self._maximum))
         super().setValue(self._f2i(value))
 
-    def minimum(self) -> float:
+    def minimum(self) -> float:  # pyright: ignore[reportIncompatibleMethodOverride]
         return self._minimum
 
     def setMinimum(self, minimum: float) -> None:
@@ -67,7 +72,7 @@ class DoubleSlider(QSlider):
         self._minimum = minimum
         self.setValue(self.value())
 
-    def maximum(self) -> float:
+    def maximum(self) -> float:  # pyright: ignore[reportIncompatibleMethodOverride]
         return self._maximum
 
     def setMaximum(self, maximum: float) -> None:

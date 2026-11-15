@@ -49,5 +49,14 @@ For a user-oriented guide to launching and using the application, see
 .. automodule:: pylorenzmie.lmtool.ParameterWidget
    :members:
 
+.. automodule:: pylorenzmie.lmtool.DoubleSlider
+   :members:
+
+.. automodule:: pylorenzmie.lmtool.DoubleSpinBox
+   :members:
+
 .. automodule:: pylorenzmie.lmtool.OptimizerWidget
+   :members:
+
+.. automodule:: pylorenzmie.lmtool.required
    :members:

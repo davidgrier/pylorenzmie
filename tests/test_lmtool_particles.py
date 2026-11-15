@@ -11,8 +11,9 @@ import pandas as pd
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 try:
+    import qtpy     # chooses the Qt binding (QT_API) before pyqtgraph can
     from pyqtgraph import mkQApp
-    from pyqtgraph.Qt.QtCore import Qt
+    from qtpy.QtCore import Qt
     from pylorenzmie.lmtool.ParticleTable import ParticleTable, radius_of
     from pylorenzmie.lmtool.results import save_results
     from pylorenzmie.lmtool.tasks import (Cancelled, LocalizeRequest,

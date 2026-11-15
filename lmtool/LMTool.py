@@ -5,22 +5,29 @@ from datetime import datetime
 import json
 import logging
 from pathlib import Path
+from typing import Any, cast
 
 import cv2
 import numpy as np
 import pandas as pd
-from pyqtgraph.Qt import uic
-from pyqtgraph.Qt.QtCore import pyqtProperty, pyqtSlot, QRectF
-from pyqtgraph.Qt.QtGui import QAction, QCloseEvent
-from pyqtgraph.Qt.QtWidgets import (QAbstractItemView, QFileDialog,
-                                     QHeaderView, QLabel, QMainWindow,
-                                     QProgressBar, QTableView)
+from numpy.typing import NDArray
+from qtpy import uic
+from qtpy.QtCore import Slot, QRectF
+from qtpy.QtGui import QAction, QCloseEvent
+from qtpy.QtWidgets import (QAbstractItemView, QFileDialog,
+                            QHeaderView, QLabel, QMainWindow, QMenu,
+                            QProgressBar, QTableView, QTabWidget)
 
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
+from pylorenzmie.lmtool.FitWidget import FitWidget
+from pylorenzmie.lmtool.ImageWidget import ImageWidget
 from pylorenzmie.lmtool.LMWidget import LMWidget
+from pylorenzmie.lmtool.OptimizerWidget import OptimizerWidget
 from pylorenzmie.lmtool.ParticleTable import ParticleTable
 from pylorenzmie.lmtool.Preview import Preview
+from pylorenzmie.lmtool.ProfileWidget import ProfileWidget
+from pylorenzmie.lmtool.required import required
 from pylorenzmie.lmtool.results import save_results
 from pylorenzmie.lmtool.tasks import (FitResult, LocalizeRequest, Snapshot,
                                        TaskRunner, run_estimate, run_fit,
@@ -60,6 +67,27 @@ class LMTool(QMainWindow):
 
     uiFile = 'LMTool.ui'
 
+    # what the layout in LMTool.ui makes
+    tabs: QTabWidget
+    imageWidget: ImageWidget
+    profileWidget: ProfileWidget
+    fitWidget: FitWidget
+    optimizerWidget: OptimizerWidget
+    menuParticles: QMenu
+    actionOpen: QAction
+    actionOpenBackground: QAction
+    actionSaveParameters: QAction
+    saveResult: QAction
+    saveResultAs: QAction
+    actionEstimate: QAction
+    actionUndoEstimate: QAction
+    actionEstimateNoise: QAction
+    actionFindParticles: QAction
+    actionNextParticle: QAction
+    actionOptimize: QAction
+    actionCancel: QAction
+    actionRobust: QAction
+
     #: Number of candidate particles that Find Particles keeps, the
     #: strongest first.  A noisy image can have hundreds of candidates.
     MAX_CANDIDATES = 10
@@ -78,7 +106,7 @@ class LMTool(QMainWindow):
         self.normalizer = Normalizer(dark=self.dark)
         self._refused = ''        # why the last background was not used
         self._raw = None
-        self._data = None
+        self._data: NDArray[np.floating] | None = None
         self.coordinates = None
         self._pre_estimate = None
         self._moving = False
@@ -98,7 +126,7 @@ class LMTool(QMainWindow):
         self.readHologram(filename)
 
     def _setupTheory(self, controls: LMWidget) -> None:
-        layout = self.controls.parent().layout()
+        layout = required(required(self.controls.parentWidget()).layout())
         layout.replaceWidget(self.controls, controls)
         self.controls.close()
         self.controls = controls
@@ -116,8 +144,8 @@ class LMTool(QMainWindow):
         view.setModel(self.particles)
         view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
-        view.verticalHeader().hide()
-        header = view.horizontalHeader()
+        required(view.verticalHeader()).hide()
+        header = required(view.horizontalHeader())
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         header.setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
         view.setColumnWidth(0, 30)
@@ -131,16 +159,21 @@ class LMTool(QMainWindow):
         self.menuParticles.addAction(self.actionAddParticle)
         self.menuParticles.addAction(self.actionRemoveParticle)
 
+    def _say(self, message: str, timeout: int = 0) -> None:
+        '''Show a message in the status bar for *timeout* ms (0: until the
+        next message).'''
+        required(self.statusBar()).showMessage(message, timeout)
+
     def _setupStatusBar(self) -> None:
         self._progress = QProgressBar()
         self._progress.setRange(0, 0)
         self._progress.setMaximumWidth(150)
         self._progress.setVisible(False)
-        self.statusBar().addPermanentWidget(self._progress)
+        required(self.statusBar()).addPermanentWidget(self._progress)
         # what the holograms are divided by, and why not what was asked
         # for: a message would be replaced by the next one
         self._background = QLabel()
-        self.statusBar().addPermanentWidget(self._background)
+        required(self.statusBar()).addPermanentWidget(self._background)
         self._showBackground(self.normalizer)
 
     def _showBackground(self, normalizer: Normalizer,
@@ -173,7 +206,7 @@ class LMTool(QMainWindow):
         self.actionAddParticle.triggered.connect(self.addParticle)
         self.actionRemoveParticle.triggered.connect(self.removeParticle)
         self.particles.currentChanged.connect(self._onCurrentParticle)
-        self.particleView.selectionModel().currentRowChanged.connect(
+        required(self.particleView.selectionModel()).currentRowChanged.connect(
             lambda current, _: self.particles.setCurrent(current.row()))
         self.actionEstimate.triggered.connect(self.estimate)
         self.actionUndoEstimate.triggered.connect(self.undoEstimate)
@@ -201,8 +234,12 @@ class LMTool(QMainWindow):
         self.actionNextParticle.setEnabled(not busy)
         self.actionCancel.setEnabled(busy)
 
-    @pyqtProperty(np.ndarray)
-    def data(self) -> Image:
+    @property
+    def data(self) -> NDArray[np.floating] | None:
+        '''The normalized hologram, or None before one is read.
+
+        Setting it takes the raw hologram, normalizes it by the background
+        and shows it.'''
         return self._data
 
     @data.setter
@@ -224,7 +261,7 @@ class LMTool(QMainWindow):
         self._updateProfile()
         self._showCrop()
 
-    @pyqtSlot()
+    @Slot()
     def readHologram(self, filename: str | None = None) -> None:
         '''Read a hologram from a file, which is asked for if not given.'''
         if not filename:
@@ -238,21 +275,21 @@ class LMTool(QMainWindow):
         data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
         if data is None:
             logger.error(f'Could not read image: {filename!r}')
-            self.statusBar().showMessage(f'Could not read: {filename}', 5000)
+            self._say(f'Could not read: {filename}', 5000)
             return
         self._datafile = filename
         self.particles.clear()
         self.data = data.astype(float)
         self.findParticles()
 
-    def _setNoise(self, image: Image) -> None:
+    def _setNoise(self, image: NDArray[np.floating]) -> None:
         '''Set the noise of the model to the estimate for ``image``.'''
-        low, high = (self.controls.noise.range()
-                     if hasattr(self.controls, 'noise') else (0., np.inf))
+        noise = getattr(self.controls, 'noise', None)
+        low, high = noise.range() if noise is not None else (0., np.inf)
         noise = float(np.clip(estimate_noise(image), low, high))
         self.session.update(dict(noise=noise))
 
-    @pyqtSlot()
+    @Slot()
     def estimateNoise(self) -> None:
         '''Estimate the noise from the region of interest.
 
@@ -265,10 +302,10 @@ class LMTool(QMainWindow):
             return
         data, _, _ = self.crop()
         self._setNoise(data)
-        self.statusBar().showMessage(
+        self._say(
             f'Noise: {self.session.get("noise"):.3f}', 5000)
 
-    @pyqtSlot()
+    @Slot()
     def findParticles(self) -> None:
         '''Look for particles in the image, in the background.
 
@@ -292,13 +329,13 @@ class LMTool(QMainWindow):
         self._nfound = found.attrs.get('nfound', len(found))
         self.particles.setFound(found)
         if self.particles.count == 0:
-            self.statusBar().showMessage(
+            self._say(
                 'No particles found: move the ROI by hand and add it '
                 '(Ctrl+Shift+A)', 8000)
             return
         self.nextParticle()
 
-    @pyqtSlot()
+    @Slot()
     def nextParticle(self) -> None:
         '''Select the next particle in the Particles tab that is checked.'''
         if self.particles.count == 0:
@@ -306,11 +343,11 @@ class LMTool(QMainWindow):
             return
         row = self.particles.next()
         if row is None:
-            self.statusBar().showMessage('No particle is checked', 5000)
+            self._say('No particle is checked', 5000)
             return
         self.particles.setCurrent(row)
 
-    @pyqtSlot()
+    @Slot()
     def addParticle(self) -> None:
         '''Add the region of interest to the particles.'''
         if self._data is None:
@@ -320,17 +357,17 @@ class LMTool(QMainWindow):
                                  self.imageWidget.radius)
         self.particles.setCurrent(row)
 
-    @pyqtSlot()
+    @Slot()
     def removeParticle(self) -> None:
         '''Remove the particle that is selected.'''
         self.particles.remove(self.particles.current)
 
-    @pyqtSlot(int)
+    @Slot(int)
     def _onCurrentParticle(self, row: int) -> None:
         '''Move the ROI to the particle that was selected.'''
         if row < 0:
             return
-        selection = self.particleView.selectionModel()
+        selection = required(self.particleView.selectionModel())
         if selection.currentIndex().row() != row:
             self.particleView.selectRow(row)
         entry = self.particles.entry(row)
@@ -345,7 +382,7 @@ class LMTool(QMainWindow):
                         'the image may be noisy')
         elif n == 1 and entry['source'] == 'found':
             message = f'Only one particle found, at ({x_p:.0f}, {y_p:.0f})'
-        self.statusBar().showMessage(message, 8000)
+        self._say(message, 8000)
 
     def _particleRow(self) -> int:
         '''Row of the particle that the ROI is on, adding one if there is
@@ -369,7 +406,7 @@ class LMTool(QMainWindow):
             return self.normalizer.source
         return str(Path(self._datafile).parent) if self._datafile else ''
 
-    @pyqtSlot()
+    @Slot()
     def readBackground(self, filename: str | None = None) -> None:
         '''Read a background image from a file, which is asked for if
         not given.'''
@@ -434,10 +471,10 @@ class LMTool(QMainWindow):
         '''
         error = self._useBackground(background)
         if error:
-            self.statusBar().showMessage(error, 8000)
+            self._say(error, 8000)
         return error is None
 
-    @pyqtSlot()
+    @Slot()
     def saveParameters(self, filename: str | None = None) -> None:
         '''Save the parameters of the model as JSON, in a file that is
         asked for if not given.'''
@@ -455,7 +492,7 @@ class LMTool(QMainWindow):
         y_p = self.session.get('y_p')
         self.profileWidget.data = Azimuthal.std(self._data, (x_p, y_p))
 
-    @pyqtSlot(float, float)
+    @Slot(float, float)
     def _handleROIChanged(self, x_p: float, y_p: float) -> None:
         if self._data is None:
             return
@@ -467,7 +504,7 @@ class LMTool(QMainWindow):
         self._updateProfile()
         self._showCrop()
 
-    @pyqtSlot(int)
+    @Slot(int)
     def _handleRadiusChanged(self, radius: int) -> None:
         if self._data is None:
             return
@@ -475,7 +512,7 @@ class LMTool(QMainWindow):
         self.preview.setRadius(radius)
         self._showCrop()
 
-    @pyqtSlot(list)
+    @Slot(list)
     def _onParametersChanged(self, names: list[str]) -> None:
         '''Show parameters that changed in the ROI, the profile and the fit.'''
         if self._moving:
@@ -494,16 +531,21 @@ class LMTool(QMainWindow):
         self.fitWidget.setData(data, rect, coordinates)
         self.preview.setCoordinates(coordinates)
 
-    @pyqtSlot(object, object, float)
+    @Slot(object, object, float)
     def _showPreview(self, hologram, profile, noise: float) -> None:
         self.fitWidget.showModel(hologram, noise)
         self.profileWidget.showTheory(profile)
 
-    def crop(self) -> tuple[Image, QRectF, Coordinates]:
+    def crop(self) -> tuple[NDArray[np.floating], QRectF, Coordinates]:
         '''Return the pixels inside the ROI, the rectangle that they cover
         and their coordinates.'''
+        if self._data is None or self.coordinates is None:
+            raise RuntimeError('there is no hologram')
         get = self.imageWidget.roi.getArraySlice
-        (sy, sx), _ = get(self._data, self.imageWidget.image)
+        found = get(self._data, self.imageWidget.image)
+        if found is None:
+            raise RuntimeError('the ROI is outside the image')
+        (sy, sx), _ = cast(tuple[tuple[slice, slice], Any], found)
         # the rectangle of the pixels that were cut out: the ROI itself
         # extends past the image when the particle is near an edge
         rect = QRectF(sx.start,
@@ -515,7 +557,7 @@ class LMTool(QMainWindow):
     def _busy(self) -> bool:
         '''True, with a message, if a task is running.'''
         if self.tasks.busy:
-            self.statusBar().showMessage(
+            self._say(
                 f'Busy with the task "{self.tasks.name}": wait, or press Esc',
                 3000)
         return self.tasks.busy
@@ -532,7 +574,7 @@ class LMTool(QMainWindow):
                              optimizer.settings,
                              optimizer.fraction)
 
-    @pyqtSlot()
+    @Slot()
     def estimate(self) -> None:
         '''Estimate the height, radius and index of the particle.
 
@@ -551,18 +593,19 @@ class LMTool(QMainWindow):
 
     def _onEstimated(self, result: pd.Series) -> None:
         fixed = self.session.fixed
-        updates = {k: float(result[k]) for k in ('z_p', 'a_p', 'n_p')
-                   if k in result and k not in fixed
-                   and result[k] is not None
+        values = result.to_dict()
+        updates = {k: float(values[k]) for k in ('z_p', 'a_p', 'n_p')
+                   if k in values and k not in fixed
+                   and values[k] is not None
                    and np.isfinite(result[k])}
         if updates:
             self.session.update(updates)
         if 0 <= self._row < self.particles.count:
             self.particles.setEstimate(self._row, self.session.properties)
         logger.info(f'Estimate: {result}')
-        self.statusBar().showMessage('Estimation complete', 2000)
+        self._say('Estimation complete', 2000)
 
-    @pyqtSlot()
+    @Slot()
     def undoEstimate(self) -> None:
         '''Restore the parameters that the last estimate replaced.'''
         if self._pre_estimate is None:
@@ -571,7 +614,7 @@ class LMTool(QMainWindow):
         self._pre_estimate = None
         self.actionUndoEstimate.setEnabled(False)
 
-    @pyqtSlot(bool)
+    @Slot(bool)
     def setRobust(self, state: bool) -> None:
         '''Select robust optimization, and show the settings that it
         changes.'''
@@ -579,11 +622,11 @@ class LMTool(QMainWindow):
         optimizer.robust = state
         self.optimizerWidget.settings = optimizer.settings
 
-    def closeEvent(self, event: QCloseEvent) -> None:
+    def closeEvent(self, event: QCloseEvent | None) -> None:
         self.tasks.shutdown()
         super().closeEvent(event)
 
-    @pyqtSlot()
+    @Slot()
     def optimize(self) -> None:
         '''Fit the model to the region of interest.
 
@@ -607,20 +650,20 @@ class LMTool(QMainWindow):
         message = 'Optimization complete'
         if 'redchi' in fit.result:
             message += f': reduced \u03c7\u00b2 = {fit.result["redchi"]:.2f}'
-        self.statusBar().showMessage(message, 8000)
+        self._say(message, 8000)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _onTaskStarted(self, name: str) -> None:
         if name == 'localize':
             # the window stays usable: a search changes nothing
             self.actionFindParticles.setEnabled(False)
             self.actionCancel.setEnabled(True)
-            self.statusBar().showMessage('Looking for particles ... '
+            self._say('Looking for particles ... '
                                          '(Esc cancels)')
             return
         self._setUIBusy(True)
         verb = 'Estimating' if name == 'estimate' else 'Optimizing'
-        self.statusBar().showMessage(f'{verb} ... (Esc cancels)')
+        self._say(f'{verb} ... (Esc cancels)')
 
     def _taskEnded(self, name: str) -> None:
         if name == 'localize':
@@ -629,31 +672,31 @@ class LMTool(QMainWindow):
         else:
             self._setUIBusy(False)
 
-    @pyqtSlot(str, object)
+    @Slot(str, object)
     def _onTaskFinished(self, name: str, result: object) -> None:
         self._taskEnded(name)
         if name == 'localize':
-            self._onLocalized(result)
+            self._onLocalized(cast(pd.DataFrame, result))
         elif name == 'estimate':
-            self._onEstimated(result)
+            self._onEstimated(cast(pd.Series, result))
         else:
-            self._onOptimized(result)
+            self._onOptimized(cast(FitResult, result))
 
-    @pyqtSlot(str, str)
+    @Slot(str, str)
     def _onTaskFailed(self, name: str, message: str) -> None:
         self._taskEnded(name)
         what = {'localize': 'Search for particles', 'estimate': 'Estimation',
                 'optimize': 'Optimization'}[name]
         logger.error(f'{what} failed: {message}')
-        self.statusBar().showMessage(f'{what} failed: {message}', 8000)
+        self._say(f'{what} failed: {message}', 8000)
 
-    @pyqtSlot(str)
+    @Slot(str)
     def _onTaskCancelled(self, name: str) -> None:
         self._taskEnded(name)
         if name == 'estimate':            # nothing changed: nothing to undo
             self._pre_estimate = None
             self.actionUndoEstimate.setEnabled(False)
-        self.statusBar().showMessage('Cancelled', 3000)
+        self._say('Cancelled', 3000)
         if name == 'localize' and self._search_again:
             self._search_again = False
             self.findParticles()          # for the image that replaced it
@@ -667,7 +710,7 @@ class LMTool(QMainWindow):
         return str(Path('~/data/lmtool').expanduser() /
                    f'results_{timestamp}.h5')
 
-    @pyqtSlot()
+    @Slot()
     def saveResults(self, filename: str | None = None) -> None:
         '''Save the fits of the particles that are checked, one row each.
 
@@ -677,7 +720,7 @@ class LMTool(QMainWindow):
         '''
         results = self.particles.results()
         if len(results) == 0:
-            self.statusBar().showMessage(
+            self._say(
                 'There is nothing to save: optimize a particle first', 8000)
             return
         metadata = (self._metadata if self._metadata is not None
@@ -689,13 +732,13 @@ class LMTool(QMainWindow):
                                  filename or self._output_path())
         except Exception as error:
             logger.exception('Could not save the results')
-            self.statusBar().showMessage(
+            self._say(
                 f'Could not save the results: {error}', 8000)
             return
-        self.statusBar().showMessage(
+        self._say(
             f'Saved {len(results)} particle(s) to {saved}', 8000)
 
-    @pyqtSlot()
+    @Slot()
     def saveResultsAs(self) -> None:
         '''Ask for a file and save the results of the fits in it.'''
         get = QFileDialog.getSaveFileName
