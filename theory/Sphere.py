@@ -24,6 +24,7 @@ import numpy as np
 
 from pylorenzmie.theory import Particle
 from pylorenzmie.lib.lmtypes import Coefficients, Properties
+from pylorenzmie.theory._mie import mie_ab
 
 
 @dataclass
@@ -204,51 +205,7 @@ class Sphere(Particle):
 
         nmax = Sphere.wiscombe_yang(x, m)
 
-        # storage for results
-        ab = np.empty((nmax+1, 2), np.complex128)
-        D1 = np.empty(nmax+1, np.complex128)
-        D3 = np.empty(nmax+1, np.complex128)
-        Ψ = np.empty(nmax+1, np.complex128)
-        ζ = np.empty(nmax+1, np.complex128)
-
-        # initialization
-        D1[nmax] = 0.                                # Eq. (16a)
-        D3[0] = 1.j                                  # Eq. (18b)
-
-        # iterate outward from the sphere's core
-        z = x * m
-        for n in range(nmax, 0, -1):
-            D1[n-1] = n/z - 1./(D1[n] + n/z)         # Eq. (16b)
-        Ha = D1.copy()                               # Eq. (7a)
-        Hb = D1.copy()                               # Eq. (8a)
-
-        # iterate into medium (m = 1.)
-        z = x
-        # downward recurrence for D1 (D1[nmax] = 0)
-        for n in range(nmax, 0, -1):
-            D1[n-1] = n/z - (1./(D1[n] + n/z))       # Eq. (16b)
-
-        # upward recurrence for Ψ, ζ, Ψζ and D3
-        Ψ[0] = np.sin(z)                             # Eq. (20a)
-        ζ[0] = -1.j * np.exp(1.j * z)                # Eq. (21a)
-        Ψζ = 0.5 * (1. - np.exp(2.j * z))            # Eq. (18a)
-        for n in range(1, nmax+1):
-            Ψ[n] = Ψ[n-1] * (n/z - D1[n-1])          # Eq. (20b)
-            ζ[n] = ζ[n-1] * (n/z - D3[n-1])          # Eq. (21b)
-            Ψζ *= (n/z - D1[n-1]) * (n/z - D3[n-1])  # Eq. (18c)
-            D3[n] = D1[n] + 1.j/Ψζ                   # Eq. (18d)
-
-        # scattering coefficients
-        n = np.arange(nmax+1)
-        Ψr = np.roll(Ψ, 1)
-        ζr = np.roll(ζ, 1)
-        fac = Ha/m + n/x                             # Eq. (5)
-        ab[:, 0] = (fac * Ψ - Ψr) / (fac * ζ - ζr)
-        fac = Hb*m + n/x                             # Eq. (6)
-        ab[:, 1] = (fac * Ψ - Ψr) / (fac * ζ - ζr)
-        ab[0, :] = 0.j
-
-        return ab
+        return mie_ab(x, m, nmax)
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

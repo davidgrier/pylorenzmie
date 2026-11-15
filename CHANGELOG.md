@@ -57,6 +57,12 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* The Mie coefficients of a sphere are computed by compiled loops when Numba
+  is installed (`theory/_mie.py`): 4 to 9 times faster per call (12 to 20 us
+  instead of 53 to 183 us), and about 20% off an estimate and a fit of one
+  feature (461 to 366 ms), because the global search calls them for every
+  candidate.  The numbers are the same to 1e-13.  Without Numba the same
+  loops run as Python.
 * The `z_p` bounds of `DEEstimator`, `RadialEstimator` and `PairEstimator`
   are in pixels again, like `x_p`, `y_p` and the `z_p` of a particle, so that
   a name has one unit wherever it appears (3.5.0 made the bounds micrometers).

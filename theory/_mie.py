@@ -1,0 +1,75 @@
+'''The recurrences of the Mie coefficients of a homogeneous sphere.
+
+They are loops over the partial waves, each step a handful of complex
+operations, so that the time of the pure-Python loop goes into the
+interpreter.  They are compiled with Numba when it is installed, and run as
+plain Python when it is not: the numbers are the same.
+
+The equation numbers are those of Yang, *Appl. Opt.* **42**, 1710 (2003).
+'''
+
+import numpy as np
+
+from pylorenzmie.lib.lmtypes import Coefficients
+
+try:
+    from numba import njit
+except ImportError:                     # Numba is an optional extra
+    def njit(*args, **kwargs):
+        return lambda function: function
+
+
+@njit(cache=True, error_model='numpy')
+def mie_ab(x: float, m: complex, nmax: int) -> Coefficients:
+    '''Mie scattering coefficients of a sphere.
+
+    Parameters
+    ----------
+    x : float
+        Size parameter of the sphere, in the medium.
+    m : complex
+        Refractive index of the sphere relative to the medium.
+    nmax : int
+        Number of partial waves to keep; see
+        :meth:`~pylorenzmie.theory.Sphere.Sphere.wiscombe_yang`.
+
+    Returns
+    -------
+    ab : numpy.ndarray, shape (nmax + 1, 2), dtype complex
+        The coefficients ``a_n`` and ``b_n``, with ``ab[0] = 0``.
+    '''
+    ab = np.zeros((nmax + 1, 2), np.complex128)
+    D1 = np.zeros(nmax + 1, np.complex128)
+    D3 = np.zeros(nmax + 1, np.complex128)
+    Ψ = np.zeros(nmax + 1, np.complex128)
+    ζ = np.zeros(nmax + 1, np.complex128)
+
+    # logarithmic derivative inside the sphere, downward from the core
+    z = x * m
+    for n in range(nmax, 0, -1):
+        D1[n-1] = n/z - 1./(D1[n] + n/z)             # Eq. (16b)
+    Ha = D1.copy()                                   # Eq. (7a)
+    Hb = D1.copy()                                   # Eq. (8a)
+
+    # and in the medium
+    for n in range(nmax, 0, -1):
+        D1[n-1] = n/x - 1./(D1[n] + n/x)             # Eq. (16b)
+
+    # upward recurrence for Ψ, ζ, Ψζ and D3
+    D3[0] = 1.j                                      # Eq. (18b)
+    Ψ[0] = np.sin(x)                                 # Eq. (20a)
+    ζ[0] = -1.j * np.exp(1.j * x)                    # Eq. (21a)
+    Ψζ = 0.5 * (1. - np.exp(2.j * x))                # Eq. (18a)
+    for n in range(1, nmax + 1):
+        Ψ[n] = Ψ[n-1] * (n/x - D1[n-1])              # Eq. (20b)
+        ζ[n] = ζ[n-1] * (n/x - D3[n-1])              # Eq. (21b)
+        Ψζ *= (n/x - D1[n-1]) * (n/x - D3[n-1])      # Eq. (18c)
+        D3[n] = D1[n] + 1.j/Ψζ                       # Eq. (18d)
+
+    # scattering coefficients; Ψ and ζ at order -1 are those at order nmax
+    for n in range(1, nmax + 1):
+        fac = Ha[n]/m + n/x                          # Eq. (5)
+        ab[n, 0] = (fac*Ψ[n] - Ψ[n-1]) / (fac*ζ[n] - ζ[n-1])
+        fac = Hb[n]*m + n/x                          # Eq. (6)
+        ab[n, 1] = (fac*Ψ[n] - Ψ[n-1]) / (fac*ζ[n] - ζ[n-1])
+    return ab
