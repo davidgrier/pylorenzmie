@@ -16,6 +16,7 @@ __all__ = ['CircleTransform', 'circletransform']
 
 
 def example() -> None:  # pragma: no cover
+    '''Run a demonstration, for use as a script.'''
     import matplotlib.pyplot as plt
     from pylorenzmie.utilities import example_hologram
 

@@ -14,8 +14,12 @@ from pylorenzmie.theory.generators import NAMES, generator, flow
 # coefficients [wavelengths] that displace the points of the test image by a
 # few pixels each; the field-dependent ones are small because the ray
 # coordinate is measured in vacuum wavelengths, of which the image spans many
-COEFFICIENTS = dict(defocus=3., spherical=8., coma=1., astigmatism=0.03,
-                    fieldcurvature=0.03, distortion=1.5e-3)
+COEFFICIENTS = dict(defocus=3.,
+                    spherical=8.,
+                    coma=1.,
+                    astigmatism=0.03,
+                    fieldcurvature=0.03,
+                    distortion=1.5e-3)
 
 
 class TestDistortedLorenzMie(unittest.TestCase):
@@ -25,8 +29,11 @@ class TestDistortedLorenzMie(unittest.TestCase):
         self.xp = self.yp = (self.n - 1) / 2.
         self.zp = 300.
         self.coordinates = LorenzMie.meshgrid((self.n, self.n))
-        self.particle = Sphere(a_p=0.5, n_p=1.5,
-                               x_p=self.xp, y_p=self.yp, z_p=self.zp)
+        self.particle = Sphere(a_p=0.5,
+                               n_p=1.5,
+                               x_p=self.xp,
+                               y_p=self.yp,
+                               z_p=self.zp)
 
     def model(self, cls=DistortedLorenzMie, **kwargs):
         m = cls(coordinates=self.coordinates, **kwargs)
@@ -97,7 +104,8 @@ class TestDistortedLorenzMie(unittest.TestCase):
                 c = 3. / peak
                 exact = make(DistortedLorenzMie, **{name: c}, **kw).hologram()
                 eikonal = make(AberratedLorenzMie,
-                               **{name: c}, **kw).hologram()
+                               **{name: c},
+                               **kw).hologram()
                 effect = np.sqrt(np.mean((exact - ideal)**2))
                 error = np.sqrt(np.mean((exact - eikonal)**2))
                 self.assertGreater(effect, 1e-3, (name, center))
@@ -112,7 +120,9 @@ class TestDistortedLorenzMie(unittest.TestCase):
         # operators act in the listed order; the evaluation points pass
         # through the flows in reverse
         d, s = 4., 8.
-        m = self.model(defocus=d, spherical=s, order=('defocus', 'spherical'),
+        m = self.model(defocus=d,
+                       spherical=s,
+                       order=('defocus', 'spherical'),
                        nsteps=8)
         inst = m.instrument
         scale = inst.wavelength / inst.magnification
@@ -122,7 +132,9 @@ class TestDistortedLorenzMie(unittest.TestCase):
             return lambda x: generator(name, x, self.zp, inst.n_m)
 
         expected = flow(flow(rho, s * scale, g('spherical'), 8),
-                        d * scale, g('defocus'), 8)
+                        d * scale,
+                        g('defocus'),
+                        8)
         self.assertTrue(np.allclose(m.warp(self.particle), expected))
 
     def test_composed_flows_depend_on_order(self):
@@ -158,8 +170,11 @@ class TestDistortedLorenzMie(unittest.TestCase):
             self.assertTrue(np.allclose(back, rho, atol=1e-8), name)
 
     def test_runge_kutta_steps_converge(self):
-        kw = dict(defocus=3., spherical=8., coma=1.,
-                  x_c=self.xp - 20., y_c=self.yp)
+        kw = dict(defocus=3.,
+                  spherical=8.,
+                  coma=1.,
+                  x_c=self.xp - 20.,
+                  y_c=self.yp)
         ref = self.model(nsteps=16, **kw).hologram()
         coarse = self.model(nsteps=2, **kw).hologram()
         default = self.model(**kw).hologram()
@@ -196,7 +211,10 @@ class TestDistortedLorenzMie(unittest.TestCase):
             self.model(mode='parallel')
 
     def test_cluster_of_two_particles(self):
-        p2 = Sphere(a_p=0.4, n_p=1.45, x_p=self.xp + 15., y_p=self.yp,
+        p2 = Sphere(a_p=0.4,
+                    n_p=1.45,
+                    x_p=self.xp + 15.,
+                    y_p=self.yp,
                     z_p=self.zp + 40.)
         m = DistortedLorenzMie(coordinates=self.coordinates, spherical=6.)
         m.particle = [self.particle, p2]
@@ -216,8 +234,7 @@ class TestDistortedLorenzMie(unittest.TestCase):
         for name in ('defocus', 'spherical', 'coma', 'astigmatism',
                      'distortion'):
             c = COEFFICIENTS[name] / 3.
-            m = self.model(AberratedLorenzMie, x_c=xc, y_c=yc,
-                           **{name: c})
+            m = self.model(AberratedLorenzMie, x_c=xc, y_c=yc, **{name: c})
             inst = m.instrument
             r_p = np.array([self.xp, self.yp, self.zp])
             rho = self.coordinates[:2] - r_p[:2, None]
@@ -263,8 +280,11 @@ class TestDistortedLorenzMie(unittest.TestCase):
         except Exception:                       # pragma: no cover
             self.skipTest('numba is not available')
         cls = Distorted(numbaLorenzMie)
-        kw = dict(defocus=3., spherical=8., coma=2.,
-                  x_c=self.xp - 20., y_c=self.yp)
+        kw = dict(defocus=3.,
+                  spherical=8.,
+                  coma=2.,
+                  x_c=self.xp - 20.,
+                  y_c=self.yp)
         for mode in ('composed', 'summed'):
             a = self.model(cls, mode=mode, **kw)
             b = self.model(cls, mode=mode, **kw)
@@ -292,7 +312,9 @@ class TestDistortedLorenzMie(unittest.TestCase):
             'DistortedLorenzMie()\n'
             'assert all(k.signatures for k in kernels)\n')
         result = subprocess.run([sys.executable, '-I', '-c', code],
-                                capture_output=True, text=True, timeout=300,
+                                capture_output=True,
+                                text=True,
+                                timeout=300,
                                 check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 

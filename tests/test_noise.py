@@ -18,7 +18,8 @@ class TestEstimateNoise(unittest.TestCase):
         for sigma in (0.01, 0.05, 0.2):
             with self.subTest(sigma=sigma):
                 image = 1. + self.rng.normal(0., sigma, (300, 300))
-                self.assertAlmostEqual(estimate_noise(image) / sigma, 1.,
+                self.assertAlmostEqual(estimate_noise(image) / sigma,
+                                       1.,
                                        delta=0.03)
 
     def test_the_fringes_of_a_hologram_are_not_noise(self):
@@ -31,7 +32,8 @@ class TestEstimateNoise(unittest.TestCase):
         image = 1. + self.rng.normal(0., 0.05, (300, 300))
         reference = estimate_noise(image)
         image[100:110, 100:110] += 5.
-        self.assertAlmostEqual(estimate_noise(image) / reference, 1.,
+        self.assertAlmostEqual(estimate_noise(image) / reference,
+                               1.,
                                delta=0.02)
 
     def test_a_gradient_is_not_noise(self):

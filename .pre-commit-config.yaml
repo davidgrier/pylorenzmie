@@ -1,0 +1,19 @@
+# Run the checks that CI runs, before a commit: `pip install pre-commit ruff`,
+# then `pre-commit install` in the checkout.  Both hooks use what is
+# installed in the environment, so they agree with what you run by hand.
+# The style tests are the ones that fail late otherwise (layout of
+# arguments, import blocks, docstrings, import cycles, the package list).
+repos:
+  - repo: local
+    hooks:
+      - id: ruff
+        name: ruff check
+        entry: ruff check
+        language: system
+        types: [python]
+      - id: style-tests
+        name: style, import order, docstring, import cycle and packaging tests
+        entry: python -m pytest -q tests/test_style.py tests/test_import_order.py tests/test_docstrings.py tests/test_import_cycles.py tests/test_packaging.py
+        language: system
+        pass_filenames: false
+        types: [python]

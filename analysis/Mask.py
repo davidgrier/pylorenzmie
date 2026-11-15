@@ -167,6 +167,7 @@ class Mask(LMObject):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         import matplotlib.pyplot as plt
 
         mask = cls(shape=(201, 201), fraction=0.2)

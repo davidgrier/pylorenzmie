@@ -168,5 +168,6 @@ class LMObject(ABC):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         a = cls()
         print(a)

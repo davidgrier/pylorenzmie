@@ -39,7 +39,8 @@ class LMWidget(QFrame):
     #: Emitted with the name and value of a control that the user changed.
     propertyChanged = pyqtSignal(str, float)
 
-    def __init__(self, *args, session: LMSession | None = None,
+    def __init__(self, *args,
+                 session: LMSession | None = None,
                  **kwargs) -> None:
         super().__init__(*args, **kwargs)
         uic.loadUi(_DIR / self.uiFile, self)

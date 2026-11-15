@@ -39,15 +39,72 @@ python -m pytest tests/test_lorenzmie.py::TestLorenzMie::test_hologram
 # Run with coverage report
 python -m pytest --cov=. --cov-report=term-missing
 
+# Lint (a CI job; configured in pyproject.toml)
+ruff check .
+
+# Type-check lib/ (a CI job; configured in pyproject.toml)
+pyright
+
 # Build HTML documentation (output: docs/_build/html/index.html)
 sphinx-build -b html docs docs/_build/html
 ```
+
+**Before a commit:** `pre-commit install` (with `pip install pre-commit ruff`)
+runs ruff and the style, import-order, docstring, import-cycle and packaging
+tests, the checks that otherwise fail late in CI.
+
+## Media files
+
+Media files (PNG, JPG, GIF, AVI, MP4) belong under `docs/`.  Two kinds are
+part of the package and stay where they are: the test images in
+`utilities/data/` and `lmtool/splash.png` (`.gitignore` lets them through).
+Do not commit others elsewhere.
+
+## Scratchpad directories
+
+Any directory named `devel/` (at any depth) is a local scratchpad and is
+ignored by git.  It exists only on the developer's machine and must never be
+committed.  Scripts that make files shipped with the package, and that
+someone must be able to run again, live in `tools/` instead (see its
+`README.md`).
+
+Each top-level directory has a short `README.md` that says what it is for;
+update it when the role or contents of the directory change.
 
 ## Style
 
 - Prefer single quotes over double quotes for strings, including docstrings.
 - Maximum line length is 79 characters (PEP 8).
 - Use American English spelling: *color*, *normalize*, *center*, *gray*, *behavior*.
+- Layout of arguments, as in QVideo and QHOT.  In a definition, either
+  everything fits on one line, or the parameters are aligned under the first,
+  one to a line, with `self` or `cls` beside the first parameter.  In a call,
+  either everything fits on one line, or the arguments are aligned under the
+  first, one to a line, or they hang, one to a line with a trailing comma and
+  the closing parenthesis on a line of its own (good for a call with
+  keywords).  Never several arguments on a line of a wrapped list.
+  `tests/test_style.py` enforces it.
+- `ruff check .` (pyflakes, bugbear, the line length, single quotes, class
+  attributes, quoted annotations, stale `noqa`, names that hide a builtin,
+  parent imports and a few simplifications, configured in `pyproject.toml`)
+  runs in CI as the `Lint` job: fix what it reports rather than silencing it.
+  A `# noqa` says why.
+- Annotations are not quoted; a module that needs a forward reference has
+  `from __future__ import annotations` (ruff `UP037`).
+- Every public class, function, method and property has a NumPy-style
+  docstring.  Sphinx publishes only what has one, and
+  `tests/test_docstrings.py` fails when one is missing (an override inherits
+  the docstring of the method it overrides; a module that needs an optional
+  library that is not installed is skipped).
+- A parent package is never imported with dots (`from pylorenzmie.lib import
+  LMObject`, not `from ..lib import LMObject`; ruff `TID252`).
+  `tests/test_import_order.py` checks the order of the import blocks, and
+  `tests/test_import_cycles.py` that every package can be the first import.
+- `pyproject.toml` lists every package; `tests/test_packaging.py` checks the
+  list, because a package that is missing from it works in a checkout and is
+  absent from the wheel.
+- `pyright` checks `lib/`; the other packages report the optional libraries
+  (Torch, JAX, CuPy, Numba) as missing, and are not checked yet.
 - Docstrings use NumPy style with `Parameters`, `Returns`, `Raises`, and `Notes`
   sections as appropriate.
 - Default values and units always noted in the Parameters section.

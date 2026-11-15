@@ -105,8 +105,11 @@ class Sphere(Particle):
         ab : numpy.ndarray, shape (n_terms, 2), dtype complex
             Mie scattering coefficients.
         '''
-        return Sphere.mie_coefficients(self.a_p, self.n_p, self.k_p,
-                                       n_m, wavelength)
+        return Sphere.mie_coefficients(self.a_p,
+                                       self.n_p,
+                                       self.k_p,
+                                       n_m,
+                                       wavelength)
 
     @staticmethod
     def wiscombe_yang(x: float, m: float | complex) -> int:
@@ -247,6 +250,7 @@ class Sphere(Particle):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         from time import perf_counter
 
         s = cls(a_p=0.75, n_p=1.5)

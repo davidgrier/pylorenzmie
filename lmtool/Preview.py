@@ -79,5 +79,6 @@ class Preview(QObject):
                                     if name not in ('x_p', 'y_p')}
         self._profile.coordinates = np.arange(self._radius)
         self.count += 1
-        self.updated.emit(hologram, self._profile.hologram(),
+        self.updated.emit(hologram,
+                          self._profile.hologram(),
                           float(properties['noise']))

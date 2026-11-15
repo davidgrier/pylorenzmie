@@ -21,7 +21,8 @@ PURPLE = np.array([87, 6, 140]) / 255.   # NYU purple
 particle = Sphere(x_p=CENTER[0], y_p=CENTER[1], z_p=500., a_p=1.0, n_p=1.45)
 instrument = Instrument(wavelength=0.447, magnification=0.048, n_m=1.34)
 coordinates = LorenzMie.meshgrid((HEIGHT, WIDTH))
-model = LorenzMie(coordinates=coordinates, particle=particle,
+model = LorenzMie(coordinates=coordinates,
+                  particle=particle,
                   instrument=instrument)
 hologram = model.hologram().reshape(HEIGHT, WIDTH)
 

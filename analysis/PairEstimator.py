@@ -76,12 +76,11 @@ class PairEstimator(DEEstimator):
         objective = _DEObjective(self.model, de_data, de_vars, noise)
         try:
             with np.errstate(over='ignore', invalid='ignore'):
-                result = differential_evolution(
-                    objective, de_bounds,
-                    popsize=self.popsize,
-                    seed=self.seed,
-                    **self.settings,
-                )
+                result = differential_evolution(objective,
+                                                de_bounds,
+                                                popsize=self.popsize,
+                                                seed=self.seed,
+                                                **self.settings)
         finally:
             self.model.coordinates = saved_coords
 
@@ -90,6 +89,7 @@ class PairEstimator(DEEstimator):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         from time import perf_counter
         from pylorenzmie.theory import LorenzMie, Pair
 
@@ -97,9 +97,16 @@ class PairEstimator(DEEstimator):
         model.instrument.wavelength = 0.447
         model.instrument.magnification = 0.048
         model.instrument.n_m = 1.34
-        model.particle.properties = dict(
-            x_p1=85., y_p1=100., z_p1=250., a_p1=0.5, n_p1=1.42,
-            x_p2=115., y_p2=100., z_p2=250., a_p2=0.6, n_p2=1.40)
+        model.particle.properties = dict(x_p1=85.,
+                                         y_p1=100.,
+                                         z_p1=250.,
+                                         a_p1=0.5,
+                                         n_p1=1.42,
+                                         x_p2=115.,
+                                         y_p2=100.,
+                                         z_p2=250.,
+                                         a_p2=0.6,
+                                         n_p2=1.40)
 
         shape = (201, 201)
         model.coordinates = LorenzMie.meshgrid(shape)

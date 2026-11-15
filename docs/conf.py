@@ -100,8 +100,14 @@ def setup(app):
 
     def _dedup(self, name, objtype, node_id, aliased=False, location=None):
         if not aliased and name in _seen:
-            return _orig(self, name, objtype, node_id, aliased=True,
-                         location=location)
+            return _orig(
+                self,
+                name,
+                objtype,
+                node_id,
+                aliased=True,
+                location=location,
+            )
         if not aliased:
             _seen[name] = self.env.docname
         return _orig(self, name, objtype, node_id, aliased, location)

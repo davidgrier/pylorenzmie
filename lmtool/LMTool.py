@@ -228,7 +228,9 @@ class LMTool(QMainWindow):
     def readHologram(self, filename: str | None = None) -> None:
         if not filename:
             get = QFileDialog.getOpenFileName
-            filename, _ = get(self, 'Open Hologram', self._datafile or '',
+            filename, _ = get(self,
+                              'Open Hologram',
+                              self._datafile or '',
                               'Images (*.png *.tif *.tiff)')
         if not filename:
             return
@@ -281,7 +283,8 @@ class LMTool(QMainWindow):
                 self._search_again = True
                 self.tasks.cancel()
             return
-        self.tasks.start('localize', run_localize,
+        self.tasks.start('localize',
+                         run_localize,
                          LocalizeRequest(self._data, self.MAX_CANDIDATES))
 
     def _onLocalized(self, found: pd.DataFrame) -> None:
@@ -369,7 +372,8 @@ class LMTool(QMainWindow):
     def readBackground(self, filename: str | None = None) -> None:
         if not filename:
             get = QFileDialog.getOpenFileName
-            filename, _ = get(self, 'Open Background',
+            filename, _ = get(self,
+                              'Open Background',
                               self._background_start(),
                               'Images (*.png *.tif *.tiff)')
         if filename:
@@ -495,8 +499,10 @@ class LMTool(QMainWindow):
         (sy, sx), _ = get(self._data, self.imageWidget.image)
         # the rectangle of the pixels that were cut out: the ROI itself
         # extends past the image when the particle is near an edge
-        rect = QRectF(sx.start, sy.start,
-                      sx.stop - sx.start, sy.stop - sy.start)
+        rect = QRectF(sx.start,
+                      sy.start,
+                      sx.stop - sx.start,
+                      sy.stop - sy.start)
         return (self._data[sy, sx], rect, self.coordinates[:, sy, sx])
 
     def _busy(self) -> bool:
@@ -511,9 +517,13 @@ class LMTool(QMainWindow):
         '''A copy of what a task needs: the session and the region.'''
         data, _, coordinates = self.crop()
         optimizer = self.fitWidget.optimizer
-        return Snapshot.take(self.session.cls, self.session.properties,
-                             data, coordinates, self.session.fixed,
-                             optimizer.settings, optimizer.fraction)
+        return Snapshot.take(self.session.cls,
+                             self.session.properties,
+                             data,
+                             coordinates,
+                             self.session.fixed,
+                             optimizer.settings,
+                             optimizer.fraction)
 
     @pyqtSlot()
     def estimate(self) -> None:
@@ -579,7 +589,8 @@ class LMTool(QMainWindow):
         self.session.update(fit.properties)
         self._metadata = fit.metadata
         if 0 <= self._row < self.particles.count:
-            self.particles.setResult(self._row, self.session.properties,
+            self.particles.setResult(self._row,
+                                     self.session.properties,
                                      fit.result)
             self.particles.setCurrent(self._row)
         logger.info(f'Optimization complete\n{fit.result}')
@@ -663,7 +674,8 @@ class LMTool(QMainWindow):
                     else pd.Series(dtype=object)).copy()
         metadata['datafile'] = self._datafile
         try:
-            saved = save_results(results, metadata,
+            saved = save_results(results,
+                                 metadata,
                                  filename or self._output_path())
         except Exception as error:
             logger.exception('Could not save the results')
@@ -676,7 +688,9 @@ class LMTool(QMainWindow):
     @pyqtSlot()
     def saveResultsAs(self) -> None:
         get = QFileDialog.getSaveFileName
-        filename, _ = get(self, 'Save Results', self._output_path(),
+        filename, _ = get(self,
+                          'Save Results',
+                          self._output_path(),
                           'HDF5 (*.h5);;JSON (*.json);;CSV (*.csv)')
         if filename:
             self.saveResults(filename)

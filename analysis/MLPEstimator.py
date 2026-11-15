@@ -145,6 +145,7 @@ class MLPEstimator(BaseEstimator):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         from time import perf_counter
         from pylorenzmie.utilities import example_hologram
 

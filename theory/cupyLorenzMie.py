@@ -132,11 +132,11 @@ class cupyLorenzMie(LorenzMie):
             a = cp.asarray(ab[:, 0], dtype=self.ctype)
             b = cp.asarray(ab[:, 1], dtype=self.ctype)
             r_p = (particle.r_p + particle.r_0).astype(self.dtype)
-            self.lorenzmie((self.blockspergrid,), (self.threadsperblock,),
-                           (*self.coords, self.coords.shape[1],
-                            a, b, ab.shape[0],
-                            *r_p, k, cartesian, bohren,
-                            *self.buffer))
+            grid = (self.blockspergrid,)
+            block = (self.threadsperblock,)
+            args = (*self.coords, self.coords.shape[1], a, b, ab.shape[0],
+                    *r_p, k, cartesian, bohren, *self.buffer)
+            self.lorenzmie(grid, block, args)
             if aberration is not None:
                 mask = aberration(r_p)
                 if not isinstance(mask, float):  # 1. if spherical == 0

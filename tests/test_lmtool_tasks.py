@@ -38,7 +38,11 @@ def snapshot(**kwargs):
                                  'k_p', 'noise', 'defocus', 'spherical',
                                  'coma', 'astigmatism', 'distortion', 'x_c',
                                  'y_c', 'piston'])
-    return Snapshot.take(AberratedLorenzMie, start, data, coordinates, fixed,
+    return Snapshot.take(AberratedLorenzMie,
+                         start,
+                         data,
+                         coordinates,
+                         fixed,
                          **kwargs)
 
 
@@ -117,8 +121,11 @@ class TestTasks(unittest.TestCase):
                     cancel.set()
                 return super().hologram(*args, **kwargs)
 
-        snap = Snapshot.take(Counting, snap.properties, snap.data,
-                             snap.coordinates, snap.fixed)
+        snap = Snapshot.take(Counting,
+                             snap.properties,
+                             snap.data,
+                             snap.coordinates,
+                             snap.fixed)
         with self.assertRaises(Cancelled):
             run_fit(snap, cancel)
         self.assertLess(len(calls), 20)
@@ -131,15 +138,20 @@ class TestTasks(unittest.TestCase):
 
     def test_an_estimate_keeps_the_fixed_parameters(self):
         fixed = snapshot()
-        fixed = Snapshot.take(fixed.cls, fixed.properties, fixed.data,
-                              fixed.coordinates, [*fixed.fixed, 'n_p'])
+        fixed = Snapshot.take(fixed.cls,
+                              fixed.properties,
+                              fixed.data,
+                              fixed.coordinates,
+                              [*fixed.fixed, 'n_p'])
         result = run_estimate(fixed, threading.Event())
         self.assertEqual(result['n_p'], fixed.properties['n_p'])
         self.assertNotEqual(result['a_p'], fixed.properties['a_p'])
 
     def test_an_estimate_with_everything_fixed_changes_nothing(self):
         fixed = snapshot()
-        fixed = Snapshot.take(fixed.cls, fixed.properties, fixed.data,
+        fixed = Snapshot.take(fixed.cls,
+                              fixed.properties,
+                              fixed.data,
                               fixed.coordinates,
                               [*fixed.fixed, 'z_p', 'a_p', 'n_p'])
         result = run_estimate(fixed, threading.Event())

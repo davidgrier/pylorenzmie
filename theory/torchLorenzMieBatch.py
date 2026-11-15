@@ -27,18 +27,24 @@ logger.setLevel(logging.WARNING)
 
 
 @triton.jit
-def _batch_lorenzmie_kernel(
-        kx_ptr, ky_ptr, kz_ptr,          # [N, npts] float32, batch-major
-        a_re_ptr, a_im_ptr,               # [N, norders] float32 contiguous
-        b_re_ptr, b_im_ptr,               # [N, norders] float32 contiguous
-        norders: tl.constexpr,
-        e1_re_ptr, e1_im_ptr,             # [N, npts] float32 output
-        e2_re_ptr, e2_im_ptr,
-        e3_re_ptr, e3_im_ptr,
-        npts,
-        bohren: tl.constexpr,
-        cartesian: tl.constexpr,
-        BLOCK: tl.constexpr):
+def _batch_lorenzmie_kernel(kx_ptr,        # [N, npts] float32, batch-major
+                            ky_ptr,
+                            kz_ptr,
+                            a_re_ptr,               # [N, norders] float32
+                            a_im_ptr,
+                            b_re_ptr,               # [N, norders] float32
+                            b_im_ptr,
+                            norders: tl.constexpr,
+                            e1_re_ptr,              # [N, npts] float32, output
+                            e1_im_ptr,
+                            e2_re_ptr,
+                            e2_im_ptr,
+                            e3_re_ptr,
+                            e3_im_ptr,
+                            npts,
+                            bohren: tl.constexpr,
+                            cartesian: tl.constexpr,
+                            BLOCK: tl.constexpr):
     '''Triton kernel: batched Lorenz-Mie scattered field for N particles.
 
     Extends :func:`_lorenzmie_kernel` to a 2-D launch grid:
@@ -279,7 +285,8 @@ class TorchLorenzMieBatch(TorchLorenzMie):
         holograms : numpy.ndarray, shape (B, npts), dtype float64
             Hologram intensities for each of the B inputs.
         '''
-        field = self.batch_field(particle_lists, cartesian=cartesian,
+        field = self.batch_field(particle_lists,
+                                 cartesian=cartesian,
                                  bohren=bohren)
         # field: [B, 3, npts]
         field[:, 0, :] += 1.0 + 0j
@@ -342,11 +349,14 @@ class TorchLorenzMieBatch(TorchLorenzMie):
                 n = ab_np.shape[0]
                 ab_all[b, p, :n] = torch.tensor(
                     ab_np, dtype=torch.complex64, device=self._device)
-                r_p_all[b, p] = torch.tensor(
-                    particle.r_p + particle.r_0,
-                    dtype=torch.float32, device=self._device)
+                r_p_all[b, p] = torch.tensor(particle.r_p + particle.r_0,
+                                             dtype=torch.float32,
+                                             device=self._device)
 
-        field = torch.zeros(B, 3, npts, dtype=torch.complex64,
+        field = torch.zeros(B,
+                            3,
+                            npts,
+                            dtype=torch.complex64,
                             device=self._device)
 
         # Loop over particle slots rather than flattening all B*P at once.
@@ -421,21 +431,24 @@ class TorchLorenzMieBatch(TorchLorenzMie):
 
         BLOCK = 512
         grid  = (triton.cdiv(npts, BLOCK), N)
-        _batch_lorenzmie_kernel[grid](
-            kdr[:, 0, :].contiguous(),
-            kdr[:, 1, :].contiguous(),
-            kdr[:, 2, :].contiguous(),
-            a.real.contiguous(), a.imag.contiguous(),
-            b.real.contiguous(), b.imag.contiguous(),
-            norders,
-            e_re[0], e_im[0],
-            e_re[1], e_im[1],
-            e_re[2], e_im[2],
-            npts,
-            bohren=bohren,
-            cartesian=cartesian,
-            BLOCK=BLOCK,
-        )
+        _batch_lorenzmie_kernel[grid](kdr[:, 0, :].contiguous(),
+                                      kdr[:, 1, :].contiguous(),
+                                      kdr[:, 2, :].contiguous(),
+                                      a.real.contiguous(),
+                                      a.imag.contiguous(),
+                                      b.real.contiguous(),
+                                      b.imag.contiguous(),
+                                      norders,
+                                      e_re[0],
+                                      e_im[0],
+                                      e_re[1],
+                                      e_im[1],
+                                      e_re[2],
+                                      e_im[2],
+                                      npts,
+                                      bohren=bohren,
+                                      cartesian=cartesian,
+                                      BLOCK=BLOCK)
         # [3, N, npts] → [N, 3, npts] to match the expected output shape
         return torch.complex(e_re, e_im).permute(1, 0, 2)
 

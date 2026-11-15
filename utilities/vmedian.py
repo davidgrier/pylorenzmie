@@ -95,6 +95,10 @@ class VMedian:
 
     @property
     def shape(self) -> tuple | None:
+        '''Shape of the frames, or None until the first frame arrives.
+
+        Setting it allocates the buffer and discards the frames in it.
+        '''
         return self._shape
 
     @shape.setter
@@ -111,6 +115,7 @@ class VMedian:
 
     @property
     def order(self) -> int:
+        '''Order of the filter: a median of medians, nested this deep.'''
         return self._order
 
     @order.setter

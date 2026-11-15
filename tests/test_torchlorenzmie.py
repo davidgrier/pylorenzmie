@@ -71,14 +71,16 @@ class TestTorchLorenzMie(unittest.TestCase):
                        dict(cartesian=False, bohren=False)):
             with self.subTest(**kwargs):
                 f = self.model.field(**kwargs).cpu().numpy()
-                np.testing.assert_allclose(f, self.ref.field(**kwargs),
+                np.testing.assert_allclose(f,
+                                           self.ref.field(**kwargs),
                                            atol=ATOL)
 
     def test_particle_below_focal_plane(self) -> None:
         for model in (self.model, self.ref):
             model.particle.z_p = -150.
         np.testing.assert_allclose(self.model.hologram(),
-                                   self.ref.hologram(), atol=ATOL)
+                                   self.ref.hologram(),
+                                   atol=ATOL)
 
     def test_cluster_matches_numpy(self) -> None:
         from pylorenzmie.theory import Cluster, Sphere
@@ -87,7 +89,8 @@ class TestTorchLorenzMie(unittest.TestCase):
         for model in (self.model, self.ref):
             model.particle = Cluster(particles=list(particles))
         np.testing.assert_allclose(self.model.hologram(),
-                                   self.ref.hologram(), atol=ATOL)
+                                   self.ref.hologram(),
+                                   atol=ATOL)
 
     def test_repeated_calls_follow_the_particle(self) -> None:
         # nothing stale may survive from one call to the next
@@ -98,7 +101,8 @@ class TestTorchLorenzMie(unittest.TestCase):
                     a_p=rng.uniform(.3, 1.2), n_p=rng.uniform(1.4, 1.7))
             self.ref.particle.properties = self.model.particle.properties
             np.testing.assert_allclose(self.model.hologram(),
-                                       self.ref.hologram(), atol=1e-3)
+                                       self.ref.hologram(),
+                                       atol=1e-3)
 
     def test_aberrated_matches_numpy(self) -> None:
         from pylorenzmie.theory import Aberrated
@@ -110,7 +114,8 @@ class TestTorchLorenzMie(unittest.TestCase):
         for model in (torch_model, numpy_model):
             model.particle.properties = self.model.particle.properties
         np.testing.assert_allclose(torch_model.hologram(),
-                                   numpy_model.hologram(), atol=ATOL)
+                                   numpy_model.hologram(),
+                                   atol=ATOL)
 
     def test_single_particle_fast_path_matches_the_field_route(self) -> None:
         # on Apple GPUs a single particle's hologram is formed in the kernel
@@ -118,8 +123,10 @@ class TestTorchLorenzMie(unittest.TestCase):
             fast = self.model.hologram(**kwargs)
             field = self.model.field(**kwargs).cpu()
             slow = (field.real**2 + field.imag**2).sum(0) + 2*field[0].real + 1
-            np.testing.assert_allclose(fast, slow.double().numpy(),
-                                       atol=1e-5, err_msg=str(kwargs))
+            np.testing.assert_allclose(fast,
+                                       slow.double().numpy(),
+                                       atol=1e-5,
+                                       err_msg=str(kwargs))
 
     def _aberrated_pair(self, **aberrations):
         from pylorenzmie.theory import Aberrated
@@ -138,8 +145,7 @@ class TestTorchLorenzMie(unittest.TestCase):
         many of them; a fixed coefficient would give an enormous phase
         that float32 cannot resolve.
         '''
-        numpy_model = self._aberrated_pair(**{name: 1e-9}, x_c=26.,
-                                           y_c=26.)[1]
+        numpy_model = self._aberrated_pair(**{name: 1e-9}, x_c=26., y_c=26.)[1]
         r_p = numpy_model.particle.r_p
         unit = np.abs(np.angle(numpy_model._aberration(r_p))).max() / 1e-9
         return peak / unit
@@ -155,7 +161,8 @@ class TestTorchLorenzMie(unittest.TestCase):
                     np.abs(numpy_model.hologram() -
                            self.ref.hologram()).max(), 100 * ATOL)
                 np.testing.assert_allclose(torch_model.hologram(),
-                                           numpy_model.hologram(), atol=ATOL)
+                                           numpy_model.hologram(),
+                                           atol=ATOL)
 
     def test_piston_matches_numpy(self) -> None:
         for kwargs in (dict(piston=.7), dict(piston=-1., spherical=3.)):
@@ -165,15 +172,20 @@ class TestTorchLorenzMie(unittest.TestCase):
                     np.abs(numpy_model.hologram() -
                            self.ref.hologram()).max(), 100 * ATOL)
                 np.testing.assert_allclose(torch_model.hologram(),
-                                           numpy_model.hologram(), atol=ATOL)
+                                           numpy_model.hologram(),
+                                           atol=ATOL)
 
     def test_aberration_center_on_the_particle(self) -> None:
         x_p, y_p = self.model.particle.x_p, self.model.particle.y_p
-        torch_model, numpy_model = self._aberrated_pair(
-            spherical=2., coma=.5, astigmatism=.3, distortion=.2,
-            x_c=x_p, y_c=y_p)
+        torch_model, numpy_model = self._aberrated_pair(spherical=2.,
+                                                        coma=.5,
+                                                        astigmatism=.3,
+                                                        distortion=.2,
+                                                        x_c=x_p,
+                                                        y_c=y_p)
         np.testing.assert_allclose(torch_model.hologram(),
-                                   numpy_model.hologram(), atol=ATOL)
+                                   numpy_model.hologram(),
+                                   atol=ATOL)
 
     def test_aberrated_particle_below_focal_plane(self) -> None:
         torch_model, numpy_model = self._aberrated_pair(
@@ -181,7 +193,8 @@ class TestTorchLorenzMie(unittest.TestCase):
         for model in (torch_model, numpy_model):
             model.particle.z_p = -150.
         np.testing.assert_allclose(torch_model.hologram(),
-                                   numpy_model.hologram(), atol=ATOL)
+                                   numpy_model.hologram(),
+                                   atol=ATOL)
 
     def test_aberrated_field_matches_numpy(self) -> None:
         torch_model, numpy_model = self._aberrated_pair(
@@ -190,16 +203,21 @@ class TestTorchLorenzMie(unittest.TestCase):
             with self.subTest(**kwargs):
                 np.testing.assert_allclose(
                     torch_model.field(**kwargs).cpu().numpy(),
-                    numpy_model.field(**kwargs), atol=ATOL)
+                    numpy_model.field(**kwargs),
+                    atol=ATOL,
+                )
 
     def test_aberrated_hologram_matches_its_field_route(self) -> None:
         # on Apple GPUs hologram() forms the intensity in the kernel
-        torch_model, _ = self._aberrated_pair(spherical=2., coma=.5,
-                                              x_c=10., y_c=50.)
+        torch_model, _ = self._aberrated_pair(spherical=2.,
+                                              coma=.5,
+                                              x_c=10.,
+                                              y_c=50.)
         field = torch_model.field().cpu()
         slow = (field.real**2 + field.imag**2).sum(0) + 2*field[0].real + 1
         np.testing.assert_allclose(torch_model.hologram(),
-                                   slow.double().numpy(), atol=1e-5)
+                                   slow.double().numpy(),
+                                   atol=1e-5)
 
     def test_unsupported_device_raises(self) -> None:
         with self.assertRaises(ValueError):

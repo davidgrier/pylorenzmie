@@ -70,12 +70,12 @@ class TestFeature(unittest.TestCase):
     def test_estimate_uses_coordinates_for_position(self):
         '''estimate() places x_p/y_p at center of hologram coordinates.'''
         self.feature.estimate()
-        self.assertAlmostEqual(
-            self.feature.particle.x_p,
-            float(self.feature.coordinates[0].mean()), places=5)
-        self.assertAlmostEqual(
-            self.feature.particle.y_p,
-            float(self.feature.coordinates[1].mean()), places=5)
+        self.assertAlmostEqual(self.feature.particle.x_p,
+                               float(self.feature.coordinates[0].mean()),
+                               places=5)
+        self.assertAlmostEqual(self.feature.particle.y_p,
+                               float(self.feature.coordinates[1].mean()),
+                               places=5)
 
     def test_predicted_shape(self):
         '''predicted() returns an array with the same shape as the feature.'''

@@ -291,9 +291,9 @@ class TorchLorenzMie(LorenzMie):
         logger.debug('Allocating torch buffers')
         shape = self.coordinates.shape
         npts = shape[1]
-        self._coords   = torch.tensor(
-            self.coordinates, dtype=torch.float32,
-            device=self._device).contiguous()
+        self._coords   = torch.tensor(self.coordinates,
+                                      dtype=torch.float32,
+                                      device=self._device).contiguous()
         if self._device.type == 'mps':
             self._metal_out = torch.zeros(
                 shape, dtype=torch.complex64, device=self._device)
@@ -394,7 +394,9 @@ class TorchLorenzMie(LorenzMie):
         for the few thousand pixels of a masked fit.
         '''
         self._release_host_tables()
-        self._scattered_field_metal(self.particle[0], cartesian, bohren,
+        self._scattered_field_metal(self.particle[0],
+                                    cartesian,
+                                    bohren,
                                     intensity=True)
         result = self._metal_intensity.cpu().double().numpy()
         self._release_host_tables()           # .cpu() has synchronized
@@ -443,7 +445,9 @@ class TorchLorenzMie(LorenzMie):
         self._host_tables.append(host)
         table = self._metal_table
         if table is None or table.shape[0] < norders:
-            table = torch.zeros(max(norders, 128), 8, dtype=torch.float32,
+            table = torch.zeros(max(norders, 128),
+                                8,
+                                dtype=torch.float32,
                                 device=self._device)
             self._metal_table = table
         table[:norders].copy_(torch.from_numpy(host), non_blocking=True)
@@ -458,14 +462,25 @@ class TorchLorenzMie(LorenzMie):
             self._host_tables.append(coefficients)
         out = self._metal_out
         npts = self._coords.shape[1]
-        _metal().lorenzmie(
-            self._coords, table, torch.view_as_real(out),
-            npts, norders, int(cartesian), int(bohren),
-            k, x, y, z, phase.real, phase.imag,
-            self._metal_intensity, int(intensity),
-            self._metal_aberration, int(coefficients is not None),
-            float(self.instrument.n_m),
-            threads=npts)
+        _metal().lorenzmie(self._coords,
+                           table,
+                           torch.view_as_real(out),
+                           npts,
+                           norders,
+                           int(cartesian),
+                           int(bohren),
+                           k,
+                           x,
+                           y,
+                           z,
+                           phase.real,
+                           phase.imag,
+                           self._metal_intensity,
+                           int(intensity),
+                           self._metal_aberration,
+                           int(coefficients is not None),
+                           float(self.instrument.n_m),
+                           threads=npts)
         return out
 
     def field(self,
@@ -537,19 +552,24 @@ class TorchLorenzMie(LorenzMie):
 
         BLOCK = 512
         grid  = (triton.cdiv(npts, BLOCK),)
-        _lorenzmie_kernel[grid](
-            kdr[0].contiguous(), kdr[1].contiguous(), kdr[2].contiguous(),
-            a.real.contiguous(), a.imag.contiguous(),
-            b.real.contiguous(), b.imag.contiguous(),
-            norders,
-            self._tri_e_re[0], self._tri_e_im[0],
-            self._tri_e_re[1], self._tri_e_im[1],
-            self._tri_e_re[2], self._tri_e_im[2],
-            npts,
-            bohren=bohren,
-            cartesian=cartesian,
-            BLOCK=BLOCK,
-        )
+        _lorenzmie_kernel[grid](kdr[0].contiguous(),
+                                kdr[1].contiguous(),
+                                kdr[2].contiguous(),
+                                a.real.contiguous(),
+                                a.imag.contiguous(),
+                                b.real.contiguous(),
+                                b.imag.contiguous(),
+                                norders,
+                                self._tri_e_re[0],
+                                self._tri_e_im[0],
+                                self._tri_e_re[1],
+                                self._tri_e_im[1],
+                                self._tri_e_re[2],
+                                self._tri_e_im[2],
+                                npts,
+                                bohren=bohren,
+                                cartesian=cartesian,
+                                BLOCK=BLOCK)
         return torch.complex(self._tri_e_re, self._tri_e_im)
 
 

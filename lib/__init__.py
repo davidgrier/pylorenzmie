@@ -5,9 +5,11 @@ from . import Azimuthal
 
 
 def coordinates(*args, **kwargs):
+    '''Deprecated alias of :func:`meshgrid`.'''
     from warnings import warn
     warn('coordinates() is deprecated; use meshgrid() from pylorenzmie.lib.',
-         DeprecationWarning, stacklevel=2)
+         DeprecationWarning,
+         stacklevel=2)
     return meshgrid(*args, **kwargs)
 
 

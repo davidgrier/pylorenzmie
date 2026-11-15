@@ -201,7 +201,8 @@ def evaluate(pipe: Pipeline, X: np.ndarray, y: np.ndarray) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--regen', action='store_true',
+    parser.add_argument('--regen',
+                        action='store_true',
                         help='Force regeneration of training data')
     args = parser.parse_args()
 

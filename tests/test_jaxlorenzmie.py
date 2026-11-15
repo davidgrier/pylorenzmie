@@ -124,8 +124,13 @@ class TestJaxLorenzMie(unittest.TestCase):
 class TestJaxAberrated(unittest.TestCase):
     '''The JAX kernel must include the aberrations, not ignore them.'''
 
-    ALL = dict(defocus=0.5, spherical=2., coma=0.3, astigmatism=0.2,
-               distortion=0.1, x_c=10., y_c=-5.)
+    ALL = dict(defocus=0.5,
+               spherical=2.,
+               coma=0.3,
+               astigmatism=0.2,
+               distortion=0.1,
+               x_c=10.,
+               y_c=-5.)
 
     def make(self, base, **aberrations):
         from pylorenzmie.theory import Aberrated, Sphere
@@ -191,7 +196,9 @@ class TestJaxAberrated(unittest.TestCase):
                 reference.particle, name) + step}
             fd = (up - down) / (2*step)
             self.assertTrue(np.isfinite(jac[name]).all(), name)
-            np.testing.assert_allclose(jac[name], fd, rtol=1e-4,
+            np.testing.assert_allclose(jac[name],
+                                       fd,
+                                       rtol=1e-4,
                                        atol=1e-5 * np.abs(fd).max(),
                                        err_msg=name)
 
@@ -215,14 +222,18 @@ class TestJaxAberrated(unittest.TestCase):
         def fit(exclude):
             mask = Mask(fraction=1., exclude=exclude)
             optimizer = Optimizer(model=model, mask=mask)
-            model.particle.properties = dict(truth, z_p=156., a_p=0.52,
+            model.particle.properties = dict(truth,
+                                             z_p=156.,
+                                             a_p=0.52,
                                              n_p=1.51)
             return optimizer.optimize(Hologram(image))
 
         good = fit(bad)
         for name, tol in (('x_p', 0.05), ('y_p', 0.05), ('z_p', 1.),
                           ('a_p', 0.01), ('n_p', 0.005)):
-            self.assertAlmostEqual(good[name], truth[name], delta=tol,
+            self.assertAlmostEqual(good[name],
+                                   truth[name],
+                                   delta=tol,
                                    msg=name)
         spoiled = fit(None)
         self.assertGreater(abs(spoiled['n_p'] - truth['n_p']), 0.005)

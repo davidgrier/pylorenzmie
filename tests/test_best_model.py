@@ -77,7 +77,8 @@ class TestBackendFallback(unittest.TestCase):
     def test_a_broken_numba_gives_the_numpy_calculator_and_a_warning(self):
         from unittest import mock
         import pylorenzmie.theory as theory
-        with mock.patch.object(theory, '_load',
+        with mock.patch.object(theory,
+                               '_load',
                                side_effect=RuntimeError('broken')):
             with self.assertLogs('pylorenzmie.theory', level='WARNING'):
                 self.assertIs(theory._select_backend(), BaseLorenzMie)
@@ -85,7 +86,8 @@ class TestBackendFallback(unittest.TestCase):
     def test_a_requested_backend_that_is_broken_raises(self):
         from unittest import mock
         import pylorenzmie.theory as theory
-        with mock.patch.object(theory, '_load',
+        with mock.patch.object(theory,
+                               '_load',
                                side_effect=RuntimeError('broken')):
             with self.assertRaises(ImportError):
                 theory._select_backend('numba')
@@ -128,14 +130,17 @@ class TestAberratedSelection(unittest.TestCase):
         import numpy as np
         import pylorenzmie.theory as theory
         from pylorenzmie.theory.Aberrated import AberratedLorenzMie as numpy
-        kwargs = dict(spherical=2., defocus=.5, piston=.3,
+        kwargs = dict(spherical=2.,
+                      defocus=.5,
+                      piston=.3,
                       coordinates=BaseLorenzMie.meshgrid((40, 40)))
         a, b = theory.AberratedLorenzMie(**kwargs), numpy(**kwargs)
         for m in (a, b):
             m.particle.r_p = [20., 20., 150.]
         # the torch calculator works in single precision
         single = 'torch' in theory.LorenzMie.__name__.lower()
-        np.testing.assert_allclose(a.hologram(), b.hologram(),
+        np.testing.assert_allclose(a.hologram(),
+                                   b.hologram(),
                                    atol=1e-3 if single else 1e-9)
 
 

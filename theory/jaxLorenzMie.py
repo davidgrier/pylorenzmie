@@ -169,7 +169,8 @@ def _jax_lorenzmie(ab, kdr, bohren=True):
     # it is safe, and selecting the constant branch (gradient 0) at the
     # on-axis pixel, keeps the analytical Jacobian finite.
     rhosq = kx**2 + ky**2
-    krho = jnp.where(rhosq > 0., jnp.sqrt(jnp.where(rhosq > 0., rhosq, 1.)),
+    krho = jnp.where(rhosq > 0.,
+                     jnp.sqrt(jnp.where(rhosq > 0., rhosq, 1.)),
                      0.)
     kr = jnp.hypot(krho, kz)
     # Compute cosφ/sinφ directly to avoid arctan2 singularity at kx=ky=0.
@@ -286,8 +287,17 @@ def _jax_aberration_phase(r_p, coordinates, n_m, coefficients):
             (scale**3 * R))
 
 
-def _jax_hologram_core(r_p, a_p, n_p, k_p, k, n_m, wavelength,
-                       coordinates, nmax, aberration=None, piston=0.):
+def _jax_hologram_core(r_p,
+                       a_p,
+                       n_p,
+                       k_p,
+                       k,
+                       n_m,
+                       wavelength,
+                       coordinates,
+                       nmax,
+                       aberration=None,
+                       piston=0.):
     '''Pure JAX hologram, differentiable w.r.t. all non-static args.
 
     Parameters

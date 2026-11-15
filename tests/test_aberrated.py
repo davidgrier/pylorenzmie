@@ -15,8 +15,11 @@ class TestAberratedLorenzMie(unittest.TestCase):
         self.xp = self.yp = (self.n - 1) / 2.
         self.zp = 100.
         coordinates = LorenzMie.meshgrid((self.n, self.n))
-        self.particle = Sphere(a_p=0.5, n_p=1.5,
-                               x_p=self.xp, y_p=self.yp, z_p=self.zp)
+        self.particle = Sphere(a_p=0.5,
+                               n_p=1.5,
+                               x_p=self.xp,
+                               y_p=self.yp,
+                               z_p=self.zp)
         self.coordinates = coordinates
         self.x = coordinates[0]
         self.y = coordinates[1]
@@ -170,8 +173,11 @@ class TestAberratedLorenzMie(unittest.TestCase):
         for name in c:
             m = self.mask(**{name: c[name]}, x_c=self.xp, y_c=self.yp - d)
             self.assertGreater(np.abs(expected[name]).max(), 0.1, name)
-            np.testing.assert_allclose(np.angle(m), expected[name],
-                                       rtol=1e-3, atol=1e-4, err_msg=name)
+            np.testing.assert_allclose(np.angle(m),
+                                       expected[name],
+                                       rtol=1e-3,
+                                       atol=1e-4,
+                                       err_msg=name)
 
     def test_pickle_class(self):
         cls = pickle.loads(pickle.dumps(AberratedLorenzMie))
@@ -186,10 +192,8 @@ class TestAberratedLorenzMie(unittest.TestCase):
         # +x is then a counterclockwise quarter turn of the array.
         d = 20.
         for name in ('coma', 'astigmatism', 'distortion'):
-            m1 = self.mask(**{name: 0.5},
-                           x_c=self.xp, y_c=self.yp - d)
-            m2 = self.mask(**{name: 0.5},
-                           x_c=self.xp - d, y_c=self.yp)
+            m1 = self.mask(**{name: 0.5}, x_c=self.xp, y_c=self.yp - d)
+            m2 = self.mask(**{name: 0.5}, x_c=self.xp - d, y_c=self.yp)
             a1 = m1.reshape(self.n, self.n)
             a2 = m2.reshape(self.n, self.n)
             self.assertTrue(np.allclose(np.rot90(a1, k=1), a2),
@@ -202,7 +206,10 @@ class TestAberratedKernelHooks(unittest.TestCase):
     def setUp(self):
         self.model = AberratedLorenzMie(coordinates=LorenzMie.meshgrid(
             (32, 32)))
-        self.model.particle = Sphere(a_p=0.75, n_p=1.45, x_p=16., y_p=16.,
+        self.model.particle = Sphere(a_p=0.75,
+                                     n_p=1.45,
+                                     x_p=16.,
+                                     y_p=16.,
                                      z_p=120.)
 
     def test_no_coefficients_without_aberrations(self):

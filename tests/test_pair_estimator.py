@@ -13,9 +13,16 @@ class TestPairEstimator(unittest.TestCase):
         shape = (101, 101)
         self.model = LorenzMie(particle=Pair())
         self.model.coordinates = LMObject.meshgrid(shape)
-        self.model.particle.properties = dict(
-            x_p1=35., y_p1=50., z_p1=180., a_p1=0.6, n_p1=1.45,
-            x_p2=65., y_p2=50., z_p2=220., a_p2=0.7, n_p2=1.5)
+        self.model.particle.properties = dict(x_p1=35.,
+                                              y_p1=50.,
+                                              z_p1=180.,
+                                              a_p1=0.6,
+                                              n_p1=1.45,
+                                              x_p2=65.,
+                                              y_p2=50.,
+                                              z_p2=220.,
+                                              a_p2=0.7,
+                                              n_p2=1.5)
         self.hologram = Hologram(self.model.hologram().reshape(shape))
         self.centers = ((35., 50.), (65., 50.))
         self.estimator = PairEstimator(model=self.model, seed=0)

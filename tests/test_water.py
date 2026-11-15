@@ -29,11 +29,13 @@ class TestWater(unittest.TestCase):
     def test_refractive_index_check_value_of_the_iapws_release(self):
         # 0.2265 um and 25 C: n = 1.39277824 for the density 997.047435 that
         # the release uses; ours is 0.002 kg/m^3 different
-        self.assertAlmostEqual(refractiveindex(0.2265, 25.), 1.39277824,
+        self.assertAlmostEqual(refractiveindex(0.2265, 25.),
+                               1.39277824,
                                delta=2e-6)
 
     def test_refractive_index_at_the_sodium_line(self):
-        self.assertAlmostEqual(refractiveindex(0.5893, 20.), 1.33335,
+        self.assertAlmostEqual(refractiveindex(0.5893, 20.),
+                               1.33335,
                                delta=2e-5)
 
     def test_dispersion(self):

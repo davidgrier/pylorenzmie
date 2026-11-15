@@ -266,7 +266,8 @@ def Aberrated(base_class: type) -> type:
             if hasattr(self, '_device'):
                 import torch
                 # single precision: Apple GPUs have no complex128
-                return torch.as_tensor(mask, dtype=torch.complex64,
+                return torch.as_tensor(mask,
+                                       dtype=torch.complex64,
                                        device=self._device)
             return mask
 

@@ -264,7 +264,8 @@ class TestOptimizerAnalyticalJac(unittest.TestCase):
                    return_value=self._mock_result_for(6)) as mock_ls:
             self.optimizer.optimize(self.hologram)
         _, kwargs = mock_ls.call_args
-        self.assertNotIn('jac', kwargs,
+        self.assertNotIn('jac',
+                         kwargs,
                          'expected no jac kwarg when k_p not covered')
 
     def test_analytical_jac_shape(self):

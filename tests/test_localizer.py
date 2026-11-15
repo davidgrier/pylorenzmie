@@ -89,8 +89,7 @@ class TestLocalizerBoxes(unittest.TestCase):
                            np.arange(ny, dtype=float))
         model = LorenzMie(coordinates=np.stack(
             [x.ravel(), y.ravel(), np.zeros(x.size)]))
-        model.particle = Sphere(a_p=a_p, n_p=1.45, x_p=x_p, y_p=y_p,
-                                z_p=z_p)
+        model.particle = Sphere(a_p=a_p, n_p=1.45, x_p=x_p, y_p=y_p, z_p=z_p)
         return model.hologram().reshape(shape)
 
     def test_extent_counts_two_crossings_per_fringe(self):
@@ -181,7 +180,8 @@ class TestLocalizerBoxes(unittest.TestCase):
     def test_check_is_called_once_per_feature_and_can_stop_the_search(self):
         noisy = 1. + np.random.default_rng(1).normal(0., 0.03, (300, 300))
         calls = []
-        result = Localizer().localize(noisy, maxfeatures=4,
+        result = Localizer().localize(noisy,
+                                      maxfeatures=4,
                                       check=lambda: calls.append(1))
         self.assertEqual(len(calls), len(result))
 

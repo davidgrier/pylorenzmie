@@ -93,8 +93,12 @@ class TestParameterWidget(unittest.TestCase):
 
     def test_settings_round_trip(self):
         widget = ParameterWidget()
-        settings = dict(text='radius', range=[0.5, 5.], value=1.5, step=0.25,
-                        fixed=True, decimals=3)
+        settings = dict(text='radius',
+                        range=[0.5, 5.],
+                        value=1.5,
+                        step=0.25,
+                        fixed=True,
+                        decimals=3)
         widget.setSettings(settings)
         out = widget.settings()
         for key, value in settings.items():
@@ -188,7 +192,8 @@ class TestPanelAndSession(unittest.TestCase):
     def test_editing_a_control_sets_the_parameter(self):
         self.panel.a_p.setValue(1.25)
         self.assertAlmostEqual(self.session.get('a_p'), 1.25, delta=0.01)
-        self.assertAlmostEqual(self.session.model.particle.a_p, 1.25,
+        self.assertAlmostEqual(self.session.model.particle.a_p,
+                               1.25,
                                delta=0.01)
 
     def test_a_change_in_the_session_moves_the_control(self):

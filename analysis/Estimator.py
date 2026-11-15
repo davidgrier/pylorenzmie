@@ -117,9 +117,12 @@ class Estimator(BaseEstimator):
     @BaseEstimator.properties.getter
     def properties(self) -> Properties:
         '''Estimated particle properties.'''
-        return dict(x_p=self.x_p, y_p=self.y_p,
-                    z_p=self.z_p, a_p=self.a_p,
-                    n_p=self.n_p, k_p=self.k_p)
+        return dict(x_p=self.x_p,
+                    y_p=self.y_p,
+                    z_p=self.z_p,
+                    a_p=self.a_p,
+                    n_p=self.n_p,
+                    k_p=self.k_p)
 
     def _initialize(self, hologram: Hologram) -> None:
         self._k = self.instrument.wavenumber()
@@ -263,6 +266,7 @@ class Estimator(BaseEstimator):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         from time import perf_counter
         from pylorenzmie.utilities import example_hologram
 

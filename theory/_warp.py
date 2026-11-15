@@ -66,23 +66,38 @@ def _p(x: float, y: float, z2: float, n_m: float) -> Pair:
 
 
 @njit(inline='always', fastmath=True, cache=True)
-def _g_defocus(x: float, y: float, z2: float, n_m: float,
-               q0: float, q1: float, s: float) -> Pair:
+def _g_defocus(x: float,
+               y: float,
+               z2: float,
+               n_m: float,
+               q0: float,
+               q1: float,
+               s: float) -> Pair:
     px, py = _p(x, y, z2, n_m)
     return 2. * px, 2. * py
 
 
 @njit(inline='always', fastmath=True, cache=True)
-def _g_spherical(x: float, y: float, z2: float, n_m: float,
-                 q0: float, q1: float, s: float) -> Pair:
+def _g_spherical(x: float,
+                 y: float,
+                 z2: float,
+                 n_m: float,
+                 q0: float,
+                 q1: float,
+                 s: float) -> Pair:
     px, py = _p(x, y, z2, n_m)
     p2 = px * px + py * py
     return 4. * p2 * px, 4. * p2 * py
 
 
 @njit(inline='always', fastmath=True, cache=True)
-def _g_coma(x: float, y: float, z2: float, n_m: float,
-            q0: float, q1: float, s: float) -> Pair:
+def _g_coma(x: float,
+            y: float,
+            z2: float,
+            n_m: float,
+            q0: float,
+            q1: float,
+            s: float) -> Pair:
     px, py = _p(x, y, z2, n_m)
     p2 = px * px + py * py
     e0 = q0 + s * x
@@ -92,8 +107,13 @@ def _g_coma(x: float, y: float, z2: float, n_m: float,
 
 
 @njit(inline='always', fastmath=True, cache=True)
-def _g_astigmatism(x: float, y: float, z2: float, n_m: float,
-                   q0: float, q1: float, s: float) -> Pair:
+def _g_astigmatism(x: float,
+                   y: float,
+                   z2: float,
+                   n_m: float,
+                   q0: float,
+                   q1: float,
+                   s: float) -> Pair:
     px, py = _p(x, y, z2, n_m)
     e0 = q0 + s * x
     e1 = q1 + s * y
@@ -102,8 +122,13 @@ def _g_astigmatism(x: float, y: float, z2: float, n_m: float,
 
 
 @njit(inline='always', fastmath=True, cache=True)
-def _g_fieldcurvature(x: float, y: float, z2: float, n_m: float,
-                      q0: float, q1: float, s: float) -> Pair:
+def _g_fieldcurvature(x: float,
+                      y: float,
+                      z2: float,
+                      n_m: float,
+                      q0: float,
+                      q1: float,
+                      s: float) -> Pair:
     px, py = _p(x, y, z2, n_m)
     e0 = q0 + s * x
     e1 = q1 + s * y
@@ -112,8 +137,13 @@ def _g_fieldcurvature(x: float, y: float, z2: float, n_m: float,
 
 
 @njit(inline='always', fastmath=True, cache=True)
-def _g_distortion(x: float, y: float, z2: float, n_m: float,
-                  q0: float, q1: float, s: float) -> Pair:
+def _g_distortion(x: float,
+                  y: float,
+                  z2: float,
+                  n_m: float,
+                  q0: float,
+                  q1: float,
+                  s: float) -> Pair:
     e0 = q0 + s * x
     e1 = q1 + s * y
     e2 = e0 * e0 + e1 * e1
@@ -129,9 +159,16 @@ def _accumulator(generator):
     '''
     @njit(fastmath=True, cache=True)
     def accumulate(alpha: float,
-                   x: Vector, y: Vector, kx: Vector, ky: Vector,
-                   n: int, z2: float, n_m: float,
-                   q0: float, q1: float, s: float) -> None:
+                   x: Vector,
+                   y: Vector,
+                   kx: Vector,
+                   ky: Vector,
+                   n: int,
+                   z2: float,
+                   n_m: float,
+                   q0: float,
+                   q1: float,
+                   s: float) -> None:
         for i in range(n):
             gx, gy = generator(x[i], y[i], z2, n_m, q0, q1, s)
             kx[i] += alpha * gx
@@ -149,10 +186,18 @@ _accumulate_distortion = _accumulator(_g_distortion)
 
 
 @njit(fastmath=True, cache=True)
-def _stage(kinds: Kinds, alphas: Vector,
-           x: Vector, y: Vector, kx: Vector, ky: Vector,
-           n: int, z2: float, n_m: float,
-           q0: float, q1: float, s: float) -> None:
+def _stage(kinds: Kinds,
+           alphas: Vector,
+           x: Vector,
+           y: Vector,
+           kx: Vector,
+           ky: Vector,
+           n: int,
+           z2: float,
+           n_m: float,
+           q0: float,
+           q1: float,
+           s: float) -> None:
     '''kx, ky = sum_n alpha_n g_n(x, y) for the first n points.'''
     kx[:n] = 0.
     ky[:n] = 0.
@@ -174,10 +219,18 @@ def _stage(kinds: Kinds, alphas: Vector,
 
 
 @njit(fastmath=True, cache=True)
-def _summed_block(kinds: Kinds, alphas: Vector,
-                  x: Vector, y: Vector, lo: int, hi: int,
-                  nsteps: int, z2: float, n_m: float,
-                  q0: float, q1: float, s: float) -> tuple[Vector, Vector]:
+def _summed_block(kinds: Kinds,
+                  alphas: Vector,
+                  x: Vector,
+                  y: Vector,
+                  lo: int,
+                  hi: int,
+                  nsteps: int,
+                  z2: float,
+                  n_m: float,
+                  q0: float,
+                  q1: float,
+                  s: float) -> tuple[Vector, Vector]:
     '''Runge-Kutta flow of points lo..hi through the summed generator.'''
     n = hi - lo
     xs = x[lo:hi].copy()
@@ -218,9 +271,16 @@ def _make(parallel: bool) -> tuple:
     loop = prange if parallel else range
 
     @njit(fastmath=True, parallel=parallel, cache=True)
-    def composed(x: Vector, y: Vector, kinds: Kinds, alphas: Vector,
-                 nsteps: int, z_p: float, n_m: float,
-                 q0: float, q1: float, s: float) -> tuple[Vector, Vector]:
+    def composed(x: Vector,
+                 y: Vector,
+                 kinds: Kinds,
+                 alphas: Vector,
+                 nsteps: int,
+                 z_p: float,
+                 n_m: float,
+                 q0: float,
+                 q1: float,
+                 s: float) -> tuple[Vector, Vector]:
         '''Points through the flows, the last listed operator first.
 
         The flow of one generator with coefficient alpha is the summed
@@ -238,17 +298,33 @@ def _make(parallel: bool) -> tuple:
             xs = x[lo:hi].copy()
             ys = y[lo:hi].copy()
             for j in range(kinds.size - 1, -1, -1):
-                xs, ys = _summed_block(kinds[j:j + 1], alphas[j:j + 1],
-                                       xs, ys, 0, hi - lo, nsteps,
-                                       z2, n_m, q0, q1, s)
+                xs, ys = _summed_block(kinds[j:j + 1],
+                                       alphas[j:j + 1],
+                                       xs,
+                                       ys,
+                                       0,
+                                       hi - lo,
+                                       nsteps,
+                                       z2,
+                                       n_m,
+                                       q0,
+                                       q1,
+                                       s)
             ox[lo:hi] = xs
             oy[lo:hi] = ys
         return ox, oy
 
     @njit(fastmath=True, parallel=parallel, cache=True)
-    def summed(x: Vector, y: Vector, kinds: Kinds, alphas: Vector,
-               nsteps: int, z_p: float, n_m: float,
-               q0: float, q1: float, s: float) -> tuple[Vector, Vector]:
+    def summed(x: Vector,
+               y: Vector,
+               kinds: Kinds,
+               alphas: Vector,
+               nsteps: int,
+               z_p: float,
+               n_m: float,
+               q0: float,
+               q1: float,
+               s: float) -> tuple[Vector, Vector]:
         '''Points through one flow of the summed generator.'''
         n = x.size
         ox = np.empty(n)
@@ -258,8 +334,18 @@ def _make(parallel: bool) -> tuple:
         for b in loop(nblocks):
             lo = b * BLOCK
             hi = min(lo + BLOCK, n)
-            xs, ys = _summed_block(kinds, alphas, x, y, lo, hi, nsteps,
-                                   z2, n_m, q0, q1, s)
+            xs, ys = _summed_block(kinds,
+                                   alphas,
+                                   x,
+                                   y,
+                                   lo,
+                                   hi,
+                                   nsteps,
+                                   z2,
+                                   n_m,
+                                   q0,
+                                   q1,
+                                   s)
             ox[lo:hi] = xs
             oy[lo:hi] = ys
         return ox, oy

@@ -105,9 +105,16 @@ class TestFrame(unittest.TestCase):
         frame.instrument.magnification = 0.048
         frame.instrument.n_m = 1.34
         truth = LorenzMie(
-            particle=Pair(x_p1=85., y_p1=85., z_p1=250., a_p1=0.5,
-                          n_p1=1.42, x_p2=115., y_p2=115., z_p2=250.,
-                          a_p2=0.6, n_p2=1.40),
+            particle=Pair(x_p1=85.,
+                          y_p1=85.,
+                          z_p1=250.,
+                          a_p1=0.5,
+                          n_p1=1.42,
+                          x_p2=115.,
+                          y_p2=115.,
+                          z_p2=250.,
+                          a_p2=0.6,
+                          n_p2=1.40),
             instrument=frame.instrument)
         truth.coordinates = LorenzMie.meshgrid((201, 201))
         frame.data = truth.hologram().reshape(201, 201)

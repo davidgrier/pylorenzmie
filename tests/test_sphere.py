@@ -83,22 +83,28 @@ class TestSphere(unittest.TestCase):
     # --- mie_coefficients ---
 
     def test_mie_coefficients_shape(self):
-        ab = Sphere.mie_coefficients(
-            self.sphere.a_p, self.sphere.n_p, self.sphere.k_p,
-            self.n_m, self.wavelength)
+        ab = Sphere.mie_coefficients(self.sphere.a_p,
+                                     self.sphere.n_p,
+                                     self.sphere.k_p,
+                                     self.n_m,
+                                     self.wavelength)
         self.assertEqual(ab.ndim, 2)
         self.assertEqual(ab.shape[1], 2)
 
     def test_mie_coefficients_dtype(self):
-        ab = Sphere.mie_coefficients(
-            self.sphere.a_p, self.sphere.n_p, self.sphere.k_p,
-            self.n_m, self.wavelength)
+        ab = Sphere.mie_coefficients(self.sphere.a_p,
+                                     self.sphere.n_p,
+                                     self.sphere.k_p,
+                                     self.n_m,
+                                     self.wavelength)
         self.assertEqual(ab.dtype, np.complex128)
 
     def test_mie_coefficients_zeroth_order(self):
-        ab = Sphere.mie_coefficients(
-            self.sphere.a_p, self.sphere.n_p, self.sphere.k_p,
-            self.n_m, self.wavelength)
+        ab = Sphere.mie_coefficients(self.sphere.a_p,
+                                     self.sphere.n_p,
+                                     self.sphere.k_p,
+                                     self.n_m,
+                                     self.wavelength)
         np.testing.assert_array_equal(ab[0, :], 0j)
 
 

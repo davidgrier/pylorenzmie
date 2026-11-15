@@ -74,8 +74,10 @@ class Localizer(LMObject):
     def properties(self) -> Properties:
         '''The nfringes, diameter, percentile and separation of the
         localizer.'''
-        return dict(nfringes=self.nfringes, diameter=self.diameter,
-                    percentile=self.percentile, separation=self.separation)
+        return dict(nfringes=self.nfringes,
+                    diameter=self.diameter,
+                    percentile=self.percentile,
+                    separation=self.separation)
 
     def localize(self,
                  image: Image | list[Image],
@@ -125,8 +127,14 @@ class Localizer(LMObject):
             larger than ``len(predictions)`` if ``maxfeatures`` applies.
         '''
         if isinstance(image, list):
-            return [self.localize(b, diameter, nfringes, maxfeatures, check,
-                                  percentile, separation, **kwargs)
+            return [self.localize(b,
+                                  diameter,
+                                  nfringes,
+                                  maxfeatures,
+                                  check,
+                                  percentile,
+                                  separation,
+                                  **kwargs)
                     for b in image]
 
         diameter = self.diameter if diameter is None else diameter
@@ -135,8 +143,11 @@ class Localizer(LMObject):
         separation = self.separation if separation is None else separation
 
         a = self._circletransform.transform(image)
-        features = tp.locate(a, diameter, characterize=False,
-                             percentile=percentile, separation=separation,
+        features = tp.locate(a,
+                             diameter,
+                             characterize=False,
+                             percentile=percentile,
+                             separation=separation,
                              **kwargs)
         nfound = len(features)
         if maxfeatures is not None and nfound > maxfeatures:
@@ -154,7 +165,9 @@ class Localizer(LMObject):
             x1 = min(int(np.ceil(r_p[0] + radius)) + 1, nx)
             y1 = min(int(np.ceil(r_p[1] + radius)) + 1, ny)
             bbox = ((x0, y0), x1 - x0, y1 - y0)
-            predictions.append(dict(x_p=r_p[0], y_p=r_p[1], bbox=bbox,
+            predictions.append(dict(x_p=r_p[0],
+                                    y_p=r_p[1],
+                                    bbox=bbox,
                                     mass=feature['mass']))
         result = pd.DataFrame(predictions,
                               columns=['x_p', 'y_p', 'bbox', 'mass'])
@@ -198,6 +211,7 @@ class Localizer(LMObject):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         from time import perf_counter
         import matplotlib.pyplot as plt
         from matplotlib.patches import Rectangle

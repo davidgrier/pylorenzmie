@@ -64,8 +64,10 @@ class ParameterSpec:
 
     def settings(self) -> dict:
         '''Settings for the ``setSettings`` method of a control.'''
-        settings = dict(text=self.text, range=list(self.range),
-                        value=self.value, decimals=self.decimals,
+        settings = dict(text=self.text,
+                        range=list(self.range),
+                        value=self.value,
+                        decimals=self.decimals,
                         fixed=self.fixed)
         if self.step is not None:
             settings['step'] = self.step

@@ -226,12 +226,11 @@ class DEEstimator(BaseEstimator):
         objective = _DEObjective(self.model, de_data, de_vars, noise)
         try:
             with np.errstate(over='ignore', invalid='ignore'):
-                result = differential_evolution(
-                    objective, de_bounds,
-                    popsize=self.popsize,
-                    seed=self.seed,
-                    **self.settings,
-                )
+                result = differential_evolution(objective,
+                                                de_bounds,
+                                                popsize=self.popsize,
+                                                seed=self.seed,
+                                                **self.settings)
         finally:
             self.model.coordinates = saved_coords
 
@@ -240,6 +239,7 @@ class DEEstimator(BaseEstimator):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         from time import perf_counter
         from pylorenzmie.utilities import example_hologram
 

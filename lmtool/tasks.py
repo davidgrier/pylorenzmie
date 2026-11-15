@@ -70,14 +70,21 @@ class Snapshot:
     fraction: float = 0.25
 
     @classmethod
-    def take(cls, model_cls: type, properties: dict, data: Image,
-             coordinates: Coordinates, fixed: list[str] | None = None,
+    def take(cls, model_cls: type,
+             properties: dict,
+             data: Image,
+             coordinates: Coordinates,
+             fixed: list[str] | None = None,
              settings: dict | None = None,
              fraction: float = 0.25) -> Snapshot:
         '''A snapshot with its own copy of every array and dictionary.'''
-        return cls(model_cls, dict(properties), np.array(data, copy=True),
-                   np.array(coordinates, copy=True), tuple(fixed or ()),
-                   None if settings is None else dict(settings), fraction)
+        return cls(model_cls,
+                   dict(properties),
+                   np.array(data, copy=True),
+                   np.array(coordinates, copy=True),
+                   tuple(fixed or ()),
+                   None if settings is None else dict(settings),
+                   fraction)
 
 
 @dataclass(frozen=True)
@@ -149,7 +156,8 @@ def run_fit(snapshot: Snapshot, cancel: threading.Event) -> FitResult:
         If ``cancel`` is set before the fit is done.
     '''
     model = _model(snapshot, cancel)
-    optimizer = Optimizer(model=model, fixed=list(snapshot.fixed),
+    optimizer = Optimizer(model=model,
+                          fixed=list(snapshot.fixed),
                           settings=snapshot.settings)
     optimizer.fraction = snapshot.fraction
     # a pixel at the maximum is taken to be saturated
@@ -199,7 +207,8 @@ def run_localize(request: LocalizeRequest,
 
     check()
     return Localizer().localize(request.image,
-                                maxfeatures=request.maxfeatures, check=check)
+                                maxfeatures=request.maxfeatures,
+                                check=check)
 
 
 class _Worker(QObject):
@@ -209,7 +218,8 @@ class _Worker(QObject):
     cancelled = pyqtSignal()
     error = pyqtSignal(str)
 
-    def __init__(self, function: Callable, snapshot: Snapshot,
+    def __init__(self, function: Callable,
+                 snapshot: Snapshot,
                  cancel: threading.Event) -> None:
         super().__init__()
         self._function = function
@@ -264,8 +274,7 @@ class TaskRunner(QObject):
         '''True while a task is running.'''
         return self._thread is not None
 
-    def start(self, name: str, function: Callable,
-              snapshot: Snapshot) -> bool:
+    def start(self, name: str, function: Callable, snapshot: Snapshot) -> bool:
         '''Start a task; returns False, and does nothing, if one is running.'''
         if self.busy:
             return False

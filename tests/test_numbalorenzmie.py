@@ -20,7 +20,10 @@ class TestNumbaLorenzMie(unittest.TestCase):
     def setUp(self):
         self.n = 41
         self.coordinates = LorenzMie.meshgrid((self.n, self.n))
-        self.particle = Sphere(a_p=0.75, n_p=1.45, x_p=19.3, y_p=22.1,
+        self.particle = Sphere(a_p=0.75,
+                               n_p=1.45,
+                               x_p=19.3,
+                               y_p=22.1,
                                z_p=180.)
 
     def models(self, **kwargs):
@@ -47,17 +50,21 @@ class TestNumbaLorenzMie(unittest.TestCase):
         kdr, ab = self.kdr(numpy), self.ab(numpy)
         for cartesian in (True, False):
             for bohren in (True, False):
-                ref = numpy.lorenzmie(ab, kdr, cartesian=cartesian,
+                ref = numpy.lorenzmie(ab,
+                                      kdr,
+                                      cartesian=cartesian,
                                       bohren=bohren).copy()
-                new = numba.lorenzmie(ab, kdr, cartesian=cartesian,
+                new = numba.lorenzmie(ab,
+                                      kdr,
+                                      cartesian=cartesian,
                                       bohren=bohren)
                 scale = np.abs(ref).max()
-                self.assertLess(np.abs(new - ref).max(), 1e-10 * scale,
+                self.assertLess(np.abs(new - ref).max(),
+                                1e-10 * scale,
                                 (cartesian, bohren))
 
     def test_large_particle_matches_numpy(self):
-        self.particle = Sphere(a_p=3., n_p=1.6, x_p=19.3, y_p=22.1,
-                               z_p=300.)
+        self.particle = Sphere(a_p=3., n_p=1.6, x_p=19.3, y_p=22.1, z_p=300.)
         numpy, numba = self.models()
         kdr, ab = self.kdr(numpy), self.ab(numpy)
         ref = numpy.lorenzmie(ab, kdr).copy()
@@ -99,16 +106,19 @@ class TestNumbaLorenzMie(unittest.TestCase):
 
     def test_hologram_matches_numpy(self):
         numpy, numba = self.models()
-        self.assertTrue(np.allclose(numpy.hologram(), numba.hologram(),
-                                    rtol=0, atol=1e-10))
+        self.assertTrue(np.allclose(numpy.hologram(),
+                                    numba.hologram(),
+                                    rtol=0,
+                                    atol=1e-10))
 
     def test_cluster_hologram_matches_numpy(self):
-        second = Sphere(a_p=0.5, n_p=1.58, x_p=10., y_p=12.,
-                        z_p=210.)
+        second = Sphere(a_p=0.5, n_p=1.58, x_p=10., y_p=12., z_p=210.)
         numpy, numba = self.models()
         numpy.particle = numba.particle = [self.particle, second]
-        self.assertTrue(np.allclose(numpy.hologram(), numba.hologram(),
-                                    rtol=0, atol=1e-10))
+        self.assertTrue(np.allclose(numpy.hologram(),
+                                    numba.hologram(),
+                                    rtol=0,
+                                    atol=1e-10))
 
     def test_parallel_matches_serial_exactly(self):
         _, serial = self.models()
@@ -219,23 +229,31 @@ class TestNumbaLorenzMie(unittest.TestCase):
 
     def test_aberrated_numba_matches_aberrated_numpy(self):
         numpy = Aberrated(LorenzMie)(coordinates=self.coordinates,
-                                     spherical=4., defocus=2.)
+                                     spherical=4.,
+                                     defocus=2.)
         numba = Aberrated(numbaLorenzMie)(coordinates=self.coordinates,
-                                          spherical=4., defocus=2.)
+                                          spherical=4.,
+                                          defocus=2.)
         for m in (numpy, numba):
             m.particle = self.particle
-        self.assertTrue(np.allclose(numpy.hologram(), numba.hologram(),
-                                    rtol=0, atol=1e-10))
+        self.assertTrue(np.allclose(numpy.hologram(),
+                                    numba.hologram(),
+                                    rtol=0,
+                                    atol=1e-10))
 
     def test_piston_numba_matches_numpy(self):
         numpy = Aberrated(LorenzMie)(coordinates=self.coordinates,
-                                     piston=0.8, spherical=2.)
+                                     piston=0.8,
+                                     spherical=2.)
         numba = Aberrated(numbaLorenzMie)(coordinates=self.coordinates,
-                                          piston=0.8, spherical=2.)
+                                          piston=0.8,
+                                          spherical=2.)
         for m in (numpy, numba):
             m.particle = self.particle
-        self.assertTrue(np.allclose(numpy.hologram(), numba.hologram(),
-                                    rtol=0, atol=1e-10))
+        self.assertTrue(np.allclose(numpy.hologram(),
+                                    numba.hologram(),
+                                    rtol=0,
+                                    atol=1e-10))
 
     def test_compute_field_jit_wrapper(self):
         numpy, numba = self.models()

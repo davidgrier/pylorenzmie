@@ -144,7 +144,8 @@ class TestDEEstimator(unittest.TestCase):
         self.model.instrument.magnification = 0.24
         self.model.particle.r_p = [50., 50., 100.]    # 24 um
         hologram = Hologram(self.model.hologram().reshape((101, 101)))
-        custom = DEEstimator(model=self.model, seed=0,
+        custom = DEEstimator(model=self.model,
+                             seed=0,
                              bounds={'z_p': (20., 30.)})
         custom.settings.update(maxiter=1, workers=1)
         z_p = custom.estimate(hologram)['z_p']

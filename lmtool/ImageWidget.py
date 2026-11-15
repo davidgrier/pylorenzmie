@@ -35,8 +35,10 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         pen = pg.mkPen('w', width=3)
         hpen = pg.mkPen('y', width=3)
         self.roi = pg.CircleROI([0, 0],
-                                pen=pen, handlePen=pen,
-                                hoverPen=hpen, handleHoverPen=hpen,
+                                pen=pen,
+                                handlePen=pen,
+                                hoverPen=hpen,
+                                handleHoverPen=hpen,
                                 radius=self._radius,
                                 parent=self.image)
 

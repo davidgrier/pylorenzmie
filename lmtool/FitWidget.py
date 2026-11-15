@@ -56,7 +56,8 @@ class FitWidget(pg.GraphicsLayoutWidget):
                              pen=pen)
         self.addItem(cb)
 
-    def setData(self, data: Image, rect: QRectF,
+    def setData(self, data: Image,
+                rect: QRectF,
                 coordinates: Coordinates) -> None:
         '''Display data and wait for the model prediction.
 

@@ -34,16 +34,25 @@ def _splash() -> QSplashScreen:
     font.setPointSize(44)
     font.setBold(True)
     painter.setFont(font)
-    painter.drawText(0, 0, width - 24, height - 62,
-                     Qt.AlignmentFlag.AlignRight
-                     | Qt.AlignmentFlag.AlignBottom, 'lmtool')
+    painter.drawText(
+        0,
+        0,
+        width - 24,
+        height - 62,
+        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
+        'lmtool',
+    )
     font.setPointSize(13)
     font.setBold(False)
     painter.setFont(font)
-    painter.drawText(0, 0, width - 24, height - 40,
-                     Qt.AlignmentFlag.AlignRight
-                     | Qt.AlignmentFlag.AlignBottom,
-                     f'pylorenzmie {__version__}')
+    painter.drawText(
+        0,
+        0,
+        width - 24,
+        height - 40,
+        Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
+        f'pylorenzmie {__version__}',
+    )
     painter.end()
 
     splash = QSplashScreen(pixmap)
@@ -89,8 +98,10 @@ def lmtool() -> None:
         parser.error(str(error))
 
     _show(splash, 'Starting...')
-    tool = LMTool(ALMWidget.with_model(model), args.filename,
-                  args.background, args.dark)
+    tool = LMTool(ALMWidget.with_model(model),
+                  args.filename,
+                  args.background,
+                  args.dark)
     tool.show()
     splash.finish(tool)
     sys.exit(app.exec())

@@ -92,7 +92,8 @@ class TestNormalizer(unittest.TestCase):
         light = np.full((8, 8), 60.)            # a pixel of the light alone
         light[3, 4] = 66.                       # a fringe, 10% above
         raw = light + dark
-        for normalizer in (Normalizer('reference', reference=background,
+        for normalizer in (Normalizer('reference',
+                                      reference=background,
                                       dark=dark),
                            Normalizer('median', dark=dark),
                            Normalizer('filter', size=5, dark=dark)):
@@ -114,7 +115,8 @@ class TestNormalizer(unittest.TestCase):
         self.assertEqual(normalizer.dark, 5.)
 
     def test_pixels_below_the_dark_count_are_nan(self):
-        out = Normalizer('reference', reference=np.full((4, 4), 20.),
+        out = Normalizer('reference',
+                         reference=np.full((4, 4), 20.),
                          dark=30.)(np.full((4, 4), 50.))
         self.assertTrue(np.isnan(out).all())
 

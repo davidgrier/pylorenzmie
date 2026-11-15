@@ -1,0 +1,12 @@
+# utilities
+
+Helpers that are not part of the model or the pipeline.
+
+- `normalizer.py` divides holograms by their background, and `vmedian.py`
+  is a fast approximate running median for that background.
+- `noise.py` estimates the noise in an image.
+- `water.py` has the physical properties of water.
+- `example_hologram.py` loads the holograms in `data/`, which the tests
+  and the tutorials use.
+
+Update this file when the role or contents of the directory change.

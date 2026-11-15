@@ -110,6 +110,7 @@ class Hologram:
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         from pylorenzmie.utilities import example_hologram
         hologram = cls(example_hologram())
         print(f'Hologram: shape={hologram.shape}, corner={hologram.corner}')

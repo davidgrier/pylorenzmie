@@ -74,8 +74,7 @@ def _make_kernel(parallel: bool):
 
     # error_model='numpy': a division by zero gives inf or NaN, as in the
     # NumPy implementation, instead of raising ZeroDivisionError
-    @njit(fastmath=True, cache=True, parallel=parallel,
-          error_model='numpy')
+    @njit(fastmath=True, cache=True, parallel=parallel, error_model='numpy')
     def kernel(kdr, an0, an, bn, c2, c3, out, cartesian, bohren):
         '''Scattered field, one point at a time.
 
@@ -232,7 +231,10 @@ def compute_field_jit(kdr, buffers, scratch, ab, cartesian, bohren):
     '''
     out = buffers[3] if cartesian else buffers[2]
     _serial_kernel(np.ascontiguousarray(kdr, dtype=np.float64),
-                   *_partial_wave_constants(ab), out, cartesian, bohren)
+                   *_partial_wave_constants(ab),
+                   out,
+                   cartesian,
+                   bohren)
     return out
 
 

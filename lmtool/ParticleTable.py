@@ -49,7 +49,8 @@ class ParticleTable(QAbstractTableModel):
     def columnCount(self, parent: QModelIndex = _ROOT) -> int:
         return 0 if parent.isValid() else len(self.COLUMNS)
 
-    def headerData(self, section: int, orientation: Qt.Orientation,
+    def headerData(self, section: int,
+                   orientation: Qt.Orientation,
                    role: int = Qt.ItemDataRole.DisplayRole):
         if (role == Qt.ItemDataRole.DisplayRole
                 and orientation == Qt.Orientation.Horizontal):
@@ -90,7 +91,8 @@ class ParticleTable(QAbstractTableModel):
         result = row['result']
         return '' if result is None else f'{result["redchi"]:.2f}'
 
-    def setData(self, index: QModelIndex, value,
+    def setData(self, index: QModelIndex,
+                value,
                 role: int = Qt.ItemDataRole.EditRole) -> bool:
         if index.column() == 0 and role == Qt.ItemDataRole.CheckStateRole:
             self._rows[index.row()]['include'] = (
@@ -162,7 +164,9 @@ class ParticleTable(QAbstractTableModel):
         self.endResetModel()
         self.currentChanged.emit(-1)
 
-    def add(self, x_p: float, y_p: float, radius: int,
+    def add(self, x_p: float,
+            y_p: float,
+            radius: int,
             source: str = 'added') -> int:
         '''Add a particle; returns its row.'''
         row = len(self._rows)
@@ -186,11 +190,17 @@ class ParticleTable(QAbstractTableModel):
 
     @staticmethod
     def _new(x_p: float, y_p: float, radius: int, source: str) -> dict:
-        return dict(x_p=float(x_p), y_p=float(y_p), radius=int(radius),
-                    source=source, include=True, status='new',
-                    properties=None, result=None)
+        return dict(x_p=float(x_p),
+                    y_p=float(y_p),
+                    radius=int(radius),
+                    source=source,
+                    include=True,
+                    status='new',
+                    properties=None,
+                    result=None)
 
-    def rowAt(self, x_p: float, y_p: float,
+    def rowAt(self, x_p: float,
+              y_p: float,
               tolerance: float = 5.) -> int | None:
         '''Row of the particle nearest to a position, if it is within
         ``tolerance`` pixels.'''
@@ -224,8 +234,7 @@ class ParticleTable(QAbstractTableModel):
             entry['status'] = 'estimated'
         self._changed(row)
 
-    def setResult(self, row: int, properties: dict,
-                  result: pd.Series) -> None:
+    def setResult(self, row: int, properties: dict, result: pd.Series) -> None:
         '''Record the parameters and the result of a fit of a particle.'''
         entry = self._rows[row]
         entry['properties'] = dict(properties)

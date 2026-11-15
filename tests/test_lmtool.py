@@ -96,23 +96,27 @@ class TestSession(ToolTestCase):
         tool = self.tool()
         noise = tool.controls.properties['noise']    # not the default 0.05
         self.assertAlmostEqual(noise, 0.035, delta=0.005)
-        self.assertAlmostEqual(tool.session.model.instrument.noise, noise,
+        self.assertAlmostEqual(tool.session.model.instrument.noise,
+                               noise,
                                delta=1e-3)
 
     def test_a_panel_without_a_noise_control_still_gets_the_estimate(self):
         tool = self.tool(LMWidget)
-        self.assertAlmostEqual(tool.session.model.instrument.noise, 0.035,
+        self.assertAlmostEqual(tool.session.model.instrument.noise,
+                               0.035,
                                delta=0.005)
 
     def test_estimate_noise_uses_the_region_of_interest(self):
         tool = self.tool()
         image = 1. + np.random.default_rng(0).normal(0., 0.1, (390, 390))
-        image[:195] = 1. + np.random.default_rng(1).normal(0., 0.02,
+        image[:195] = 1. + np.random.default_rng(1).normal(0.,
+                                                           0.02,
                                                            (195, 390))
         tool.data = image
         tool.imageWidget.setRegion(200., 300., 60)   # the noisy half
         tool.estimateNoise()
-        self.assertAlmostEqual(tool.controls.properties['noise'], 0.1,
+        self.assertAlmostEqual(tool.controls.properties['noise'],
+                               0.1,
                                delta=0.01)
         self.assertIn('Noise: 0.1', tool.statusBar().currentMessage())
 
@@ -326,11 +330,11 @@ class TestParticles(ToolTestCase):
         tool.imageWidget.setRegion(300., 100., 50)
         tool.addParticle()
         tool.particleView.selectRow(0)
-        self.assertAlmostEqual(tool.controls.properties['x_p'], 195.5,
+        self.assertAlmostEqual(tool.controls.properties['x_p'],
+                               195.5,
                                delta=2.)
         tool.particleView.selectRow(1)
-        self.assertAlmostEqual(tool.controls.properties['x_p'], 300.,
-                               delta=1.)
+        self.assertAlmostEqual(tool.controls.properties['x_p'], 300., delta=1.)
         self.assertEqual(tool.imageWidget.radius, 50)
 
 

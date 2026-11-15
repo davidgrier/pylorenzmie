@@ -30,14 +30,25 @@ def setUpModule():
 
 def found(n=3):
     return pd.DataFrame(
-        [dict(x_p=100. * (k + 1), y_p=50. * (k + 1),
+        [dict(x_p=100. * (k + 1),
+              y_p=50. * (k + 1),
               bbox=((50 * k, 20), 120 + 20 * k, 100)) for k in range(n)])
 
 
 def result(x_p=10., y_p=20., z_p=300.):
-    return pd.Series(dict(x_p=x_p, dx_p=.1, y_p=y_p, dy_p=.1, z_p=z_p,
-                          dz_p=1., a_p=1., da_p=.01, n_p=1.45, dn_p=.001,
-                          success=True, npix=500, redchi=1.5))
+    return pd.Series(dict(x_p=x_p,
+                          dx_p=.1,
+                          y_p=y_p,
+                          dy_p=.1,
+                          z_p=z_p,
+                          dz_p=1.,
+                          a_p=1.,
+                          da_p=.01,
+                          n_p=1.45,
+                          dn_p=.001,
+                          success=True,
+                          npix=500,
+                          redchi=1.5))
 
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')
@@ -86,7 +97,8 @@ class TestParticleTable(unittest.TestCase):
 
     def test_next_wraps_and_skips_the_unchecked(self):
         self.table.setFound(found())
-        self.table.setData(self.table.index(1, 0), Qt.CheckState.Unchecked,
+        self.table.setData(self.table.index(1, 0),
+                           Qt.CheckState.Unchecked,
                            Qt.ItemDataRole.CheckStateRole)
         order = []
         for _ in range(4):
@@ -124,7 +136,8 @@ class TestParticleTable(unittest.TestCase):
         self.table.setFound(found())
         self.table.setEstimate(1, dict(z_p=250., a_p=1., n_p=1.4))
         self.assertEqual(self.table.entry(1)['status'], 'estimated')
-        self.table.setResult(1, dict(z_p=300., a_p=1.1, n_p=1.45),
+        self.table.setResult(1,
+                             dict(z_p=300., a_p=1.1, n_p=1.45),
                              result(x_p=201., y_p=99.))
         self.assertEqual(self.table.entry(1)['status'], 'fitted')
         self.table.setEstimate(1, dict(z_p=1., a_p=1., n_p=1.4))
@@ -153,7 +166,8 @@ class TestParticleTable(unittest.TestCase):
         self.table.setFound(found())
         self.table.setResult(0, dict(z_p=1.), result(z_p=300.))
         self.table.setResult(2, dict(z_p=1.), result(z_p=400.))
-        self.table.setData(self.table.index(2, 0), Qt.CheckState.Unchecked,
+        self.table.setData(self.table.index(2, 0),
+                           Qt.CheckState.Unchecked,
                            Qt.ItemDataRole.CheckStateRole)
         frame = self.table.results()
         self.assertEqual(list(frame.index), [0])
@@ -179,7 +193,8 @@ class TestSaveResults(unittest.TestCase):
         return str(Path(self.directory.name) / name)
 
     def test_json_has_the_metadata_and_a_record_for_each_particle(self):
-        filename = save_results(self.results, self.metadata,
+        filename = save_results(self.results,
+                                self.metadata,
                                 self.path('r.json'))
         document = json.loads(Path(filename).read_text())
         self.assertEqual(document['metadata']['datafile'], 'x.png')
@@ -187,7 +202,8 @@ class TestSaveResults(unittest.TestCase):
                          [300., 400.])
 
     def test_csv(self):
-        filename = save_results(self.results, self.metadata,
+        filename = save_results(self.results,
+                                self.metadata,
                                 self.path('r.csv'))
         frame = pd.read_csv(filename, index_col='particle')
         self.assertEqual(list(frame['z_p']), [300., 400.])
@@ -197,8 +213,7 @@ class TestSaveResults(unittest.TestCase):
             import tables
         except ImportError:
             self.skipTest('PyTables is not installed')
-        filename = save_results(self.results, self.metadata,
-                                self.path('r.h5'))
+        filename = save_results(self.results, self.metadata, self.path('r.h5'))
         self.assertTrue(filename.endswith('.h5'))
         self.assertEqual(list(pd.read_hdf(filename, key='results')['z_p']),
                          [300., 400.])
@@ -209,13 +224,15 @@ class TestSaveResults(unittest.TestCase):
         from unittest import mock
         with mock.patch('pylorenzmie.lmtool.results._save_hdf',
                         side_effect=ImportError):
-            filename = save_results(self.results, self.metadata,
+            filename = save_results(self.results,
+                                    self.metadata,
                                     self.path('r.h5'))
         self.assertTrue(filename.endswith('r.json'))
         self.assertTrue(Path(filename).exists())
 
     def test_the_directory_is_created(self):
-        filename = save_results(self.results, self.metadata,
+        filename = save_results(self.results,
+                                self.metadata,
                                 self.path('new/deeper/r.json'))
         self.assertTrue(Path(filename).exists())
 

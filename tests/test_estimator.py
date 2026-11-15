@@ -122,7 +122,8 @@ class TestEstimatorOnSyntheticHolograms(unittest.TestCase):
                 instrument, h = self.hologram(magnification, a_p, z_um)
                 result = Estimator(instrument=instrument, n_p=1.6).estimate(h)
                 self.assertAlmostEqual(result['a_p'] / a_p, 1., delta=0.1)
-                self.assertAlmostEqual(result['z_p'] / self.truth[2], 1.,
+                self.assertAlmostEqual(result['z_p'] / self.truth[2],
+                                       1.,
                                        delta=0.03)
 
 

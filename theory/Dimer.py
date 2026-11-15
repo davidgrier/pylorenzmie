@@ -88,6 +88,7 @@ class Dimer(Cluster):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         from pylorenzmie.theory import Instrument, LorenzMie
         import matplotlib.pyplot as plt
 

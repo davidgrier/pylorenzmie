@@ -95,6 +95,7 @@ class Pair(Cluster):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
+        '''Run a demonstration of the class, for use as a script.'''
         from pylorenzmie.theory import Instrument, LorenzMie
         import matplotlib.pyplot as plt
 
@@ -104,8 +105,16 @@ class Pair(Cluster):
         instrument.magnification = 0.048
         instrument.wavelength = 0.447
         instrument.n_m = 1.340
-        pair = cls(x_p1=85., y_p1=100., z_p1=250., a_p1=0.5, n_p1=1.42,
-                  x_p2=115., y_p2=100., z_p2=250., a_p2=0.6, n_p2=1.40)
+        pair = cls(x_p1=85.,
+                   y_p1=100.,
+                   z_p1=250.,
+                   a_p1=0.5,
+                   n_p1=1.42,
+                   x_p2=115.,
+                   y_p2=100.,
+                   z_p2=250.,
+                   a_p2=0.6,
+                   n_p2=1.40)
         model = LorenzMie(coordinates=coordinates,
                           particle=pair,
                           instrument=instrument)
