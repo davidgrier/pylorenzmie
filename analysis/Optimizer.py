@@ -23,7 +23,7 @@ the data.
 '''
 
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
@@ -253,8 +253,8 @@ class Optimizer(LMObject):
             self._data, self.model.coordinates = self.mask.apply(hologram)
         p0 = np.array([self.model.properties[p] for p in self.variables])
         settings = dict(self.settings)
-        jac_params = getattr(self.model, 'jac_params', None)
-        if jac_params is not None and set(self.variables) <= jac_params:
+        jac_params = self.model.jac_params
+        if jac_params and set(self.variables) <= jac_params:
             settings['jac'] = self._analytical_jac
         fit = least_squares(self._residuals, p0, **settings)
         self._result = fit
@@ -290,7 +290,7 @@ class Optimizer(LMObject):
     def _analytical_jac(self, values: NDArray[np.floating]
                         ) -> NDArray[np.floating]:
         self.model.properties = dict(zip(self.variables, values, strict=True))
-        J = cast(Any, self.model).jac()
+        J = self.model.jac()
         noise = self.model.instrument.noise
         return np.column_stack([J[p] for p in self.variables]) / noise
 

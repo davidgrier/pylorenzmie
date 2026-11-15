@@ -367,7 +367,7 @@ class TorchLorenzMieBatch(TorchLorenzMie):
         #
         # Wrappers such as Aberrated modulate scattered_field() with a
         # per-particle phase mask; apply the same mask on the batch path.
-        aberration = getattr(self, '_aberration', None)
+        aberration = self._aberration
         for p in range(P):
             ab_p  = ab_all[:, p, :, :]   # [B, norders, 2] — view, no copy
             r_p_p = r_p_all[:, p, :]     # [B, 3]          — view, no copy

@@ -202,5 +202,39 @@ class TestDEEstimatorConvergence(unittest.TestCase):
         self.assertLess(err_de, err_naive)
 
 
+class TestPoolOfProcesses(unittest.TestCase):
+    '''A pool of processes is refused to a calculator that cannot be forked.'''
+
+    class Device(LorenzMie):
+        '''A calculator that holds the memory of a device.'''
+        fork_safe = False
+
+    def setUp(self):
+        shape = (51, 51)
+        self.model = self.Device()
+        self.model.coordinates = LMObject.meshgrid(shape)
+        self.hologram = Hologram(self.model.hologram().reshape(shape))
+
+    def test_a_pool_is_refused(self):
+        estimator = DEEstimator(model=self.model, seed=0)
+        estimator.settings['workers'] = 2
+        with self.assertRaisesRegex(ValueError, 'Device.*pool'):
+            estimator.estimate(self.hologram)
+
+    def test_one_process_is_fine(self):
+        estimator = DEEstimator(model=self.model, seed=0)
+        estimator.settings['maxiter'] = 1
+        result = estimator.estimate(self.hologram)
+        self.assertIn('z_p', result.index)
+
+    def test_the_coordinates_of_the_model_are_not_touched(self):
+        before = self.model.coordinates
+        estimator = DEEstimator(model=self.model, seed=0)
+        estimator.settings['workers'] = 2
+        with self.assertRaises(ValueError):
+            estimator.estimate(self.hologram)
+        np.testing.assert_array_equal(self.model.coordinates, before)
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

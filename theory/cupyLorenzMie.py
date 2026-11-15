@@ -52,6 +52,7 @@ class cupyLorenzMie(LorenzMie):
     '''
 
     method: str = 'cupy numpy'
+    fork_safe: bool = False     # the device holds its memory
 
     def __init__(self,
                  *args,
@@ -128,7 +129,7 @@ class cupyLorenzMie(LorenzMie):
         # Wrappers such as Aberrated modulate scattered_field() with a
         # per-particle phase mask; this field() bypasses scattered_field(),
         # so apply the same mask to each particle's contribution here.
-        aberration = getattr(self, '_aberration', None)
+        aberration = self._aberration
         for particle in self.particle:
             ab = particle.ab(n_m, wavelength)
             a = cp.asarray(ab[:, 0], dtype=self.ctype)

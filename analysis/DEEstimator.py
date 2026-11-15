@@ -133,7 +133,18 @@ class _DESearch:
             Search range ``(min, max)`` of each parameter that is varied, by
             the name of the property, in the units of the property (pixels
             for the height).
+
+        Raises
+        ------
+        ValueError
+            If ``settings['workers']`` asks for a pool of processes and the
+            calculator cannot be forked (``fork_safe`` is False).
         '''
+        if self.settings.get('workers', 1) != 1 and not self.model.fork_safe:
+            raise ValueError(
+                f'{type(self.model).__name__} holds the memory of a device, '
+                'which a pool of worker processes cannot share: '
+                "set settings['workers'] = 1")
         variables = list(bounds)
         noise = self.model.instrument.noise
         saved_coordinates = self.model.coordinates

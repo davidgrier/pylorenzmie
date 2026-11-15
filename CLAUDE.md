@@ -97,6 +97,11 @@ update it when the role or contents of the directory change.
   `tests/test_docstrings.py` fails when one is missing (an override inherits
   the docstring of the method it overrides; a module that needs an optional
   library that is not installed is skipped).
+- A backend or a wrapper does not probe a calculator with `hasattr`,
+  `getattr(self, 'name', default)` or a test of the name of the backend:
+  `LorenzMie` declares the attribute, with its default, and a subclass
+  overrides it (`fork_safe`, `parallel`, `parallel_threshold`, `jac_params`,
+  `piston`, `_aberration`).
 - A parent package is never imported with dots (`from pylorenzmie.lib import
   LMObject`, not `from ..lib import LMObject`; ruff `TID252`).
   `tests/test_import_cycles.py` imports every module of every package first

@@ -270,13 +270,7 @@ def Aberrated(base_class: type) -> type:
                         (scale**3 * R)
 
             mask = np.exp(1j * (phase + 2.*np.pi*self.piston))
-            if hasattr(self, '_device'):
-                import torch  # pyright: ignore[reportMissingImports]
-                # single precision: Apple GPUs have no complex128
-                return torch.as_tensor(mask,
-                                       dtype=torch.complex64,
-                                       device=self._device)
-            return mask
+            return self._as_field(mask)
 
         def _aberration_coefficients(self) -> np.ndarray | None:
             '''Coefficients for the JAX and Metal kernels, which compute
@@ -297,7 +291,7 @@ def Aberrated(base_class: type) -> type:
                             **kwargs) -> Field:
             '''Scattered field including geometric aberrations.'''
             field = super().scattered_field(particle, **kwargs)
-            if getattr(self, '_aberrations_in_kernel', False):
+            if self._aberrations_in_kernel:
                 return field                  # the kernel has applied them
             r_p = particle.r_p + particle.r_0
             return field * self._aberration(r_p)

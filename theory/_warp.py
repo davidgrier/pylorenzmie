@@ -24,6 +24,8 @@ import numpy as np
 from numba import njit, prange
 from numpy.typing import NDArray
 
+from pylorenzmie.theory.LorenzMie import LorenzMie
+
 _mie = importlib.import_module('pylorenzmie.theory.numbaLorenzMie')
 
 BLOCK = 2048          # points per block, sized to stay in cache
@@ -33,7 +35,7 @@ Kinds = NDArray[np.int64]           # indices into generators.NAMES
 Pair = tuple[float, float]          # (x, y) of one point or vector
 
 
-def parallel_allowed(model: object, npts: int) -> bool:
+def parallel_allowed(model: LorenzMie, npts: int) -> bool:
     '''True if the warp may use all Numba threads.
 
     The rules are those of the Mie kernel of
@@ -41,8 +43,8 @@ def parallel_allowed(model: object, npts: int) -> bool:
     asks for it with its ``parallel`` attribute, there are enough points,
     and the process was not created by ``fork``.
     '''
-    return bool(getattr(model, 'parallel', False) and not _mie._FORKED and
-                npts >= getattr(model, 'parallel_threshold', 2048))
+    return bool(model.parallel and not _mie._FORKED and
+                npts >= model.parallel_threshold)
 
 
 def PARALLEL_LOCK() -> threading.Lock:

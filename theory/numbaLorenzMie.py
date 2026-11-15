@@ -341,7 +341,6 @@ class numbaLorenzMie(LorenzMie):
 
     method: str = 'numba numpy'
     parallel: bool = True
-    parallel_threshold: int = 2048
 
     def _allocate(self) -> None:
         super()._allocate()

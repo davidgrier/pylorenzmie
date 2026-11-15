@@ -14,9 +14,16 @@ All notable changes to pylorenzmie are recorded here. The format follows
   kind of particle.  A list has no position or properties of its own, so the
   code that reads or sets them (the estimators, `Optimizer`, `Pair`) asks for
   the particle in this way.
-* `LorenzMie.parallel`, `False` by default, is declared on the base class.
-  Only the Numba calculator uses it; `Estimator` turns it off for its own
-  searches.
+* `LorenzMie` declares what its backends and wrappers rely on, so that none of
+  them probes for it with `hasattr` or `getattr`, or by matching the name of
+  a backend: `parallel` (only the Numba calculator uses it; `Estimator` turns
+  it off for its own searches), `parallel_threshold`, `fork_safe`,
+  `jac_params`, `piston`, and a `jac()` that raises `NotImplementedError` for
+  a calculator without an analytical Jacobian.  `DEEstimator` and the
+  estimators that share its search raise `ValueError` if `workers` asks for a
+  pool of processes and the calculator cannot be forked (`fork_safe` is
+  False, as for the CuPy and JAX calculators); `Feature` used to set one
+  worker for those, which it already was.
 * `Bounds` and `Settings` in `pylorenzmie.lib.lmtypes`, for the bounds of a
   search and the keyword arguments of a solver.
 * `tools/` holds the scripts that make files that ship with the package,

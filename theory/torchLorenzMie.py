@@ -288,6 +288,13 @@ class TorchLorenzMie(LorenzMie):
         '''Compute device in use.'''
         return self._device
 
+    def _as_field(self, array: np.ndarray) -> torch.Tensor:
+        '''A complex array as a tensor of the device, in single precision:
+        Apple GPUs have no complex128.'''
+        return torch.as_tensor(array,
+                               dtype=torch.complex64,
+                               device=self._device)
+
     def _allocate(self) -> None:
         '''Allocate GPU tensors sized to the current coordinate grid.'''
         logger.debug('Allocating torch buffers')
@@ -455,7 +462,7 @@ class TorchLorenzMie(LorenzMie):
         table[:norders].copy_(torch.from_numpy(host), non_blocking=True)
         # the piston is a constant phase of the scattered field, so it
         # joins the propagation phase
-        phase = cmath.exp(1j * (2.*np.pi*getattr(self, 'piston', 0.) - k * z))
+        phase = cmath.exp(1j * (2.*np.pi*self.piston - k * z))
         coefficients = self._aberration_coefficients()
         if coefficients is not None:
             self._metal_aberration.copy_(

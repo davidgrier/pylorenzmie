@@ -163,5 +163,35 @@ class TestPropertiesAreStrict(unittest.TestCase):
             self.model.properties = {'defocus': 0.1}
 
 
+class TestWhatABackendDeclares(unittest.TestCase):
+    '''The base class declares what the backends and the wrappers rely on,
+    so that none of them has to probe for it.'''
+
+    def setUp(self) -> None:
+        self.model = LorenzMie()
+
+    def test_defaults(self) -> None:
+        self.assertFalse(self.model.parallel)
+        self.assertEqual(self.model.parallel_threshold, 2048)
+        self.assertTrue(self.model.fork_safe)
+        self.assertEqual(self.model.jac_params, frozenset())
+        self.assertEqual(self.model.piston, 0.)
+        self.assertIsNone(self.model._aberration)
+        self.assertFalse(self.model._aberrations_in_kernel)
+
+    def test_an_array_is_a_field_as_it_is(self) -> None:
+        array = np.ones((3, 4), dtype=complex)
+        self.assertIs(self.model._as_field(array), array)
+
+    def test_there_is_no_analytical_jacobian_to_ask_for(self) -> None:
+        with self.assertRaisesRegex(NotImplementedError, 'LorenzMie'):
+            self.model.jac()
+
+    def test_an_aberrated_model_provides_its_phase_mask(self) -> None:
+        model = AberratedLorenzMie()
+        self.assertTrue(callable(model._aberration))
+        self.assertEqual(model._aberration(np.array([0., 0., 100.])), 1.)
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

@@ -382,7 +382,8 @@ class jaxLorenzMie(LorenzMie):
     '''
 
     method: str = 'jax numpy'
-    jac_params: frozenset = frozenset({'x_p', 'y_p', 'z_p', 'a_p', 'n_p'})
+    jac_params: frozenset[str] = frozenset({'x_p', 'y_p', 'z_p', 'a_p', 'n_p'})
+    fork_safe: bool = False     # the device holds its memory
 
     def _aberration_coefficients(self) -> np.ndarray | None:
         '''Aberration coefficients for the JAX kernel, or None.
@@ -406,7 +407,7 @@ class jaxLorenzMie(LorenzMie):
         aberration = self._aberration_coefficients()
         if aberration is not None:
             aberration = jnp.asarray(aberration, dtype=float)
-        piston = jnp.asarray(2.*np.pi*float(getattr(self, 'piston', 0.)))
+        piston = jnp.asarray(2.*np.pi*float(self.piston))
         return (r_p, a_p, n_p, k_p, k, n_m, wavelength, coords,
                 self._compute_nmax(), aberration, piston)
 

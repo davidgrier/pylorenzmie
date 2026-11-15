@@ -93,10 +93,6 @@ class Feature(Hologram):
 
         estimator_cls = PairEstimator if pair else DEEstimator
         self.estimator = estimator_cls(model=self.model, exclude=m.exclude)
-        # cupy/jax models hold device state that cannot survive a fork;
-        # keep the DE search single-process for those backends.
-        if any(b in type(self.model).method for b in ('cupy', 'jax')):
-            self.estimator.settings['workers'] = 1
 
         self.optimizer = Optimizer(model=self.model, mask=m)
         if fixed is None and pair:

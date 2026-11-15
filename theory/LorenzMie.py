@@ -28,7 +28,8 @@ The class attribute ``method`` names the calculator, and an
 can work with the model.
 '''
 
-from typing import TypeVar, overload
+from collections.abc import Callable
+from typing import Any, TypeVar, overload
 
 import numpy as np
 
@@ -90,6 +91,26 @@ class LorenzMie(LMObject):
     #: does; turn it off when the calling code is already parallel.
     parallel: bool = False
 
+    #: Number of points below which a parallel calculator stays on one thread.
+    parallel_threshold: int = 2048
+
+    #: Whether a pool of worker processes can use the calculator.  One that
+    #: holds the memory of a device can be neither forked nor pickled.
+    fork_safe: bool = True
+
+    #: The properties for which :meth:`jac` has the derivative of the
+    #: hologram: none, for a calculator without an analytical Jacobian.
+    jac_params: frozenset[str] = frozenset()
+
+    #: Constant phase of the scattered field, in cycles.  It is zero unless
+    #: the model is aberrated.
+    piston: float = 0.
+
+    #: The phase mask of the aberrations for a particle at ``r_p``, which a
+    #: model with aberrations provides (see
+    #: :func:`~pylorenzmie.theory.Aberrated.Aberrated`); None without them.
+    _aberration: Callable[[Coordinates], Any] | None = None
+
     def __init__(self,
                  coordinates: Coordinates | None = None,
                  particle: Particle | list[Particle] | None = None,
@@ -141,6 +162,29 @@ class LorenzMie(LMObject):
                 f'the model needs a single {kind.__name__}, '
                 f'not a {type(particle).__name__}')
         return particle
+
+    @property
+    def _aberrations_in_kernel(self) -> bool:
+        '''True if the kernel of the calculator applies the aberrations.'''
+        return False
+
+    def _as_field(self, array: np.ndarray) -> Any:
+        '''A complex array as the calculator computes with it: here, as it
+        is.  A calculator on a GPU returns an array of the device.'''
+        return array
+
+    def jac(self) -> dict[str, np.ndarray]:
+        '''Derivative of the hologram with respect to each property of
+        ``jac_params``, by property.
+
+        Raises
+        ------
+        NotImplementedError
+            For a calculator that has no analytical Jacobian, which is
+            one whose ``jac_params`` is empty.
+        '''
+        raise NotImplementedError(
+            f'{type(self).__name__} has no analytical Jacobian')
 
     @property
     def properties(self) -> Properties:
