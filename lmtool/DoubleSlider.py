@@ -88,6 +88,7 @@ class DoubleSlider(QSlider):
 
     @classmethod
     def example(cls) -> None:
+        '''Run a demonstration of the widget, for use as a script.'''
         from pyqtgraph import mkQApp
 
         def report(value):

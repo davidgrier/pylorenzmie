@@ -110,6 +110,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     @classmethod
     def example(cls) -> None:
 
+        '''Run a demonstration of the widget, for use as a script.'''
         def radius(r):
             print(f'radius = {r}', end='\r')
 

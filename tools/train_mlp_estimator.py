@@ -43,7 +43,8 @@ from sklearn.preprocessing import FunctionTransformer, StandardScaler
 import joblib
 
 from pylorenzmie.analysis.MLPEstimator import _log_targets, _exp_targets
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory import LorenzMie, Sphere
+from pylorenzmie.theory.LorenzMie import LorenzMie as Calculator
 
 # ── instrument
 
@@ -77,7 +78,7 @@ OUTPUT  = _HERE.parent / 'analysis' / 'mlp_estimator.joblib'
 _CACHE  = _HERE / 'mlp_training_data.npz'
 
 
-def _make_model() -> LorenzMie:
+def _make_model() -> Calculator:
     model = LorenzMie()
     model.instrument.wavelength    = INSTRUMENT['wavelength']
     model.instrument.magnification = INSTRUMENT['magnification']
@@ -89,7 +90,7 @@ def _make_model() -> LorenzMie:
     return model
 
 
-def generate_data(model: LorenzMie,
+def generate_data(model: Calculator,
                   rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
     '''Return cleaned (X, y), shaped (n_good, N_FEATURES) and (n_good, 3).
 
@@ -113,12 +114,16 @@ def generate_data(model: LorenzMie,
     X = np.zeros((N_TRAIN, N_FEATURES))   # 0.0 sentinel for padding
     y = np.column_stack([z_vals, a_vals, n_vals])
 
+    particle = model.particle
+    if not isinstance(particle, Sphere):
+        raise TypeError('the model must have a single sphere')
+
     t0 = time.perf_counter()
     with np.errstate(over='ignore', invalid='ignore'):
         for i in range(N_TRAIN):
-            model.particle.z_p = z_vals[i]
-            model.particle.a_p = a_vals[i]
-            model.particle.n_p = n_vals[i]
+            particle.z_p = z_vals[i]
+            particle.a_p = a_vals[i]
+            particle.n_p = n_vals[i]
             R = r_cuts[i]
             X[i, :R] = model.hologram()[:R]   # zeros beyond R (already set)
             if i % 20_000 == 0 and i > 0:

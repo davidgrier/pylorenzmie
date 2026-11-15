@@ -20,7 +20,7 @@ class VMedian:
     '''
 
     def __init__(self, order: int = 0, shape: tuple | None = None) -> None:
-        self.child = None
+        self.child: VMedian | None = None
         self.shape = shape
         self.order = order
         self.index = 0
@@ -63,6 +63,7 @@ class VMedian:
             self.index += 1
         else:
             child = self.child
+            assert child is not None    # the setter of order makes it
             child.add(data)
             if child.initialized:
                 self.buffer[self.index, :] = child.get(reshape=False)
@@ -80,7 +81,7 @@ class VMedian:
         '''Reset the filter state.'''
         self._initialized = False
         self._cycled = False
-        if self.order > 0:
+        if self.child is not None:
             self.child.reset()
 
     @property
@@ -108,7 +109,7 @@ class VMedian:
             return
         if self.child is not None:
             self.child.shape = shape
-        npts = np.prod(shape)
+        npts = int(np.prod(shape))
         self.buffer = np.zeros((3, npts), dtype=np.uint8)
         self.index = 0
         self._initialized = False

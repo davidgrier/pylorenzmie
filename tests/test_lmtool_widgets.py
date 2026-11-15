@@ -6,6 +6,8 @@ without one.  The application window is tested in ``test_lmtool.py``.
 import os
 import unittest
 
+import numpy as np
+
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
 try:
@@ -15,6 +17,8 @@ try:
     from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
     from pylorenzmie.lmtool.LMWidget import LMWidget
     from pylorenzmie.lmtool.ALMWidget import ALMWidget
+    from pylorenzmie.lmtool.OptimizerWidget import OptimizerWidget
+    from pylorenzmie.lmtool.ProfileWidget import ProfileWidget
     _qt = True
 except Exception:       # no Qt binding, or no usable platform plugin
     _qt = False
@@ -128,6 +132,105 @@ class TestParameterWidget(unittest.TestCase):
         widget.setValue(4.)
         self.assertEqual(len(seen), 1)
         self.assertAlmostEqual(seen[0], 4., delta=0.01)
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestOptimizerWidget(unittest.TestCase):
+
+    def setUp(self):
+        self.widget = OptimizerWidget()
+        self.emitted = []
+        self.widget.settingChanged.connect(
+            lambda name, value: self.emitted.append((name, value)))
+
+    def test_settings_are_those_of_least_squares(self):
+        self.assertEqual(
+            set(self.widget.settings),
+            {'fraction', 'method', 'loss', 'ftol', 'xtol', 'gtol',
+             'diff_step'},
+        )
+
+    def test_levenberg_marquardt_is_the_default(self):
+        self.assertEqual(self.widget.settings['method'], 'lm')
+
+    def test_levenberg_marquardt_requires_the_linear_loss(self):
+        loss = self.widget.params.child('loss')
+        self.assertEqual(loss.value(), 'linear')
+        self.assertFalse(loss.opts['enabled'])
+
+    def test_another_method_releases_the_loss(self):
+        self.widget.settings = {'method': 'trf'}
+        self.assertTrue(self.widget.params.child('loss').opts['enabled'])
+        self.widget.settings = {'loss': 'huber'}
+        self.assertEqual(self.widget.settings['loss'], 'huber')
+
+    def test_going_back_to_lm_restores_the_linear_loss(self):
+        self.widget.settings = {'method': 'trf', 'loss': 'huber'}
+        self.widget.settings = {'method': 'lm'}
+        self.assertEqual(self.widget.settings['loss'], 'linear')
+
+    def test_a_change_is_announced(self):
+        self.widget.settings = {'fraction': 0.5}
+        self.assertIn(('fraction', 0.5), self.emitted)
+
+    def test_an_unknown_setting_is_ignored(self):
+        before = self.widget.settings
+        self.widget.settings = {'no_such_setting': 1}
+        self.assertEqual(self.widget.settings, before)
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestProfileWidget(unittest.TestCase):
+
+    def setUp(self):
+        self.widget = ProfileWidget(radius=50)
+
+    def curve(self, item):
+        return item.getData()[1]
+
+    def test_the_model_is_evaluated_along_a_radius(self):
+        self.assertEqual(self.widget.model.coordinates.shape[1], 50)
+        self.assertEqual(len(self.curve(self.widget.theory)), 50)
+
+    def test_the_model_is_centered_at_the_origin(self):
+        self.assertEqual(self.widget.model.x_p, 0.)
+        self.assertEqual(self.widget.model.y_p, 0.)
+
+    def test_data_are_plotted_with_their_standard_deviation(self):
+        profile = np.linspace(1., 2., 80)
+        stdev = np.full(80, 0.1)
+        self.widget.data = (profile, stdev)
+        np.testing.assert_allclose(self.curve(self.widget.experiment),
+                                   profile[:50])
+        np.testing.assert_allclose(self.curve(self.widget.upper),
+                                   profile[:50] + 0.1)
+        np.testing.assert_allclose(self.curve(self.widget.lower),
+                                   profile[:50] - 0.1)
+
+    def test_a_short_profile_limits_the_radius_that_is_plotted(self):
+        self.widget.data = (np.ones(20), np.zeros(20))
+        self.assertEqual(len(self.curve(self.widget.experiment)), 20)
+
+    def test_without_data_nothing_is_plotted(self):
+        self.widget.plotData()
+        self.assertEqual(len(self.widget.experiment.getData()[0]), 0)
+
+    def test_a_prediction_can_be_shown_without_a_model(self):
+        self.widget.model = None
+        self.widget.showTheory(np.arange(10.))
+        np.testing.assert_array_equal(self.curve(self.widget.theory),
+                                      np.arange(10.))
+
+    def test_the_position_in_properties_is_ignored(self):
+        before = self.widget.model.properties['z_p']
+        self.widget.properties = {'x_p': 99., 'y_p': 99.}
+        self.assertEqual(self.widget.model.x_p, 0.)
+        self.assertEqual(self.widget.model.properties['z_p'], before)
+
+    def test_properties_change_the_prediction(self):
+        old = self.curve(self.widget.theory).copy()
+        self.widget.properties = {'z_p': 200., 'a_p': 1.0}
+        self.assertFalse(np.allclose(self.curve(self.widget.theory), old))
 
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')

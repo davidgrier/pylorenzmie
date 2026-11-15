@@ -123,6 +123,10 @@ class FitWidget(pg.GraphicsLayoutWidget):
     @pyqtSlot(str, object)
     def setSetting(self, name: str, value: LorenzMie.Property) -> None:
         # fraction is a direct Optimizer attribute, not part of .settings
+        '''Set a setting of the optimizer by name.
+
+        ``fraction`` is an attribute of the optimizer itself, and the
+        other names are keys of its ``settings``.'''
         if name == 'fraction':
             self.optimizer.fraction = value
         else:

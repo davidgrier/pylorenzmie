@@ -99,12 +99,17 @@ update it when the role or contents of the directory change.
 - A parent package is never imported with dots (`from pylorenzmie.lib import
   LMObject`, not `from ..lib import LMObject`; ruff `TID252`).
   `tests/test_import_order.py` checks the order of the import blocks, and
-  `tests/test_import_cycles.py` that every package can be the first import.
+  `tests/test_import_cycles.py` imports every module of every package first
+  in an interpreter of its own (a module that needs an optional library that
+  is not installed is skipped).  The groups are the standard library, the
+  third-party libraries, `pylorenzmie`, and the siblings, with a blank line
+  between them.
 - `pyproject.toml` lists every package; `tests/test_packaging.py` checks the
   list, because a package that is missing from it works in a checkout and is
   absent from the wheel.
-- `pyright` checks `lib/`; the other packages report the optional libraries
-  (Torch, JAX, CuPy, Numba) as missing, and are not checked yet.
+- `pyright` checks `lib/`, `utilities/` and `tools/`; `theory/`, `analysis/`
+  and `lmtool/` report the optional libraries (Torch, JAX, CuPy, Numba, Qt)
+  as missing, and are not checked yet.
 - Docstrings use NumPy style with `Parameters`, `Returns`, `Raises`, and `Notes`
   sections as appropriate.
 - Default values and units always noted in the Parameters section.
@@ -278,6 +283,10 @@ geometry utilities (`geometry.py`), visualization helpers (`visualization.py`).
 - All test images live in `tests/data/`. Reference them via
   `Path(__file__).parent / 'data' / 'filename.png'`.
 - `# pragma: no cover` on all `if __name__ == '__main__':` guards.
+- Every source directory is tested: `tests/test_tools.py` loads the scripts of
+  `tools/` from their files (importing one must not do its work), and checks
+  that the splash image that ships is what `tools/make_splash.py` makes.  A
+  script is a `main()` and a guard, so that a test can import it.
 
 ## Documentation
 

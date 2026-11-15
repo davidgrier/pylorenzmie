@@ -6,8 +6,10 @@ disappears from the documentation.  This test says which.
 
 A method is documented if it, or the method of a base class that it
 overrides, has a docstring: Sphinx inherits docstrings the same way.
-Overrides of Qt event handlers (``*Event``) are exempt, and so are Qt
-signals, which are documented in the docstring of their class.
+Overrides of Qt event handlers (``*Event``) are exempt, and so is any
+other override of a method of a class from another package (Qt documents
+it), and so are Qt signals, which are documented in the docstring of their
+class.
 '''
 import importlib
 import inspect
@@ -16,7 +18,8 @@ import unittest
 
 #: The packages, and single modules, whose public API must be documented.
 PACKAGES = ('pylorenzmie.lib', 'pylorenzmie.theory',
-            'pylorenzmie.analysis', 'pylorenzmie.utilities')
+            'pylorenzmie.analysis', 'pylorenzmie.utilities',
+            'pylorenzmie.lmtool')
 MODULES = ()
 
 
@@ -25,6 +28,8 @@ def modules(package: str):
     pkg = importlib.import_module(package)
     yield pkg
     for info in pkgutil.walk_packages(pkg.__path__, package + '.'):
+        if info.name.endswith('.__main__'):
+            continue    # importing it runs the program
         try:
             yield importlib.import_module(info.name)
         except ImportError:
@@ -53,6 +58,17 @@ def documented(cls: type, name: str) -> bool:
     return False
 
 
+def overrides_foreign(cls: type, name: str) -> bool:
+    '''Whether a member overrides one of a base class from another package,
+    such as a Qt method, which that package documents.'''
+    return any(
+        name in vars(base)
+        for base in cls.__mro__[1:]
+        if not getattr(base, '__module__', '').startswith('pylorenzmie')
+        and base is not object
+    )
+
+
 def is_member(value) -> bool:
     '''Whether a class attribute is something to document.'''
     unwrapped = getattr(value, '__func__', value)
@@ -77,7 +93,8 @@ def missing(module) -> list[str]:
             for attr, value in vars(obj).items():
                 if attr.startswith('_') or attr.endswith('Event'):
                     continue
-                if is_member(value) and not documented(obj, attr):
+                if (is_member(value) and not documented(obj, attr)
+                        and not overrides_foreign(obj, attr)):
                     found.append(f'{where}.{attr}')
     return found
 

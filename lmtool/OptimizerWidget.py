@@ -93,6 +93,7 @@ class OptimizerWidget(ParameterTree):
 
     @classmethod
     def example(cls) -> None:
+        '''Run a demonstration of the widget, for use as a script.'''
         from pyqtgraph import mkQApp
 
         app = mkQApp()

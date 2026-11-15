@@ -98,6 +98,7 @@ class ProfileWidget(pg.PlotWidget):
         self.plotTheory()
 
     def plotTheory(self) -> None:
+        '''Show the hologram of the model as the theory curve.'''
         if self._model is not None:
             self.theory.setData(self._model.hologram())
 
@@ -106,6 +107,8 @@ class ProfileWidget(pg.PlotWidget):
         self.theory.setData(profile)
 
     def plotData(self) -> None:
+        '''Show the azimuthal profile of the data, with its standard
+        deviation.'''
         if self._data is None:
             return
         radius = min(self.radius, len(self._data))
@@ -117,6 +120,7 @@ class ProfileWidget(pg.PlotWidget):
 
     @classmethod
     def example(cls) -> None:
+        '''Run a demonstration of the widget, for use as a script.'''
         from pylorenzmie.theory import AberratedLorenzMie as model
 
         app = pg.mkQApp()

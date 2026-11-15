@@ -134,9 +134,11 @@ class LMWidget(QFrame):
                                   control.objectName() in fixed)
 
     def config(self) -> dict[str, LorenzMie.Properties]:
+        '''Return the settings of the controls, by name.'''
         return {c.objectName(): c.settings() for c in self.controls}
 
     def setConfig(self, config: dict[str, LorenzMie.Properties]) -> None:
+        '''Keep the controls that ``config`` names, and apply its settings.'''
         self.controls = []
         for control, settings in config.items():
             if hasattr(self, control):
@@ -146,6 +148,7 @@ class LMWidget(QFrame):
 
     @classmethod
     def example(cls) -> None:
+        '''Run a demonstration of the widget, for use as a script.'''
         from pyqtgraph import mkQApp
 
         def report(name, value):

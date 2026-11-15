@@ -129,11 +129,12 @@ testpaths = ["tests"]
 addopts = "--ignore=tests/slow --ignore=tests/test_jaxlorenzmie.py"
 
 [tool.pyright]
-# Type checking of lib/, the best-typed part, as in QVideo and QHOT; a CI
-# job runs it with a pinned version.  The other packages report the optional
-# libraries (torch, jax, cupy, numba) as missing and are not checked yet.
+# Type checking of lib/, utilities/ and tools/, the best-typed parts, as in
+# QVideo and QHOT; a CI job runs it with a pinned version.  theory/, analysis/
+# and lmtool/ report the optional libraries (torch, jax, cupy, numba, Qt) as
+# missing, and are not checked yet.
 # pyright cannot read ``__all__ = 'a b'.split()``, which is the style.
-include = ["lib"]
+include = ["lib", "utilities", "tools"]
 pythonVersion = "3.11"
 extraPaths = [".."]
 reportPrivateImportUsage = "none"

@@ -226,6 +226,7 @@ class LMTool(QMainWindow):
 
     @pyqtSlot()
     def readHologram(self, filename: str | None = None) -> None:
+        '''Read a hologram from a file, which is asked for if not given.'''
         if not filename:
             get = QFileDialog.getOpenFileName
             filename, _ = get(self,
@@ -370,6 +371,8 @@ class LMTool(QMainWindow):
 
     @pyqtSlot()
     def readBackground(self, filename: str | None = None) -> None:
+        '''Read a background image from a file, which is asked for if
+        not given.'''
         if not filename:
             get = QFileDialog.getOpenFileName
             filename, _ = get(self,
@@ -436,6 +439,8 @@ class LMTool(QMainWindow):
 
     @pyqtSlot()
     def saveParameters(self, filename: str | None = None) -> None:
+        '''Save the parameters of the model as JSON, in a file that is
+        asked for if not given.'''
         if not filename:
             get = QFileDialog.getSaveFileName
             filename, _ = get(self, 'Save Parameters', '', 'JSON (*.json)')
@@ -495,6 +500,8 @@ class LMTool(QMainWindow):
         self.profileWidget.showTheory(profile)
 
     def crop(self) -> tuple[Image, QRectF, Coordinates]:
+        '''Return the pixels inside the ROI, the rectangle that they cover
+        and their coordinates.'''
         get = self.imageWidget.roi.getArraySlice
         (sy, sx), _ = get(self._data, self.imageWidget.image)
         # the rectangle of the pixels that were cut out: the ROI itself
@@ -557,6 +564,7 @@ class LMTool(QMainWindow):
 
     @pyqtSlot()
     def undoEstimate(self) -> None:
+        '''Restore the parameters that the last estimate replaced.'''
         if self._pre_estimate is None:
             return
         self.session.update(self._pre_estimate)
@@ -565,6 +573,8 @@ class LMTool(QMainWindow):
 
     @pyqtSlot(bool)
     def setRobust(self, state: bool) -> None:
+        '''Select robust optimization, and show the settings that it
+        changes.'''
         optimizer = self.fitWidget.optimizer
         optimizer.robust = state
         self.optimizerWidget.settings = optimizer.settings
@@ -687,6 +697,7 @@ class LMTool(QMainWindow):
 
     @pyqtSlot()
     def saveResultsAs(self) -> None:
+        '''Ask for a file and save the results of the fits in it.'''
         get = QFileDialog.getSaveFileName
         filename, _ = get(self,
                           'Save Results',

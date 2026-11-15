@@ -70,6 +70,11 @@ def _show(splash: QSplashScreen, message: str) -> None:
 
 
 def lmtool() -> None:
+    '''Start the program.
+
+    Parse the command line, show a splash screen while the analysis
+    pipeline is imported, make the model, and run the main window.
+    '''
     logging.basicConfig(level=logging.WARNING,
                         format='%(name)s: %(levelname)s: %(message)s')
 
