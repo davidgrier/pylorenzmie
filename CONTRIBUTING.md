@@ -14,15 +14,18 @@ is swept by bulk edits and deleted by `git clean -xdf`):
 
 ```sh
 python3 -m venv ~/venvs/pylorenzmie
-make dev PYTHON=~/venvs/pylorenzmie/bin/python   # editable install: dev, numba, docs
-make test PYTHON=~/venvs/pylorenzmie/bin/python
+~/venvs/pylorenzmie/bin/pip install -e ".[dev,numba,docs]"   # editable install
+~/venvs/pylorenzmie/bin/python -m pytest
 ```
 
-`make help` lists the other targets: `make cov` (coverage), `make docs`
-(the documentation, in `docs/_build/html`), `make test-all` (also the slow tests
-and the JAX tests) and `make clean`. The optional `torch`, `jax` and `gpu`
-extras are not needed for the default tests. To check the code without Numba,
-use a throwaway environment with only `pip install -e ".[dev]"`.
+Other commands: `python -m pytest --cov` (coverage), `python -m pytest -o
+addopts=` (also the slow tests and the JAX tests), `ruff check .` (lint),
+`pyright` (types) and `python -m sphinx -b html docs docs/_build/html` (the
+documentation, in `docs/_build/html`).  `pre-commit install` (with `pip
+install pre-commit`) runs ruff and the style tests before each commit.  The
+optional `torch`, `jax` and `gpu` extras are not needed for the default tests.
+To check the code without Numba, use a throwaway environment with only
+`pip install -e ".[dev]"`.
 
 ## Style
 
@@ -46,16 +49,17 @@ hardware or an optional package must skip when it is absent
 continuous-integration machines must say so in its documentation. A numerical
 change is checked against the NumPy calculator, which is the reference.
 
-Slow tests are in `tests/slow` and run with `make test-all`. Continuous
-integration runs the tests on Python 3.11 to 3.14, with Numba and once
-without, runs one of them with coverage (which fails below the threshold in
+Slow tests are in `tests/slow` and run with `python -m pytest -o addopts=`.
+Continuous integration lints the code, checks the types, runs the tests on
+Python 3.11 to 3.14, with Numba and once without, runs the whole suite with
+Qt and coverage in one job (which fails below the threshold in
 `pyproject.toml`), and builds the documentation with warnings as errors.
 
 ## Documentation
 
 Document every public class, method and function. The documentation build
 checks every cross-reference (`nitpicky`), so a broken one fails it. Build it
-with `make docs`, and run the examples in the docstrings; a doctest keeps an
+with `python -m sphinx -b html docs docs/_build/html`, and run the examples in the docstrings; a doctest keeps an
 example honest. A change that users can see goes into `CHANGELOG.md` under
 *Unreleased*, and a breaking change says how to update.
 

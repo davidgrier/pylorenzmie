@@ -242,8 +242,8 @@
 - [ ] CI cannot test GPU code (no CUDA or Metal on hosted runners); the torch
       tests need an occasional run on real hardware
 - [ ] Development environment: document creating a venv outside the repository
-      (a venv inside the tree gets swept by bulk edits), and add `make dev`
-      and `.gitignore` entries for `.venv/`, `venv/` and `.lm/`
+      (a venv inside the tree gets swept by bulk edits), and add
+      `.gitignore` entries for `.venv/`, `venv/` and `.lm/`
 
 - [ ] `_setupTheory` in `LMTool`: fragile `layout.replaceWidget` by widget name;
       consider a cleaner injection mechanism

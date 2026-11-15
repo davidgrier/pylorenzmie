@@ -12,11 +12,11 @@ contain absolute paths:
 
 ```bash
 python3 -m venv ~/python/venvs/pylorenzmie
-make dev PYTHON=~/python/venvs/pylorenzmie/bin/python   # editable install
-make test PYTHON=~/python/venvs/pylorenzmie/bin/python
+~/python/venvs/pylorenzmie/bin/pip install -e ".[dev,numba,docs]"
+~/python/venvs/pylorenzmie/bin/python -m pytest
 ```
 
-`make dev` installs the `dev`, `numba` and `docs` extras. The `torch`, `jax`
+The `dev`, `numba` and `docs` extras are what development needs.  The `torch`, `jax`
 and `gpu` extras are optional and not needed for the default test run; CI
 installs `dev,numba` (and `dev` alone on one Python version). To check
 the code without Numba, use a throwaway venv with `pip install -e ".[dev]"`.
@@ -24,10 +24,11 @@ the code without Numba, use a throwaway venv with `pip install -e ".[dev]"`.
 ## Commands
 
 ```bash
-# Install in editable mode with test dependencies (or: make dev)
+# Install in editable mode with test dependencies
 pip install -e ".[dev,numba,docs]"
 
-# Run all tests (or: make test; make cov for coverage; make docs)
+# Run all tests (the default run leaves out tests/slow and the JAX tests;
+# python -m pytest -o addopts= runs them too)
 python -m pytest
 
 # Run a single test file
