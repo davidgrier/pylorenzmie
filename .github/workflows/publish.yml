@@ -5,6 +5,11 @@ on:
     tags:
       - 'v*'
 
+# a job reads the repository and nothing else, unless it says that it needs
+# more
+permissions:
+  contents: read
+
 jobs:
   tested:
     # A tag can be pushed on a commit that has not passed its tests.  The

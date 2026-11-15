@@ -10,6 +10,18 @@ on:
     - cron: "0 6 * * 1"
   workflow_dispatch:
 
+# a job reads the repository and nothing else
+permissions:
+  contents: read
+
+# a new push to a pull request replaces the run of the old one.  A run for a
+# commit of master is in a group of its own, because a run that waits behind
+# another in a group is cancelled by the next, and a release waits for the
+# run of its commit.
+concurrency:
+  group: tests-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   lint:
     name: Lint

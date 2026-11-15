@@ -29,6 +29,14 @@ All notable changes to pylorenzmie are recorded here. The format follows
   scripts in `tools/` work and the splash image is what `make_splash.py`
   makes.  A `.pre-commit-config.yaml` runs the quick ones before a commit.
   `ruff` is in the `dev` extra.
+* CI checks what a user installs and what a release contains: a job builds the
+  wheel, installs it outside the checkout, and reads the weights, images,
+  layouts and splash image that it ships; a job runs the suite with JAX,
+  which the default run leaves out; `tests/slow` run every week and on
+  request; `actionlint` checks the workflows; and `publish.yml` releases
+  nothing unless the Tests workflow passed on the tagged commit.  Dependabot
+  keeps the actions current, and the jobs have read access to the repository
+  and nothing more.
 
 * `lmtool` runs on PyQt6, PyQt5 and PySide6, and CI tests all three, and
   macOS.  Install `pylorenzmie[pyqt6]` (the same as `[gui]`), `[pyqt5]` or
@@ -63,6 +71,9 @@ All notable changes to pylorenzmie are recorded here. The format follows
   mask; `Frame` raises `RuntimeError` if a feature was not optimized.
 * The coverage threshold is 76%, measured in the GUI job of CI, which runs the
   whole suite with Numba and Qt.
+* `project.license` is an SPDX expression, `GPL-3.0-or-later`, in place of the
+  table that setuptools stops building in February 2027; building needs
+  `setuptools>=77`.
 * Imports within a module are grouped as the standard library, third-party
   libraries, `pylorenzmie`, and siblings.  Argument lists are one line, or
   one argument to a line.
