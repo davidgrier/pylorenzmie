@@ -57,6 +57,16 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* The `z_p` bounds of `DEEstimator`, `RadialEstimator` and `PairEstimator`
+  are in pixels again, like `x_p`, `y_p` and the `z_p` of a particle, so that
+  a name has one unit wherever it appears (3.5.0 made the bounds micrometers).
+  The camera independence that 3.5.0 gave the default stays: `bounds` is
+  `None` by default, which searches 1 to 200 um at the magnification of the
+  instrument (`default_bounds(magnification)`), and it follows a change of
+  the magnification.  `DEFAULT_BOUNDS` and `pixel_bounds` are gone.  Code that
+  passes `bounds={'z_p': ...}` in micrometers must give pixels instead, and an
+  old range is silently a different height: divide it by the magnification.
+  The tutorials' bounds are converted at 0.048 um/pixel.
 * `lmtool` imports Qt through `qtpy`, with `Signal`, `Slot` and `from qtpy
   import uic`, and `qtpy` is imported before `pyqtgraph` everywhere, so that
   `QT_API` is honored.  The widgets have plain Python properties in place of
@@ -101,9 +111,9 @@ All notable changes to pylorenzmie are recorded here. The format follows
 ### Fixed
 
 * `PairEstimator` searched the height of a pair in the wrong units.  The
-  bounds on `z_p` are in micrometers, and `DEEstimator` and `RadialEstimator`
-  convert them to pixels with the magnification; `PairEstimator` used them as
-  they were, so that the search stopped at 200 pixels, about 10 micrometers
+  bounds on `z_p` were micrometers, and `DEEstimator` and `RadialEstimator`
+  converted them to pixels with the magnification; `PairEstimator` used them
+  as they were, so that the search stopped at 200 pixels, about 10 micrometers
   at 0.048 um/pixel, and could not find a pair above it.  A pair at 250 pixels
   was estimated at 200.  The split of a poor fit into a pair, which uses the
   search, found no pair in `image0010.png` for that reason.

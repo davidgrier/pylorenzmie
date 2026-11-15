@@ -68,9 +68,8 @@ class PairEstimator(DEEstimator):
         if self.exclude is not None:
             mask.exclude = self.exclude
         de_data, de_coords = mask.apply(hologram)
-        pixels = self._pixel_bounds()
         bounds = {f'{key}{i}': limits
-                  for i in (1, 2) for key, limits in pixels.items()}
+                  for i in (1, 2) for key, limits in self._bounds().items()}
         self._search(de_data, de_coords, bounds)
         return pd.Series(pair.properties)
 

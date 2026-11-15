@@ -31,40 +31,31 @@ from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import LorenzMie
 
 
-DEFAULT_BOUNDS: Bounds = {
-    'z_p': (1., 200.),
-    'a_p': (0.25, 10.0),
-    'n_p': (1.0, 3.0),
-}
+def default_bounds(magnification: float) -> Bounds:
+    '''The search ranges of an estimator that has no bounds of its own.
 
-
-def pixel_bounds(bounds: Bounds, magnification: float) -> Bounds:
-    '''Convert the height bounds of a search from micrometers to pixels.
-
-    The heights of a particle are measured in pixels, the unit of the
-    coordinates, but the range that a search should cover is set by the
-    sample, not by the camera.  The bounds therefore give ``z_p`` in
-    micrometers, like ``a_p``, and a search converts it with the
-    magnification of the instrument.
+    The height of a particle is measured in pixels, like its position in the
+    plane, but the range that a search should cover is set by the sample,
+    not by the camera: a fixed range of pixels stops at a different height
+    in the sample at each magnification.  The default is therefore 1 to
+    200 μm, converted to pixels with the magnification of the instrument.
 
     Parameters
     ----------
-    bounds : dict
-        Mapping of parameter name to ``(min, max)`` search range, with
-        ``z_p`` in micrometers.
     magnification : float
         Size of a pixel in the sample (μm/pixel).
 
     Returns
     -------
     bounds : dict
-        A copy of ``bounds`` with ``z_p`` in pixels.
+        Mapping of parameter name to ``(min, max)`` search range: ``z_p``
+        in pixels, ``a_p`` in μm and ``n_p``.
     '''
-    converted = dict(bounds)
-    if 'z_p' in converted:
-        lo, hi = converted['z_p']
-        converted['z_p'] = (lo / magnification, hi / magnification)
-    return converted
+    return {
+        'z_p': (1. / magnification, 200. / magnification),
+        'a_p': (0.25, 10.0),
+        'n_p': (1.0, 3.0),
+    }
 
 
 class _DEObjective:
@@ -106,14 +97,16 @@ class _DESearch:
     '''
 
     model: LorenzMie
-    bounds: Bounds
+    bounds: Bounds | None
     popsize: int
     seed: int | None
     settings: dict
 
-    def _pixel_bounds(self) -> Bounds:
-        '''The bounds with the height in pixels.'''
-        return pixel_bounds(self.bounds, self.model.instrument.magnification)
+    def _bounds(self) -> Bounds:
+        '''The bounds of the search: the default if there are none.'''
+        if self.bounds is not None:
+            return self.bounds
+        return default_bounds(self.model.instrument.magnification)
 
     def _search(self,
                 data: Image,
@@ -182,12 +175,11 @@ class DEEstimator(_DESearch, BaseEstimator):
         :class:`~pylorenzmie.analysis.Optimizer.Optimizer`. The particle
         parameters on this model are updated in-place.
     bounds : dict, optional
-        Mapping of parameter name to ``(min, max)`` search range.  The
-        height ``z_p`` is given in micrometers, like ``a_p``, and the search
-        converts it to pixels with the magnification of the instrument, so
-        that the range does not change with the camera.
-        Default: ``z_p`` (1, 200) μm, ``a_p`` (0.25, 10.0) μm,
-        ``n_p`` (1.0, 3.0).
+        Mapping of parameter name to ``(min, max)`` search range, in the
+        units of the parameter: ``z_p`` in pixels, ``a_p`` in μm.
+        Default: ``None``, which searches ``z_p`` from 1 to 200 μm (at the
+        magnification of the instrument, see :func:`default_bounds`),
+        ``a_p`` from 0.25 to 10 μm and ``n_p`` from 1 to 3.
     fraction : float, optional
         Fraction of pixels used for the DE objective function.
         Default: 0.02.  A fixed random subsample is drawn once per
@@ -246,7 +238,7 @@ class DEEstimator(_DESearch, BaseEstimator):
     :class:`~pylorenzmie.analysis.Optimizer.Optimizer` to converge. '''
 
     model: LorenzMie
-    bounds: Bounds = field(default_factory=DEFAULT_BOUNDS.copy)
+    bounds: Bounds | None = None
     fraction: float = 0.02
     exclude: NDArray[np.bool_] | None = None
     popsize: int = 10
@@ -288,7 +280,7 @@ class DEEstimator(_DESearch, BaseEstimator):
         if self.exclude is not None:
             mask.exclude = self.exclude
         de_data, de_coords = mask.apply(hologram)
-        self._search(de_data, de_coords, self._pixel_bounds())
+        self._search(de_data, de_coords, self._bounds())
         return pd.Series(self.model.single().properties)
 
     @classmethod

@@ -4,8 +4,7 @@ import numpy as np
 import pandas as pd
 
 from pylorenzmie.analysis import BaseEstimator, Hologram
-from pylorenzmie.analysis.DEEstimator import (DEEstimator, DEFAULT_BOUNDS,
-                                              pixel_bounds)
+from pylorenzmie.analysis.DEEstimator import DEEstimator, default_bounds
 from pylorenzmie.theory import LorenzMie
 from pylorenzmie.lib import LMObject
 
@@ -47,14 +46,18 @@ class TestDEEstimator(unittest.TestCase):
         self.assertIsInstance(self.estimator, BaseEstimator)
 
     def test_default_bounds_keys(self):
-        '''DEFAULT_BOUNDS covers z_p, a_p, and n_p.'''
+        '''The default bounds cover z_p, a_p, and n_p.'''
         for key in ('z_p', 'a_p', 'n_p'):
-            self.assertIn(key, DEFAULT_BOUNDS)
+            self.assertIn(key, default_bounds(0.1))
 
     def test_default_bounds_valid_ranges(self):
         '''Each default bound is a (min, max) pair with min < max.'''
-        for key, (lo, hi) in DEFAULT_BOUNDS.items():
+        for key, (lo, hi) in default_bounds(0.1).items():
             self.assertLess(lo, hi, msg=f'{key}: lo >= hi')
+
+    def test_no_bounds_by_default(self):
+        '''None means the default, which is found at the search.'''
+        self.assertIsNone(self.estimator.bounds)
 
     def test_returns_series(self):
         '''estimate() returns a pandas.Series.'''
@@ -101,10 +104,9 @@ class TestDEEstimator(unittest.TestCase):
 
     def test_custom_bounds(self):
         '''DEEstimator respects custom bounds.'''
-        mag = self.model.instrument.magnification
         custom = DEEstimator(
             model=self.model,
-            bounds={'z_p': (150.*mag, 250.*mag)},   # micrometers
+            bounds={'z_p': (150., 250.)},           # pixels
             seed=0)
         custom.settings['maxiter'] = 1
         custom.settings['workers'] = 1
@@ -128,29 +130,22 @@ class TestDEEstimator(unittest.TestCase):
         '''exclude defaults to None.'''
         self.assertIsNone(self.estimator.exclude)
 
-    def test_height_bounds_are_converted_to_pixels(self):
-        '''z_p is bounded in micrometers; the search runs in pixels.'''
-        bounds = pixel_bounds({'z_p': (10., 100.), 'a_p': (0.25, 10.)}, 0.1)
-        self.assertEqual(bounds['z_p'], (100., 1000.))
-        self.assertEqual(bounds['a_p'], (0.25, 10.))
-
-    def test_pixel_bounds_leaves_its_argument_alone(self):
-        bounds = {'z_p': (10., 100.)}
-        pixel_bounds(bounds, 0.1)
-        self.assertEqual(bounds, {'z_p': (10., 100.)})
+    def test_default_height_follows_the_magnification(self):
+        '''The default covers 1 to 200 um at each magnification.'''
+        self.assertEqual(default_bounds(0.1)['z_p'], (10., 2000.))
+        self.assertEqual(default_bounds(0.2)['z_p'], (5., 1000.))
+        self.assertEqual(default_bounds(0.1)['a_p'], (0.25, 10.))
 
     def test_search_range_follows_the_magnification(self):
-        '''The same bounds cover the same height in the sample.'''
+        '''The default bounds cover the same height in the sample.'''
         self.model.instrument.magnification = 0.24
         self.model.particle.r_p = [50., 50., 100.]    # 24 um
         hologram = Hologram(self.model.hologram().reshape((101, 101)))
-        custom = DEEstimator(model=self.model,
-                             seed=0,
-                             bounds={'z_p': (20., 30.)})
-        custom.settings.update(maxiter=1, workers=1)
-        z_p = custom.estimate(hologram)['z_p']
-        self.assertGreaterEqual(z_p*0.24, 20.)
-        self.assertLessEqual(z_p*0.24, 30.)
+        estimator = DEEstimator(model=self.model, seed=0)
+        estimator.settings.update(maxiter=1, workers=1)
+        z_p = estimator.estimate(hologram)['z_p']
+        self.assertGreaterEqual(z_p*0.24, 1.)
+        self.assertLessEqual(z_p*0.24, 200.)
 
 
 class TestDEEstimatorConvergence(unittest.TestCase):

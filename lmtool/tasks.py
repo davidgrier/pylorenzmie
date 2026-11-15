@@ -27,7 +27,7 @@ import pandas as pd
 from qtpy.QtCore import QObject, QThread, Signal, Slot
 
 from pylorenzmie.analysis import DEEstimator, Localizer, Mask, Optimizer
-from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS
+from pylorenzmie.analysis.DEEstimator import default_bounds
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.theory import LorenzMie
@@ -181,7 +181,8 @@ def run_estimate(snapshot: Snapshot, cancel: threading.Event) -> pd.Series:
         If ``cancel`` is set before the search is done.
     '''
     model = _model(snapshot, cancel)
-    bounds = {name: limits for name, limits in DEFAULT_BOUNDS.items()
+    defaults = default_bounds(model.instrument.magnification)
+    bounds = {name: limits for name, limits in defaults.items()
               if name not in snapshot.fixed}
     if not bounds:
         return pd.Series(model.single().properties)

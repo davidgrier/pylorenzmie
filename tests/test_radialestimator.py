@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 from pylorenzmie.analysis import BaseEstimator, Hologram
-from pylorenzmie.analysis.RadialEstimator import RadialEstimator, DEFAULT_BOUNDS
+from pylorenzmie.analysis.RadialEstimator import RadialEstimator
 from pylorenzmie.theory import LorenzMie
 from pylorenzmie.lib import LMObject
 
@@ -27,11 +27,9 @@ class TestRadialEstimator(unittest.TestCase):
         '''RadialEstimator is a subclass of BaseEstimator.'''
         self.assertIsInstance(self.estimator, BaseEstimator)
 
-    def test_default_bounds_match_de(self):
-        '''Default bounds are the same as DEEstimator.DEFAULT_BOUNDS.'''
-        for key in ('z_p', 'a_p', 'n_p'):
-            self.assertIn(key, self.estimator.bounds)
-        self.assertEqual(self.estimator.bounds, DEFAULT_BOUNDS)
+    def test_no_bounds_by_default(self):
+        '''None means the bounds of DEEstimator: see default_bounds.'''
+        self.assertIsNone(self.estimator.bounds)
 
     def test_returns_series(self):
         '''estimate() returns a pandas.Series.'''
@@ -77,10 +75,9 @@ class TestRadialEstimator(unittest.TestCase):
 
     def test_custom_bounds(self):
         '''RadialEstimator respects custom bounds.'''
-        mag = self.model.instrument.magnification
         custom = RadialEstimator(
             model=self.model,
-            bounds={'z_p': (150.*mag, 250.*mag)},   # micrometers
+            bounds={'z_p': (150., 250.)},           # pixels
             seed=0)
         custom.settings['maxiter'] = 1
         custom.settings['workers'] = 1

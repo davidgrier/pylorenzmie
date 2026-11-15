@@ -8,7 +8,7 @@ import pandas as pd
 from pylorenzmie.lib import Azimuthal
 from pylorenzmie.lib.lmtypes import Bounds, Properties
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
-from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS, _DESearch
+from pylorenzmie.analysis.DEEstimator import _DESearch
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie
 
@@ -39,11 +39,11 @@ class RadialEstimator(_DESearch, BaseEstimator):
         :class:`~pylorenzmie.analysis.Optimizer.Optimizer`. The particle
         parameters on this model are updated in-place.
     bounds : dict, optional
-        Mapping of parameter name to ``(min, max)`` search range.  The
-        height ``z_p`` is given in micrometers, like ``a_p``, and the search
-        converts it to pixels with the magnification of the instrument.
-        Default: ``z_p`` (1, 200) μm, ``a_p`` (0.25, 10.0) μm,
-        ``n_p`` (1.0, 3.0).
+        Mapping of parameter name to ``(min, max)`` search range, in the
+        units of the parameter: ``z_p`` in pixels, ``a_p`` in μm.
+        Default: ``None``, which searches ``z_p`` from 1 to 200 μm (at the
+        magnification of the instrument, see :func:`default_bounds`),
+        ``a_p`` from 0.25 to 10 μm and ``n_p`` from 1 to 3.
     popsize : int, optional
         DE population size multiplier (population = popsize ×
         len(bounds)).  Default: 10.
@@ -79,7 +79,7 @@ class RadialEstimator(_DESearch, BaseEstimator):
     non-spherical particles or when rotational symmetry cannot be assumed. '''
 
     model: LorenzMie
-    bounds: Bounds = field(default_factory=DEFAULT_BOUNDS.copy)
+    bounds: Bounds | None = None
     popsize: int = 10
     seed: int | None = None
     settings: dict = field(default_factory=lambda: {'tol': 0.01,
@@ -120,7 +120,7 @@ class RadialEstimator(_DESearch, BaseEstimator):
         n_radii = len(profile)
         radii = np.arange(n_radii, dtype=float)
         coords = np.vstack([x_p + radii, np.full(n_radii, y_p)])
-        self._search(profile, coords, self._pixel_bounds())
+        self._search(profile, coords, self._bounds())
         return pd.Series(self.model.single().properties)
 
     @classmethod

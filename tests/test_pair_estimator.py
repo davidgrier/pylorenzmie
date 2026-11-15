@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from pylorenzmie.analysis import DEEstimator, Hologram, PairEstimator
-from pylorenzmie.analysis.DEEstimator import pixel_bounds
+from pylorenzmie.analysis.DEEstimator import default_bounds
 from pylorenzmie.theory import LorenzMie, Pair
 from pylorenzmie.lib import LMObject
 
@@ -52,14 +52,14 @@ class TestPairEstimator(unittest.TestCase):
         self.assertTrue(results[0].equals(results[1]))
 
     def test_the_height_is_searched_in_pixels(self) -> None:
-        '''The bounds on z_p are micrometers, and the search is in pixels.
+        '''The default bounds are 1 to 200 um, searched in pixels.
 
         The search of a pair used the bounds as they are, so that it could
         not find a height above 200 pixels, about 10 micrometers.
         '''
         module = importlib.import_module('pylorenzmie.analysis.DEEstimator')
         magnification = self.model.instrument.magnification
-        z_lo, z_hi = self.estimator.bounds['z_p']
+        z_lo, z_hi = 1., 200.                        # micrometers
         with patch.object(module, 'differential_evolution') as search:
             search.return_value.x = np.ones(6)
             self.estimator.estimate(self.hologram, self.centers)
@@ -68,7 +68,7 @@ class TestPairEstimator(unittest.TestCase):
         for z in (bounds[0], bounds[3]):
             self.assertAlmostEqual(z[0], z_lo / magnification)
             self.assertAlmostEqual(z[1], z_hi / magnification)
-        self.assertEqual(bounds[1], self.estimator.bounds['a_p'])
+        self.assertEqual(bounds[1], (0.25, 10.))
 
     def test_returns_series(self) -> None:
         '''estimate() returns a pandas.Series.'''
@@ -93,11 +93,10 @@ class TestPairEstimator(unittest.TestCase):
     def test_searched_values_within_bounds(self) -> None:
         '''z_p, a_p, n_p for both spheres stay within bounds.
 
-        The bounds on z_p are in micrometers and the result is in pixels.
+        The default bounds are chosen in micrometers; the result is in pixels.
         '''
         result = self.estimator.estimate(self.hologram, self.centers)
-        bounds = pixel_bounds(self.estimator.bounds,
-                              self.model.instrument.magnification)
+        bounds = default_bounds(self.model.instrument.magnification)
         for key in ('z_p', 'a_p', 'n_p'):
             lo, hi = bounds[key]
             for suffix in ('1', '2'):
@@ -115,13 +114,12 @@ class TestPairEstimator(unittest.TestCase):
         '''A custom bounds dict constrains both spheres identically.'''
         custom = PairEstimator(
             model=self.model,
-            bounds={'z_p': (8., 11.)},      # micrometers
+            bounds={'z_p': (160., 220.)},   # pixels
             seed=0)
         custom.settings['maxiter'] = 1
         custom.settings['workers'] = 1
         result = custom.estimate(self.hologram, self.centers)
-        lo, hi = pixel_bounds(custom.bounds,
-                              self.model.instrument.magnification)['z_p']
+        lo, hi = 160., 220.
         for suffix in ('1', '2'):
             self.assertGreaterEqual(result[f'z_p{suffix}'], lo)
             self.assertLessEqual(result[f'z_p{suffix}'], hi)
