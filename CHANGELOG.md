@@ -6,6 +6,72 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+* `LorenzMie.single(kind=Particle)` returns the particle of a model that has
+  one, typed as `kind` (`model.single(Sphere).a_p = 0.75`), and raises
+  `TypeError` if the model scatters from a list of particles or from another
+  kind of particle.  A list has no position or properties of its own, so the
+  code that reads or sets them (the estimators, `Optimizer`, `Pair`) asks for
+  the particle in this way.
+* `LorenzMie.parallel`, `False` by default, is declared on the base class.
+  Only the Numba calculator uses it; `Estimator` turns it off for its own
+  searches.
+* `Bounds` and `Settings` in `pylorenzmie.lib.lmtypes`, for the bounds of a
+  search and the keyword arguments of a solver.
+* `tools/` holds the scripts that make files that ship with the package,
+  `train_mlp_estimator.py` and `make_splash.py` (formerly in `devel/`), with a
+  `README.md`; every top-level directory has a `README.md` now.
+* The development checks of QVideo and QHOT: `ruff` (rules and line length in
+  `pyproject.toml`) and `pyright` run in CI, and tests check the layout of
+  argument lists, that the public API has docstrings, that every module can
+  be imported first, that `pyproject.toml` lists every package, and that the
+  scripts in `tools/` work and the splash image is what `make_splash.py`
+  makes.  A `.pre-commit-config.yaml` runs the quick ones before a commit.
+  `ruff` is in the `dev` extra.
+
+### Changed
+
+* `Property` (`pylorenzmie.lib.lmtypes`) is what a `properties` dict holds:
+  numbers and strings, `None` for a value that is not known yet, and the lists
+  and dicts of a configuration.  `Estimator.estimate` and the other estimators
+  are annotated as returning a `pandas.Series`, as does `Optimizer.optimize`,
+  and `Frame.results`, `Frame.optimize` and `Frame.analyze` a
+  `pandas.DataFrame`.  `Particle.r_p` accepts any sequence of three numbers,
+  `Optimizer.fixed` and `Optimizer.variables` any sequence of names.
+* Errors are reported where they happen.  `LorenzMie.properties` and the
+  estimators raise `TypeError` for a model that has a list of particles (an
+  `AttributeError` before, if they got that far); `Pair` raises `TypeError`
+  if its particles are not spheres; `Optimizer` raises `RuntimeError` if it
+  is asked about data that it has not been given; `Estimator` raises
+  `ValueError` if no sphere matches the profile (a `TypeError` from the next
+  line before); `Feature.mask` raises `RuntimeError` if the optimizer has no
+  mask; `Frame` raises `RuntimeError` if a feature was not optimized.
+* The coverage threshold is 76%, measured in the GUI job of CI, which runs the
+  whole suite with Numba and Qt.
+* Imports within a module are grouped as the standard library, third-party
+  libraries, `pylorenzmie`, and siblings.  Argument lists are one line, or
+  one argument to a line.
+
+### Fixed
+
+* The analytical Jacobian of `jaxLorenzMie` is finite at the pixel that lies
+  exactly on the axis of the particle, where the gradient of the distance
+  was 0/0.  A fit of a particle centered on a pixel failed with `array must
+  not contain infs or NaNs`.
+* The example of `Hologram` built a `Hologram` from a `Hologram`.
+* `torchLorenzMie` named `Particle` in two annotations without importing it,
+  and the signature of `OptimizerWidget` named a `QWidget` that it does not
+  import.
+
+### Removed
+
+* `lib/obsolete/` and `theory/obsolete/`, 26 files that nothing imported
+  (the history has them), and the untracked scratch directory `devel/` is
+  ignored by git.
+* The `Makefile`.  The commands that it ran are in `CLAUDE.md` and
+  `CONTRIBUTING.md`.
+
 ## [3.6.0] - 2026-11-13
 
 ### Changed
