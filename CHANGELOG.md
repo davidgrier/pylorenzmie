@@ -85,6 +85,13 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Fixed
 
+* `PairEstimator` searched the height of a pair in the wrong units.  The
+  bounds on `z_p` are in micrometers, and `DEEstimator` and `RadialEstimator`
+  convert them to pixels with the magnification; `PairEstimator` used them as
+  they were, so that the search stopped at 200 pixels, about 10 micrometers
+  at 0.048 um/pixel, and could not find a pair above it.  A pair at 250 pixels
+  was estimated at 200.  The split of a poor fit into a pair, which uses the
+  search, found no pair in `image0010.png` for that reason.
 * `PairEstimator` did not use its `seed` for the subsample of pixels that its
   search fits (`DEEstimator` does), so a seed did not make its estimate
   reproducible.  A frame that splits a poor fit into a pair gave a different

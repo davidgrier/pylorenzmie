@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 from scipy.optimize import differential_evolution
 
-from pylorenzmie.analysis.DEEstimator import DEEstimator, _DEObjective
+from pylorenzmie.analysis.DEEstimator import (DEEstimator, _DEObjective,
+                                              pixel_bounds)
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import Pair
@@ -73,7 +74,8 @@ class PairEstimator(DEEstimator):
         noise = self.model.instrument.noise
 
         de_vars = [f'{key}{i}' for i in (1, 2) for key in self.bounds]
-        de_bounds = list(self.bounds.values()) * 2
+        bounds = pixel_bounds(self.bounds, self.model.instrument.magnification)
+        de_bounds = list(bounds.values()) * 2
 
         saved_coords = self.model.coordinates
         self.model.coordinates = de_coords
@@ -83,7 +85,7 @@ class PairEstimator(DEEstimator):
                 result = differential_evolution(objective,
                                                 de_bounds,
                                                 popsize=self.popsize,
-                                                seed=self.seed,  # pyright: ignore
+                                                seed=self.seed,  # pyright: ignore[reportCallIssue]
                                                 **self.settings)
         finally:
             self.model.coordinates = saved_coords
