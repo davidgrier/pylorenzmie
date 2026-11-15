@@ -114,7 +114,9 @@ field one point at a time on all CPU threads: about 4 times faster than
 the NumPy calculator on one thread, and 10 to 20 times faster on a
 ten-core machine.  It is what ``from pylorenzmie.theory import
 LorenzMie`` returns when Numba works; otherwise you get the NumPy
-calculator, which needs no extra packages.
+calculator, which needs no extra packages.  Numba also compiles the
+recurrences of the Mie coefficients, which a global search evaluates for
+every candidate.
 
 The GPU calculators are never chosen automatically, because they pay off
 for large images, not for the small masked fits that are typical.

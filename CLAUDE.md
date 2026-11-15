@@ -232,15 +232,21 @@ appear in `properties` and are therefore adjustable during fitting.
 in `LorenzMie.field()`.
 
 **`Sphere(Particle)`** — homogeneous sphere with `a_p` (radius, μm), `n_p`,
-`k_p`. Computes Mie scattering coefficients `ab()` via the Wiscombe–Yang
-algorithm.
+`k_p`. Computes Mie scattering coefficients `ab()` with the Wiscombe–Yang
+truncation.  The recurrences are in `theory/_mie.py`, compiled by Numba when
+it is installed and plain Python otherwise (the numbers are the same).  The
+downward recurrence for the logarithmic derivative starts
+`start_margin(nmax)` (`15 + 6 nmax^(1/3)`) orders above the last one that is
+kept; a start at `nmax` itself left errors of 1e-4 to 100% for large spheres
+of a high index (`jaxLorenzMie` has the same margin).
 
 **`Cluster`, `Dimer`** — multi-sphere assemblies.
 
 **`LorenzMie(LMObject)`** — core scattering calculator (`method = 'numpy'`).
 Takes `coordinates`, `particle`, and `instrument`; exposes `field()` and
 `hologram()`. The class attribute `method` is used to match calculators with
-compatible `Optimizer` instances.
+compatible `Optimizer` instances.  Setting `properties` with a name that the
+model does not have raises a `ValueError` and sets nothing.
 
 **Accelerated subclasses** all inherit `LorenzMie` and override `_allocate()`
 and `lorenzmie()`:
@@ -277,6 +283,17 @@ returns bounding boxes as `pandas.DataFrame` with columns `x_p`, `y_p`, `bbox`.
 
 **`Estimator`** — estimates initial particle parameters (position, radius) from a
 feature image using azimuthal analysis of the fringe pattern.
+
+**Global estimators** — `DEEstimator`, `RadialEstimator` (the radial
+profile, for spheres) and `PairEstimator` (two spheres) search for starting
+values with differential evolution; `MLPEstimator` is a trained network.  The
+search is one method of the `_DESearch` mixin in `DEEstimator.py`, which
+refuses `workers != 1` for a calculator with `fork_safe = False`.  Their
+`bounds` are in the units of the parameters: **`z_p` in pixels**, like `x_p`
+and `y_p`, and `a_p` in μm.  `bounds=None` (the default) searches `z_p` from
+1 to 200 μm at the magnification of the instrument (`default_bounds`), so
+the default does not depend on the camera; bounds that are given are taken
+as they are.  A seed makes an estimate reproducible (`Mask` takes it too).
 
 **`Mask`** — selects which pixels participate in the fit (excludes
 saturated/NaN pixels; supports random subsampling via `fraction`: exactly

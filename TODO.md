@@ -222,11 +222,44 @@
 
 - [x] `Optimizer` defaults: the aberration coefficients of an `Aberrated` model
       stay fixed, and user-supplied `settings` are no longer overwritten
-- [ ] `test_sphere.py`: add spot-check tests for specific Mie coefficient values
-      against published reference data
+- [x] Mie coefficients: `tests/test_mie.py` compares them with the Bessel
+      functions of the theory for radii of 0.1 to 30 um and indices of 1 to 3
+      (and fails when the start of the recurrence is too low)
+- [ ] `test_sphere.py`: spot-check Mie coefficients against published
+      reference data (tables of Bohren and Huffman), not only against the
+      Bessel functions
 - [x] lmtool logic: headless tests of the window, the widgets, the session and
       the tasks (`tests/test_lmtool*.py`, 150 tests, Qt drawing to no display),
       run on PyQt6, PyQt5 and PySide6
+
+## review (2026-11)
+
+Open findings of the review of the code base; the notes behind them are in
+`CHANGELOG.md` (what was done) and in the commit messages.
+
+- [ ] **Pair-split rule** (`Frame._split`): a pair is accepted when its
+      reduced chi-squared is lower than the single fit's, with no margin.
+      After the unit fix both features of `image0010.png` become pairs
+      (3.6 to 2.6 and 3.9 to 2.8), which may be overfitting.  Decide a margin
+      (or an F-test) and look at how many splits survive on the test images.
+- [ ] **Large spheres converge badly**: in a simulated fit (2% noise,
+      polystyrene in water, start 2% off in radius) 3 and 5 um spheres end
+      0.05 um from the truth, with the old and the new Mie coefficients: a
+      local minimum or a poor start.  Investigate before CATCH.
+- [ ] `Feature` and `Frame` subclass the `Hologram` dataclass but skip its
+      `__init__` and set private attributes; hold a `Hologram` instead, or
+      let `Hologram` exist without data.  An API change.
+- [ ] `compute_field_jit` (`numbaLorenzMie`) is not used outside its test, and
+      its `scratch` argument does nothing; remove it in a major version.
+- [ ] The Triton kernel exists twice (`_tritonkernel.py` and
+      `torchLorenzMieBatch.py`, about 100 lines); unify with CUDA hardware to
+      test it.  The two kernels have no type annotations (`@triton.jit` reads
+      them).
+- [ ] The macOS GUI job hung once (the stack was in `LMTool._onCurrentParticle`
+      during the event loop) and has not since; a stuck test now ends the run
+      after five minutes with the stacks of its threads.  Watch the next runs.
+- [ ] `tasks._model` stops a search by replacing `model.hologram` on the
+      instance; give the model a way to be cancelled.
 
 ## api
 

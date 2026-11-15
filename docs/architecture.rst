@@ -48,7 +48,10 @@ list or cluster of them) and an ``instrument``.  ``field()`` returns the
 scattered field and ``hologram()`` the normalized intensity.  The particle
 supplies the Mie coefficients through ``ab()``; the calculator turns them
 into a field by summing the partial waves at every pixel, which is the
-expensive step and the part that the accelerated calculators replace.
+expensive step and the part that the accelerated calculators replace.  The
+coefficients themselves are cheap (10 to 20 microseconds, compiled by Numba
+when it is installed), but a global search computes them for every
+candidate.
 
 The calculators are interchangeable.  Their class attribute ``method``
 ('numpy', 'numba numpy', 'torch numpy', ...) names them, and an optimizer
@@ -72,13 +75,23 @@ localizer that creates a feature for every particle it finds.  The steps of a
 frame (``detect``, ``estimate``, ``optimize``) can be run one at a time, which
 is how an estimator or an optimizer is adjusted for a particular sample.
 
-Four estimators produce starting values:
+Five estimators produce starting values:
 :class:`~pylorenzmie.analysis.Estimator.Estimator` (from the fringes),
 :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` (global search),
 :class:`~pylorenzmie.analysis.RadialEstimator.RadialEstimator` (global search
 on the radial profile) and
+:class:`~pylorenzmie.analysis.PairEstimator.PairEstimator` (global search for
+two spheres) and
 :class:`~pylorenzmie.analysis.MLPEstimator.MLPEstimator` (a trained network).
 :class:`~pylorenzmie.analysis.Mask.Mask` selects the pixels that a fit uses.
+
+The global searches take ``bounds``, a range for each parameter in the units
+of the parameter, with ``z_p`` in pixels.  Without bounds they search 1 to
+200 micrometers in height, converted to pixels with the magnification of the
+instrument (:func:`~pylorenzmie.analysis.DEEstimator.default_bounds`), so a
+change of camera does not move the search; bounds that narrow it to what is
+known about the sample make a search faster and less likely to settle on an
+unphysical solution.  A ``seed`` makes an estimate reproducible.
 
 Layout of the repository
 ------------------------

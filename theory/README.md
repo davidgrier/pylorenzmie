@@ -12,6 +12,8 @@ calculators that turn them into holograms.
 - `Aberrated.py` and `Distorted.py` add the Seidel aberrations of the
   imaging system, with `_warp.py` holding the kernels of the distortion.
 - `generators.py` has the generating functions of the Seidel aberrations.
+- `_mie.py` holds the recurrences of the Mie coefficients of a sphere, which
+  Numba compiles when it is installed.
 
 `pylorenzmie.theory.LorenzMie` is the fastest calculator that works in the
 environment; set `PYLORENZMIE_BACKEND` to choose another.

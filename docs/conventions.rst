@@ -20,6 +20,10 @@ Units and coordinates
 * ``z_p`` is the distance of a particle from the focal plane.  A particle above
   the focal plane, between the focal plane and the light source, has a
   positive ``z_p`` and produces a diverging wave; the default is 100 pixels.
+* The ranges of a search (``bounds`` of the estimators) are in the units of
+  the parameter they bound: ``z_p`` in pixels, ``a_p`` in micrometers.  A
+  range of heights from a sample in micrometers is divided by the
+  ``magnification``.
 * The illumination is a plane wave that propagates along -z and is polarized
   along x.  The scattered field is returned in Cartesian components
   ``(x, y, z)`` as an array of shape ``(3, npts)``, or in spherical components
