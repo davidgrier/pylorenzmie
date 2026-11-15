@@ -64,7 +64,9 @@ class PairEstimator(DEEstimator):
         pair.x_p2 = float(x_p2)
         pair.y_p2 = float(y_p2)
 
-        mask = Mask(fraction=self.fraction)
+        # seeded with the estimator, so that a seed makes the whole
+        # estimate reproducible
+        mask = Mask(fraction=self.fraction, seed=self.seed)
         if self.exclude is not None:
             mask.exclude = self.exclude
         de_data, de_coords = mask.apply(hologram)

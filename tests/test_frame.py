@@ -121,11 +121,13 @@ class TestFrame(unittest.TestCase):
         truth.coordinates = LorenzMie.meshgrid((201, 201))
         frame.data = truth.hologram().reshape(201, 201)
         frame.bboxes = ((0, 0), 201, 201)
-        # Pin the DE search's own seed rather than relying on the
-        # ambient global RandomState scipy falls back to when an
-        # estimator's seed is None -- that fallback made this fixture
-        # sensitive to whatever other tests ran earlier in the suite.
+        # Pin every random choice of the fit: the seed of the DE search, and
+        # the seed of the subsample of pixels that the least-squares fit
+        # uses, which the pairs that the frame tries share with this
+        # feature.  Without them the fit settles in a different minimum from
+        # run to run, and the redchi below was sometimes 3.
         frame.features[0].estimator.seed = 0
+        frame.features[0].mask.seed = 0
         return frame
 
     def test_poor_single_fit_splits_into_pair(self):

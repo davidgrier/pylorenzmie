@@ -33,6 +33,20 @@ class TestPairEstimator(unittest.TestCase):
         '''PairEstimator is a subclass of DEEstimator.'''
         self.assertIsInstance(self.estimator, DEEstimator)
 
+    def test_seed_makes_the_estimate_reproducible(self) -> None:
+        '''The seed controls the search and the subsampled pixels.
+
+        A subsample that is not seeded made the estimate, and the split of
+        a feature into a pair that uses it, differ from one run to the next.
+        '''
+        results = []
+        for _ in range(2):
+            estimator = PairEstimator(model=self.model, seed=3)
+            estimator.settings['maxiter'] = 1
+            estimator.settings['workers'] = 1
+            results.append(estimator.estimate(self.hologram, self.centers))
+        self.assertTrue(results[0].equals(results[1]))
+
     def test_returns_series(self) -> None:
         '''estimate() returns a pandas.Series.'''
         result = self.estimator.estimate(self.hologram, self.centers)

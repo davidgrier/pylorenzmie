@@ -85,6 +85,11 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Fixed
 
+* `PairEstimator` did not use its `seed` for the subsample of pixels that its
+  search fits (`DEEstimator` does), so a seed did not make its estimate
+  reproducible.  A frame that splits a poor fit into a pair gave a different
+  fit from run to run, and about one run in ten of the test of the split
+  ended with a reduced chi-squared of 3 where it expected less than 2.
 * `lmtool` worked on PyQt6 only: on PyQt5, toggling a particle in the table
   of particles raised an error.
 * A `ProfileWidget` did not move the particle of its model to the origin: it
