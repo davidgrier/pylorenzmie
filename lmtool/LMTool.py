@@ -39,12 +39,6 @@ _DIR = Path(__file__).parent
 logger = logging.getLogger(__name__)
 
 
-# TODO: interactive residuals (currently only updates after fits)
-# TODO: support for cuda-accelerated kernels
-# TODO: toml config file
-# TODO: support for gamma correction
-
-
 class LMTool(QMainWindow):
     '''Main window for the LMTool hologram-fitting application.
 

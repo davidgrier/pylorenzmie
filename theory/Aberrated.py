@@ -304,7 +304,7 @@ def Aberrated(base_class: type) -> type:
 
         # lets a back end that applies the phase in its kernel (Metal) keep
         # its fast path for aberrated models
-        scattered_field._kernel_aberration = True  # pyright: ignore
+        scattered_field._kernel_aberration = True  # pyright: ignore[reportFunctionMemberAccess]
 
     return AberratedLorenzMie
 

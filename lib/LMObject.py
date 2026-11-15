@@ -54,7 +54,7 @@ class LMObject(ABC):
 
     # Mutable objects should not be hashable.  The idiom is standard, but
     # pyright reads it as an override of object.__hash__ by a non-method.
-    __hash__ = None  # pyright: ignore
+    __hash__ = None  # pyright: ignore[reportAssignmentType]
 
     @property
     def logger(self) -> logging.Logger:

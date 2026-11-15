@@ -163,7 +163,7 @@ class RadialEstimator(BaseEstimator):
                 result = differential_evolution(objective,
                                                 de_bounds,
                                                 popsize=self.popsize,
-                                                seed=self.seed,  # pyright: ignore
+                                                seed=self.seed,  # pyright: ignore[reportCallIssue]
                                                 **self.settings)
         finally:
             self.model.coordinates = saved_coords

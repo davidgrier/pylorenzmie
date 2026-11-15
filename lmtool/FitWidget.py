@@ -27,7 +27,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self._model_hologram = None
 
     def _configurePlot(self) -> None:
-        self.ci.layout.setContentsMargins(  # pyright: ignore
+        self.ci.layout.setContentsMargins(  # pyright: ignore[reportAttributeAccessIssue]
             0, 0, 0, 0)
         self.setBackground('w')
         pen = pg.mkPen('k', width=2)
@@ -59,7 +59,7 @@ class FitWidget(pg.GraphicsLayoutWidget):
                              limits=(-10, 10),
                              interactive=False,
                              colorMap=cm,
-                             pen=pen)  # pyright: ignore
+                             pen=pen)  # pyright: ignore[reportArgumentType]
         self.addItem(cb)
 
     def setData(self, data: Image,
