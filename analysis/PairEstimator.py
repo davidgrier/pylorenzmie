@@ -1,11 +1,8 @@
 from dataclasses import dataclass
 
-import numpy as np
 import pandas as pd
-from scipy.optimize import differential_evolution
 
-from pylorenzmie.analysis.DEEstimator import (DEEstimator, _DEObjective,
-                                              pixel_bounds)
+from pylorenzmie.analysis.DEEstimator import DEEstimator
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import Pair
@@ -71,26 +68,10 @@ class PairEstimator(DEEstimator):
         if self.exclude is not None:
             mask.exclude = self.exclude
         de_data, de_coords = mask.apply(hologram)
-        noise = self.model.instrument.noise
-
-        de_vars = [f'{key}{i}' for i in (1, 2) for key in self.bounds]
-        bounds = pixel_bounds(self.bounds, self.model.instrument.magnification)
-        de_bounds = list(bounds.values()) * 2
-
-        saved_coords = self.model.coordinates
-        self.model.coordinates = de_coords
-        objective = _DEObjective(self.model, de_data, de_vars, noise)
-        try:
-            with np.errstate(over='ignore', invalid='ignore'):
-                result = differential_evolution(objective,
-                                                de_bounds,
-                                                popsize=self.popsize,
-                                                seed=self.seed,  # pyright: ignore[reportCallIssue]
-                                                **self.settings)
-        finally:
-            self.model.coordinates = saved_coords
-
-        self.model.properties = dict(zip(de_vars, result.x, strict=True))
+        pixels = self._pixel_bounds()
+        bounds = {f'{key}{i}': limits
+                  for i in (1, 2) for key, limits in pixels.items()}
+        self._search(de_data, de_coords, bounds)
         return pd.Series(pair.properties)
 
     @classmethod

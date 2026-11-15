@@ -24,7 +24,7 @@ from numpy.typing import NDArray
 import pandas as pd
 from scipy.optimize import differential_evolution
 
-from pylorenzmie.lib.lmtypes import Bounds, Image, Properties
+from pylorenzmie.lib.lmtypes import Bounds, Coordinates, Image, Properties
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
@@ -70,6 +70,11 @@ def pixel_bounds(bounds: Bounds, magnification: float) -> Bounds:
 class _DEObjective:
     '''Picklable objective function for differential evolution.
 
+    The sum of the squared residuals, in units of the noise, between the
+    model and *data*: the intensity at the coordinates of the model, whether
+    those are some of the pixels of a hologram or the points of its azimuthal
+    profile.
+
     Using a top-level callable class rather than a closure allows
     ``differential_evolution(workers=-1)`` to distribute candidate
     evaluations across CPU cores via ``multiprocessing``.
@@ -93,8 +98,62 @@ class _DEObjective:
             return float(np.nansum(diff ** 2))
 
 
+class _DESearch:
+    '''The differential-evolution search that the estimators share.
+
+    A subclass is a dataclass with the attributes that are declared here,
+    and calls :meth:`_search` with what it compares the model with.
+    '''
+
+    model: LorenzMie
+    bounds: Bounds
+    popsize: int
+    seed: int | None
+    settings: dict
+
+    def _pixel_bounds(self) -> Bounds:
+        '''The bounds with the height in pixels.'''
+        return pixel_bounds(self.bounds, self.model.instrument.magnification)
+
+    def _search(self,
+                data: Image,
+                coordinates: Coordinates,
+                bounds: Bounds) -> None:
+        '''Set the model to the best fit of *data* at *coordinates*.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            The intensity at *coordinates*.
+        coordinates : numpy.ndarray
+            Where the model is evaluated.  The coordinates of the model are
+            replaced by them during the search, and restored on exit, even
+            if an exception occurs.
+        bounds : dict
+            Search range ``(min, max)`` of each parameter that is varied, by
+            the name of the property, in the units of the property (pixels
+            for the height).
+        '''
+        variables = list(bounds)
+        noise = self.model.instrument.noise
+        saved_coordinates = self.model.coordinates
+        self.model.coordinates = coordinates
+        objective = _DEObjective(self.model, data, variables, noise)
+        try:
+            with np.errstate(over='ignore', invalid='ignore'):
+                result = differential_evolution(
+                    objective,
+                    list(bounds.values()),
+                    popsize=self.popsize,
+                    seed=self.seed,  # pyright: ignore[reportCallIssue]
+                    **self.settings)
+        finally:
+            self.model.coordinates = saved_coordinates
+        self.model.properties = dict(zip(variables, result.x, strict=True))
+
+
 @dataclass
-class DEEstimator(BaseEstimator):
+class DEEstimator(_DESearch, BaseEstimator):
     '''Estimate initial particle parameters by global search.
 
     Uses differential evolution (DE) to minimize the sum-squared residual
@@ -218,26 +277,7 @@ class DEEstimator(BaseEstimator):
         if self.exclude is not None:
             mask.exclude = self.exclude
         de_data, de_coords = mask.apply(hologram)
-        noise = self.model.instrument.noise
-
-        de_vars = list(self.bounds.keys())
-        de_bounds = list(pixel_bounds(
-            self.bounds, self.model.instrument.magnification).values())
-
-        saved_coords = self.model.coordinates
-        self.model.coordinates = de_coords
-        objective = _DEObjective(self.model, de_data, de_vars, noise)
-        try:
-            with np.errstate(over='ignore', invalid='ignore'):
-                result = differential_evolution(objective,
-                                                de_bounds,
-                                                popsize=self.popsize,
-                                                seed=self.seed,  # pyright: ignore[reportCallIssue]
-                                                **self.settings)
-        finally:
-            self.model.coordinates = saved_coords
-
-        self.model.properties = dict(zip(de_vars, result.x, strict=True))
+        self._search(de_data, de_coords, self._pixel_bounds())
         return pd.Series(self.model.single().properties)
 
     @classmethod

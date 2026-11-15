@@ -3,46 +3,18 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-from numpy.typing import NDArray
 import pandas as pd
-from scipy.optimize import differential_evolution
 
 from pylorenzmie.lib import Azimuthal
 from pylorenzmie.lib.lmtypes import Bounds, Properties
 from pylorenzmie.analysis.BaseEstimator import BaseEstimator
-from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS, pixel_bounds
+from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS, _DESearch
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie
 
 
-class _RadialObjective:
-    '''Picklable objective comparing a radial model to the azimuthal profile.
-
-    Using a top-level callable class rather than a closure allows
-    ``differential_evolution(workers=-1)`` to distribute candidate
-    evaluations across CPU cores via ``multiprocessing``.
-    '''
-
-    def __init__(self,
-                 model: LorenzMie,
-                 profile: NDArray[np.floating],
-                 variables: list[str],
-                 noise: float) -> None:
-        self._model = model
-        self._profile = profile
-        self._variables = variables
-        self._noise = noise
-
-    def __call__(self, values: np.ndarray) -> float:
-        self._model.properties = dict(
-            zip(self._variables, values, strict=True))
-        with np.errstate(over='ignore', invalid='ignore'):
-            diff = (self._model.hologram() - self._profile) / self._noise
-            return float(np.nansum(diff ** 2))
-
-
 @dataclass
-class RadialEstimator(BaseEstimator):
+class RadialEstimator(_DESearch, BaseEstimator):
     '''Estimate particle parameters by global search on the azimuthal profile.
 
     Computes the azimuthal average of the hologram once, then uses
@@ -146,29 +118,9 @@ class RadialEstimator(BaseEstimator):
         profile = Azimuthal.avg(hologram.data,
                                 center=(x_p - cx, y_p - cy))
         n_radii = len(profile)
-        noise = self.model.instrument.noise
-
         radii = np.arange(n_radii, dtype=float)
         coords = np.vstack([x_p + radii, np.full(n_radii, y_p)])
-
-        de_vars = list(self.bounds.keys())
-        de_bounds = list(pixel_bounds(
-            self.bounds, self.model.instrument.magnification).values())
-
-        saved_coords = self.model.coordinates
-        self.model.coordinates = coords
-        objective = _RadialObjective(self.model, profile, de_vars, noise)
-        try:
-            with np.errstate(over='ignore', invalid='ignore'):
-                result = differential_evolution(objective,
-                                                de_bounds,
-                                                popsize=self.popsize,
-                                                seed=self.seed,  # pyright: ignore[reportCallIssue]
-                                                **self.settings)
-        finally:
-            self.model.coordinates = saved_coords
-
-        self.model.properties = dict(zip(de_vars, result.x, strict=True))
+        self._search(profile, coords, self._pixel_bounds())
         return pd.Series(self.model.single().properties)
 
     @classmethod

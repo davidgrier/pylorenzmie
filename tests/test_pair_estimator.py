@@ -57,7 +57,7 @@ class TestPairEstimator(unittest.TestCase):
         The search of a pair used the bounds as they are, so that it could
         not find a height above 200 pixels, about 10 micrometers.
         '''
-        module = importlib.import_module('pylorenzmie.analysis.PairEstimator')
+        module = importlib.import_module('pylorenzmie.analysis.DEEstimator')
         magnification = self.model.instrument.magnification
         z_lo, z_hi = self.estimator.bounds['z_p']
         with patch.object(module, 'differential_evolution') as search:
