@@ -15,7 +15,7 @@ the image and the background before it divides.
 
 import os
 from pathlib import Path
-from typing import Self
+from typing import Any, Self
 
 import numpy as np
 from numpy.typing import NDArray
@@ -101,7 +101,9 @@ class Normalizer:
         self.dark = dark
 
     @classmethod
-    def read(cls, background: str | os.PathLike | float, **kwargs) -> Self:
+    def read(cls,
+             background: str | os.PathLike | float,
+             **kwargs: Any) -> Self:
         '''A normalizer that divides by a background that is read.
 
         Parameters

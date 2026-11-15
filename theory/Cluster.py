@@ -14,6 +14,7 @@ own.  :class:`~pylorenzmie.theory.Dimer.Dimer` is a cluster of two touching
 spheres.
 '''
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 
 from pylorenzmie.theory.Particle import Particle
@@ -56,7 +57,7 @@ class Cluster(Particle):
     def __len__(self) -> int:
         return len(self.particles)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Particle]:
         return iter(self.particles)
 
     def __getitem__(self, index: int) -> Particle:

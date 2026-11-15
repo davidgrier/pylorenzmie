@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import numpy as np
 import pandas as pd
 from qtpy.QtCore import (QAbstractTableModel, QModelIndex, Qt,
@@ -52,9 +54,10 @@ class ParticleTable(QAbstractTableModel):
     def columnCount(self, parent: QModelIndex = _ROOT) -> int:
         return 0 if parent.isValid() else len(self.COLUMNS)
 
-    def headerData(self, section: int,
+    def headerData(self,
+                   section: int,
                    orientation: Qt.Orientation,
-                   role: int = Qt.ItemDataRole.DisplayRole):
+                   role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if (role == Qt.ItemDataRole.DisplayRole
                 and orientation == Qt.Orientation.Horizontal):
             return self.COLUMNS[section].replace('chi2', 'χ²')
@@ -66,8 +69,9 @@ class ParticleTable(QAbstractTableModel):
             flags |= Qt.ItemFlag.ItemIsUserCheckable
         return flags
 
-    def data(self, index: QModelIndex,
-             role: int = Qt.ItemDataRole.DisplayRole):
+    def data(self,
+             index: QModelIndex,
+             role: int = Qt.ItemDataRole.DisplayRole) -> Any:
         if not index.isValid():
             return None
         row, column = self._rows[index.row()], index.column()
@@ -94,8 +98,9 @@ class ParticleTable(QAbstractTableModel):
         result = row['result']
         return '' if result is None else f'{result["redchi"]:.2f}'
 
-    def setData(self, index: QModelIndex,
-                value,
+    def setData(self,
+                index: QModelIndex,
+                value: Any,
                 role: int = Qt.ItemDataRole.EditRole) -> bool:
         if index.column() == 0 and role == Qt.ItemDataRole.CheckStateRole:
             self._rows[index.row()]['include'] = (

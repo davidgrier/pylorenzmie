@@ -76,6 +76,10 @@ nitpick_ignore_regex = [
     (r'py:.*', r'(torch|jax|cupy|numba|trackpy|pyqtgraph|sklearn)(\..*)?'),
     (r'py:.*', r'(qtpy|PyQt[56]|PySide6)(\..*)?|Q[A-Z][A-Za-z]+'),
     (r'py:.*', r'numpy\._typing\..*'),
+    # the scalar types of numpy, in the annotations of the Numba kernels
+    (r'py:class', r'numpy\.(float|complex|int|uint|bool)\d*'),
+    # a private class, such as a mixin that the estimators share, has no page
+    (r'py:class', r'pylorenzmie\..*\._\w+'),
 ]
 
 # Suppress warnings that cannot be fixed in source

@@ -91,7 +91,7 @@ class Optimizer(LMObject):
                  robust: bool | None = None,
                  fixed: list[str] | None = None,
                  settings: Settings | None = None,
-                 **kwargs) -> None:
+                 **kwargs: Any) -> None:
         self.model = model or LorenzMie(**kwargs)
         if self.method not in self.model.method:
             raise TypeError('Model not compatible with Optimizer')
@@ -327,7 +327,7 @@ class Optimizer(LMObject):
     @classmethod
     def example(cls,
                 verbose: bool = False,
-                **kwargs) -> None:  # pragma: no cover
+                **kwargs: Any) -> None:  # pragma: no cover
         from time import perf_counter
 
         shape = (201, 201)

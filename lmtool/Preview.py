@@ -1,5 +1,6 @@
 '''The model prediction that lmtool shows while the user changes parameters.'''
 
+from typing import Any
 import numpy as np
 from qtpy.QtCore import QObject, QTimer, Signal
 
@@ -59,7 +60,7 @@ class Preview(QObject):
         self._radius = int(radius)
         self.request()
 
-    def request(self, *args) -> None:
+    def request(self, *args: Any) -> None:
         '''Ask for a prediction, to be computed once the event loop runs.'''
         if not self._timer.isActive():
             self._timer.start()

@@ -190,7 +190,7 @@ def Aberrated(base_class: type) -> type:
            imaging" (2026).
         '''
 
-        def __init__(self, *args,
+        def __init__(self, *args: Any,
                      defocus: float = 0.,
                      spherical: float = 0.,
                      coma: float = 0.,
@@ -199,7 +199,7 @@ def Aberrated(base_class: type) -> type:
                      piston: float = 0.,
                      x_c: float = 0.,
                      y_c: float = 0.,
-                     **kwargs) -> None:
+                     **kwargs: Any) -> None:
             super().__init__(*args, **kwargs)
             self.defocus = defocus
             self.spherical = spherical
@@ -288,7 +288,7 @@ def Aberrated(base_class: type) -> type:
 
         def scattered_field(self,
                             particle: Particle,
-                            **kwargs) -> Field:
+                            **kwargs: Any) -> Field:
             '''Scattered field including geometric aberrations.'''
             field = super().scattered_field(particle, **kwargs)
             if self._aberrations_in_kernel:

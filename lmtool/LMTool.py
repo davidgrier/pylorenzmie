@@ -526,7 +526,10 @@ class LMTool(QMainWindow):
         self.preview.setCoordinates(coordinates)
 
     @Slot(object, object, float)
-    def _showPreview(self, hologram, profile, noise: float) -> None:
+    def _showPreview(self,
+                     hologram: NDArray[np.floating],
+                     profile: NDArray[np.floating],
+                     noise: float) -> None:
         self.fitWidget.showModel(hologram, noise)
         self.profileWidget.showTheory(profile)
 

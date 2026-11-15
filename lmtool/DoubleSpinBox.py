@@ -1,3 +1,4 @@
+from typing import Any
 from qtpy.QtWidgets import QDoubleSpinBox
 from qtpy.QtCore import Signal, Slot
 
@@ -11,7 +12,7 @@ class DoubleSpinBox(QDoubleSpinBox):
     buttonClicked = Signal(float)
     editingFinished = Signal(float)
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         # the signal of the base class is hidden by the float signal that
         # this class declares, so listen to the line edit, which has the
@@ -34,7 +35,7 @@ class DoubleSpinBox(QDoubleSpinBox):
         '''Run a demonstration of the widget, for use as a script.'''
         from pyqtgraph import mkQApp
 
-        def report(value):
+        def report(value: float) -> None:
             print(f'{value:.2f}', end='\r')
 
         app = mkQApp()

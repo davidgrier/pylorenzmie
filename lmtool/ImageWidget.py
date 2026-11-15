@@ -15,9 +15,9 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     radiusChanged = Signal(int)
 
     def __init__(self,
-                 *args,
+                 *args: Any,
                  data: NDArray[np.floating] | None = None,
-                 **kwargs) -> None:
+                 **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._radius = 100
         self._configurePlot()
@@ -50,7 +50,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
         self.roi.sigRegionChangeFinished.connect(self._handleChange)
 
     @Slot(object)
-    def _handleChange(self, roi) -> None:
+    def _handleChange(self, roi: pg.ROI) -> None:
         radius = int(self.roi.size()[0]) // 2
         x0, y0 = roi.pos()
         if radius != self._radius:
@@ -121,10 +121,10 @@ class ImageWidget(pg.GraphicsLayoutWidget):
     def example(cls) -> None:
 
         '''Run a demonstration of the widget, for use as a script.'''
-        def radius(r):
+        def radius(r: int) -> None:
             print(f'radius = {r}', end='\r')
 
-        def position(x, y):
+        def position(x: float, y: float) -> None:
             print(f'position = ({x:.1f}, {y:.1f})', end='\r')
 
         app = pg.mkQApp()

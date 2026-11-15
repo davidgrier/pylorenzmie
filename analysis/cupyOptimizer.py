@@ -7,9 +7,11 @@ vector is copied to the processor for the solver.  It needs the ``cupy``
 package.
 '''
 
+from typing import Any
 import cupy as cp
 
 from pylorenzmie.analysis import Optimizer
+from pylorenzmie.lib.lmtypes import Image
 from pylorenzmie.theory.cupyLorenzMie import cupyLorenzMie
 
 
@@ -39,18 +41,18 @@ class cupyOptimizer(Optimizer):
 
     method: str = 'cupy'
 
-    def __init__(self, *args,
+    def __init__(self, *args: Any,
                  double_precision: bool = True,
-                 **kwargs) -> None:
+                 **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self.model.double_precision = double_precision
 
     @property
-    def data(self):
+    def data(self) -> Image | None:
         return self._data
 
     @data.setter
-    def data(self, data) -> None:
+    def data(self, data: Image | None) -> None:
         self._data = data
         self.devicedata = (cp.asarray(data, dtype=self.model.dtype)
                            if data is not None else None)

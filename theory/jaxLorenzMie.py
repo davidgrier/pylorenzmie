@@ -9,6 +9,8 @@ Raises :exc:`ImportError` if JAX is not installed, or a JAX
 (e.g., version mismatch between JAX and jax-metal / jax-cuda).
 '''
 
+from typing import Any, Optional, Union
+
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -17,13 +19,19 @@ from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Sphere import Sphere
 
 jax.config.update('jax_enable_x64', True)
+
+Array = jax.Array                   # a traced array
+# Union and Optional, and not |: with JAX mocked, as in the docs job, an
+# array of JAX has no |
+Scalar = Union[jax.Array, float]    # a traced scalar, or a Python number
+Carry = tuple[Array, ...]           # what a scan passes to the next order
 # Verify the active backend can execute a trivial float64 op.
 # jax-metal built against older StableHLO raises JaxRuntimeError here,
 # which propagates out and causes __init__.py to skip this backend.
 jax.jit(lambda x: x)(jnp.array(1.0))
 
 
-def _downward_rec(z, nmax):
+def _downward_rec(z: Scalar, nmax: int) -> Array:
     '''Downward recurrence for the Riccati-Bessel D1 logarithmic derivative.
 
     Computes D1[n] for n = 0..nmax starting from D1[nmax] = 0
@@ -40,7 +48,7 @@ def _downward_rec(z, nmax):
     -------
     D1 : jnp.ndarray, shape (nmax+1,), complex128
     '''
-    def step(D1_n, n):
+    def step(D1_n: Scalar, n: Array) -> tuple[Array, Array]:
         D1_nm1 = n / z - 1. / (D1_n + n / z)
         return D1_nm1, D1_nm1
 
@@ -50,7 +58,9 @@ def _downward_rec(z, nmax):
     return jnp.concatenate([jnp.flip(D1_rev), jnp.array([0. + 0.j])])
 
 
-def _upward_rec(x, D1_med, nmax):
+def _upward_rec(x: Scalar,
+                D1_med: Array,
+                nmax: int) -> tuple[Array, Array, Array]:
     '''Upward recurrences for ψ_n, ζ_n, and D3_n (Yang 2003 Eqs. 18–21).
 
     Parameters
@@ -71,7 +81,8 @@ def _upward_rec(x, D1_med, nmax):
     Psizeta_0 = 0.5 * (1. - jnp.exp(2.j * x))
     D3_0 = 1.j + 0. * x   # trace x so AD flows through dtype/shape
 
-    def step(carry, n_int):
+    def step(carry: Carry,
+             n_int: Array) -> tuple[Carry, tuple[Array, Array, Array]]:
         Psi_prev, zeta_prev, Psizeta_prev, D3_prev = carry
         n = jnp.asarray(n_int, dtype=complex)
         nox = n / x
@@ -93,7 +104,12 @@ def _upward_rec(x, D1_med, nmax):
     return Psi, zeta, D3
 
 
-def _jax_mie_ab(a_p, n_p, k_p, n_m, wavelength, nmax):
+def _jax_mie_ab(a_p: Scalar,
+                n_p: Scalar,
+                k_p: Scalar,
+                n_m: Scalar,
+                wavelength: Scalar,
+                nmax: int) -> Array:
     '''JAX-differentiable Mie scattering coefficients (Wiscombe–Yang).
 
     nmax is a static Python int so jax.lax.scan compiles at a fixed
@@ -139,7 +155,7 @@ def _jax_mie_ab(a_p, n_p, k_p, n_m, wavelength, nmax):
     return ab.at[0].set(0. + 0.j)
 
 
-def _jax_lorenzmie(ab, kdr, bohren=True):
+def _jax_lorenzmie(ab: Array, kdr: Array, bohren: bool = True) -> Array:
     '''JAX partial-wave sum for the scattered electric field.
 
     Implements Bohren & Huffman §4.4 (Eqs. 4.45–4.50) using
@@ -199,7 +215,7 @@ def _jax_lorenzmie(ab, kdr, bohren=True):
         jnp.ones((), dtype=complex),           # En_factor (tracks i^n)
     )
 
-    def step(carry, n_int):
+    def step(carry: Carry, n_int: Array) -> tuple[Carry, None]:
         pi_nm1, pi_n, xi_nm2, xi_nm1, Es, En_fac = carry
         n = jnp.asarray(n_int, dtype=complex)
 
@@ -247,7 +263,10 @@ def _jax_lorenzmie(ab, kdr, bohren=True):
     ])
 
 
-def _jax_aberration_phase(r_p, coordinates, n_m, coefficients):
+def _jax_aberration_phase(r_p: Array,
+                          coordinates: Array,
+                          n_m: Scalar,
+                          coefficients: Array) -> Array:
     '''Seidel aberration phase [rad] for a particle at r_p.
 
     JAX counterpart of :meth:`Aberrated._aberration`, written without
@@ -288,17 +307,17 @@ def _jax_aberration_phase(r_p, coordinates, n_m, coefficients):
             (scale**3 * R))
 
 
-def _jax_hologram_core(r_p,
-                       a_p,
-                       n_p,
-                       k_p,
-                       k,
-                       n_m,
-                       wavelength,
-                       coordinates,
-                       nmax,
-                       aberration=None,
-                       piston=0.):
+def _jax_hologram_core(r_p: Array,
+                       a_p: Scalar,
+                       n_p: Scalar,
+                       k_p: Scalar,
+                       k: Scalar,
+                       n_m: Scalar,
+                       wavelength: Scalar,
+                       coordinates: Array,
+                       nmax: int,
+                       aberration: Optional[Array] = None,
+                       piston: Scalar = 0.) -> Array:
     '''Pure JAX hologram, differentiable w.r.t. all non-static args.
 
     Parameters
@@ -418,7 +437,7 @@ class jaxLorenzMie(LorenzMie):
         m = (self.particle.n_p + 1.j * self.particle.k_p) / self.instrument.n_m
         return Sphere.wiscombe_yang(x, m)
 
-    def hologram(self, **kwargs) -> np.ndarray:
+    def hologram(self, **kwargs: Any) -> np.ndarray:
         '''JIT-compiled hologram of a single
         :class:`~pylorenzmie.theory.Sphere`.
 

@@ -133,7 +133,7 @@ class LorenzMie(LMObject):
     @overload
     def single(self, kind: type[P]) -> P: ...
 
-    def single(self, kind=Particle):
+    def single(self, kind: type[Particle] = Particle) -> Particle:
         '''Return the particle, which must be a single particle.
 
         A model can scatter from a list of particles, which has no position
@@ -200,7 +200,8 @@ class LorenzMie(LMObject):
             misspelled name, or an aberration of a model that has none.
         TypeError
             If the model has a list of particles, which have no properties
-            of their own (see :meth:`single`).
+            of their own (see
+            :meth:`~pylorenzmie.theory.LorenzMie.LorenzMie.single`).
         '''
         return {**self.single().properties,
                 **self.instrument.properties}
@@ -252,7 +253,7 @@ class LorenzMie(LMObject):
         self.buffers = [np.empty(shape, dtype=complex) for _ in range(4)]
         self._field = np.empty(shape, dtype=complex)
 
-    def hologram(self, **kwargs) -> Image:
+    def hologram(self, **kwargs: Any) -> Image:
         '''Hologram of the particle at the current coordinates.
 
         Parameters
@@ -276,7 +277,7 @@ class LorenzMie(LMObject):
 
     def scattered_field(self,
                         particle: 'Particle',
-                        **kwargs) -> Field:
+                        **kwargs: Any) -> Field:
         '''Electric field scattered by a single particle.
 
         Parameters
@@ -299,7 +300,7 @@ class LorenzMie(LMObject):
         return (self.lorenzmie(ab, kdr, **kwargs) *
                 np.exp(-1.j * k * r_p[2]))
 
-    def field(self, **kwargs) -> Field:
+    def field(self, **kwargs: Any) -> Field:
         '''Electric field scattered by the particle(s).
 
         Parameters
@@ -489,7 +490,7 @@ class LorenzMie(LMObject):
     def example(cls,
                 shape: tuple[int, int] = (201, 201),
                 show: bool = True,
-                **kwargs) -> None:  # pragma: no cover
+                **kwargs: Any) -> None:  # pragma: no cover
         import matplotlib.pyplot as plt
         from pylorenzmie.theory import (Sphere, Instrument)
         from time import perf_counter

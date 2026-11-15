@@ -24,6 +24,11 @@ All notable changes to pylorenzmie are recorded here. The format follows
   pool of processes and the calculator cannot be forked (`fork_safe` is
   False, as for the CuPy and JAX calculators); `Feature` used to set one
   worker for those, which it already was.
+* The accelerated calculators and the code around them are annotated: the
+  JAX functions and the Numba kernels, with aliases for what they pass
+  (`Array`, `Scalar`, `Reals`, `Complexes`, `Kernel`), the `*args` and
+  `**kwargs` of the constructors that pass them on, and the closures of the
+  examples.  Only the pointer arguments of the two Triton kernels are not.
 * `Bounds` and `Settings` in `pylorenzmie.lib.lmtypes`, for the bounds of a
   search and the keyword arguments of a solver.
 * `tools/` holds the scripts that make files that ship with the package,

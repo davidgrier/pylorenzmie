@@ -1,5 +1,6 @@
 '''Base class and shared type aliases for pylorenzmie objects.'''
 
+from typing import Any
 from abc import ABC, abstractmethod
 import json
 import logging
@@ -105,7 +106,7 @@ class LMObject(ABC):
             else:
                 self.logger.debug('Ignoring unknown property: %s', name)
 
-    def to_json(self, **kwargs) -> str:
+    def to_json(self, **kwargs: Any) -> str:
         '''Serialize properties to a JSON string.
 
         NumPy scalars are automatically converted to native Python types
@@ -121,7 +122,7 @@ class LMObject(ABC):
         str
             JSON-encoded properties.
         '''
-        def np_encoder(obj):
+        def np_encoder(obj: Any) -> Any:
             if isinstance(obj, np.generic):
                 return obj.item()
 
@@ -139,7 +140,7 @@ class LMObject(ABC):
         '''
         self.properties = json.loads(s)
 
-    def to_pandas(self, **kwargs) -> pd.Series:
+    def to_pandas(self, **kwargs: Any) -> pd.Series:
         '''Serialize properties to a pandas Series.
 
         Parameters

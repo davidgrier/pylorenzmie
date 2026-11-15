@@ -1,3 +1,4 @@
+from typing import Any
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -30,7 +31,7 @@ class ParameterWidget(QFrame):
     #: Emitted when the lock checkbox changes.
     fixedChanged = Signal(bool)
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         uic.loadUi(_DIR / 'ParameterWidget.ui', self)
         self._connectSignals()
@@ -169,7 +170,7 @@ class ParameterWidget(QFrame):
         '''Run a demonstration of the widget, for use as a script.'''
         from pyqtgraph import mkQApp
 
-        def report(value):
+        def report(value: float) -> None:
             print(f'{value:.2f}', end='\r')
 
         app = mkQApp()

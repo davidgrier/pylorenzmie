@@ -1,3 +1,4 @@
+from typing import Any
 import logging
 
 from qtpy.QtCore import Slot, Signal
@@ -20,7 +21,7 @@ class OptimizerWidget(ParameterTree):
     #: Emitted with ``(name, value)`` whenever a solver setting changes.
     settingChanged = Signal(str, object)
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._buildTree()
         self._consistencyCheck()
@@ -69,12 +70,15 @@ class OptimizerWidget(ParameterTree):
             p.sigValueChanged.connect(self._handleValueChanged)
 
     @Slot(object, object)
-    def _updateLoss(self, widget: Parameter, value: LMObject.Property):
+    def _updateLoss(self,
+                    widget: Parameter,
+                    value: LMObject.Property) -> None:
         self._consistencyCheck()
 
     @Slot(object, object)
-    def _handleValueChanged(self, widget: Parameter,
-                            value: LMObject.Property):
+    def _handleValueChanged(self,
+                            widget: Parameter,
+                            value: LMObject.Property) -> None:
         logger.debug(f'emitting {widget.name()} {value}')
         self.settingChanged.emit(widget.name(), value)
 

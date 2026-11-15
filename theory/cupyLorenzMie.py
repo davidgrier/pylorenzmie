@@ -13,6 +13,7 @@ For a GPU on Apple silicon, or for an AMD or Intel GPU, see
 :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie`.
 '''
 
+from typing import Any
 import logging
 
 import cupy as cp
@@ -55,9 +56,9 @@ class cupyLorenzMie(LorenzMie):
     fork_safe: bool = False     # the device holds its memory
 
     def __init__(self,
-                 *args,
+                 *args: Any,
                  double_precision: bool = True,
-                 **kwargs) -> None:
+                 **kwargs: Any) -> None:
         self.double_precision = double_precision
         super().__init__(*args, **kwargs)
 

@@ -1,3 +1,4 @@
+from typing import Any
 import logging
 
 import numpy as np
@@ -24,7 +25,7 @@ class DoubleSlider(QSlider):
 
     valueChanged = Signal(float)
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._imin = 0
         self._imax = 10000
@@ -96,7 +97,7 @@ class DoubleSlider(QSlider):
         '''Run a demonstration of the widget, for use as a script.'''
         from pyqtgraph import mkQApp
 
-        def report(value):
+        def report(value: float) -> None:
             print(f'{value:.2f}', end='\r')
 
         app = mkQApp()

@@ -43,7 +43,7 @@ python -m pytest --cov=. --cov-report=term-missing
 # Lint (a CI job; configured in pyproject.toml)
 ruff check .
 
-# Type-check lib/ (a CI job; configured in pyproject.toml)
+# Type-check (a CI job; configured in pyproject.toml)
 pyright
 
 # Build HTML documentation (output: docs/_build/html/index.html)
@@ -306,9 +306,10 @@ interactive fitting, and displays results.
 
 ### `utilities/` — Helpers
 
-Image normalization (`normalize_image.py`), running statistics
-(`running_normal.py`, `vmedian.py`), water refractive index (`water.py`),
-geometry utilities (`geometry.py`), visualization helpers (`visualization.py`).
+Background normalization (`normalizer.py`), a running median (`vmedian.py`),
+an estimate of the noise of an image (`noise.py`), the refractive index of
+water (`water.py`), and the example holograms that ship with the package
+(`example_hologram.py`).
 
 ## Test conventions
 

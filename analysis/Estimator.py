@@ -26,6 +26,7 @@ from dataclasses import dataclass
 
 import pandas as pd
 import numpy as np
+from numpy.typing import NDArray
 from scipy.signal import argrelmin, argrelmax
 
 from pylorenzmie.lib import Azimuthal
@@ -219,7 +220,8 @@ class Estimator(BaseEstimator):
         weight = np.sqrt(n)
         along = np.vstack([k * r, np.zeros_like(r), np.zeros_like(r)])
 
-        def search(radii, heights) -> tuple[float, float]:
+        def search(radii: NDArray[np.floating],
+                   heights: NDArray[np.floating]) -> tuple[float, float]:
             '''Best (radius, height) on a grid.
 
             The Mie coefficients depend on the radius only, so they are

@@ -21,6 +21,7 @@ changes the ray directions appreciably, for example for a particle close
 to the focal plane.
 '''
 
+from typing import Any
 from collections.abc import Sequence
 
 import numpy as np
@@ -147,7 +148,7 @@ def Distorted(base_class: type) -> type:
         factor model.
         '''
 
-        def __init__(self, *args,
+        def __init__(self, *args: Any,
                      defocus: float = 0.,
                      spherical: float = 0.,
                      coma: float = 0.,
@@ -161,7 +162,7 @@ def Distorted(base_class: type) -> type:
                      mode: str = 'composed',
                      nsteps: int = 4,
                      kernel: bool = True,
-                     **kwargs) -> None:
+                     **kwargs: Any) -> None:
             super().__init__(*args, **kwargs)
             if kernel and _warp is not None:
                 _warp.warm_up()
@@ -291,7 +292,7 @@ def Distorted(base_class: type) -> type:
 
         def scattered_field(self,
                             particle: Particle,
-                            **kwargs) -> Field:
+                            **kwargs: Any) -> Field:
             '''Scattered field evaluated at the warped coordinates.'''
             inst = self.instrument
             k = inst.wavenumber()

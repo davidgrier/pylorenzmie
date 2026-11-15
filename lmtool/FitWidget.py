@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 class FitWidget(pg.GraphicsLayoutWidget):
     '''Three-panel widget of the ROI, the model fit and the residuals.'''
 
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._configurePlot()
         self.optimizer = Optimizer(model=LorenzMie())

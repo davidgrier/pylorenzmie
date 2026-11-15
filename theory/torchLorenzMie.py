@@ -13,7 +13,7 @@ tested; ROCm and XPU should work but have not been run.
 
 import cmath
 import logging
-from typing import Union
+from typing import Any, Union
 
 import numpy as np
 import torch
@@ -161,7 +161,7 @@ kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
 _metal_library = None
 
 
-def _metal():
+def _metal() -> Any:
     '''The compiled Metal library, built on first use.'''
     global _metal_library
     if _metal_library is None:
@@ -270,9 +270,9 @@ class TorchLorenzMie(LorenzMie):
     method: str = 'torch numpy'
 
     def __init__(self,
-                 *args,
+                 *args: Any,
                  device: Union[torch.device, str, None] = None,
-                 **kwargs) -> None:
+                 **kwargs: Any) -> None:
         if device is None:
             device = get_device()
         elif torch.device(device).type in _DEVICE_TYPES:

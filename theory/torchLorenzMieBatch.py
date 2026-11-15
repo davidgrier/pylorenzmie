@@ -16,8 +16,10 @@ TorchLorenzMieBatch
     holograms in a single GPU call.
 '''
 
+from typing import Any
 import logging
 
+import numpy as np
 import torch
 import triton
 import triton.language as tl
@@ -269,7 +271,7 @@ class TorchLorenzMieBatch(TorchLorenzMie):
     def batch_hologram(self,
                        particle_lists: list,
                        cartesian: bool = True,
-                       bohren: bool = True):
+                       bohren: bool = True) -> np.ndarray:
         '''Generate B holograms simultaneously on the GPU.
 
         Parameters
@@ -461,8 +463,8 @@ class TorchLorenzMieBatch(TorchLorenzMie):
     def batch_example(cls,
                       show: bool = True,
                       save: bool = False,
-                      filename: str = None,
-                      **kwargs) -> None:  # pragma: no cover
+                      filename: str | None = None,
+                      **kwargs: Any) -> None:  # pragma: no cover
 
         '''Demonstrate batch_hologram() with four holograms'''
         import matplotlib.pyplot as plt
@@ -477,7 +479,11 @@ class TorchLorenzMieBatch(TorchLorenzMie):
         instrument.wavelength = 0.447
         instrument.n_m = 1.340
 
-        def sphere(x, y, z, a_p, n_p):
+        def sphere(x: float,
+                   y: float,
+                   z: float,
+                   a_p: float,
+                   n_p: float) -> Sphere:
             p = Sphere()
             p.r_p = [x, y, z]
             p.a_p = a_p

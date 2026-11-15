@@ -1,3 +1,4 @@
+from typing import Any
 from pathlib import Path
 
 from qtpy import uic
@@ -51,9 +52,9 @@ class LMWidget(QFrame):
     #: Emitted with the name and value of a control that the user changed.
     propertyChanged = Signal(str, float)
 
-    def __init__(self, *args,
+    def __init__(self, *args: Any,
                  session: LMSession | None = None,
-                 **kwargs) -> None:
+                 **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         uic.loadUi(_DIR / self.uiFile, self)
         self.session = session if session is not None else LMSession(self.cls)
@@ -163,7 +164,7 @@ class LMWidget(QFrame):
         '''Run a demonstration of the widget, for use as a script.'''
         from pyqtgraph import mkQApp
 
-        def report(name, value):
+        def report(name: str, value: float) -> None:
             result = f'{name}: {value}'
             print(f'{result: <30}', end='\r')
 

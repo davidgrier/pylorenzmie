@@ -20,6 +20,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 import logging
 import threading
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -29,6 +30,7 @@ from pylorenzmie.analysis import DEEstimator, Localizer, Mask, Optimizer
 from pylorenzmie.analysis.DEEstimator import DEFAULT_BOUNDS
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib.lmtypes import Coordinates, Image
+from pylorenzmie.theory import LorenzMie
 
 logger = logging.getLogger(__name__)
 
@@ -124,21 +126,21 @@ class FitResult:
     metadata: pd.Series = field(default_factory=pd.Series)
 
 
-def _model(snapshot: Snapshot, cancel: threading.Event):
+def _model(snapshot: Snapshot, cancel: threading.Event) -> LorenzMie:
     '''A model for the snapshot that stops when ``cancel`` is set.'''
     model = snapshot.cls()
     model.properties = snapshot.properties
-    hologram, jac = model.hologram, getattr(model, 'jac', None)
+    hologram, jac = model.hologram, model.jac
 
     def checked(function: Callable) -> Callable:
-        def wrapper(*args, **kwargs):
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
             if cancel.is_set():
                 raise Cancelled
             return function(*args, **kwargs)
         return wrapper
 
     model.hologram = checked(hologram)
-    if jac is not None:
+    if model.jac_params:
         model.jac = checked(jac)
     return model
 
@@ -182,7 +184,7 @@ def run_estimate(snapshot: Snapshot, cancel: threading.Event) -> pd.Series:
     bounds = {name: limits for name, limits in DEFAULT_BOUNDS.items()
               if name not in snapshot.fixed}
     if not bounds:
-        return pd.Series(model.particle.properties)
+        return pd.Series(model.single().properties)
     return DEEstimator(model=model, bounds=bounds).estimate(
         _hologram(snapshot))
 

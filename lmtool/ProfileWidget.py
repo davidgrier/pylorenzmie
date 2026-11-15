@@ -1,3 +1,4 @@
+from typing import Any
 import numpy as np
 from numpy.typing import NDArray
 from qtpy.QtCore import Qt
@@ -16,10 +17,10 @@ class ProfileWidget(pg.PlotWidget):
     '''
 
     def __init__(self,
-                 *args,
+                 *args: Any,
                  model: LorenzMie | None = None,
                  radius: int = 100,
-                 **kwargs) -> None:
+                 **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._configurePlot()
         self.model = LorenzMie() if model is None else model

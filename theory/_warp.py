@@ -17,6 +17,7 @@ GUI toolkit do not have.  The kernels are therefore cached on disk, and
 :func:`warm_up` compiles (or loads) all of them in the thread that calls it,
 before any other thread needs one.
 '''
+from collections.abc import Callable
 import importlib
 import threading
 
@@ -153,7 +154,7 @@ def _g_distortion(x: float,
 
 
 # --------------------------------------------------------- stage-wise flow
-def _accumulator(generator):
+def _accumulator(generator: Callable[..., Pair]) -> Callable[..., None]:
     '''A kernel that adds alpha * g(x, y) to (kx, ky) for n points.
 
     The generator is part of the kernel, so Numba compiles (and can

@@ -9,6 +9,7 @@ successive frames into a track, for example with :func:`trackpy.link`, is left
 to the caller, as the video tutorial shows.
 '''
 
+from typing import Any
 import pandas as pd
 
 from pylorenzmie.lib import LMObject
@@ -58,7 +59,7 @@ class Trajectory(LMObject):
         '''Remove all stored results.'''
         self._frames = []
 
-    def to_csv(self, path: str, **kwargs) -> None:
+    def to_csv(self, path: str, **kwargs: Any) -> None:
         '''Write accumulated results to a CSV file.
 
         Parameters

@@ -25,17 +25,27 @@ with several Python threads is described in the documentation of
 :class:`numbaLorenzMie`.
 '''
 
+from collections.abc import Callable, Sequence
 import os
 import threading
 
 import numpy as np
 from numba import njit, prange
+from numpy.typing import NDArray
 
 from pylorenzmie.lib.lmtypes import Coefficients, Coordinates, Field
 from pylorenzmie.theory.LorenzMie import LorenzMie
 
+Reals = NDArray[np.float64]
+Complexes = NDArray[np.complex128]
+#: ``kernel(kdr, an0, an, bn, c2, c3, out, cartesian, bohren)``
+Kernel = Callable[[Reals, Complexes, Complexes, Complexes, Reals, Reals,
+                   Complexes, bool, bool], None]
 
-def _partial_wave_constants(ab):
+
+def _partial_wave_constants(ab: Coefficients
+                            ) -> tuple[Complexes, Complexes, Complexes,
+                                       Reals, Reals]:
     '''Coefficients of the partial-wave sum that do not depend on the point.
 
     The Mie coefficients are folded together with the prefactors
@@ -56,7 +66,7 @@ def _partial_wave_constants(ab):
             np.ascontiguousarray(1. + 1. / nn))
 
 
-def _make_kernel(parallel: bool):
+def _make_kernel(parallel: bool) -> Kernel:
     '''Compile the scattered-field kernel.
 
     Parameters
@@ -76,7 +86,15 @@ def _make_kernel(parallel: bool):
     # error_model='numpy': a division by zero gives inf or NaN, as in the
     # NumPy implementation, instead of raising ZeroDivisionError
     @njit(fastmath=True, cache=True, parallel=parallel, error_model='numpy')
-    def kernel(kdr, an0, an, bn, c2, c3, out, cartesian, bohren):
+    def kernel(kdr: Reals,
+               an0: Complexes,
+               an: Complexes,
+               bn: Complexes,
+               c2: Reals,
+               c3: Reals,
+               out: Complexes,
+               cartesian: bool,
+               bohren: bool) -> None:
         '''Scattered field, one point at a time.
 
         The partial-wave sums of all points are independent, so each
@@ -204,7 +222,12 @@ if hasattr(os, 'register_at_fork'):
     os.register_at_fork(after_in_child=_after_fork_in_child)
 
 
-def compute_field_jit(kdr, buffers, scratch, ab, cartesian, bohren):
+def compute_field_jit(kdr: Coordinates,
+                      buffers: Sequence[Complexes],
+                      scratch: object,
+                      ab: Coefficients,
+                      cartesian: bool,
+                      bohren: bool) -> Field:
     '''Scattered field summed over Mie partial waves (compatibility wrapper).
 
     Parameters
