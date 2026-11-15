@@ -16,6 +16,13 @@ try:
     from numba import njit
 except ImportError:                     # Numba is an optional extra
     def njit(*args, **kwargs):
+        '''Stand in for :func:`numba.njit` when Numba is not installed.
+
+        Returns
+        -------
+        decorator : callable
+            A decorator that returns the function that it decorates.
+        '''
         return lambda function: function
 
 
