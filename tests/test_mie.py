@@ -31,8 +31,8 @@ def bohren_huffman(x: float, m: complex, nmax: int) -> np.ndarray:
 
 
 CASES = tuple((a_p, n_p)
-              for a_p in (0.1, 0.5, 1.5, 3., 5.)
-              for n_p in (1.45, 1.59, 2.))
+              for a_p in (0.1, 0.5, 1.5, 3., 10., 30.)
+              for n_p in (1.0, 1.45, 1.59, 2., 3.))
 
 
 class TestMieKernel(unittest.TestCase):
@@ -47,20 +47,40 @@ class TestMieKernel(unittest.TestCase):
         return x, m + 0j, Sphere.wiscombe_yang(x, m)
 
     def test_agree_with_the_bessel_functions(self) -> None:
-        '''The first orders are right when the start is far enough out.
+        '''The coefficients are right for large spheres of a high index.
 
-        The downward recurrence of the logarithmic derivative needs orders
-        above the ones that it serves, so the kernel is given 30 more than
-        the sum needs.  The Bessel functions lose their precision at the
-        highest orders, so only the first ten are compared.
+        The recurrence for the logarithmic derivative starts above the
+        highest order, and used to start at it: the first coefficients
+        were off by 1e-4 for a 1.5 um sphere of polystyrene, by 0.7% for
+        3 um, and by 100% for 3 um of an index of 2.  The Bessel functions
+        lose their precision at the highest orders, so only the first ten
+        are compared.
         '''
         for a_p, n_p in CASES:
             with self.subTest(a_p=a_p, n_p=n_p):
+                ab = Sphere.mie_coefficients(a_p,
+                                             n_p,
+                                             0.,
+                                             self.n_m,
+                                             self.wavelength)
                 x, m, nmax = self.case(a_p, n_p)
                 k = min(nmax, 10)
-                ab = _mie.mie_ab(x, m, nmax + 30)[1:k + 1]
-                reference = bohren_huffman(x, m, k)[1:k + 1]
-                np.testing.assert_allclose(ab, reference, rtol=1e-8)
+                np.testing.assert_allclose(ab[1:k + 1],
+                                           bohren_huffman(x, m, k)[1:k + 1],
+                                           rtol=1e-9)
+
+    def test_absorbing_sphere(self) -> None:
+        x, m, nmax = self.case(3., 1.59)
+        m += 0.05j / self.n_m
+        ab = _mie.mie_ab(x, m, nmax)[1:11]
+        np.testing.assert_allclose(ab,
+                                   bohren_huffman(x, m, 10)[1:11],
+                                   rtol=1e-9)
+
+    def test_the_start_of_the_recurrence_is_beyond_the_last_order(self):
+        for nmax in (5, 40, 400, 4000):
+            self.assertGreaterEqual(_mie.start_margin(nmax), 15)
+        self.assertGreater(_mie.start_margin(4000), _mie.start_margin(40))
 
     def test_shape_and_zeroth_order(self) -> None:
         ab = _mie.mie_ab(5., 1.1 + 0j, 12)

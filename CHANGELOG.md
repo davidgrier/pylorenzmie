@@ -61,8 +61,7 @@ All notable changes to pylorenzmie are recorded here. The format follows
   is installed (`theory/_mie.py`): 4 to 9 times faster per call (12 to 20 us
   instead of 53 to 183 us), and about 20% off an estimate and a fit of one
   feature (461 to 366 ms), because the global search calls them for every
-  candidate.  The numbers are the same to 1e-13.  Without Numba the same
-  loops run as Python.
+  candidate.  Without Numba the same loops run as Python.
 * The `z_p` bounds of `DEEstimator`, `RadialEstimator` and `PairEstimator`
   are in pixels again, like `x_p`, `y_p` and the `z_p` of a particle, so that
   a name has one unit wherever it appears (3.5.0 made the bounds micrometers).
@@ -116,6 +115,27 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Fixed
 
+* The Mie coefficients were inaccurate for large spheres of a high index.
+  The downward recurrence for the logarithmic derivative `D1` started at the
+  highest order that the sum keeps (`nstop` of Wiscombe and Yang), where the
+  error of the start has not died out, and the first coefficients inherited
+  it.  Against the Bessel functions of the theory, the first ten
+  coefficients were off by 1e-6 for a 0.5 um sphere, 1e-4 for 1.5 um of
+  polystyrene in water, 0.7% for 3 um, and 100% for 3 um of an index of 2.
+  The recurrence now starts
+  `15 + 6 nmax^(1/3)` orders higher (`theory/_mie.start_margin`; Yang and
+  Bohren and Huffman use a fixed 15, which leaves 3% at 20 um and an index of
+  2), and the error is below 1e-13 for radii up to 50 um and indices up to 3.
+  `jaxLorenzMie` had the same start and the same fix; `numbaLorenzMie`,
+  `TorchLorenzMie` and `cupyLorenzMie` use the coefficients of `Sphere`.
+  The effect on a fit is small.  In fits of simulated holograms (2% noise,
+  polystyrene in water) the radius, index and height change by less than
+  0.0001 um, 0.0001 and 0.03 pixel for spheres up to 3 um, and by 0.004 um
+  (0.07%), 0.002 and 0.3 pixel for 5 um, far below the uncertainties usually
+  quoted for holographic characterization, so published results are not
+  likely to have been affected significantly.  The cost is about 1 us for each
+  evaluation of the coefficients, under 0.5% of the time of an evaluation of
+  the model.
 * `PairEstimator` searched the height of a pair in the wrong units.  The
   bounds on `z_p` were micrometers, and `DEEstimator` and `RadialEstimator`
   converted them to pixels with the magnification; `PairEstimator` used them

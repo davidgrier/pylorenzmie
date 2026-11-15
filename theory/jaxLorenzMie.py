@@ -16,6 +16,7 @@ import jax
 import jax.numpy as jnp
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
+from pylorenzmie.theory._mie import start_margin
 from pylorenzmie.theory.Sphere import Sphere
 
 jax.config.update('jax_enable_x64', True)
@@ -34,8 +35,11 @@ jax.jit(lambda x: x)(jnp.array(1.0))
 def _downward_rec(z: Scalar, nmax: int) -> Array:
     '''Downward recurrence for the Riccati-Bessel D1 logarithmic derivative.
 
-    Computes D1[n] for n = 0..nmax starting from D1[nmax] = 0
-    (Bohren & Huffman Eq. 4.88 / Yang 2003 Eq. 16b).
+    Computes D1[n] for n = 0..nmax downward from a start that lies
+    :func:`~pylorenzmie.theory._mie.start_margin` orders above nmax, where
+    D1 = 0 (Bohren & Huffman Eq. 4.88 / Yang 2003 Eq. 16b); the error of
+    that start dies out on the way down, and only the orders up to nmax are
+    returned.
 
     Parameters
     ----------
@@ -52,10 +56,11 @@ def _downward_rec(z: Scalar, nmax: int) -> Array:
         D1_nm1 = n / z - 1. / (D1_n + n / z)
         return D1_nm1, D1_nm1
 
-    ns = jnp.arange(nmax, 0, -1, dtype=complex)
+    start = nmax + start_margin(nmax)
+    ns = jnp.arange(start, 0, -1, dtype=complex)
     _, D1_rev = jax.lax.scan(step, 0. + 0.j, ns)
-    # D1_rev[k] = D1[nmax-1-k]; flip restores ascending order
-    return jnp.concatenate([jnp.flip(D1_rev), jnp.array([0. + 0.j])])
+    # D1_rev[k] = D1[start-1-k]; flip restores ascending order
+    return jnp.flip(D1_rev)[:nmax + 1]
 
 
 def _upward_rec(x: Scalar,

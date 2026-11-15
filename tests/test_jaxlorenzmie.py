@@ -50,6 +50,21 @@ class TestJaxLorenzMie(unittest.TestCase):
         h_np = self.ref.hologram()
         np.testing.assert_allclose(h_jax, h_np, rtol=1e-5, atol=1e-8)
 
+    def test_hologram_matches_numpy_for_a_large_sphere(self) -> None:
+        '''The coefficients of a large sphere of a high index are right.
+
+        The recurrence for the logarithmic derivative needs a start above
+        the highest order; the first coefficients were off by 100% for
+        a sphere of 3 um and an index of 2.
+        '''
+        for model in (self.model, self.ref):
+            model.particle.a_p = 3.
+            model.particle.n_p = 2.
+        np.testing.assert_allclose(self.model.hologram(),
+                                   self.ref.hologram(),
+                                   rtol=1e-6,
+                                   atol=1e-8)
+
     def test_hologram_is_numpy_array(self) -> None:
         h = self.model.hologram()
         self.assertIsInstance(h, np.ndarray)
