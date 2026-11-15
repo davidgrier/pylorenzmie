@@ -103,7 +103,7 @@ It provides:
 **`Azimuthal`** — module of functions (`avg`, `std`, `med`, `mad`) that compute
 azimuthal statistics of 2-D images. They come from the `dgimage` package (the
 image transformations that pylorenzmie shares with QVideo; edit them there, in
-`~/python/imagetransforms`, not here): `lib/Azimuthal.py` only re-exports
+`~/python/dgimage`, not here): `lib/Azimuthal.py` only re-exports
 them. Decorated with `@azimuthaloperator` so they accept `(data, center)` and
 handle coordinate generation internally. Radial geometry is cached per
 `(shape, center)`; the sort that only `med` and `mad` need is made lazily.

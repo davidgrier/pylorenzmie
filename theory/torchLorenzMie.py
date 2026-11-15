@@ -12,6 +12,7 @@ tested; ROCm and XPU should work but have not been run.
 '''
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
+from pylorenzmie.theory.Particle import Particle
 from pylorenzmie.lib.lmtypes import Image
 import cmath
 import numpy as np

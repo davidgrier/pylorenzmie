@@ -76,6 +76,16 @@ class TestJaxLorenzMie(unittest.TestCase):
             with self.subTest(param=key):
                 self.assertTrue(np.all(np.isfinite(arr)))
 
+    def test_jac_finite_on_axis(self) -> None:
+        '''A pixel exactly on the axis of the particle has a finite jac.'''
+        self.model.coordinates = np.array([[32., 33., 40.],
+                                           [32., 32., 20.]])
+        np.testing.assert_array_equal(self.model.coordinates[:2, 0],
+                                      self.model.particle.r_p[:2])
+        for key, arr in self.model.jac().items():
+            with self.subTest(param=key):
+                self.assertTrue(np.all(np.isfinite(arr)))
+
     def test_jac_matches_finite_differences(self) -> None:
         '''Analytical Jacobian should agree with central-difference FD.'''
         h = 1e-4

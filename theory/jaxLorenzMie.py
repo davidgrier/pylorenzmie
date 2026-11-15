@@ -165,11 +165,15 @@ def _jax_lorenzmie(ab, kdr, bohren=True):
     kz = -kdr[2]   # flip: particle above focal plane is +z
     npts = kx.shape[0]
 
-    krho = jnp.hypot(kx, ky)
+    # The gradient of hypot, like that of sqrt, is 0/0 at kx = ky = 0, the
+    # pixel on the axis of the particle.  Evaluating the square root where
+    # it is safe, and selecting the constant branch (gradient 0) at the
+    # on-axis pixel, keeps the analytical Jacobian finite.
+    rhosq = kx**2 + ky**2
+    krho = jnp.where(rhosq > 0., jnp.sqrt(jnp.where(rhosq > 0., rhosq, 1.)),
+                     0.)
     kr = jnp.hypot(krho, kz)
     # Compute cosφ/sinφ directly to avoid arctan2 singularity at kx=ky=0.
-    # jnp.where selects the constant branch (gradient=0) at the on-axis
-    # pixel, preventing 0/0 NaN in the analytical Jacobian.
     krho_safe = jnp.where(krho > 0., krho, 1.)
     cosphi = jnp.where(krho > 0., kx / krho_safe, 1.)
     sinphi = jnp.where(krho > 0., ky / krho_safe, 0.)

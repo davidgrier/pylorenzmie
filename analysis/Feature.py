@@ -220,7 +220,7 @@ class Feature(Hologram):
         print(estimate)
 
         start = perf_counter()
-        result = feature.optimize()
+        feature.optimize()
         print(f'Optimized in {perf_counter() - start:.3f} s')
         print(feature.optimizer.report())
 

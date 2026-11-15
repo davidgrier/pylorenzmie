@@ -68,11 +68,11 @@ class OptimizerWidget(ParameterTree):
             p.sigValueChanged.connect(self._handleValueChanged)
 
     @pyqtSlot(object, object)
-    def _updateLoss(self, widget: 'QWidget', value: LMObject.Property):
+    def _updateLoss(self, widget: Parameter, value: LMObject.Property):
         self._consistencyCheck()
 
     @pyqtSlot(object, object)
-    def _handleValueChanged(self, widget: 'QWidget',
+    def _handleValueChanged(self, widget: Parameter,
                             value: LMObject.Property):
         logger.debug(f'emitting {widget.name()} {value}')
         self.settingChanged.emit(widget.name(), value)
