@@ -133,9 +133,12 @@ docstring-quotes = "single"
 testpaths = ["tests"]
 # the JAX tests run only when asked for: pytest tests/test_jaxlorenzmie.py
 addopts = "--ignore=tests/test_jaxlorenzmie.py"
-# a test that has not finished in five minutes dumps the stack of every thread,
-# so that a hang says where it is (the whole suite takes about one minute)
+# a test that has not finished in five minutes dumps the stack of every thread
+# and ends the run, so that a hang fails fast and says where it is (the whole
+# suite takes about one minute).  The macOS job of CI hung in a test of lmtool
+# on 2026-11-15, and without the exit it ran until its 30 minutes were over.
 faulthandler_timeout = 300
+faulthandler_exit_on_timeout = true
 
 [tool.pyright]
 # Type checking, as in QVideo and QHOT; a CI job runs it with a pinned version,
