@@ -144,11 +144,32 @@ class LorenzMie(LMObject):
 
     @property
     def properties(self) -> Properties:
+        '''Adjustable parameters of the particle and the instrument.
+
+        Setting them takes a dict of any of these names, and nothing is set
+        if one of the names is not a parameter of the model.
+
+        Raises
+        ------
+        ValueError
+            On assignment, if a name is not a property of the model: a
+            misspelled name, or an aberration of a model that has none.
+        TypeError
+            If the model has a list of particles, which have no properties
+            of their own (see :meth:`single`).
+        '''
         return {**self.single().properties,
                 **self.instrument.properties}
 
     @properties.setter
     def properties(self, properties: Properties) -> None:
+        # a name that the model does not have is a mistake, such as a typo:
+        # it is reported before any value is set, and not ignored
+        known = self.properties
+        unknown = [name for name in properties if name not in known]
+        if unknown:
+            raise ValueError('not properties of the model: '
+                             + ', '.join(map(repr, unknown)))
         for name, value in properties.items():
             if hasattr(self.particle, name):
                 setattr(self.particle, name, value)

@@ -60,8 +60,11 @@ All notable changes to pylorenzmie are recorded here. The format follows
   and `Frame.results`, `Frame.optimize` and `Frame.analyze` a
   `pandas.DataFrame`.  `Particle.r_p` accepts any sequence of three numbers,
   `Optimizer.fixed` and `Optimizer.variables` any sequence of names.
-* Errors are reported where they happen.  `LorenzMie.properties` and the
-  estimators raise `TypeError` for a model that has a list of particles (an
+* Errors are reported where they happen.  Setting `LorenzMie.properties` with
+  a name that the model does not have, such as a misspelled `a_pp`, raises
+  `ValueError`, and sets nothing; it was ignored, and it replaced any
+  attribute that the name matched, a method included.  `LorenzMie.properties`
+  and the estimators raise `TypeError` for a model that has a list of particles (an
   `AttributeError` before, if they got that far); `Pair` raises `TypeError`
   if its particles are not spheres; `Optimizer` raises `RuntimeError` if it
   is asked about data that it has not been given; `Estimator` raises

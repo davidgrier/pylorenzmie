@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 
+from pylorenzmie.theory import AberratedLorenzMie
 from pylorenzmie.theory.LorenzMie import LorenzMie
 
 
@@ -118,6 +119,48 @@ class TestLorenzMie(unittest.TestCase):
         self.method.coordinates = c
         holo = self.method.hologram()
         self.assertEqual(holo.size, c.shape[1])
+
+
+class TestPropertiesAreStrict(unittest.TestCase):
+    '''A name that the model does not have is an error, not a no-op.'''
+
+    def setUp(self) -> None:
+        self.model = LorenzMie()
+
+    def test_a_known_name_is_set(self) -> None:
+        self.model.properties = {'a_p': 0.9, 'wavelength': 0.5}
+        self.assertEqual(self.model.single().a_p, 0.9)
+        self.assertEqual(self.model.instrument.wavelength, 0.5)
+
+    def test_a_misspelled_name_raises(self) -> None:
+        with self.assertRaisesRegex(ValueError, "'a_pp'"):
+            self.model.properties = {'a_pp': 0.9}
+
+    def test_every_unknown_name_is_named(self) -> None:
+        with self.assertRaisesRegex(ValueError, "'b_p'.*'c_p'"):
+            self.model.properties = {'a_p': 0.9, 'b_p': 1., 'c_p': 2.}
+
+    def test_nothing_is_set_if_a_name_is_unknown(self) -> None:
+        before = self.model.properties
+        with self.assertRaises(ValueError):
+            self.model.properties = {'a_p': 0.9, 'a_pp': 0.9}
+        self.assertEqual(self.model.properties, before)
+
+    def test_a_method_is_not_a_property(self) -> None:
+        '''hasattr is not the test: a method would have been replaced.'''
+        with self.assertRaises(ValueError):
+            self.model.properties = {'hologram': 1.}
+        self.assertTrue(callable(self.model.hologram))
+
+    def test_the_aberrations_of_an_aberrated_model_are_properties(self) -> None:
+        model = AberratedLorenzMie()
+        model.properties = {'defocus': 0.1, 'piston': 0.2}
+        self.assertEqual(model.defocus, 0.1)
+        self.assertEqual(model.piston, 0.2)
+
+    def test_an_aberration_is_not_a_property_of_a_plain_model(self) -> None:
+        with self.assertRaises(ValueError):
+            self.model.properties = {'defocus': 0.1}
 
 
 if __name__ == '__main__':  # pragma: no cover
