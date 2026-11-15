@@ -98,12 +98,10 @@ update it when the role or contents of the directory change.
   library that is not installed is skipped).
 - A parent package is never imported with dots (`from pylorenzmie.lib import
   LMObject`, not `from ..lib import LMObject`; ruff `TID252`).
-  `tests/test_import_order.py` checks the order of the import blocks, and
   `tests/test_import_cycles.py` imports every module of every package first
   in an interpreter of its own (a module that needs an optional library that
-  is not installed is skipped).  The groups are the standard library, the
-  third-party libraries, `pylorenzmie`, and the siblings, with a blank line
-  between them.
+  is not installed is skipped).  The order of the imports within a module is
+  not checked.
 - `pyproject.toml` lists every package; `tests/test_packaging.py` checks the
   list, because a package that is missing from it works in a checkout and is
   absent from the wheel.
