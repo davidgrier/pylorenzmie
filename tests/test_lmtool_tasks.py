@@ -194,6 +194,29 @@ class TestTaskRunner(unittest.TestCase):
         self.assertIs(self.threads[0], threading.main_thread())
         self.assertFalse(self.runner.busy)
 
+    def test_the_worker_stays_with_its_thread_until_it_is_done(self):
+        '''Python does not let go of a worker while its thread runs.
+
+        A worker that is released early is destroyed by the event loop of
+        its own thread, and the destructor needs the GIL while it holds the
+        lock of Qt for signals: the interface waits for that lock with the
+        GIL, and the window stops (about once in a thousand tasks).
+        '''
+        retired = []
+        self.runner.finished.connect(
+            lambda name, result: retired.extend(self.runner._retired))
+        self.runner.start('sum', lambda s, c: s + 1, 41)
+        self.wait()
+        self.assertEqual(len(retired), 1)
+        thread, worker = retired[0]
+        self.assertIsNotNone(worker)
+        thread.wait(10000)
+        end = time.time() + 10
+        while self.runner._retired and time.time() < end:
+            mkQApp().processEvents()
+            time.sleep(0.005)
+        self.assertEqual(self.runner._retired, [])
+
     def test_one_task_at_a_time(self):
         release = threading.Event()
         self.runner.start('slow', lambda s, c: release.wait(10), None)

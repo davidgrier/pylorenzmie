@@ -263,10 +263,12 @@ class TaskRunner(QObject):
     def __init__(self) -> None:
         super().__init__()
         self._name = ''
-        self._thread = None
-        self._worker = None
+        self._thread: QThread | None = None
+        self._worker: _Worker | None = None
         self._event = threading.Event()
-        self._retired = []
+        # A thread and its worker leave together, once the thread is done
+        # (see _release).
+        self._retired: list[tuple[QThread, _Worker]] = []
 
     @property
     def name(self) -> str:
@@ -309,15 +311,28 @@ class TaskRunner(QObject):
     def shutdown(self) -> None:
         '''Stop the task that is running and wait for the threads to end.'''
         self.cancel()
-        for thread in [self._thread, *self._retired]:
-            if thread is not None:
-                thread.quit()
-                thread.wait()
+        threads = [thread for thread, _ in self._retired]
+        if self._thread is not None:
+            threads.append(self._thread)
+        for thread in threads:
+            thread.quit()
+            thread.wait()
 
     def _release(self) -> str:
+        '''Retire the thread and its worker; return the name of the task.
+
+        The worker lives in its thread, which is still running when the task
+        is done (it was only asked to quit).  A worker that Python lets go of
+        is destroyed by the event loop of its own thread, and the destructor
+        calls into Python for the GIL while it holds the lock that Qt keeps
+        for its signals; a slot that the main thread runs at that moment holds
+        the GIL and waits for that lock.  Neither goes on.  The worker
+        therefore stays with its thread, and both go when the thread has
+        finished (:meth:`_onThreadFinished`).
+        '''
         name = self._name
-        if self._thread is not None:
-            self._retired.append(self._thread)
+        if self._thread is not None and self._worker is not None:
+            self._retired.append((self._thread, self._worker))
         self._thread = self._worker = None
         return name
 
@@ -335,4 +350,5 @@ class TaskRunner(QObject):
 
     @Slot()
     def _onThreadFinished(self) -> None:
-        self._retired = [t for t in self._retired if t.isRunning()]
+        self._retired = [pair for pair in self._retired
+                         if pair[0].isRunning()]
