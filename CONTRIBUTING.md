@@ -19,7 +19,7 @@ python3 -m venv ~/venvs/pylorenzmie
 ```
 
 Other commands: `python -m pytest --cov` (coverage), `python -m pytest -o
-addopts=` (also the slow tests and the JAX tests), `ruff check .` (lint),
+addopts=` (also the JAX tests), `ruff check .` (lint),
 `pyright` (types) and `python -m sphinx -b html docs docs/_build/html` (the
 documentation, in `docs/_build/html`).  `pre-commit install` (with `pip
 install pre-commit`) runs ruff and the style tests before each commit.  The
@@ -49,11 +49,17 @@ hardware or an optional package must skip when it is absent
 continuous-integration machines must say so in its documentation. A numerical
 change is checked against the NumPy calculator, which is the reference.
 
-Slow tests are in `tests/slow` and run with `python -m pytest -o addopts=`.
-Continuous integration lints the code, checks the types, runs the tests on
-Python 3.11 to 3.14, with Numba and once without, runs the whole suite with
-Qt and coverage in one job (which fails below the threshold in
-`pyproject.toml`), and builds the documentation with warnings as errors.
+The suite takes about a minute.  A test that needs more than a few seconds
+is a reason to make it smaller, not to move it: the tests that ran for a
+minute each in a `tests/slow` directory did so for a search that their
+assertions did not look at.  The JAX tests are the one set that the default
+run leaves out, because JAX is optional; `python -m pytest -o addopts=` runs
+them.  Continuous integration lints the code and the workflows, checks the
+types, runs the tests on Python 3.11 to 3.14, with Numba and once without,
+runs the whole suite with Qt on each binding and on macOS, with coverage in
+one job (which fails below the threshold in `pyproject.toml`), runs the JAX
+tests, installs the wheel outside the checkout, and builds the documentation
+with warnings as errors.
 
 ## Documentation
 

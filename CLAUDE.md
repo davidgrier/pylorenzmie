@@ -27,7 +27,7 @@ the code without Numba, use a throwaway venv with `pip install -e ".[dev]"`.
 # Install in editable mode with test dependencies
 pip install -e ".[dev,numba,docs]"
 
-# Run all tests (the default run leaves out tests/slow and the JAX tests;
+# Run all tests (the default run leaves out the JAX tests;
 # python -m pytest -o addopts= runs them too)
 python -m pytest
 

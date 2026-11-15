@@ -240,7 +240,7 @@
       Python 3.11-3.14 with Numba and on 3.12 without; the GUI tests on PyQt6,
       PyQt5 and PySide6 and on macOS (coverage in one of them); JAX on a CPU;
       the wheel, installed outside the checkout; the documentation with
-      warnings as errors; the slow tests every week.  A release waits for the
+      warnings as errors.  A release waits for the
       tests of its commit.  Python 3.10 is no longer supported
 - [x] Backend selection: `LorenzMie` is `numbaLorenzMie` or the NumPy class;
       GPU backends and JAX are opt-in through `PYLORENZMIE_BACKEND`

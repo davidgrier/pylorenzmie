@@ -32,8 +32,7 @@ All notable changes to pylorenzmie are recorded here. The format follows
 * CI checks what a user installs and what a release contains: a job builds the
   wheel, installs it outside the checkout, and reads the weights, images,
   layouts and splash image that it ships; a job runs the suite with JAX,
-  which the default run leaves out; `tests/slow` run every week and on
-  request; `actionlint` checks the workflows; and `publish.yml` releases
+  which the default run leaves out; `actionlint` checks the workflows; and `publish.yml` releases
   nothing unless the Tests workflow passed on the tagged commit.  Dependabot
   keeps the actions current, and the jobs have read access to the repository
   and nothing more.
@@ -74,6 +73,12 @@ All notable changes to pylorenzmie are recorded here. The format follows
 * `project.license` is an SPDX expression, `GPL-3.0-or-later`, in place of the
   table that setuptools stops building in February 2027; building needs
   `setuptools>=77`.
+* The nine tests of `tests/slow` are in the default suite, and the directory
+  is gone.  Three of them analyze a real image of two spheres, and each took a
+  minute: the default `Frame` refits a feature whose fit is poor as a pair,
+  with a differential-evolution search for each of eight candidates, and on
+  this image no pair is better.  Those tests turn the split off and take two
+  seconds; the split has tests of its own.
 * Imports within a module are grouped as the standard library, third-party
   libraries, `pylorenzmie`, and siblings.  Argument lists are one line, or
   one argument to a line.

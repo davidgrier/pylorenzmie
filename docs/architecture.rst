@@ -90,7 +90,7 @@ Layout of the repository
 ``analysis/``           holograms, features, frames, estimators, the optimizer
 ``utilities/``          normalization, running median, example holograms
 ``lmtool/``             the graphical application
-``tests/``              unit tests (``tests/slow`` for the slow ones)
+``tests/``              unit tests
 ``docs/``               these pages, the notebooks and the tutorial images
 ======================  ====================================================
 

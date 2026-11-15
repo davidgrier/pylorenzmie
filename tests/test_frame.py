@@ -2,6 +2,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import cv2
 
 from pylorenzmie.analysis import Frame
@@ -142,6 +143,39 @@ class TestFrame(unittest.TestCase):
         frame.estimate()
         frame.optimize()
         self.assertIsNone(frame.features[0].centers)
+
+
+class TestFrameOnAnImage(unittest.TestCase):
+    '''The pipeline on a real image of two spheres.
+
+    Splitting a feature into a pair is turned off.  It refits both features
+    with a differential-evolution search for each of eight candidate pairs,
+    which takes a minute on this image and finds no pair; the tests above
+    cover the split.
+    '''
+
+    def setUp(self):
+        self.frame = Frame(split_redchi=None)
+        self.data = cv2.imread(str(TEST_IMAGE), 0).astype(float) / 100.
+
+    def test_optimize(self):
+        self.frame.data = self.data
+        self.frame.detect()
+        particle = self.frame.features[0].particle
+        a_p = particle.a_p
+        self.frame.estimate()
+        self.frame.optimize()
+        self.assertNotEqual(particle.a_p, a_p)
+
+    def test_analyze(self):
+        results = self.frame.analyze(self.data)
+        self.assertIsInstance(results, pd.DataFrame)
+
+    def test_results(self):
+        self.frame.analyze(None)
+        self.assertEqual(len(self.frame.results), 0)
+        self.frame.analyze(self.data)
+        self.assertGreater(len(self.frame.results), 0)
 
 
 if __name__ == '__main__':  # pragma: no cover
