@@ -224,8 +224,9 @@
       stay fixed, and user-supplied `settings` are no longer overwritten
 - [ ] `test_sphere.py`: add spot-check tests for specific Mie coefficient values
       against published reference data
-- [ ] lmtool logic: headless tests for `crop()`, normalization, estimate/undo
-      state, and `_handleROIChanged` (pytest-qt)
+- [x] lmtool logic: headless tests of the window, the widgets, the session and
+      the tasks (`tests/test_lmtool*.py`, 150 tests, Qt drawing to no display),
+      run on PyQt6, PyQt5 and PySide6
 
 ## api
 
@@ -235,15 +236,19 @@
 
 ## infrastructure
 
-- [x] CI: Python 3.11-3.14 with Numba, plus 3.12 without; test jobs time out
-      after 20 minutes; Python 3.10 is no longer supported
+- [x] CI: ruff and `actionlint`; pyright on the whole package; the tests on
+      Python 3.11-3.14 with Numba and on 3.12 without; the GUI tests on PyQt6,
+      PyQt5 and PySide6 and on macOS (coverage in one of them); JAX on a CPU;
+      the wheel, installed outside the checkout; the documentation with
+      warnings as errors; the slow tests every week.  A release waits for the
+      tests of its commit.  Python 3.10 is no longer supported
 - [x] Backend selection: `LorenzMie` is `numbaLorenzMie` or the NumPy class;
       GPU backends and JAX are opt-in through `PYLORENZMIE_BACKEND`
 - [ ] CI cannot test GPU code (no CUDA or Metal on hosted runners); the torch
       tests need an occasional run on real hardware
-- [ ] Development environment: document creating a venv outside the repository
-      (a venv inside the tree gets swept by bulk edits), and add
-      `.gitignore` entries for `.venv/`, `venv/` and `.lm/`
+- [x] Development environment: a venv outside the repository is documented in
+      `CLAUDE.md` and `CONTRIBUTING.md`, and `.gitignore` has `.venv/`,
+      `venv/` and `.lm/`
 
 - [ ] `_setupTheory` in `LMTool`: fragile `layout.replaceWidget` by widget name;
       consider a cleaner injection mechanism
