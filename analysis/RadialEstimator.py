@@ -42,7 +42,8 @@ class RadialEstimator(_DESearch, BaseEstimator):
         Mapping of parameter name to ``(min, max)`` search range, in the
         units of the parameter: ``z_p`` in pixels, ``a_p`` in μm.
         Default: ``None``, which searches ``z_p`` from 1 to 200 μm (at the
-        magnification of the instrument, see :func:`default_bounds`),
+        magnification of the instrument, see
+        :func:`~pylorenzmie.analysis.DEEstimator.default_bounds`),
         ``a_p`` from 0.25 to 10 μm and ``n_p`` from 1 to 3.
     popsize : int, optional
         DE population size multiplier (population = popsize ×
