@@ -7,6 +7,8 @@ import pandas as pd
 from pyqtgraph.Qt.QtCore import (QAbstractTableModel, QModelIndex, Qt,
                                  pyqtSignal)
 
+_ROOT = QModelIndex()    # the parent of the rows of a table
+
 
 def radius_of(bbox: tuple, low: int = 30, high: int = 250) -> int:
     '''Radius of the region of interest for a bounding box, in pixels.'''
@@ -41,10 +43,10 @@ class ParticleTable(QAbstractTableModel):
     # the Qt model
     # ------------------------------------------------------------------
 
-    def rowCount(self, parent: QModelIndex = QModelIndex()) -> int:
+    def rowCount(self, parent: QModelIndex = _ROOT) -> int:
         return 0 if parent.isValid() else len(self._rows)
 
-    def columnCount(self, parent: QModelIndex = QModelIndex()) -> int:
+    def columnCount(self, parent: QModelIndex = _ROOT) -> int:
         return 0 if parent.isValid() else len(self.COLUMNS)
 
     def headerData(self, section: int, orientation: Qt.Orientation,

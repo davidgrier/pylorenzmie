@@ -13,7 +13,8 @@ class OptimizerWidget(ParameterTree):
     '''Parameter-tree widget for configuring scipy least_squares settings.
 
     Emits :attr:`settingChanged` (name, value) whenever any setting changes.
-    Enforces the constraint that Levenberg-Marquardt requires ``loss='linear'``.
+    Enforces the constraint that Levenberg-Marquardt requires
+    ``loss='linear'``.
     '''
 
     #: Emitted with ``(name, value)`` whenever a solver setting changes.

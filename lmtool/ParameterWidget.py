@@ -54,9 +54,9 @@ class ParameterWidget(QFrame):
     def range(self) -> list[float]:
         return [self.minimum(), self.maximum()]
 
-    def setRange(self, range: list[float]) -> None:
-        self.slider.setRange(*range)
-        self.spinbox.setRange(*range)
+    def setRange(self, limits: list[float]) -> None:
+        self.slider.setRange(*limits)
+        self.spinbox.setRange(*limits)
 
     def step(self) -> float:
         return self.spinbox.singleStep()

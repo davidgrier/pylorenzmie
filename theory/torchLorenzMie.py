@@ -40,7 +40,7 @@ inline float2 cmul(float2 a, float2 b) {
 }
 
 kernel void lorenzmie(device const float* coords  [[buffer(0)]],  // (3, npts)
-                      device const float* consts  [[buffer(1)]],  // (norders, 8)
+                      device const float* consts  [[buffer(1)]], // (n, 8)
                       device float2*      out     [[buffer(2)]],  // (3, npts)
                       constant uint&      npts    [[buffer(3)]],
                       constant uint&      norders [[buffer(4)]],
@@ -383,7 +383,8 @@ class TorchLorenzMie(LorenzMie):
             -1j * k * float(r_p[2]),
             dtype=torch.complex64,
             device=self._device))
-        return self.lorenzmie(ab, kdr, cartesian=cartesian, bohren=bohren) * phase
+        field = self.lorenzmie(ab, kdr, cartesian=cartesian, bohren=bohren)
+        return field * phase
 
     def _hologram_metal(self, cartesian: bool, bohren: bool) -> Image:
         '''Hologram of a single particle, intensity formed in the kernel.

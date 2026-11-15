@@ -16,11 +16,11 @@ import triton.language as tl
 # runs inside one kernel to avoid per-order launch overhead.
 @triton.jit
 def _lorenzmie_kernel(
-        kx_ptr, ky_ptr, kz_ptr,           # [npts] float32 — k-scaled displacements
-        a_re_ptr, a_im_ptr,               # [norders] float32 — Mie a coefficients
-        b_re_ptr, b_im_ptr,               # [norders] float32 — Mie b coefficients
+        kx_ptr, ky_ptr, kz_ptr,           # [npts] float32, k-scaled
+        a_re_ptr, a_im_ptr,               # [norders] float32, Mie a
+        b_re_ptr, b_im_ptr,               # [norders] float32, Mie b
         norders: tl.constexpr,
-        e1_re_ptr, e1_im_ptr,             # [npts] float32 — output field component 1
+        e1_re_ptr, e1_im_ptr,             # [npts] float32, output field 1
         e2_re_ptr, e2_im_ptr,
         e3_re_ptr, e3_im_ptr,
         npts,

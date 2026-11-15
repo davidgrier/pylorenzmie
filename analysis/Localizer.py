@@ -212,7 +212,7 @@ class Localizer(LMObject):
         print(features)
 
         style = dict(fill=False, linewidth=3, edgecolor='r')
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots()
         ax.imshow(image, cmap='gray')
         for bbox in features.bbox:
             ax.add_patch(Rectangle(*bbox, **style))

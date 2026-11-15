@@ -11,7 +11,6 @@ Raises :exc:`ImportError` if JAX is not installed, or a JAX
 
 from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Sphere import Sphere
-from pylorenzmie.lib.lmtypes import Coefficients, Coordinates, Field
 import numpy as np
 import jax
 import jax.numpy as jnp
@@ -401,14 +400,15 @@ class jaxLorenzMie(LorenzMie):
                 self._compute_nmax(), aberration, piston)
 
     def _compute_nmax(self) -> int:
-        # Use the unscaled (rad/μm) wavenumber — same as Sphere.mie_coefficients
+        # Use the unscaled (rad/μm) wavenumber, as Sphere.mie_coefficients
         k = float(self.instrument.wavenumber(scaled=False))
         x = k * float(self.particle.a_p)
         m = (self.particle.n_p + 1.j * self.particle.k_p) / self.instrument.n_m
         return Sphere.wiscombe_yang(x, m)
 
     def hologram(self, **kwargs) -> np.ndarray:
-        '''JIT-compiled hologram for a single :class:`~pylorenzmie.theory.Sphere`.
+        '''JIT-compiled hologram of a single
+        :class:`~pylorenzmie.theory.Sphere`.
 
         Falls back to the NumPy implementation for non-Sphere or
         multi-particle models.  The ``cartesian`` and ``bohren`` keyword

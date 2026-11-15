@@ -279,7 +279,7 @@ class TestDistortedLorenzMie(unittest.TestCase):
         # overflows the stack of a secondary thread of a GUI, which crashed
         # lmtool in its first fit.  So the model must do it when it is made.
         try:
-            import numba                        # noqa: F401
+            import numba
         except ImportError:                     # pragma: no cover
             self.skipTest('numba is not available')
         code = (
@@ -292,7 +292,8 @@ class TestDistortedLorenzMie(unittest.TestCase):
             'DistortedLorenzMie()\n'
             'assert all(k.signatures for k in kernels)\n')
         result = subprocess.run([sys.executable, '-I', '-c', code],
-                                capture_output=True, text=True, timeout=300)
+                                capture_output=True, text=True, timeout=300,
+                                check=False)
         self.assertEqual(result.returncode, 0, result.stderr)
 
     def test_kernel_and_fallback_give_the_same_hologram(self):

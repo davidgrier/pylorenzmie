@@ -56,7 +56,7 @@ gui   = ["PyQt6", "tables"]
 jax   = ["jax[cpu]"]
 numba = ["numba"]
 torch = ["torch", "triton; sys_platform == 'linux'"]
-dev   = ["pytest", "pytest-cov", "opencv-python"]
+dev   = ["pytest", "pytest-cov", "opencv-python", "ruff"]
 docs    = ["pydata-sphinx-theme", "sphinx", "sphinx-autodoc-typehints"]
 
 [tool.setuptools]
@@ -83,10 +83,61 @@ packages = [
 "pylorenzmie.utilities"  = "utilities"
 "pylorenzmie.lmtool"     = "lmtool"
 
+[tool.ruff]
+line-length = 79
+extend-exclude = ["devel"]
+
+[tool.ruff.lint]
+# F pyflakes, B bugbear, E501 line length, Q quotes, RUF012 mutable class
+# attributes, RUF100 stale noqa, UP037 quoted annotations; E402 imports at
+# the top, E731 lambda assigned, E741 ambiguous name, SIM105 suppress,
+# SIM115 file without a context manager, SIM118 key in dict, RUF015 first
+# element, RUF059 unused unpacked variable, PERF401 comprehension,
+# PLW0108 needless lambda, PLW1510 subprocess without check, TID252 a
+# relative import of a parent (a sibling is imported as `.name`), A001 and
+# A002 a name that hides a builtin, SIM300 yoda comparison, C400 and C401 a
+# generator that is a comprehension, PLW2901 a loop variable that is
+# overwritten.
+select = ["F", "B", "E402", "E501", "E731", "E741", "Q", "SIM105",
+          "SIM115", "SIM118", "PERF401", "PLW0108", "PLW1510", "RUF012",
+          "RUF015", "RUF059", "RUF100", "TID252", "UP037", "A001", "A002",
+          "SIM300", "C400", "C401", "PLW2901"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "parents"
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+multiline-quotes = "single"
+docstring-quotes = "single"
+
+[tool.ruff.lint.per-file-ignores]
+# Package files re-export names; tests build stubs and mocks.
+"__init__.py" = ["F401"]
+# Sphinx reads the name `copyright`.
+"docs/conf.py" = ["A001", "E402"]
+# Notebooks unpack figures they do not use and zip lists that match.
+"*.ipynb" = ["E501", "B905", "RUF059"]
+# Tests import after patching, unpack to name what they do not use, and
+# keep a temporary file open across a test.
+"tests/*" = ["E402", "E501", "F401", "F811", "F841", "B018", "B905",
+             "RUF012", "RUF059", "SIM115"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 # the JAX tests run only when asked for: pytest tests/test_jaxlorenzmie.py
 addopts = "--ignore=tests/slow --ignore=tests/test_jaxlorenzmie.py"
+
+[tool.pyright]
+# Type checking of lib/, the best-typed part, as in QVideo and QHOT; a CI
+# job runs it with a pinned version.  The other packages report the optional
+# libraries (torch, jax, cupy, numba) as missing and are not checked yet.
+# pyright cannot read ``__all__ = 'a b'.split()``, which is the style.
+include = ["lib"]
+pythonVersion = "3.11"
+extraPaths = [".."]
+reportPrivateImportUsage = "none"
+reportUnsupportedDunderAll = "none"
 
 [tool.coverage.run]
 source = ["pylorenzmie"]

@@ -16,7 +16,7 @@ from pylorenzmie.theory import LorenzMie
 
 
 class _RadialObjective:
-    '''Picklable objective comparing a 1-D radial model to the azimuthal profile.
+    '''Picklable objective comparing a radial model to the azimuthal profile.
 
     Using a top-level callable class rather than a closure allows
     ``differential_evolution(workers=-1)`` to distribute candidate
@@ -34,7 +34,8 @@ class _RadialObjective:
         self._noise = noise
 
     def __call__(self, values: np.ndarray) -> float:
-        self._model.properties = dict(zip(self._variables, values))
+        self._model.properties = dict(
+            zip(self._variables, values, strict=True))
         with np.errstate(over='ignore', invalid='ignore'):
             diff = (self._model.hologram() - self._profile) / self._noise
             return float(np.nansum(diff ** 2))
@@ -106,7 +107,7 @@ class RadialEstimator(BaseEstimator):
     non-spherical particles or when rotational symmetry cannot be assumed. '''
 
     model: LorenzMie
-    bounds: dict = field(default_factory=lambda: DEFAULT_BOUNDS.copy())
+    bounds: dict = field(default_factory=DEFAULT_BOUNDS.copy)
     popsize: int = 10
     seed: int | None = None
     settings: dict = field(default_factory=lambda: {'tol': 0.01,
@@ -167,7 +168,7 @@ class RadialEstimator(BaseEstimator):
         finally:
             self.model.coordinates = saved_coords
 
-        self.model.properties = dict(zip(de_vars, result.x))
+        self.model.properties = dict(zip(de_vars, result.x, strict=True))
         return pd.Series(self.model.particle.properties)
 
     @classmethod

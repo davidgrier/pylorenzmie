@@ -21,7 +21,7 @@ def example() -> None:  # pragma: no cover
 
     a = example_hologram('image0400.png').data
     b = circletransform(np.asarray(a))
-    fig, (axa, axb) = plt.subplots(nrows=2, sharex=True, sharey=True)
+    _, (axa, axb) = plt.subplots(nrows=2, sharex=True, sharey=True)
     axa.imshow(a, cmap='gray')
     axb.imshow(b, cmap='gray')
     axa.axis('off')

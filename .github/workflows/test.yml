@@ -7,6 +7,30 @@ on:
     branches: ["master"]
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .
+
+  types:
+    name: Types (pyright on lib/)
+    runs-on: ubuntu-latest
+    # Pyright is pinned: a newer version finds new things, and they are for
+    # us to fix when we choose to move (change the pin and the code together).
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]" pyright==1.1.414
+      - run: pyright
+
   test:
     name: Python ${{ matrix.python-version }} [${{ matrix.extras }}]
     runs-on: ubuntu-latest

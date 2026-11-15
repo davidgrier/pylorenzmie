@@ -45,11 +45,11 @@ import joblib
 from pylorenzmie.analysis.MLPEstimator import _log_targets, _exp_targets
 from pylorenzmie.theory import LorenzMie
 
-# ── instrument ────────────────────────────────────────────────────────────────
+# ── instrument
 
 INSTRUMENT = dict(wavelength=0.447, magnification=0.048, n_m=1.340)
 
-# ── training bounds ───────────────────────────────────────────────────────────
+# ── training bounds
 # Narrower than DEEstimator to avoid overflow and focus on realistic particles.
 # z_p and a_p are sampled log-uniformly (see generate_data).
 
@@ -59,18 +59,18 @@ BOUNDS = dict(
     n_p=(1.3,   2.5),   # linear-uniform
 )
 
-# ── training parameters ───────────────────────────────────────────────────────
+# ── training parameters
 
 N_TRAIN    = 200_000
 N_FEATURES = 100        # radial pixels; must match MLPEstimator.n_features
 R_MIN      = 30         # minimum radial profile length during training
 SEED       = 42
 
-# ── MLP architecture ──────────────────────────────────────────────────────────
+# ── MLP architecture
 
 HIDDEN = (256, 128, 64)
 
-# ── paths ─────────────────────────────────────────────────────────────────────
+# ── paths
 
 _HERE  = Path(__file__).parent
 OUTPUT  = _HERE.parent / 'analysis' / 'mlp_estimator.joblib'
@@ -91,7 +91,7 @@ def _make_model() -> LorenzMie:
 
 def generate_data(model: LorenzMie,
                   rng: np.random.Generator) -> tuple[np.ndarray, np.ndarray]:
-    '''Return cleaned (X, y): X.shape=(n_good, N_FEATURES), y.shape=(n_good, 3).
+    '''Return cleaned (X, y), shaped (n_good, N_FEATURES) and (n_good, 3).
 
     z_p and a_p are drawn log-uniformly; n_p is drawn uniformly.
 
@@ -191,7 +191,8 @@ def evaluate(pipe: Pipeline, X: np.ndarray, y: np.ndarray) -> None:
         if log_scale:
             rel = np.mean(np.abs(np.log(y_pred[:, j]) - np.log(y_true[:, j])))
             print(f'  {label}  MAE = {np.mean(err):.3f}  '
-                  f'(log-MAE = {rel:.3f}, ≈{100*(np.exp(rel)-1):.1f}% typical)')
+                  f'(log-MAE = {rel:.3f}, '
+                  f'≈{100*(np.exp(rel)-1):.1f}% typical)')
         else:
             rel = np.mean(err) / np.mean(y_true[:, j])
             print(f'  {label}  MAE = {np.mean(err):.3f}  '

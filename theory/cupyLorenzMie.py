@@ -208,7 +208,8 @@ void lorenzmie(const float * __restrict__ x,
     const cuFloatComplex i = make_cuFloatComplex(0.f, 1.f);
     const cuFloatComplex one = make_cuFloatComplex(1.f, 0.f);
     const cuFloatComplex two = make_cuFloatComplex(2.f, 0.f);
-    const cuFloatComplex phase = make_cuFloatComplex(cosf(k*z_p), -sinf(k*z_p));
+    const cuFloatComplex phase =
+        make_cuFloatComplex(cosf(k*z_p), -sinf(k*z_p));
 
     // sign factor for 'bohren' does not depend on the particle index,
     // compute it once per kernel invocation.

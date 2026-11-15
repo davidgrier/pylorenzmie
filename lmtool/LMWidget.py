@@ -6,7 +6,6 @@ from pyqtgraph.Qt.QtWidgets import QFrame
 
 from pylorenzmie.lmtool.LMSession import LMSession
 from pylorenzmie.lmtool.parameters import PARAMETERS
-from pylorenzmie.lmtool.ParameterWidget import ParameterWidget
 from pylorenzmie.theory import LorenzMie
 
 _DIR = Path(__file__).parent
@@ -57,7 +56,7 @@ class LMWidget(QFrame):
         return self.session.model
 
     def _setupControls(self) -> None:
-        """Configure the controls that the layout has, from the specs."""
+        '''Configure the controls that the layout has, from the specs.'''
         self.setConfig({spec.name: spec.settings() for spec in self.specs})
 
     def _startSession(self) -> None:

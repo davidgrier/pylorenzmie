@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class FitWidget(pg.GraphicsLayoutWidget):
-    '''Three-panel widget showing the ROI, model fit, and normalized residuals.'''
+    '''Three-panel widget of the ROI, the model fit and the residuals.'''
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

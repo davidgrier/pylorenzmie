@@ -1,18 +1,15 @@
+from contextlib import suppress
 from .Localizer import Localizer
 from .BaseEstimator import BaseEstimator
 from .Estimator import Estimator
 from .DEEstimator import DEEstimator
 from .PairEstimator import PairEstimator
 from .RadialEstimator import RadialEstimator
-try:
+with suppress(ImportError):
     from .MLPEstimator import MLPEstimator
-except ImportError:
-    pass
 from .Optimizer import Optimizer
-try:
+with suppress(ImportError):
     from .cupyOptimizer import cupyOptimizer
-except ImportError:
-    pass
 from .Mask import Mask
 from .RadialMask import RadialMask
 from .Feature import Feature

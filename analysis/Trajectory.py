@@ -72,8 +72,6 @@ class Trajectory(LMObject):
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover
-        import cv2
-        from pathlib import Path
         from pylorenzmie.analysis import Frame
         from pylorenzmie.utilities import example_hologram
 

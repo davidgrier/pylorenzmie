@@ -16,7 +16,8 @@ from pylorenzmie.theory import LorenzMie
 
 
 def _default_weights() -> Path:
-    return Path(str(files('pylorenzmie.analysis').joinpath('mlp_estimator.joblib')))
+    folder = files('pylorenzmie.analysis')
+    return Path(str(folder.joinpath('mlp_estimator.joblib')))
 
 
 def _log_targets(y: np.ndarray) -> np.ndarray:

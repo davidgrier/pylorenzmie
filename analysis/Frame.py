@@ -196,7 +196,7 @@ class Frame(Hologram):
             if row.n_particles == 2:
                 feature = self._feature(
                     (slice(y0, y0 + h), slice(x0, x0 + w)),
-                    centers=list(zip(row.x_p, row.y_p)))
+                    centers=list(zip(row.x_p, row.y_p, strict=True)))
             else:
                 dim = min(w, h)
                 feature = self._feature(

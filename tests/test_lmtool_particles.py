@@ -194,7 +194,7 @@ class TestSaveResults(unittest.TestCase):
 
     def test_hdf5(self):
         try:
-            import tables  # noqa: F401
+            import tables
         except ImportError:
             self.skipTest('PyTables is not installed')
         filename = save_results(self.results, self.metadata,

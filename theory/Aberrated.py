@@ -25,10 +25,11 @@ phase that the ideal model assumes.  It is zero by default.
 
 :data:`AberratedLorenzMie` is the aberrated NumPy calculator.  The class that
 ``pylorenzmie.theory`` exports under that name is built on the calculator that
-``pylorenzmie.theory.LorenzMie`` selects (Numba if it is installed), so it is as
-fast as the plain model.  The calculators that evaluate the field inside a
-compiled kernel (Metal and JAX) apply the same phase inside the kernel.  Defocus is nearly degenerate with
-``z_p``, so fit it only when the height is constrained by other means.
+``pylorenzmie.theory.LorenzMie`` selects (Numba if it is installed), so it is
+as fast as the plain model.  The calculators that evaluate the field inside a
+compiled kernel (Metal and JAX) apply the same phase inside the kernel.
+Defocus is nearly degenerate with ``z_p``, so fit it only when the height is
+constrained by other means.
 '''
 
 from pylorenzmie.theory.LorenzMie import LorenzMie

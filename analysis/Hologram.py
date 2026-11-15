@@ -77,7 +77,8 @@ class Hologram:
         return self._coordinates.reshape(2, -1)
 
     @staticmethod
-    def _from_slice(data: Image, coordinates: NDArray[np.floating]) -> 'Hologram':
+    def _from_slice(data: Image,
+                    coordinates: NDArray[np.floating]) -> 'Hologram':
         '''Create a Hologram from pre-computed coordinates (no meshgrid call).
 
         The corner is read directly from the coordinate array so that the

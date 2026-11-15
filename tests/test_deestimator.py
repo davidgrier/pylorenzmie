@@ -1,3 +1,4 @@
+from contextlib import suppress
 import unittest
 import numpy as np
 import pandas as pd
@@ -88,10 +89,8 @@ class TestDEEstimator(unittest.TestCase):
             bounds={'z_p': (500., 100.)},  # invalid: lo > hi → DE will raise
             seed=0)
         bad_estimator.settings['workers'] = 1
-        try:
+        with suppress(Exception):
             bad_estimator.estimate(self.hologram)
-        except Exception:
-            pass
         np.testing.assert_array_equal(self.model.coordinates, coords_before)
 
     def test_properties_keys(self):

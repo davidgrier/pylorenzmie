@@ -85,7 +85,7 @@ class PairEstimator(DEEstimator):
         finally:
             self.model.coordinates = saved_coords
 
-        self.model.properties = dict(zip(de_vars, result.x))
+        self.model.properties = dict(zip(de_vars, result.x, strict=True))
         return pd.Series(self.model.particle.properties)
 
     @classmethod

@@ -2,7 +2,7 @@ import unittest
 import sys
 
 try:
-    import cupy  # noqa: F401
+    import cupy
     HAS_CUPY = True
 except ImportError:
     HAS_CUPY = False

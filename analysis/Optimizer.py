@@ -207,14 +207,14 @@ class Optimizer(LMObject):
             return None
         a = self.variables
         b = ['d' + v for v in a]
-        keys = list(sum(zip(a, b), ()))
+        keys = list(sum(zip(a, b, strict=True), ()))
         keys.extend('success npix redchi'.split())
         values = list(self._result.x)
         npix = self._data.size
         redchi, uncertainties = self._statistics()
-        values = list(sum(zip(values, uncertainties), ()))
+        values = list(sum(zip(values, uncertainties, strict=True), ()))
         values.extend([self._result.success, npix, redchi])
-        return pd.Series(dict(zip(keys, values)))
+        return pd.Series(dict(zip(keys, values, strict=True)))
 
     @property
     def metadata(self) -> pd.Series:
@@ -279,14 +279,15 @@ class Optimizer(LMObject):
                   f'χ² = {result.redchi:.2f}']
         return '\n'.join(lines)
 
-    def _analytical_jac(self, values: NDArray[np.floating]) -> NDArray[np.floating]:
-        self.model.properties = dict(zip(self.variables, values))
+    def _analytical_jac(self, values: NDArray[np.floating]
+                        ) -> NDArray[np.floating]:
+        self.model.properties = dict(zip(self.variables, values, strict=True))
         J = self.model.jac()
         noise = self.model.instrument.noise
         return np.column_stack([J[p] for p in self.variables]) / noise
 
     def _residuals(self, values: NDArray[np.floating]) -> Image:
-        self.model.properties = dict(zip(self.variables, values))
+        self.model.properties = dict(zip(self.variables, values, strict=True))
         noise = self.model.instrument.noise
         return (self.model.hologram() - self._data) / noise
 

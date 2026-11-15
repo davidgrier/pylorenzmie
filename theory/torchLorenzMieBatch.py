@@ -28,7 +28,7 @@ logger.setLevel(logging.WARNING)
 
 @triton.jit
 def _batch_lorenzmie_kernel(
-        kx_ptr, ky_ptr, kz_ptr,          # [N, npts] float32 contiguous — batch-major
+        kx_ptr, ky_ptr, kz_ptr,          # [N, npts] float32, batch-major
         a_re_ptr, a_im_ptr,               # [N, norders] float32 contiguous
         b_re_ptr, b_im_ptr,               # [N, norders] float32 contiguous
         norders: tl.constexpr,
@@ -229,9 +229,9 @@ class TorchLorenzMieBatch(TorchLorenzMie):
     Additional methods
     ------------------
     batch_hologram(particle_lists)
-        Generate B holograms simultaneously and return ``[B, npts]`` intensities.
+        Generate B holograms at once and return ``[B, npts]`` intensities.
     batch_field(particle_lists)
-        Compute B scattered fields and return a ``[B, 3, npts]`` complex tensor.
+        Compute B scattered fields as a ``[B, 3, npts]`` complex tensor.
 
     Examples
     --------
@@ -279,10 +279,12 @@ class TorchLorenzMieBatch(TorchLorenzMie):
         holograms : numpy.ndarray, shape (B, npts), dtype float64
             Hologram intensities for each of the B inputs.
         '''
-        field = self.batch_field(particle_lists, cartesian=cartesian, bohren=bohren)
+        field = self.batch_field(particle_lists, cartesian=cartesian,
+                                 bohren=bohren)
         # field: [B, 3, npts]
         field[:, 0, :] += 1.0 + 0j
-        return (field.real**2 + field.imag**2).sum(dim=1).double().cpu().numpy()
+        intensity = (field.real**2 + field.imag**2).sum(dim=1)
+        return intensity.double().cpu().numpy()
         # → [B, npts]
 
     def batch_field(self,
@@ -344,11 +346,12 @@ class TorchLorenzMieBatch(TorchLorenzMie):
                     particle.r_p + particle.r_0,
                     dtype=torch.float32, device=self._device)
 
-        field = torch.zeros(B, 3, npts, dtype=torch.complex64, device=self._device)
+        field = torch.zeros(B, 3, npts, dtype=torch.complex64,
+                            device=self._device)
 
         # Loop over particle slots rather than flattening all B*P at once.
         # Each iteration processes [B, npts] tensors instead of [B*P, npts],
-        # keeping intermediate allocations P times smaller for better cache use.
+        # keeping intermediate allocations P times smaller for cache use.
         #
         # Wrappers such as Aberrated modulate scattered_field() with a
         # per-particle phase mask; apply the same mask on the batch path.
@@ -357,12 +360,13 @@ class TorchLorenzMieBatch(TorchLorenzMie):
             ab_p  = ab_all[:, p, :, :]   # [B, norders, 2] — view, no copy
             r_p_p = r_p_all[:, p, :]     # [B, 3]          — view, no copy
 
-            dr  = self._coords.unsqueeze(0) - r_p_p.unsqueeze(-1)  # [B, 3, npts]
+            dr  = self._coords.unsqueeze(0) - r_p_p.unsqueeze(-1)  # [B,3,npts]
             kdr = k * dr
 
             particle_field = self._batch_lorenzmie(
                 ab_p, kdr, cartesian=cartesian, bohren=bohren)
-            phases = torch.exp(-1j * k * r_p_p[:, 2].to(torch.complex64))  # [B]
+            z_p = r_p_p[:, 2].to(torch.complex64)
+            phases = torch.exp(-1j * k * z_p)  # [B]
             particle_field = particle_field * phases.reshape(B, 1, 1)
             if aberration is not None:
                 masks = [aberration(r) for r in r_p_p.cpu().numpy()]
@@ -418,7 +422,9 @@ class TorchLorenzMieBatch(TorchLorenzMie):
         BLOCK = 512
         grid  = (triton.cdiv(npts, BLOCK), N)
         _batch_lorenzmie_kernel[grid](
-            kdr[:, 0, :].contiguous(), kdr[:, 1, :].contiguous(), kdr[:, 2, :].contiguous(),
+            kdr[:, 0, :].contiguous(),
+            kdr[:, 1, :].contiguous(),
+            kdr[:, 2, :].contiguous(),
             a.real.contiguous(), a.imag.contiguous(),
             b.real.contiguous(), b.imag.contiguous(),
             norders,
@@ -445,7 +451,6 @@ class TorchLorenzMieBatch(TorchLorenzMie):
 
         '''Demonstrate batch_hologram() with four holograms'''
         import matplotlib.pyplot as plt
-        import numpy as np
         from pylorenzmie.theory import Sphere, Instrument
         from time import perf_counter
 

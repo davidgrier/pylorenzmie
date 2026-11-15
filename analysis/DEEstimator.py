@@ -84,7 +84,8 @@ class _DEObjective:
         self._noise = noise
 
     def __call__(self, values: np.ndarray) -> float:
-        self._model.properties = dict(zip(self._variables, values))
+        self._model.properties = dict(
+            zip(self._variables, values, strict=True))
         with np.errstate(over='ignore', invalid='ignore'):
             diff = (self._model.hologram() - self._data) / self._noise
             return float(np.nansum(diff ** 2))
@@ -173,7 +174,7 @@ class DEEstimator(BaseEstimator):
     :class:`~pylorenzmie.analysis.Optimizer.Optimizer` to converge. '''
 
     model: LorenzMie
-    bounds: dict = field(default_factory=lambda: DEFAULT_BOUNDS.copy())
+    bounds: dict = field(default_factory=DEFAULT_BOUNDS.copy)
     fraction: float = 0.02
     exclude: NDArray[np.bool_] | None = None
     popsize: int = 10
@@ -234,7 +235,7 @@ class DEEstimator(BaseEstimator):
         finally:
             self.model.coordinates = saved_coords
 
-        self.model.properties = dict(zip(de_vars, result.x))
+        self.model.properties = dict(zip(de_vars, result.x, strict=True))
         return pd.Series(self.model.particle.properties)
 
     @classmethod

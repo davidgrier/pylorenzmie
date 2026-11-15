@@ -56,9 +56,10 @@ class cupyOptimizer(Optimizer):
 
     def _residuals(self, values: list[float]) -> cupyLorenzMie.Image:
         '''Compute residuals on the GPU; return numpy array to scipy.'''
-        self.model.properties = dict(zip(self.variables, values))
+        self.model.properties = dict(zip(self.variables, values, strict=True))
         noise = self.model.instrument.noise
-        residuals = (self.model.hologram(device=True) - self.devicedata) / noise
+        hologram = self.model.hologram(device=True)
+        residuals = (hologram - self.devicedata) / noise
         return residuals.get()
 
 
