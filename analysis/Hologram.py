@@ -46,9 +46,7 @@ class Hologram:
     corner: tuple[float, float] = (0., 0.)
 
     def __post_init__(self) -> None:
-        self._coordinates = meshgrid(self.data.shape,
-                                     corner=self.corner,
-                                     flatten=False)
+        self._coordinates: NDArray[np.floating] | None = None
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Hologram):
@@ -63,7 +61,15 @@ class Hologram:
 
     @property
     def coordinates(self) -> NDArray[np.floating]:
-        '''Pixel coordinates, shape ``(2, ny, nx)``.'''
+        '''Pixel coordinates, shape ``(2, ny, nx)``.
+
+        Made from the shape of :attr:`data` and :attr:`corner` when first
+        needed.
+        '''
+        if self._coordinates is None:
+            self._coordinates = meshgrid(self.shape,
+                                         corner=self.corner,
+                                         flatten=False)
         return self._coordinates
 
     @property
@@ -74,7 +80,7 @@ class Hologram:
     @property
     def flat_coordinates(self) -> NDArray[np.floating]:
         '''Pixel coordinates as a 2-D view, shape ``(2, npts)``.'''
-        return self._coordinates.reshape(2, -1)
+        return self.coordinates.reshape(2, -1)
 
     @staticmethod
     def _from_slice(data: Image,
@@ -106,7 +112,7 @@ class Hologram:
         '''
         sy, sx = key
         return Hologram._from_slice(self.data[key],
-                                    self._coordinates[:, sy, sx])
+                                    self.coordinates[:, sy, sx])
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

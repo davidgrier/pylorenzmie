@@ -65,11 +65,8 @@ class Feature(Hologram):
                  model: LorenzMie | None = None,
                  centers: list[tuple[float, float]] | None = None,
                  fixed: list[str] | None = None) -> None:
-        # Copy Hologram state directly; super().__init__() is skipped to avoid
-        # calling __post_init__ (which would rerun meshgrid on hologram.data).
-        self.data = hologram.data
-        self.corner = hologram.corner
-        self._coordinates = hologram._coordinates
+        super().__init__(hologram.data, hologram.corner)
+        self._coordinates = hologram.coordinates    # the crop's own view
         self.model = model or LorenzMie()
 
         self._centers = (None if centers is None else

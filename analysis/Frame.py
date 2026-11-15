@@ -18,9 +18,10 @@ with the neighbor's fringes as noise.  The table of a series of frames can be
 collected in a :class:`~pylorenzmie.analysis.Trajectory.Trajectory`.
 '''
 
+from typing import cast
+
 import numpy as np
 import pandas as pd
-from pylorenzmie.lib import meshgrid
 from pylorenzmie.theory import Instrument, LorenzMie
 from pylorenzmie.analysis import Localizer, Feature
 from pylorenzmie.analysis.Hologram import Hologram
@@ -88,13 +89,9 @@ class Frame(Hologram):
         self._features: list[Feature] = []
         self._bboxes: list = []
         self._results: pd.DataFrame = pd.DataFrame()
-        # Initialize Hologram-level state directly; super().__init__() is
-        # skipped so that data=None is valid before any image is loaded.
-        self.corner = corner
-        self._coordinates = None
         self._data: Image | None = None
-        if data is not None:
-            self.data = data
+        # A Frame has no image until data is set; its data property says so.
+        super().__init__(cast(Image, data), corner)
 
     # Override the dataclass-generated 'data' field with a property so
     # that assigning frame.data triggers coordinate regeneration and a
@@ -109,12 +106,7 @@ class Frame(Hologram):
         self._features = []
         self._results = pd.DataFrame()
         self._data = data
-        if data is not None:
-            self._coordinates = meshgrid(data.shape,
-                                         corner=self.corner,
-                                         flatten=False)
-        else:
-            self._coordinates = None
+        self._coordinates = None
 
     @property
     def shape(self) -> tuple[int, int]:

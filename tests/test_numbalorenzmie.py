@@ -8,8 +8,7 @@ from pylorenzmie.theory.LorenzMie import LorenzMie
 from pylorenzmie.theory.Aberrated import Aberrated
 
 try:
-    from pylorenzmie.theory.numbaLorenzMie import (numbaLorenzMie,
-                                                   compute_field_jit)
+    from pylorenzmie.theory.numbaLorenzMie import numbaLorenzMie
 except ImportError:                                  # pragma: no cover
     numbaLorenzMie = None
 
@@ -254,14 +253,6 @@ class TestNumbaLorenzMie(unittest.TestCase):
                                     numba.hologram(),
                                     rtol=0,
                                     atol=1e-10))
-
-    def test_compute_field_jit_wrapper(self):
-        numpy, numba = self.models()
-        kdr, ab = self.kdr(numpy), self.ab(numpy)
-        buffers = [np.empty(kdr.shape, dtype=complex) for _ in range(4)]
-        new = compute_field_jit(kdr, buffers, None, ab, True, True)
-        ref = numpy.lorenzmie(ab, kdr)
-        self.assertLess(np.abs(new - ref).max(), 1e-10 * np.abs(ref).max())
 
 
 if __name__ == '__main__':

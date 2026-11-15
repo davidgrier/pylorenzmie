@@ -270,11 +270,6 @@ Open findings of the review of the code base; the notes behind them are in
       `DEEstimator` returned `n_p = 2.65` for one real feature
       (`image0400.png`, reduced chi-squared 9.6), an unphysical solution that
       a bound on `n_p` would reject.
-- [ ] `Feature` and `Frame` subclass the `Hologram` dataclass but skip its
-      `__init__` and set private attributes; hold a `Hologram` instead, or
-      let `Hologram` exist without data.  An API change.
-- [ ] `compute_field_jit` (`numbaLorenzMie`) is not used outside its test, and
-      its `scratch` argument does nothing; remove it in a major version.
 - [ ] The Triton kernel exists twice (`_tritonkernel.py` and
       `torchLorenzMieBatch.py`, about 100 lines); unify with CUDA hardware to
       test it.  The two kernels have no type annotations (`@triton.jit` reads

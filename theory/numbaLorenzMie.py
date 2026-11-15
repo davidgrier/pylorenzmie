@@ -25,7 +25,7 @@ with several Python threads is described in the documentation of
 :class:`numbaLorenzMie`.
 '''
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable
 import os
 import threading
 
@@ -220,46 +220,6 @@ def _after_fork_in_child() -> None:
 
 if hasattr(os, 'register_at_fork'):
     os.register_at_fork(after_in_child=_after_fork_in_child)
-
-
-def compute_field_jit(kdr: Coordinates,
-                      buffers: Sequence[Complexes],
-                      scratch: object,
-                      ab: Coefficients,
-                      cartesian: bool,
-                      bohren: bool) -> Field:
-    '''Scattered field summed over Mie partial waves (compatibility wrapper).
-
-    Parameters
-    ----------
-    kdr : numpy.ndarray, shape (3, npts)
-        Wave-number-scaled displacement from particle to each
-        coordinate point.
-    buffers : sequence of numpy.ndarray
-        Working arrays, each of shape (3, npts) and dtype complex.
-        The field is written to ``buffers[3]`` (Cartesian) or
-        ``buffers[2]`` (spherical).
-    scratch : numpy.ndarray
-        Unused. Kept for compatibility.
-    ab : numpy.ndarray, shape (n_orders, 2), dtype complex
-        Mie scattering coefficients.
-    cartesian : bool
-        If True, return field projected onto Cartesian coordinates.
-    bohren : bool
-        If True, use sign convention from Bohren and Huffman.
-
-    Returns
-    -------
-    field : numpy.ndarray, shape (3, npts), dtype complex
-        Complex scattered field at each coordinate.
-    '''
-    out = buffers[3] if cartesian else buffers[2]
-    _serial_kernel(np.ascontiguousarray(kdr, dtype=np.float64),
-                   *_partial_wave_constants(ab),
-                   out,
-                   cartesian,
-                   bohren)
-    return out
 
 
 class numbaLorenzMie(LorenzMie):
