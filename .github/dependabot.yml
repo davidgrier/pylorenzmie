@@ -1,0 +1,8 @@
+# Keep the actions of the workflows current: they run on the runtime that
+# GitHub is retiring until they are.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"

@@ -6,17 +6,54 @@ on:
       - 'v*'
 
 jobs:
+  tested:
+    # A tag can be pushed on a commit that has not passed its tests.  The
+    # Tests workflow runs when the commit is pushed to master, so it is
+    # waited for here, and a release is not made if it failed.
+    name: The tests passed on this commit
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    permissions:
+      actions: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - name: Wait for the Tests workflow, and require that it passed
+        run: |
+          missing=0
+          for attempt in $(seq 1 120); do
+            run=$(gh run list --repo "$GITHUB_REPOSITORY" \
+                    --workflow Tests --commit "$GITHUB_SHA" --event push \
+                    --limit 1 --json status,conclusion,url \
+                    --jq '.[0] // empty | "\(.status) \(.conclusion) \(.url)"')
+            echo "attempt $attempt: ${run:-no run yet}"
+            case "$run" in
+              "completed success "*) exit 0 ;;
+              "completed "*) echo "::error::The tests did not pass: ${run##* }"; exit 1 ;;
+              "") missing=$((missing + 1))
+                  if [ "$missing" -ge 10 ]; then
+                    echo "::error::No Tests run was found for $GITHUB_SHA: push the commit to master first"
+                    exit 1
+                  fi ;;
+            esac
+            sleep 30
+          done
+          echo "::error::The Tests workflow did not finish in an hour"
+          exit 1
+
   build:
     name: Build distribution
+    needs: tested
     runs-on: ubuntu-latest
     env:
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.12'
 
@@ -27,7 +64,7 @@ jobs:
         run: python -m build
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: dist/
@@ -44,7 +81,7 @@ jobs:
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: dist
           path: dist/
@@ -54,11 +91,12 @@ jobs:
 
   release:
     name: Create GitHub Release
+    needs: tested
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true

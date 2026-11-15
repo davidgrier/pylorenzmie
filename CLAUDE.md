@@ -130,7 +130,9 @@ on tag push — **never edit `CITATION.cff` manually**.
 Release steps:
 
 1. Bump `version` in `pyproject.toml` only.
-2. Commit and push.
+2. Commit and push, and wait for the `Tests` workflow to pass on every job
+   that counts (`publish.yml` checks this, and releases nothing if the tests
+   failed or never ran on the commit).
 3. Tag and push the tag:
 
 ```bash
