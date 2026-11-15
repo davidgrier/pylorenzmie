@@ -5,7 +5,7 @@ from datetime import datetime
 import json
 import logging
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 import cv2
 import numpy as np
@@ -622,7 +622,7 @@ class LMTool(QMainWindow):
         optimizer.robust = state
         self.optimizerWidget.settings = optimizer.settings
 
-    def closeEvent(self, event: QCloseEvent | None) -> None:
+    def closeEvent(self, event: Optional[QCloseEvent]) -> None:
         self.tasks.shutdown()
         super().closeEvent(event)
 

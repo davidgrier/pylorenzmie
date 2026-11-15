@@ -1,5 +1,5 @@
 import logging
-from typing import Any, cast
+from typing import Any, Optional, cast
 
 import numpy as np
 from qtpy.QtCore import Slot, QRectF
@@ -83,7 +83,9 @@ class FitWidget(pg.GraphicsLayoutWidget):
         self.region.setRect(rect)
         self._updateFitDisplay()
 
-    def showEvent(self, event: QShowEvent | None) -> None:
+    # Optional, and not a union with None: with Qt mocked, as in the docs
+    # job, a class of Qt has no ``|``
+    def showEvent(self, event: Optional[QShowEvent]) -> None:
         super().showEvent(event)
         self._updateFitDisplay()
 
