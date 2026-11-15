@@ -634,7 +634,11 @@ class TestModelChoice(ToolTestCase):
                 lmtool()
         self.assertEqual(raised.exception.code, 2)
         message = ''.join(call.args[0] for call in err.write.call_args_list)
-        self.assertIn('Distorted does not support', message)
+        # without Torch the backend is refused before the model is
+        self.assertRegex(
+            message,
+            'Distorted does not support|backend is not available',
+        )
 
     def test_the_panel_class_uses_the_model(self):
         from pylorenzmie.theory import model_class

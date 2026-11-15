@@ -21,6 +21,8 @@ PACKAGES = ('pylorenzmie', 'pylorenzmie.lib', 'pylorenzmie.theory',
 OPTIONAL = ('cupy', 'jax', 'jaxlib', 'torch', 'triton', 'numba', 'tables',
             'PyQt5', 'PyQt6', 'PySide6')
 MISSING = re.compile(r"No module named '(\w+)")
+#: What pyqtgraph says when there is no Qt binding for it to use.
+NO_QT = 'PyQtGraph requires one of'
 
 
 def modules() -> list[str]:
@@ -38,6 +40,16 @@ def modules() -> list[str]:
         found.extend(info.name for info in walk
                      if not info.name.endswith('.__main__'))
     return sorted(set(found))
+
+
+def optional_missing(error: str) -> str | None:
+    '''Return the optional library that an import failed for, if any.'''
+    if NO_QT in error:
+        return 'Qt'
+    missing = MISSING.search(error)
+    if missing and missing.group(1) in OPTIONAL:
+        return missing.group(1)
+    return None
 
 
 def first_import(module: str) -> tuple[str, int, str]:
@@ -60,11 +72,24 @@ class TestFirstImport(unittest.TestCase):
             results = list(pool.map(first_import, modules()))
         for module, code, error in results:
             with self.subTest(module=module):
-                if code:
-                    missing = MISSING.search(error)
-                    if missing and missing.group(1) in OPTIONAL:
-                        self.skipTest(f'needs {missing.group(1)}')
+                if code and optional_missing(error):
+                    self.skipTest(f'needs {optional_missing(error)}')
                 self.assertEqual(code, 0, error)
+
+    def test_a_missing_optional_library_is_told_from_a_failure(self):
+        self.assertEqual(
+            optional_missing("ModuleNotFoundError: No module named 'torch'"),
+            'torch',
+        )
+        self.assertEqual(
+            optional_missing('ImportError: PyQtGraph requires one of PyQt5, '
+                             'PyQt6, PySide2 or PySide6'),
+            'Qt',
+        )
+        self.assertIsNone(optional_missing(
+            "ModuleNotFoundError: No module named 'pylorenzmie'"))
+        self.assertIsNone(optional_missing(
+            'ImportError: cannot import name x (circular import)'))
 
     def test_the_modules_are_found(self):
         found = modules()
