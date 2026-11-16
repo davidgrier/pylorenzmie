@@ -27,11 +27,16 @@ from pylorenzmie.lib.lmtypes import Coefficients, Properties
 from pylorenzmie.theory._mie import mie_ab
 
 MAX_RADIUS = 50.
-'''Largest radius of a sphere that the model computes, in μm.
+'''Largest radius of a sphere that the model computes, in μm.'''
 
-The number of partial waves grows with the radius.  A fit that wanders off
-to an absurd radius would ask for billions of them, and the computer for
-tens of gigabytes, before it noticed.
+MAX_ORDERS = 5000
+'''Largest number of partial waves that the model computes.
+
+The number of partial waves grows with the radius and with the index.  A
+sphere of 50 μm and an index of 3 needs 2,100 of them, and the same in air at
+300 nm needs 3,100.  A fit that wanders off to an absurd radius or index asks
+for millions or billions, and the computer for tens of gigabytes, before it
+notices.
 '''
 
 
@@ -48,7 +53,8 @@ class Sphere(Particle):
     ----------
     a_p : float
         Radius of the sphere, in μm. Default: 1.  The coefficients are
-        computed for ``abs(a_p) <= MAX_RADIUS`` (50 μm) only.
+        computed for ``abs(a_p) <= MAX_RADIUS`` (50 μm) only, and for
+        no more than ``MAX_ORDERS`` (5000) partial waves.
     n_p : float
         Refractive index of the sphere. Default: 1.5.
     k_p : float
@@ -120,7 +126,8 @@ class Sphere(Particle):
         Raises
         ------
         ValueError
-            If the radius is larger than ``MAX_RADIUS``.
+            If the radius is larger than ``MAX_RADIUS``, or the sum needs
+            more than ``MAX_ORDERS`` partial waves.
         '''
         return Sphere.mie_coefficients(self.a_p,
                                        self.n_p,
@@ -146,6 +153,30 @@ class Sphere(Particle):
         if not abs(a_p) <= MAX_RADIUS:
             raise ValueError(f'the radius of a sphere is at most '
                              f'{MAX_RADIUS:g} um, not a_p = {a_p:g} um')
+
+    @staticmethod
+    def check_orders(nmax: int, a_p: float, n_p: float) -> None:
+        '''Refuse a sphere whose Mie sum is longer than the model computes.
+
+        Parameters
+        ----------
+        nmax : int
+            Number of partial waves that the sphere needs
+            (:meth:`wiscombe_yang`).
+        a_p : float
+            Radius of the sphere, in μm.
+        n_p : float
+            Refractive index of the sphere.
+
+        Raises
+        ------
+        ValueError
+            If ``nmax`` is larger than ``MAX_ORDERS``.
+        '''
+        if nmax > MAX_ORDERS:
+            raise ValueError(f'a sphere of radius {a_p:g} um and index '
+                             f'{n_p:g} needs {nmax:,} partial waves, '
+                             f'at most {MAX_ORDERS:,} are computed')
 
     @staticmethod
     def wiscombe_yang(x: float, m: float | complex) -> int:
@@ -232,7 +263,8 @@ class Sphere(Particle):
         Raises
         ------
         ValueError
-            If the radius is larger than ``MAX_RADIUS``.
+            If the radius is larger than ``MAX_RADIUS``, or the sum needs
+            more than ``MAX_ORDERS`` partial waves.
         '''
         Sphere.check_radius(a_p)
 
@@ -244,6 +276,7 @@ class Sphere(Particle):
         m = (n_p + 1.j * k_p) / n_m   # relative refractive index
 
         nmax = Sphere.wiscombe_yang(x, m)
+        Sphere.check_orders(nmax, a_p, n_p)
 
         return mie_ab(x, m, nmax)
 

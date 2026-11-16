@@ -441,7 +441,9 @@ class jaxLorenzMie(LorenzMie):
         Sphere.check_radius(self.particle.a_p)
         x = k * float(self.particle.a_p)
         m = (self.particle.n_p + 1.j * self.particle.k_p) / self.instrument.n_m
-        return Sphere.wiscombe_yang(x, m)
+        nmax = Sphere.wiscombe_yang(x, m)
+        Sphere.check_orders(nmax, self.particle.a_p, self.particle.n_p)
+        return nmax
 
     def hologram(self, **kwargs: Any) -> np.ndarray:
         '''JIT-compiled hologram of a single

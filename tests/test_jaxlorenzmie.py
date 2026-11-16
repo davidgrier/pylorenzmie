@@ -37,6 +37,11 @@ class TestJaxLorenzMie(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.model.hologram()
 
+    def test_an_index_that_needs_too_many_orders_is_refused(self) -> None:
+        self.model.particle.n_p = 1e5
+        with self.assertRaisesRegex(ValueError, 'partial waves'):
+            self.model.hologram()
+
     def test_hologram_shape(self) -> None:
         h = self.model.hologram()
         npts = self.shape[0] * self.shape[1]

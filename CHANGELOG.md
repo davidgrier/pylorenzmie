@@ -127,10 +127,11 @@ All notable changes to pylorenzmie are recorded here. The format follows
   and a step of an unbounded fit to a radius of -850 um and an index of
   159,000 asked for 1.9 billion of them, 60 GB for the coefficients alone, and
   the system ended the process (a peak of 100 GB; the fit that did it ran
-  for 15 s).  `Sphere` refuses a radius of more than `MAX_RADIUS`, 50 um, with
-  a `ValueError` that says which radius, and so does `jaxLorenzMie`; the same
-  fit now stops after 1.6 s with that error.  The limit is a first
-  safeguard: an index of 100,000 or more still asks for too many orders.
+  for 15 s).  `Sphere` refuses a radius of more than `MAX_RADIUS`, 50 um, and
+  a sum of more than `MAX_ORDERS`, 5000 partial waves (a sphere of 50 um and
+  an index of 3 needs 2,100, the same in air at 300 nm 3,100, one of 5 um in
+  water 114), with a `ValueError` that says which radius and index; so does
+  `jaxLorenzMie`.  The same fit now stops after 1.6 s with that error.
 * `lmtool` could stop for good, about once in a thousand background tasks.
   `TaskRunner` let go of the worker of a task while its thread was still
   running, so that the event loop of the thread destroyed it, and the

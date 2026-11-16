@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from pylorenzmie.theory.Sphere import MAX_RADIUS, Sphere
+from pylorenzmie.theory.Sphere import MAX_ORDERS, MAX_RADIUS, Sphere
 
 # TODO: add spot-check tests for specific ab coefficient values against
 # a published reference (e.g. Bohren & Huffman Appendix A) once a
@@ -125,12 +125,21 @@ class TestSphere(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, 'radius'):
                     self.sphere.ab(self.n_m, self.wavelength)
 
-    def test_a_radius_that_is_too_large_does_not_allocate(self):
-        # A radius of 850 um with an index of 159000 once asked for
-        # 1.9 billion orders, which is 60 GB.
-        self.sphere.a_p, self.sphere.n_p = 850., 1.59e5
-        with self.assertRaises(ValueError):
-            self.sphere.ab(self.n_m, self.wavelength)
+    def test_a_sphere_that_needs_too_many_orders_is_refused(self):
+        # A radius of 1 um with an index of 1e5 needs 1.4 million orders.
+        # (A radius of 850 um with an index of 1.6e5 needed 1.9 billion,
+        # 60 GB, and ended the process; the radius is refused first.)
+        for a_p, n_p in ((1., 1e5), (50., 1e4)):
+            with self.subTest(a_p=a_p, n_p=n_p):
+                self.sphere.a_p, self.sphere.n_p = a_p, n_p
+                with self.assertRaisesRegex(ValueError, 'partial waves'):
+                    self.sphere.ab(self.n_m, self.wavelength)
+
+    def test_the_largest_sphere_that_is_physical_is_computed(self):
+        # 50 um, an index of 3, in air at 300 nm: 3141 orders
+        sphere = Sphere(a_p=MAX_RADIUS, n_p=3., k_p=0.)
+        ab = sphere.ab(1., 0.3)
+        self.assertLess(ab.shape[0] - 1, MAX_ORDERS)
 
 
 if __name__ == '__main__':  # pragma: no cover
