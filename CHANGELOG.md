@@ -6,6 +6,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.7.0] - 2026-11-15
+
 ### Added
 
 * `LorenzMie.single(kind=Particle)` returns the particle of a model that has
