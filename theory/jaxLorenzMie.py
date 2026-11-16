@@ -438,6 +438,7 @@ class jaxLorenzMie(LorenzMie):
     def _compute_nmax(self) -> int:
         # Use the unscaled (rad/μm) wavenumber, as Sphere.mie_coefficients
         k = float(self.instrument.wavenumber(scaled=False))
+        Sphere.check_radius(self.particle.a_p)
         x = k * float(self.particle.a_p)
         m = (self.particle.n_p + 1.j * self.particle.k_p) / self.instrument.n_m
         return Sphere.wiscombe_yang(x, m)

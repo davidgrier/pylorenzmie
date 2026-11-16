@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from pylorenzmie.theory.Sphere import Sphere
+from pylorenzmie.theory.Sphere import MAX_RADIUS, Sphere
 
 # TODO: add spot-check tests for specific ab coefficient values against
 # a published reference (e.g. Bohren & Huffman Appendix A) once a
@@ -106,6 +106,31 @@ class TestSphere(unittest.TestCase):
                                      self.n_m,
                                      self.wavelength)
         np.testing.assert_array_equal(ab[0, :], 0j)
+
+    # --- the largest radius ---
+
+    def test_the_largest_radius_is_computed(self):
+        self.sphere.a_p = MAX_RADIUS
+        ab = self.sphere.ab(self.n_m, self.wavelength)
+        self.assertEqual(ab.shape[0] - 1,
+                         Sphere.wiscombe_yang(
+                             2. * np.pi * self.n_m * MAX_RADIUS /
+                             self.wavelength,
+                             self.sphere.n_p / self.n_m))
+
+    def test_a_radius_that_is_too_large_is_refused(self):
+        for a_p in (MAX_RADIUS + 0.01, -2. * MAX_RADIUS, 850., np.nan):
+            with self.subTest(a_p=a_p):
+                self.sphere.a_p = a_p
+                with self.assertRaisesRegex(ValueError, 'radius'):
+                    self.sphere.ab(self.n_m, self.wavelength)
+
+    def test_a_radius_that_is_too_large_does_not_allocate(self):
+        # A radius of 850 um with an index of 159000 once asked for
+        # 1.9 billion orders, which is 60 GB.
+        self.sphere.a_p, self.sphere.n_p = 850., 1.59e5
+        with self.assertRaises(ValueError):
+            self.sphere.ab(self.n_m, self.wavelength)
 
 
 if __name__ == '__main__':  # pragma: no cover

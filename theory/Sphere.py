@@ -26,6 +26,14 @@ from pylorenzmie.theory import Particle
 from pylorenzmie.lib.lmtypes import Coefficients, Properties
 from pylorenzmie.theory._mie import mie_ab
 
+MAX_RADIUS = 50.
+'''Largest radius of a sphere that the model computes, in μm.
+
+The number of partial waves grows with the radius.  A fit that wanders off
+to an absurd radius would ask for billions of them, and the computer for
+tens of gigabytes, before it noticed.
+'''
+
 
 @dataclass
 class Sphere(Particle):
@@ -39,7 +47,8 @@ class Sphere(Particle):
     Attributes
     ----------
     a_p : float
-        Radius of the sphere, in μm. Default: 1.
+        Radius of the sphere, in μm. Default: 1.  The coefficients are
+        computed for ``abs(a_p) <= MAX_RADIUS`` (50 μm) only.
     n_p : float
         Refractive index of the sphere. Default: 1.5.
     k_p : float
@@ -107,12 +116,36 @@ class Sphere(Particle):
         -------
         ab : numpy.ndarray, shape (n_terms, 2), dtype complex
             Mie scattering coefficients.
+
+        Raises
+        ------
+        ValueError
+            If the radius is larger than ``MAX_RADIUS``.
         '''
         return Sphere.mie_coefficients(self.a_p,
                                        self.n_p,
                                        self.k_p,
                                        n_m,
                                        wavelength)
+
+    @staticmethod
+    def check_radius(a_p: float) -> None:
+        '''Refuse a radius that the model does not compute.
+
+        Parameters
+        ----------
+        a_p : float
+            Radius of the sphere, in μm.
+
+        Raises
+        ------
+        ValueError
+            If ``abs(a_p)`` is larger than ``MAX_RADIUS``, or is not a
+            number.
+        '''
+        if not abs(a_p) <= MAX_RADIUS:
+            raise ValueError(f'the radius of a sphere is at most '
+                             f'{MAX_RADIUS:g} um, not a_p = {a_p:g} um')
 
     @staticmethod
     def wiscombe_yang(x: float, m: float | complex) -> int:
@@ -195,7 +228,14 @@ class Sphere(Particle):
         -------
         ab : numpy.ndarray, shape (n_terms, 2), dtype complex
             Mie scattering coefficients.
+
+        Raises
+        ------
+        ValueError
+            If the radius is larger than ``MAX_RADIUS``.
         '''
+        Sphere.check_radius(a_p)
+
         # size parameters for layers
         k = 2. * np.pi / wavelength   # wave number in vacuum [um^-1]
         k *= np.real(n_m)             # wave number in medium

@@ -32,6 +32,11 @@ class TestJaxLorenzMie(unittest.TestCase):
         self.assertIn('jax', self.model.method)
         self.assertIn('numpy', self.model.method)
 
+    def test_a_radius_that_is_too_large_is_refused(self) -> None:
+        self.model.particle.a_p = 850.
+        with self.assertRaises(ValueError):
+            self.model.hologram()
+
     def test_hologram_shape(self) -> None:
         h = self.model.hologram()
         npts = self.shape[0] * self.shape[1]
