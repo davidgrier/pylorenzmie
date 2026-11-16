@@ -248,28 +248,40 @@ Open findings of the review of the code base; the notes behind them are in
       fit is not the problem: given a start inside the valley it recovers the
       truth to under 1 nm.  The valley is narrow for large spheres (the cost
       has a local minimum every 15-30 nm in `a_p` at 3 um, and the valley of
-      the truth is about 12 nm wide), so the start must be good.  The
-      estimators decide:
-      * the default `DEEstimator` (bounds: 1-200 um, 0.25-10 um, n 1-3)
-        recovers the radius to 5 nm in 103 of 180 fits (57%, 12 of 36 at 5 um)
-        and takes 0.57 s; more pixels, a larger population or a tighter `tol`
-        help little (5 of 8 at 4 um with `popsize=30`, at three times the cost);
-        narrow bounds help a lot (3 and 5 um: 8 of 8 with
-        `z_p` 150-450 px, `a_p` 0.5-6 um, `n_p` 1.3-1.8), which is why the
-        tutorials work;
-      * the analytic `Estimator` recovers 172 of 180 (96%) in 0.09 s, but on
-        the real holograms of `tests/data` and `utilities/data` it ends at
-        reduced chi-squared 13-26 against 3.6-5.5 for `DEEstimator`;
-      * fitting from both and keeping the lower reduced chi-squared gives 172
-        of 180 on the simulations and picks `DEEstimator` on all five real
-        features, at 0.66 s a fit.
-      Options: that combination in `Feature.estimate`; guidance in the
-      documentation to narrow the bounds for spheres above 2 um; a narrower
-      default height range.  Not yet tried: a staged fit on growing radius
-      (`RadialMask`), a multi-start in `a_p`, and real data of large spheres.
-      `DEEstimator` returned `n_p = 2.65` for one real feature
-      (`image0400.png`, reduced chi-squared 9.6), an unphysical solution that
-      a bound on `n_p` would reject.
+      the truth is about 12 nm wide), so the start must be good.  A fit is a
+      success if `a_p` is within 5 nm of the truth, which coincides with a
+      reduced chi-squared below 1.1.
+      * **Width of the basin.**  LM started from the truth, with `z_p`, `a_p`
+        and `n_p` all displaced by a relative amount eps (spheres of 2 um and
+        more): 88% succeed at 0.5%, 68% at 1%, 42% at 2%, 0% at 5%.  A start
+        must be within 1 to 2% in every parameter at once.
+      * **Starts, with `n_p` unknown** (180 fits, bounded LM on 4000 pixels):
+        `DEEstimator` then LM 48%; the analytic `Estimator` then LM 38%;
+        a scan of `n_p` (and `z_p`) from the analytic start 28 to 36%.  Above
+        2 um none exceeds about 50%, and at 5 um all are near 20%.  An earlier
+        run of the default `DEEstimator` gave 57% (103 of 180); more pixels,
+        a larger population or a tighter `tol` help little, and narrow bounds
+        help a lot (3 and 5 um: 8 of 8 with `z_p` 150-450 px, `a_p` 0.5-6 um,
+        `n_p` 1.3-1.8), which is why the tutorials work.
+      * **The analytic `Estimator` needs `n_p`.**  It cannot estimate it (the
+        default is 1.5).  An earlier entry gave 96% for it; that test most
+        likely told it the true index, which makes it 29 of 45 fits at 2 to
+        4 um against 5 of 45 with the default.  On the real holograms of
+        `tests/data` and `utilities/data` it ends at reduced chi-squared
+        13-26 against 3.6-5.5 for `DEEstimator`.
+      * **A fit on a growing radius does not help.**  LM on the pixels within
+        25, 40, 60, 85, 120 pixels and then all, with `x_p` and `y_p` held
+        fixed on the small disks: 52% from `DEEstimator`, 42% from the
+        analytic start, and from the truth displaced by eps it is no better
+        than a single fit (85% against 88% at 0.5%, 35% against 42% at 2%).
+        A global search on the inner disk first: 44%, at 6 s a fit.
+      Open: a start that is within 1 to 2% needs more than these estimators;
+      a CATCH-style network would have to reach that accuracy (the
+      `MLPEstimator` is at about 9%).  Not yet tried: real data of large
+      spheres, a multi-start in `a_p` at the width of the valley, tighter
+      default bounds.  `DEEstimator` returned `n_p = 2.65` for one real
+      feature (`image0400.png`, reduced chi-squared 9.6), an unphysical
+      solution that a bound on `n_p` would reject.
 - [ ] The Triton kernel exists twice (`_tritonkernel.py` and
       `torchLorenzMieBatch.py`, about 100 lines); unify with CUDA hardware to
       test it.  The two kernels have no type annotations (`@triton.jit` reads
