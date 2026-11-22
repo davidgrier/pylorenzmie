@@ -337,10 +337,17 @@ def mie_coefficients(x: float,
     Raises
     ------
     ModelDomainError
-        If the sum needs more than ``MAX_ORDERS`` partial waves.  It is a
+        If ``x`` is not positive and finite, ``m`` is not finite, or the
+        sum needs more than ``MAX_ORDERS`` partial waves.  It is a
         :class:`ValueError`.
     '''
     m = complex(m)
+    if not (np.isfinite(x) and x > 0.):
+        raise ModelDomainError(f'the size parameter must be positive and '
+                               f'finite, not x = {x:g}')
+    if not np.isfinite(m):
+        raise ModelDomainError(f'the relative index must be finite, '
+                               f'not m = {m:g}')
     if nmax is None:
         nmax = Sphere.wiscombe_yang(x, m)
     if nmax > MAX_ORDERS:

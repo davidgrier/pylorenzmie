@@ -61,6 +61,14 @@ class TestFeature(unittest.TestCase):
         self.assertTrue(np.array_equal(estimator.exclude,
                                        feature.mask.exclude))
 
+    def test_an_estimator_that_is_shared_takes_the_last_mask(self):
+        estimator = _Fixed()
+        first = Feature(Hologram(self.data), estimator=estimator)
+        second = Feature(Hologram(self.data), estimator=estimator)
+        self.assertIs(first.estimator, second.estimator)
+        self.assertTrue(np.array_equal(estimator.exclude,
+                                       second.mask.exclude))
+
     def test_a_given_estimator_is_used_to_estimate(self):
         feature = Feature(Hologram(self.data), estimator=_Fixed())
         self.assertEqual(feature.estimate()['a_p'], 3.)

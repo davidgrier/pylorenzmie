@@ -353,6 +353,18 @@ class TestOptimizerFit(unittest.TestCase):
         self.assertEqual(self.optimizer.settings['method'], 'lm')
         self.assertNotIn('bounds', self.optimizer.settings)
 
+    def test_bounds_work_with_settings_that_have_no_method(self):
+        self.optimizer.settings = {'ftol': 1e-6}
+        self.optimizer.settings.pop('method', None)
+        self.optimizer.bounds = {'a_p': (0.5, 2.)}
+        result = self.optimizer.optimize(self.hologram)
+        self.assertTrue(result.success)
+
+    def test_a_start_outside_the_bounds_is_named(self):
+        self.optimizer.bounds = {'a_p': (2., 3.)}     # the start is 1.1
+        with self.assertRaisesRegex(ValueError, "'a_p'.*outside"):
+            self.optimizer.optimize(self.hologram)
+
     def test_bounds_are_validated(self):
         with self.assertRaises(ValueError):
             self.optimizer.bounds = {'radius': (0., 1.)}

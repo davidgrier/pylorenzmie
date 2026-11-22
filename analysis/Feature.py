@@ -61,9 +61,11 @@ class Feature(Hologram):
         plus the instrument parameters for a Pair.
     estimator : BaseEstimator, optional
         Estimator that finds the starting values.  It is used as given: the
-        feature sets its ``exclude`` to the pixels of the mask, and the
-        estimator is responsible for its own model.  Default: ``None``,
-        a :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` (a
+        feature sets its ``exclude`` to the pixels of the mask, so an
+        estimator belongs to one feature: sharing it overwrites the mask of
+        the others.  The estimator is responsible for its own model.
+        Default: ``None``, a
+        :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` (a
         :class:`~pylorenzmie.analysis.PairEstimator.PairEstimator` for two
         centers) that shares the feature's model.
     '''

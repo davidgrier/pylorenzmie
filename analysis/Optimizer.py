@@ -144,7 +144,8 @@ class Optimizer(LMObject):
         Notes
         -----
         ``method``: ``'lm'`` (Levenberg-Marquardt, default), ``'trf'``,
-        or ``'dogbox'``. Only ``'lm'`` supports ``loss='linear'``.
+        or ``'dogbox'``. Only ``'lm'`` cannot use a loss other than
+        ``'linear'``.
 
         ``loss``: ``'linear'`` (standard LS), ``'cauchy'``, ``'huber'``,
         ``'soft_l1'``, or ``'arctan'``.
@@ -314,8 +315,14 @@ class Optimizer(LMObject):
                      for p in self.variables]
             upper = [self._bounds.get(p, (-np.inf, np.inf))[1]
                      for p in self.variables]
+            limits = zip(self.variables, p0, lower, upper, strict=True)
+            for name, value, low, high in limits:
+                if not low <= value <= high:
+                    raise ValueError(f'the starting value of {name!r}, '
+                                     f'{value:g}, is outside its bounds '
+                                     f'({low:g}, {high:g})')
             settings['bounds'] = (lower, upper)
-            if settings['method'] == 'lm':
+            if settings.get('method', 'trf') == 'lm':
                 settings['method'] = 'trf'
         self._started = False
         fit = least_squares(self._residuals, p0, **settings)

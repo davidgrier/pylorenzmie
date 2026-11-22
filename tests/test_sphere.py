@@ -162,6 +162,13 @@ class TestSphere(unittest.TestCase):
         with self.assertRaises(ModelDomainError):
             mie_coefficients(1e5, 1.2)
 
+    def test_mie_coefficients_refuse_a_size_that_is_not_physical(self):
+        for x in (0., -1., np.nan, np.inf):
+            with self.subTest(x=x), self.assertRaises(ModelDomainError):
+                mie_coefficients(x, 1.2)
+        with self.assertRaises(ModelDomainError):
+            mie_coefficients(1., np.nan)
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()
