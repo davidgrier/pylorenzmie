@@ -6,6 +6,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.9.0] - 2026-11-22
+
 ### Added
 
 * `Feature(estimator=...)` takes any estimator, so that an estimator that
