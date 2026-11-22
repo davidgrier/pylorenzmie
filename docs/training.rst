@@ -95,8 +95,15 @@ Training
    The second command estimates the example hologram that ships with the
    package.
 
-The script overwrites ``analysis/mlp_estimator.npz``, which is the network
-that ships.  Copy it elsewhere before you train, or use git to get it back
+By default the script overwrites ``analysis/mlp_estimator.npz``, which is
+the network that ships.  To keep it, name another file with
+``--output``:
+
+.. code-block:: bash
+
+   python tools/train_mlp_estimator.py --output my_network.npz
+
+or use git to get the shipped network back
 (``git checkout analysis/mlp_estimator.npz``).
 
 Using the trained network
@@ -125,3 +132,13 @@ objects.  It loads with any version of NumPy, and
 :class:`~pylorenzmie.analysis.MLPEstimator.MLPNetwork` evaluates it with
 no other library.  Networks that earlier versions saved as ``.joblib``
 files cannot be read: train again.
+
+Training a localizer
+--------------------
+
+pylorenzmie does not train a localizer.  Its
+:class:`~pylorenzmie.analysis.Localizer.Localizer` is an algorithm
+(the circle transform and trackpy) with nothing to learn, and a
+neural-network localizer is not part of the package.  `CATCH <https://github.com/davidgrier/CATCH>`_, which
+is built on pylorenzmie, has a trained localizer, and its documentation
+describes how to train one.

@@ -375,6 +375,13 @@ class Optimizer(LMObject):
             if not self._started:
                 raise
             return np.full(self._pixels.shape, PENALTY)
+        if not self._started and not np.isfinite(residuals).all():
+            raise ModelDomainError(
+                'the model is not finite at the starting values '
+                + ', '.join(f'{name} = {value:g}' for name, value
+                            in zip(self.variables, values, strict=True))
+                + ': a sphere that is closer to the focal plane than its '
+                'radius, or a value that is not a number, does this')
         self._started = True
         return residuals
 

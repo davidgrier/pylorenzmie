@@ -18,12 +18,14 @@ with the neighbor's fringes as noise.  The table of a series of frames can be
 collected in a :class:`~pylorenzmie.analysis.Trajectory.Trajectory`.
 '''
 
+from collections.abc import Callable
 from typing import cast
 
 import numpy as np
 import pandas as pd
 from pylorenzmie.theory import Instrument, LorenzMie
-from pylorenzmie.analysis import DEEstimator, Localizer, Feature
+from pylorenzmie.analysis import (BaseEstimator, DEEstimator, Feature,
+                                  Localizer)
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.pair_grouping import group_overlapping
 from pylorenzmie.lib.lmtypes import Image
@@ -65,6 +67,17 @@ class Frame(Hologram):
         :class:`~pylorenzmie.theory.Pair.Pair`.  The pair fit replaces the
         single fit only if it has a lower redchi.  ``None`` disables
         this check.  Default: 2.0.
+    estimator : callable, optional
+        Makes the estimator of each single-particle feature: it is called
+        with no arguments, once for each feature, and returns a
+        :class:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator`.  A class
+        qualifies.  A factory, and not an estimator, because a feature
+        sets the pixel mask of its estimator, so that features cannot share
+        one.  Pairs keep their
+        :class:`~pylorenzmie.analysis.PairEstimator.PairEstimator`.
+        Default: ``None``, the
+        :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` of a
+        :class:`~pylorenzmie.analysis.Feature.Feature`.
 
     Attributes
     ----------
@@ -82,8 +95,11 @@ class Frame(Hologram):
                  corner: tuple[float, float] = (0., 0.),
                  instrument: Instrument | None = None,
                  localizer: Localizer | None = None,
-                 split_redchi: float | None = 2.0) -> None:
+                 split_redchi: float | None = 2.0,
+                 estimator: Callable[[], BaseEstimator] | None = None
+                 ) -> None:
         self.instrument = instrument or Instrument()
+        self.estimator = estimator
         self.localizer = localizer or Localizer()
         self.split_redchi = split_redchi
         self._features: list[Feature] = []
@@ -148,9 +164,13 @@ class Frame(Hologram):
                  key: tuple,
                  centers: list[tuple[float, float]] | None = None) -> Feature:
         '''Build a Feature crop with matching corner and shared instrument.'''
+        estimator = None
+        if centers is None and self.estimator is not None:
+            estimator = self.estimator()
         return Feature(Hologram.__getitem__(self, key),
                        model=LorenzMie(instrument=self.instrument),
-                       centers=centers)
+                       centers=centers,
+                       estimator=estimator)
 
     def __getitem__(self, key: tuple) -> Feature:
         '''Return a Feature crop with matching corner and instrument.

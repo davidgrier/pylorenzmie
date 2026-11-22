@@ -390,6 +390,14 @@ class TestOptimizerFit(unittest.TestCase):
         self.assertEqual(residuals.shape, self.optimizer._pixels.shape)
         self.assertTrue(np.all(residuals == PENALTY))
 
+    def test_a_starting_point_that_is_not_finite_is_named(self):
+        shape = self.hologram.data.shape
+        nan = np.full(shape[0] * shape[1], np.nan)
+        model = self.optimizer.model
+        with patch.object(model, 'hologram', return_value=nan):
+            with self.assertRaisesRegex(ModelDomainError, 'not finite'):
+                self.optimizer.optimize(self.hologram)
+
     def test_a_starting_point_beyond_the_largest_radius_is_refused(self):
         self.optimizer.model.particle.a_p = 2. * MAX_RADIUS
         with self.assertRaises(ModelDomainError):

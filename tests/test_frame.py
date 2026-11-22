@@ -5,12 +5,23 @@ import numpy as np
 import pandas as pd
 from pylorenzmie.utilities import imread
 
-from pylorenzmie.analysis import Frame
+from pylorenzmie.analysis import BaseEstimator, DEEstimator, Frame
 from pylorenzmie.analysis.Hologram import Hologram
 
 
 THIS_DIR = Path(__file__).parent
 TEST_IMAGE = THIS_DIR / 'data' / 'image0010.png'
+
+
+class _Fixed(BaseEstimator):
+    '''An estimator that is not one of the package.'''
+
+    @BaseEstimator.properties.getter
+    def properties(self):
+        return {}
+
+    def estimate(self, hologram):
+        return pd.Series({'a_p': 3.})
 
 
 class TestFrame(unittest.TestCase):
@@ -22,6 +33,20 @@ class TestFrame(unittest.TestCase):
     def test_is_hologram(self):
         '''Frame is-a Hologram.'''
         self.assertIsInstance(self.frame, Hologram)
+
+    def test_features_have_the_estimator_that_the_factory_makes(self):
+        frame = Frame(estimator=_Fixed)
+        frame.data = self.data
+        a = frame[0:50, 0:50]
+        b = frame[0:50, 50:100]
+        self.assertIsInstance(a.estimator, _Fixed)
+        self.assertIsNot(a.estimator, b.estimator)
+        self.assertTrue(np.array_equal(a.estimator.exclude,
+                                       a.mask.exclude))
+
+    def test_the_default_estimator_is_the_global_one(self):
+        self.frame.data = self.data
+        self.assertIsInstance(self.frame[0:50, 0:50].estimator, DEEstimator)
 
     def test_data(self):
         '''Setting data allocates a coordinate grid matching the image size.'''

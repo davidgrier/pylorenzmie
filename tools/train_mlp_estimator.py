@@ -28,7 +28,8 @@ To retrain for a different instrument, edit INSTRUMENT below and re-run.
 
 Output: ../analysis/mlp_estimator.npz (see MLPNetwork)
 
-Pass --regen to force regeneration of training data even if the cache exists.
+Pass --regen to force regeneration of training data even if the cache exists,
+and --output FILE to save the network somewhere else.
 '''
 
 import argparse
@@ -233,12 +234,21 @@ def evaluate(pipe: Pipeline, X: np.ndarray, y: np.ndarray) -> None:
                   f'({100 * rel:.1f}% relative)')
 
 
-def main() -> None:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--regen',
                         action='store_true',
                         help='Force regeneration of training data')
-    args = parser.parse_args()
+    parser.add_argument('--output',
+                        type=Path,
+                        default=OUTPUT,
+                        help='File for the network (default: the network '
+                        'that ships with the package)')
+    return parser.parse_args(argv)
+
+
+def main(argv: list[str] | None = None) -> None:
+    args = parse_args(argv)
 
     X, y = load_or_generate(regen=args.regen)
 
@@ -254,12 +264,12 @@ def main() -> None:
     print('\nValidation error (held-out 10%):')
     evaluate(pipe, X, y)
 
-    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     network = to_network(pipe)
     check = np.abs(network.predict(X[-n_val:]) - pipe.predict(X[-n_val:]))
     print(f'  NumPy network differs from scikit-learn by {check.max():.2g}')
-    network.save(OUTPUT)
-    print(f'\nSaved → {OUTPUT}')
+    network.save(args.output)
+    print(f'\nSaved → {args.output}')
 
 
 if __name__ == '__main__':  # pragma: no cover

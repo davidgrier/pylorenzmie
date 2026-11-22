@@ -214,10 +214,12 @@
       `Estimator`, and use CNN predictions as initial conditions for LM
       refinement. The original TensorFlow 2.2 / Darknet implementation is defunct;
       a PyTorch rewrite would be maintainable and integrate with `torchLorenzMie`.
-- [ ] YOLO-based localizer: replace the `CircleTransform` + trackpy localizer
-      with a fine-tuned YOLO detection head trained on synthetic and real
-      holograms. CATCH (2021) demonstrated this; a modern YOLOv8/RT-DETR variant
-      would be faster and more robust to crowded fields.
+- [ ] CATCH localizer: offer CATCH's trained localizer (a CenterNet-style
+      detector) as an alternative to the `CircleTransform` + trackpy
+      `Localizer`, behind the same `x_p`, `y_p`, `bbox` table and with a lazy
+      import so that pylorenzmie does not need PyTorch.  First compare the two
+      on the frozen CATCH test set and on recorded frames, and decide
+      whether to replace or to offer both.
 
 ## tests
 

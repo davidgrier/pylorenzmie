@@ -6,6 +6,23 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+* `Frame(estimator=...)`: a factory (a class, say) that makes the estimator
+  of each single-particle feature.  A factory, because a feature sets the
+  pixel mask of its estimator.
+* `tools/train_mlp_estimator.py --output FILE` saves the network somewhere
+  other than the file that ships.  `docs/training.rst` says that pylorenzmie
+  does not train a localizer.  The `TODO.md` item for a YOLO localizer is
+  replaced by one for CATCH's localizer, which is not a YOLO detector.
+
+### Changed
+
+* A fit whose starting values give a model that is not finite (a sphere
+  closer to the focal plane than its radius, say) raises a
+  `ModelDomainError` that names the values, in place of scipy's
+  "Residuals are not finite in the initial point".
+
 ## [3.9.0] - 2026-11-22
 
 ### Added

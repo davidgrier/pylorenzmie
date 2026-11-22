@@ -91,6 +91,15 @@ class TestTrainMLPEstimator(unittest.TestCase):
         self.assertEqual(self.tool.OUTPUT.resolve(),
                          module._default_weights().resolve())
 
+    def test_the_network_goes_to_the_output_file_that_is_named(self):
+        args = self.tool.parse_args(['--output', 'elsewhere.npz'])
+        self.assertEqual(args.output, Path('elsewhere.npz'))
+        self.assertFalse(args.regen)
+
+    def test_the_default_output_is_the_network_that_ships(self):
+        args = self.tool.parse_args([])
+        self.assertEqual(args.output, self.tool.OUTPUT)
+
     def test_the_model_is_evaluated_along_a_radius(self):
         model = self.tool._make_model()
         radii = np.arange(self.tool.N_FEATURES)
