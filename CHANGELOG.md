@@ -6,6 +6,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.8.1] - 2026-11-21
+
 ### Fixed
 
 * A fit that stepped to a radius of more than 50 um stopped with a
