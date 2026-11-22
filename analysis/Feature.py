@@ -18,6 +18,8 @@ what :class:`~pylorenzmie.analysis.Frame.Frame` creates for each particle that
 it finds.
 '''
 
+import logging
+
 import numpy as np
 import pandas as pd
 from pylorenzmie.analysis import (BaseEstimator, DEEstimator, Mask, Optimizer,
@@ -26,6 +28,8 @@ from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie, Particle, Pair
 from pylorenzmie.lib.lmtypes import Image
 
+
+logger = logging.getLogger(__name__)
 
 # Optimizer.fixed for a Pair: the single-sphere default names 'k_p',
 # which a Pair does not have; hold both spheres' absorption instead.
@@ -160,15 +164,26 @@ class Feature(Hologram):
         :class:`~pylorenzmie.analysis.PairEstimator.PairEstimator` reads
         the pinned :attr:`centers` off the model's
         :class:`~pylorenzmie.theory.Pair.Pair` particle.
-        The estimated values are written onto :attr:`particle` in place,
-        ready for :meth:`optimize`.
+        The estimator returns its result, and the feature writes the
+        properties that the model has onto its particle in place,
+        ready for :meth:`optimize`.  An estimator need not touch the
+        particle, and one that does (the global estimators) loses nothing:
+        the values are the same.
 
         Returns
         -------
         properties : pandas.Series
             Estimated particle properties.
         '''
-        return self.estimator.estimate(self)
+        result = self.estimator.estimate(self)
+        known = self.model.properties
+        self.model.properties = {str(name): value for name, value
+                                 in result.items() if name in known}
+        ignored = [str(name) for name in result.index if name not in known]
+        if ignored:
+            logger.debug('Ignoring estimated properties that the model '
+                         'does not have: %s', ', '.join(ignored))
+        return result
 
     def optimize(self) -> pd.Series:
         '''Optimize particle parameters to fit the hologram crop.

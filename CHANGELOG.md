@@ -18,6 +18,11 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* `Feature.estimate()` writes the returned estimate onto the particle (the
+  properties that the model has), so an estimator that only returns its
+  result works in a `Feature` and a `Frame`.  The analytic `Estimator`
+  returned a result and left the particle as it was, so that `Frame` did
+  nothing with it.  The other estimators are unchanged.
 * A fit whose starting values give a model that is not finite (a sphere
   closer to the focal plane than its radius, say) raises a
   `ModelDomainError` that names the values, in place of scipy's

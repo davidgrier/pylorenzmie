@@ -6,6 +6,7 @@ import pandas as pd
 from pylorenzmie.utilities import imread
 
 from pylorenzmie.analysis import BaseEstimator, DEEstimator, Feature
+from pylorenzmie.analysis.Estimator import Estimator
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie
 
@@ -72,6 +73,36 @@ class TestFeature(unittest.TestCase):
     def test_a_given_estimator_is_used_to_estimate(self):
         feature = Feature(Hologram(self.data), estimator=_Fixed())
         self.assertEqual(feature.estimate()['a_p'], 3.)
+
+    def test_the_feature_writes_the_estimate_onto_the_particle(self):
+        # _Fixed returns a Series and leaves the particle alone
+        feature = Feature(Hologram(self.data), estimator=_Fixed())
+        feature.particle.a_p = 1.
+        result = feature.estimate()
+        self.assertEqual(feature.particle.a_p, 3.)
+        self.assertEqual(result['a_p'], 3.)
+
+    def test_properties_that_the_particle_lacks_are_ignored(self):
+        class Extra(_Fixed):
+            def estimate(self, hologram):
+                return pd.Series({'a_p': 2., 'snr': 7., 'x_p1': 1.})
+
+        feature = Feature(Hologram(self.data), estimator=Extra())
+        with self.assertLogs('pylorenzmie.analysis.Feature',
+                             'DEBUG') as logs:
+            feature.estimate()
+        self.assertEqual(feature.particle.a_p, 2.)
+        self.assertNotIn('snr', feature.particle.properties)
+        self.assertIn('snr', logs.output[0])
+        self.assertIn('x_p1', logs.output[0])
+
+    def test_the_analytic_estimator_sets_the_particle_through_the_feature(self):
+        feature = Feature(Hologram(self.data), model=self.feature.model)
+        feature.estimator = Estimator(instrument=feature.model.instrument)
+        feature.particle.z_p = 1.
+        result = feature.estimate()
+        self.assertEqual(feature.particle.z_p, result['z_p'])
+        self.assertNotEqual(feature.particle.z_p, 1.)
 
     def test_model(self):
         model = LorenzMie()

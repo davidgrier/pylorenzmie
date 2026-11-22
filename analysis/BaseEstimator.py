@@ -47,4 +47,11 @@ class BaseEstimator(LMObject):
         -------
         result : pandas.Series
             Estimated particle properties.
+
+        Notes
+        -----
+        The result is the estimate.  A
+        :class:`~pylorenzmie.analysis.Feature.Feature` writes it onto the
+        particle of its model, so an estimator need not set the particle
+        itself (and one that has no model cannot).
         '''
