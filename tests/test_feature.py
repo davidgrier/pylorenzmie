@@ -5,13 +5,24 @@ import numpy as np
 import pandas as pd
 from pylorenzmie.utilities import imread
 
-from pylorenzmie.analysis import Feature
+from pylorenzmie.analysis import BaseEstimator, DEEstimator, Feature
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie
 
 
 THIS_DIR = Path(__file__).parent
 TEST_IMAGE = THIS_DIR / 'data' / 'crop.png'
+
+
+class _Fixed(BaseEstimator):
+    '''An estimator that is not one of the package.'''
+
+    @BaseEstimator.properties.getter
+    def properties(self):
+        return {}
+
+    def estimate(self, hologram):
+        return pd.Series({'a_p': 3.})
 
 
 class TestFeature(unittest.TestCase):
@@ -39,6 +50,20 @@ class TestFeature(unittest.TestCase):
     def test_is_hologram(self):
         '''Feature is-a Hologram.'''
         self.assertIsInstance(self.feature, Hologram)
+
+    def test_the_default_estimator_is_global_and_shares_the_model(self):
+        self.assertIsInstance(self.feature.estimator, DEEstimator)
+
+    def test_an_estimator_can_be_given(self):
+        estimator = _Fixed()
+        feature = Feature(Hologram(self.data), estimator=estimator)
+        self.assertIs(feature.estimator, estimator)
+        self.assertTrue(np.array_equal(estimator.exclude,
+                                       feature.mask.exclude))
+
+    def test_a_given_estimator_is_used_to_estimate(self):
+        feature = Feature(Hologram(self.data), estimator=_Fixed())
+        self.assertEqual(feature.estimate()['a_p'], 3.)
 
     def test_model(self):
         model = LorenzMie()

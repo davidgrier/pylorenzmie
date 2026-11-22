@@ -307,5 +307,48 @@ class Sphere(Particle):
         print(f'time = {perf_counter() - start:.2e} s')
 
 
+def mie_coefficients(x: float,
+                     m: float | complex,
+                     nmax: int | None = None) -> Coefficients:
+    '''Mie scattering coefficients of a homogeneous sphere.
+
+    The coefficients that :meth:`Sphere.ab` returns, for a size parameter
+    and a relative index that the caller has worked out.  This is the
+    function for code that needs the coefficients of many spheres, or that
+    checks another implementation of the series against this one.
+
+    Parameters
+    ----------
+    x : float
+        Size parameter of the sphere in the medium, ``2 pi n_m a_p /
+        wavelength``.
+    m : float or complex
+        Refractive index of the sphere relative to the medium,
+        ``(n_p + 1j k_p) / n_m``.
+    nmax : int, optional
+        Number of partial waves to keep.  Default: ``None``, the number
+        that :meth:`Sphere.wiscombe_yang` gives for ``x`` and ``m``.
+
+    Returns
+    -------
+    ab : numpy.ndarray, shape (nmax + 1, 2), dtype complex
+        The coefficients ``a_n`` and ``b_n``, with ``ab[0] = 0``.
+
+    Raises
+    ------
+    ModelDomainError
+        If the sum needs more than ``MAX_ORDERS`` partial waves.  It is a
+        :class:`ValueError`.
+    '''
+    m = complex(m)
+    if nmax is None:
+        nmax = Sphere.wiscombe_yang(x, m)
+    if nmax > MAX_ORDERS:
+        raise ModelDomainError(f'a size parameter x = {x:g} needs {nmax:,} '
+                               f'partial waves, at most {MAX_ORDERS:,} '
+                               'are computed')
+    return mie_ab(float(x), m, int(nmax))
+
+
 if __name__ == '__main__':  # pragma: no cover
     Sphere.example()

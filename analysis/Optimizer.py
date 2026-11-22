@@ -38,6 +38,8 @@ from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import LorenzMie, Sphere
 from pylorenzmie.theory.Sphere import ModelDomainError
 
+Bounds = dict[str, tuple[float | None, float | None]]
+
 PENALTY = 1e6
 '''Residual of each pixel for parameters that the model does not compute.
 
@@ -80,6 +82,9 @@ class Optimizer(LMObject):
         Keyword arguments forwarded to ``scipy.optimize.least_squares``.
         Defaults to sensible values for holographic particle fitting.
         The dictionary is copied.
+    bounds : dict, optional
+        Limits of the variables; see :attr:`bounds`.  Default: ``None``,
+        no limits.
     **kwargs
         Forwarded to ``LorenzMie()`` when ``model`` is not supplied.
 
@@ -100,12 +105,16 @@ class Optimizer(LMObject):
                  robust: bool | None = None,
                  fixed: list[str] | None = None,
                  settings: Settings | None = None,
+                 bounds: Bounds | None = None,
                  **kwargs: Any) -> None:
         self.model = model or LorenzMie(**kwargs)
         if self.method not in self.model.method:
             raise TypeError('Model not compatible with Optimizer')
         self.mask = mask
         self.settings = settings
+        self._bounds: Bounds = {}
+        if bounds is not None:
+            self.bounds = bounds
         if fixed is None:
             fixed = [p for p in self.model.properties
                      if p not in self.model.single().properties]
@@ -157,6 +166,40 @@ class Optimizer(LMObject):
                         'diff_step': 1e-5,
                         'x_scale': 'jac'}
         self._settings = dict(settings)
+
+    @property
+    def bounds(self) -> Bounds:
+        '''Limits of the variables, ``{name: (lower, upper)}``.
+
+        A variable that is not named is not limited, and a limit may be
+        ``None`` (or infinite) on one side.  Names are those of the model's
+        properties, in the units of the properties: positions in pixels,
+        the radius in um.  A name that is not a property of the model
+        raises a :class:`ValueError`, and so does a lower limit that is not
+        below the upper one.  Setting ``None`` removes the limits.
+
+        Notes
+        -----
+        Only ``trf`` and ``dogbox`` honor limits.  When the method of
+        *settings* is ``lm`` (the default), :meth:`optimize` uses ``trf``
+        for as long as there are limits, and leaves *settings* as they are.
+        The starting values must lie within the limits.
+        '''
+        return dict(self._bounds)
+
+    @bounds.setter
+    def bounds(self, bounds: Bounds | None) -> None:
+        checked: Bounds = {}
+        for name, (lower, upper) in (bounds or {}).items():
+            if name not in self.model.properties:
+                raise ValueError(f'{name!r} is not a property of the model')
+            low = -np.inf if lower is None else float(lower)
+            high = np.inf if upper is None else float(upper)
+            if not low < high:
+                raise ValueError(f'bounds of {name!r}: the lower limit '
+                                 f'{low:g} is not below the upper {high:g}')
+            checked[name] = (low, high)
+        self._bounds = checked
 
     @property
     def robust(self) -> bool:
@@ -266,6 +309,14 @@ class Optimizer(LMObject):
         jac_params = self.model.jac_params
         if jac_params and set(self.variables) <= jac_params:
             settings['jac'] = self._analytical_jac
+        if self._bounds:
+            lower = [self._bounds.get(p, (-np.inf, np.inf))[0]
+                     for p in self.variables]
+            upper = [self._bounds.get(p, (-np.inf, np.inf))[1]
+                     for p in self.variables]
+            settings['bounds'] = (lower, upper)
+            if settings['method'] == 'lm':
+                settings['method'] = 'trf'
         self._started = False
         fit = least_squares(self._residuals, p0, **settings)
         self._result = fit

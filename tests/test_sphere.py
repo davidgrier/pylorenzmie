@@ -1,7 +1,8 @@
 import unittest
 import numpy as np
 from pylorenzmie.theory.Sphere import (MAX_ORDERS, MAX_RADIUS,
-                                       ModelDomainError, Sphere)
+                                       ModelDomainError, Sphere,
+                                       mie_coefficients)
 
 # TODO: add spot-check tests for specific ab coefficient values against
 # a published reference (e.g. Bohren & Huffman Appendix A) once a
@@ -143,6 +144,23 @@ class TestSphere(unittest.TestCase):
         sphere = Sphere(a_p=MAX_RADIUS, n_p=3., k_p=0.)
         ab = sphere.ab(1., 0.3)
         self.assertLess(ab.shape[0] - 1, MAX_ORDERS)
+
+    def test_mie_coefficients_match_the_method(self):
+        sphere = Sphere(a_p=0.75, n_p=1.5, k_p=0.01)
+        n_m, wavelength = 1.339, 0.447
+        x = 2. * np.pi * n_m * sphere.a_p / wavelength
+        m = (sphere.n_p + 1.j * sphere.k_p) / n_m
+        np.testing.assert_array_equal(mie_coefficients(x, m),
+                                      sphere.ab(n_m, wavelength))
+
+    def test_mie_coefficients_take_the_number_of_orders(self):
+        ab = mie_coefficients(5., 1.2, nmax=12)
+        self.assertEqual(ab.shape, (13, 2))
+        self.assertTrue(np.all(ab[0] == 0))
+
+    def test_mie_coefficients_refuse_too_many_orders(self):
+        with self.assertRaises(ModelDomainError):
+            mie_coefficients(1e5, 1.2)
 
 
 if __name__ == '__main__':  # pragma: no cover

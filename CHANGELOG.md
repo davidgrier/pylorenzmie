@@ -6,6 +6,21 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+* `Feature(estimator=...)` takes any estimator, so that an estimator that
+  is not part of the package (CATCH's, for example) can start a fit.  The
+  default is as before.  `BaseEstimator` declares `exclude`, the pixels
+  that an estimate must not use.
+* `Optimizer.bounds` (and a `bounds` argument): limits of the variables,
+  `{name: (lower, upper)}`, checked against the properties of the model.
+  `optimize` uses the trust-region method when there are limits and the
+  method of the settings is `lm`, without changing the settings.
+* `pylorenzmie.theory.mie_coefficients(x, m, nmax=None)`, the Mie
+  coefficients for a size parameter and a relative index, and
+  `ModelDomainError`, are exported from `pylorenzmie.theory`.  Code that
+  needs the coefficients does not have to import `theory._mie`.
+
 ## [3.8.1] - 2026-11-21
 
 ### Fixed

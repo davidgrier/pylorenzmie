@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING as _TYPE_CHECKING
 from pylorenzmie.backends import BACKENDS
 
 from .Particle import Particle
-from .Sphere import Sphere
+from .Sphere import Sphere, mie_coefficients, ModelDomainError
 from .Cluster import Cluster
 from .Dimer import Dimer
 from .Pair import Pair
@@ -191,4 +191,5 @@ LMHologram = LorenzMie
 
 __all__ = '''Instrument Particle Sphere Cluster Dimer Pair
           LorenzMie LMHologram Aberrated AberratedLorenzMie
-          Distorted DistortedLorenzMie model_class BACKENDS'''.split()
+          Distorted DistortedLorenzMie model_class BACKENDS
+          mie_coefficients ModelDomainError'''.split()

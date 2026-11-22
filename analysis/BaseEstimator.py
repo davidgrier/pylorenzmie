@@ -2,7 +2,9 @@
 
 from abc import abstractmethod
 
+import numpy as np
 import pandas as pd
+from numpy.typing import NDArray
 
 from pylorenzmie.lib import LMObject
 from pylorenzmie.analysis.Hologram import Hologram
@@ -21,7 +23,16 @@ class BaseEstimator(LMObject):
         estimator.
     ~pylorenzmie.analysis.DEEstimator.DEEstimator : global
         differential-evolution estimator.
+
+    Notes
+    -----
+    :attr:`exclude` is set by :class:`~pylorenzmie.analysis.Feature.Feature`
+    to the pixels that its mask leaves out.  An estimator that has no use
+    for it ignores it.
     '''
+
+    exclude: NDArray[np.bool_] | None = None
+    '''Pixels that the estimate must not use, or ``None``.'''
 
     @abstractmethod
     def estimate(self, hologram: Hologram) -> pd.Series:

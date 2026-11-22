@@ -20,7 +20,8 @@ it finds.
 
 import numpy as np
 import pandas as pd
-from pylorenzmie.analysis import Mask, DEEstimator, PairEstimator, Optimizer
+from pylorenzmie.analysis import (BaseEstimator, DEEstimator, Mask, Optimizer,
+                                  PairEstimator)
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import LorenzMie, Particle, Pair
 from pylorenzmie.lib.lmtypes import Image
@@ -58,13 +59,21 @@ class Feature(Hologram):
         Model properties held constant during fitting.  Default: the
         Optimizer default for a single particle, or ``k_p1``/``k_p2``
         plus the instrument parameters for a Pair.
+    estimator : BaseEstimator, optional
+        Estimator that finds the starting values.  It is used as given: the
+        feature sets its ``exclude`` to the pixels of the mask, and the
+        estimator is responsible for its own model.  Default: ``None``,
+        a :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` (a
+        :class:`~pylorenzmie.analysis.PairEstimator.PairEstimator` for two
+        centers) that shares the feature's model.
     '''
 
     def __init__(self,
                  hologram: Hologram,
                  model: LorenzMie | None = None,
                  centers: list[tuple[float, float]] | None = None,
-                 fixed: list[str] | None = None) -> None:
+                 fixed: list[str] | None = None,
+                 estimator: BaseEstimator | None = None) -> None:
         super().__init__(hologram.data, hologram.corner)
         self._coordinates = hologram.coordinates    # the crop's own view
         self.model = model or LorenzMie()
@@ -88,8 +97,12 @@ class Feature(Hologram):
             | np.isinf(self.data)
         )
 
-        estimator_cls = PairEstimator if pair else DEEstimator
-        self.estimator = estimator_cls(model=self.model, exclude=m.exclude)
+        if estimator is None:
+            estimator_cls = PairEstimator if pair else DEEstimator
+            estimator = estimator_cls(model=self.model, exclude=m.exclude)
+        else:
+            estimator.exclude = m.exclude
+        self.estimator = estimator
 
         self.optimizer = Optimizer(model=self.model, mask=m)
         if fixed is None and pair:
@@ -206,6 +219,7 @@ class Feature(Hologram):
         instrument.n_m = 1.34
         instrument.noise = 0.05
 
+        assert isinstance(feature.estimator, DEEstimator)
         feature.estimator.fraction = 0.01
         feature.optimizer.fraction = 0.25
         feature.optimizer.variables = 'x_p y_p z_p a_p n_p'.split()

@@ -23,7 +23,7 @@ from typing import cast
 import numpy as np
 import pandas as pd
 from pylorenzmie.theory import Instrument, LorenzMie
-from pylorenzmie.analysis import Localizer, Feature
+from pylorenzmie.analysis import DEEstimator, Localizer, Feature
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.pair_grouping import group_overlapping
 from pylorenzmie.lib.lmtypes import Image
@@ -256,7 +256,9 @@ class Frame(Hologram):
                                model=LorenzMie(instrument=self.instrument),
                                centers=centers)
                 pair.mask = feature.mask
-                pair.estimator.seed = feature.estimator.seed
+                if (isinstance(feature.estimator, DEEstimator)
+                        and isinstance(pair.estimator, DEEstimator)):
+                    pair.estimator.seed = feature.estimator.seed
                 pair.estimate()
                 pair.optimize()
                 if best is None or _fit(pair).redchi < _fit(best).redchi:

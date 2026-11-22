@@ -332,6 +332,40 @@ class TestOptimizerFit(unittest.TestCase):
         failure = not result.success or (result.redchi > 100.)
         self.assertTrue(failure)
 
+    def test_bounds_keep_the_fit_within_limits(self):
+        free = self.optimizer.optimize(self.hologram)
+        a_free = free['a_p']
+        self.optimizer.model.particle.a_p = 1.1
+        limit = 1.1 + 0.5 * (a_free - 1.1)     # between start and optimum
+        self.optimizer.bounds = {'a_p': (None, limit)
+                                 if a_free > 1.1 else (limit, None)}
+        result = self.optimizer.optimize(self.hologram)
+        if a_free > 1.1:
+            self.assertLessEqual(result['a_p'], limit + 1e-9)
+        else:
+            self.assertGreaterEqual(result['a_p'], limit - 1e-9)
+
+    def test_bounds_select_trf_without_changing_the_settings(self):
+        self.assertEqual(self.optimizer.settings['method'], 'lm')
+        self.optimizer.bounds = {'a_p': (0.5, 2.)}
+        result = self.optimizer.optimize(self.hologram)
+        self.assertTrue(result.success)
+        self.assertEqual(self.optimizer.settings['method'], 'lm')
+        self.assertNotIn('bounds', self.optimizer.settings)
+
+    def test_bounds_are_validated(self):
+        with self.assertRaises(ValueError):
+            self.optimizer.bounds = {'radius': (0., 1.)}
+        with self.assertRaises(ValueError):
+            self.optimizer.bounds = {'a_p': (2., 1.)}
+        self.assertEqual(self.optimizer.bounds, {})
+
+    def test_bounds_can_be_removed(self):
+        self.optimizer.bounds = {'a_p': (0.5, 2.)}
+        self.assertEqual(self.optimizer.bounds, {'a_p': (0.5, 2.)})
+        self.optimizer.bounds = None
+        self.assertEqual(self.optimizer.bounds, {})
+
     def test_a_step_beyond_the_largest_radius_is_rejected(self):
         # the model refuses a radius of more than MAX_RADIUS, so that an
         # unbounded fit cannot ask for all the memory of the computer, and
