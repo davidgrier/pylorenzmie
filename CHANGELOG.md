@@ -6,6 +6,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.8.0] - 2026-11-21
+
 ### Added
 
 * `pylorenzmie.utilities.imread` reads an image file as an 8-bit gray-scale
