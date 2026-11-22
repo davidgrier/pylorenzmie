@@ -1,5 +1,7 @@
+import importlib
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 from pylorenzmie.utilities import imread
 import numpy as np
@@ -18,6 +20,8 @@ try:
 except Exception:
     _jax_available = False
 
+# the package namespace holds the class of the same name
+Sphere_module = importlib.import_module('pylorenzmie.theory.Sphere')
 
 THIS_DIR = Path(__file__).parent.resolve()
 TEST_IMAGE = str(THIS_DIR / 'data' / 'crop.png')
@@ -346,24 +350,23 @@ class TestOptimizerFit(unittest.TestCase):
             self.optimizer.optimize(self.hologram)
 
     def test_a_fit_that_steps_beyond_the_largest_radius_finishes(self):
-        # from here the first step of the fit asks for a radius of 50.04 um
-        shape = (101, 101)
+        # the true radius is beyond the limit, which is lowered to 2 um
+        # so that the model is fast: the fit wants to step past it
+        shape = (31, 31)
         model = LorenzMie(coordinates=LMObject.meshgrid(shape))
         model.instrument.wavelength = 0.447
         model.instrument.magnification = 0.048
         model.instrument.n_m = 1.34
-        model.particle.r_p = [50., 50., 200.]
-        model.particle.a_p = 1.
+        model.particle.r_p = [15., 15., 200.]
+        model.particle.a_p = 2.5
         model.particle.n_p = 1.5
         rng = np.random.default_rng(0)
         data = model.hologram().reshape(shape) + rng.normal(0., 0.05, shape)
-        model.particle.r_p = [50., 50., 800.]
-        model.particle.a_p = 49.9
-        model.particle.n_p = 1.9
-        result = Optimizer(model=model).optimize(Hologram(data))
+        model.particle.a_p = 1.5
+        with patch.object(Sphere_module, 'MAX_RADIUS', 2.):
+            result = Optimizer(model=model).optimize(Hologram(data))
         self.assertIsInstance(result, pd.Series)
-        self.assertLessEqual(abs(result['a_p']), MAX_RADIUS)
-
+        self.assertLessEqual(abs(result['a_p']), 2.)
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()
