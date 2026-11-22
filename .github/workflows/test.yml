@@ -176,6 +176,41 @@ jobs:
         if: ${{ !(matrix.binding == 'pyqt6' && runner.os == 'Linux') }}
         run: python -m pytest --tb=short -q
 
+  minimum:
+    # the lowest version of each dependency that pyproject.toml allows, on
+    # the oldest Python; a floor that nobody tests is a guess.  Only the
+    # dependencies of the package are lowered: an unbounded test tool would
+    # resolve to a release from the last century.
+    name: Lowest dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+      QT_QPA_PLATFORM: offscreen
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libgl1 libegl1 libglib2.0-0 libxkbcommon0 \
+            libdbus-1-3 libfontconfig1
+
+      - name: Install the lowest versions that the package allows
+        run: |
+          pip install uv
+          uv pip install --system --resolution lowest-direct -e .
+          uv pip install --system numba pytest PyQt6 tables
+
+      - name: Run the tests
+        run: python -m pytest --tb=short -q
+
   jax:
     # the JAX tests are left out of the default run, and so a change to the
     # analytical Jacobian is not tested anywhere else

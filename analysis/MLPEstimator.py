@@ -3,10 +3,11 @@
 from dataclasses import dataclass, field
 from importlib.resources import files
 from pathlib import Path
+from typing import Any, Self
 
 import numpy as np
 import pandas as pd
-import joblib
+from numpy.typing import NDArray
 
 from pylorenzmie.lib import Azimuthal
 from pylorenzmie.lib.lmtypes import Properties
@@ -17,26 +18,128 @@ from pylorenzmie.theory import LorenzMie, Sphere
 
 def _default_weights() -> Path:
     folder = files('pylorenzmie.analysis')
-    return Path(str(folder.joinpath('mlp_estimator.joblib')))
+    return Path(str(folder.joinpath('mlp_estimator.npz')))
 
 
-def _log_targets(y: np.ndarray) -> np.ndarray:
-    '''Log-scale z_p (col 0) and a_p (col 1); n_p (col 2) unchanged.
+class MLPNetwork:
+    '''A trained multilayer perceptron, evaluated with NumPy.
 
-    Defined here (not in the training script) so that joblib can locate
-    this function when deserializing the pipeline from mlp_estimator.joblib.
+    The network standardizes its input, passes it through fully connected
+    layers with ReLU activations (the last layer is linear), and
+    un-standardizes the output.  The output is ``(log z_p, log a_p, n_p)``
+    in standardized form, so :meth:`predict` returns ``(z_p, a_p, n_p)``.
+
+    ``tools/train_mlp_estimator.py`` trains the network with scikit-learn
+    and saves it in this form, so that using one needs only NumPy and no
+    particular version of any other library.
+
+    Parameters
+    ----------
+    x_mean, x_scale : numpy.ndarray
+        Mean and standard deviation of each input feature, shape
+        ``(n_features,)``.
+    weights : list of numpy.ndarray
+        Weight matrix of each layer, shape ``(n_in, n_out)``.
+    biases : list of numpy.ndarray
+        Bias vector of each layer, shape ``(n_out,)``.
+    y_mean, y_scale : numpy.ndarray
+        Mean and standard deviation of the three outputs after the
+        logarithm of the first two, shape ``(3,)``.
     '''
-    out = y.astype(float, copy=True)
-    out[:, 0] = np.log(out[:, 0])
-    out[:, 1] = np.log(out[:, 1])
-    return out
 
+    def __init__(self,
+                 x_mean: NDArray[np.floating],
+                 x_scale: NDArray[np.floating],
+                 weights: list[NDArray[np.floating]],
+                 biases: list[NDArray[np.floating]],
+                 y_mean: NDArray[np.floating],
+                 y_scale: NDArray[np.floating]) -> None:
+        self.x_mean = np.asarray(x_mean, dtype=float)
+        self.x_scale = np.asarray(x_scale, dtype=float)
+        self.weights = [np.asarray(W, dtype=float) for W in weights]
+        self.biases = [np.asarray(b, dtype=float) for b in biases]
+        self.y_mean = np.asarray(y_mean, dtype=float)
+        self.y_scale = np.asarray(y_scale, dtype=float)
 
-def _exp_targets(y: np.ndarray) -> np.ndarray:
-    out = y.astype(float, copy=True)
-    out[:, 0] = np.exp(out[:, 0])
-    out[:, 1] = np.exp(out[:, 1])
-    return out
+    @property
+    def n_features(self) -> int:
+        '''Length of the input profile.'''
+        return self.weights[0].shape[0]
+
+    @classmethod
+    def load(cls, path: Path | str) -> Self:
+        '''Read a network from a ``.npz`` file.
+
+        Parameters
+        ----------
+        path : pathlib.Path or str
+            File that :meth:`save` or ``tools/train_mlp_estimator.py`` wrote.
+
+        Returns
+        -------
+        network : MLPNetwork
+
+        Raises
+        ------
+        ValueError
+            If ``path`` is not a ``.npz`` file (a ``joblib`` file of an
+            earlier version cannot be read: train again, or convert it).
+        '''
+        path = Path(path)
+        if path.suffix != '.npz':
+            raise ValueError(f'MLPEstimator weights are a .npz file, '
+                             f'not {path.name!r}')
+        with np.load(path, allow_pickle=False) as data:
+            n = sum(name.startswith('W') for name in data.files)
+            return cls(data['x_mean'],
+                       data['x_scale'],
+                       [data[f'W{i}'] for i in range(n)],
+                       [data[f'b{i}'] for i in range(n)],
+                       data['y_mean'],
+                       data['y_scale'])
+
+    def save(self, path: Path | str) -> None:
+        '''Write the network to a ``.npz`` file.
+
+        Parameters
+        ----------
+        path : pathlib.Path or str
+            Name of the file.
+        '''
+        arrays: dict[str, Any] = dict(x_mean=self.x_mean,
+                                      x_scale=self.x_scale,
+                                      y_mean=self.y_mean,
+                                      y_scale=self.y_scale)
+        layers = zip(self.weights, self.biases, strict=True)
+        for i, (W, b) in enumerate(layers):
+            arrays[f'W{i}'] = W
+            arrays[f'b{i}'] = b
+        np.savez_compressed(path, **arrays)
+
+    def predict(self, features: NDArray[np.floating]) -> NDArray[np.float64]:
+        '''Estimate the parameters for radial profiles.
+
+        Parameters
+        ----------
+        features : numpy.ndarray
+            Profiles, shape ``(n_samples, n_features)``.
+
+        Returns
+        -------
+        parameters : numpy.ndarray
+            ``z_p`` [pixels], ``a_p`` [um] and ``n_p``, shape
+            ``(n_samples, 3)``.
+        '''
+        x = (np.asarray(features, dtype=float) - self.x_mean) / self.x_scale
+        last = len(self.weights) - 1
+        layers = zip(self.weights, self.biases, strict=True)
+        for i, (W, b) in enumerate(layers):
+            x = x @ W + b
+            if i < last:
+                x = np.maximum(x, 0.)
+        y = x * self.y_scale + self.y_mean
+        y[:, :2] = np.exp(y[:, :2])
+        return y
 
 
 @dataclass
@@ -44,8 +147,9 @@ class MLPEstimator(BaseEstimator):
     '''Fast particle parameter estimator using a pre-trained MLP.
 
     Computes the azimuthal average of the hologram, pads or truncates it
-    to a fixed length, and runs a single forward pass through a scikit-learn
-    ``sklearn.neural_network.MLPRegressor`` to predict *z_p*, *a_p*, and *n_p*
+    to a fixed length, and runs a single forward pass through a
+    multilayer perceptron (:class:`MLPNetwork`, evaluated with NumPy) to
+    predict *z_p*, *a_p*, and *n_p*
     in one shot.
     Inference takes < 1 ms regardless of image size.
 
@@ -58,7 +162,7 @@ class MLPEstimator(BaseEstimator):
     training so the network handles both large and small crops gracefully.
     Pre-trained weights cover the default instrument (447 nm laser,
     0.048 μm/px, water). Retrain with ``tools/train_mlp_estimator.py``
-    for other configurations.
+    (which needs scikit-learn) for other configurations.
 
     Inherits from :class:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator`.
 
@@ -70,8 +174,7 @@ class MLPEstimator(BaseEstimator):
         are updated in-place on each :meth:`estimate` call; instrument
         parameters are read but not modified.
     weights : Path or str, optional
-        Path to a ``joblib``-serialized scikit-learn ``Pipeline``
-        (``StandardScaler`` → ``TransformedTargetRegressor(MLPRegressor)``).
+        Path to a ``.npz`` file that holds a :class:`MLPNetwork`.
         Default: the pre-trained weights bundled with the package.
     n_features : int, optional
         Fixed input length passed to the MLP. Must match the value used
@@ -100,7 +203,11 @@ class MLPEstimator(BaseEstimator):
     n_features: int = 100
 
     def __post_init__(self) -> None:
-        self._pipeline = joblib.load(self.weights)
+        self._network = MLPNetwork.load(self.weights)
+        if self._network.n_features != self.n_features:
+            raise ValueError(f'the network takes '
+                             f'{self._network.n_features} features, '
+                             f'not n_features={self.n_features}')
 
     @BaseEstimator.properties.getter
     def properties(self) -> Properties:
@@ -132,7 +239,7 @@ class MLPEstimator(BaseEstimator):
         n = min(len(profile), self.n_features)
         features[:n] = profile[:n]
 
-        z_p, a_p, n_p = self._pipeline.predict(
+        z_p, a_p, n_p = self._network.predict(
             features.reshape(1, -1))[0]
 
         particle = self.model.single(Sphere)

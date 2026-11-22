@@ -64,9 +64,10 @@
 ## estimation
 
 - [x] **MLP estimator**: `analysis/MLPEstimator.py` implemented; pre-trained
-      weights ship as `analysis/mlp_estimator.joblib` (bundled via
-      `package-data`). Retrain with `tools/train_mlp_estimator.py`.
-      `scikit-learn` and `joblib` added as core dependencies.
+      weights ship as `analysis/mlp_estimator.npz` (bundled via
+      `package-data`) and run in NumPy alone (`MLPNetwork`). Retrain with
+      `tools/train_mlp_estimator.py`, which needs the `train` extra
+      (`scikit-learn`).
 
 ## lmtool
 
@@ -203,7 +204,7 @@
 
 - [x] MLP estimator: implemented in `analysis/MLPEstimator.py`. Pre-trained
       weights for 447 nm laser / 0.048 μm px / water shipped as
-      `analysis/mlp_estimator.joblib`. Retrain via `tools/train_mlp_estimator.py`
+      `analysis/mlp_estimator.npz`. Retrain via `tools/train_mlp_estimator.py`
       (caches generated data in `tools/mlp_training_data.npz` to avoid
       regeneration on re-runs).
 - [ ] CNN characterization (CATCH revival): re-implement the CATCH compact CNN

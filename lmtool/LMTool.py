@@ -7,7 +7,6 @@ import logging
 from pathlib import Path
 from typing import Any, Optional, cast
 
-import cv2
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
@@ -32,7 +31,7 @@ from pylorenzmie.lmtool.results import save_results
 from pylorenzmie.lmtool.tasks import (FitResult, LocalizeRequest, Snapshot,
                                        TaskRunner, run_estimate, run_fit,
                                        run_localize)
-from pylorenzmie.utilities import Normalizer, estimate_noise
+from pylorenzmie.utilities import Normalizer, estimate_noise, imread
 
 _DIR = Path(__file__).parent
 
@@ -266,7 +265,7 @@ class LMTool(QMainWindow):
                               'Images (*.png *.tif *.tiff)')
         if not filename:
             return
-        data = cv2.imread(filename, cv2.IMREAD_GRAYSCALE)
+        data = imread(filename)
         if data is None:
             logger.error(f'Could not read image: {filename!r}')
             self._say(f'Could not read: {filename}', 5000)

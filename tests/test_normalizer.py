@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-import cv2
+from PIL import Image
 import numpy as np
 
 from pylorenzmie.utilities import Normalizer
@@ -137,7 +137,7 @@ class TestRead(unittest.TestCase):
         self.path = Path(self.dir.name) / 'background.png'
         self.image = np.full((16, 16), 120, dtype=np.uint8)
         self.image[2, 3] = 60
-        cv2.imwrite(str(self.path), self.image)
+        Image.fromarray(self.image).save(self.path)
 
     def test_a_number(self):
         for value in (100, 100., '100', '1e2'):

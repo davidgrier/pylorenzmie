@@ -18,7 +18,10 @@ python3 -m venv ~/python/venvs/pylorenzmie
 
 The `dev`, `numba` and `docs` extras are what development needs.  The `torch`, `jax`
 and `gpu` extras are optional and not needed for the default test run; CI
-installs `dev,numba` (and `dev` alone on one Python version). To check
+installs `dev,numba` (and `dev` alone on one Python version), and one job
+installs the lowest version of every dependency that `pyproject.toml`
+allows (`uv pip install --resolution lowest-direct`), so raise a minimum
+only when the code needs it. To check
 the code without Numba, use a throwaway venv with `pip install -e ".[dev]"`.
 
 ## Commands

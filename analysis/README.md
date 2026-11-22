@@ -14,7 +14,7 @@ estimate, optimize.
 - `Feature.py` bundles one particle, `Frame.py` a whole image, and
   `Trajectory.py` links frames in time.  `pair_grouping.py` groups
   features that overlap.
-- `mlp_estimator.joblib` is the trained network of `MLPEstimator`; retrain
+- `mlp_estimator.npz` is the trained network of `MLPEstimator`; retrain
   it with `tools/train_mlp_estimator.py`.
 
 Update this file when the role or contents of the directory change.

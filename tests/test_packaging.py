@@ -65,9 +65,9 @@ class TestPackaging(unittest.TestCase):
     def test_the_files_the_program_reads_are_in_the_wheel(self):
         data = configuration()['package-data']
         self.assertIn('*.ui', data['pylorenzmie.lmtool'])
-        self.assertIn('*.joblib', data['pylorenzmie.analysis'])
+        self.assertIn('*.npz', data['pylorenzmie.analysis'])
         self.assertTrue((ROOT / 'lmtool' / 'LMTool.ui').is_file())
-        self.assertTrue((ROOT / 'analysis' / 'mlp_estimator.joblib').is_file())
+        self.assertTrue((ROOT / 'analysis' / 'mlp_estimator.npz').is_file())
 
 
 if __name__ == '__main__':  # pragma: no cover

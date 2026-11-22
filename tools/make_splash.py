@@ -8,8 +8,8 @@ Usage: python tools/make_splash.py
 
 from pathlib import Path
 
-import cv2
 import numpy as np
+from PIL import Image
 
 from pylorenzmie.theory import Instrument, LorenzMie, Sphere
 
@@ -50,8 +50,7 @@ def render() -> np.ndarray:
 def main() -> None:
     '''Render the splash image and save it in lmtool.'''
     rgb = render()
-    options = [cv2.IMWRITE_PNG_COMPRESSION, 9]
-    cv2.imwrite(str(PATH), rgb[..., ::-1], options)
+    Image.fromarray(rgb).save(PATH, compress_level=9)
     print(PATH, PATH.stat().st_size, 'bytes')
 
 

@@ -29,6 +29,7 @@ Lorenz-Mie theory.
    architecture
    conventions
    extending
+   training
    lmtool
    api/lib
    api/theory

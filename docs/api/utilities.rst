@@ -4,6 +4,9 @@ Utilities (``pylorenzmie.utilities``)
 .. automodule:: pylorenzmie.utilities.example_hologram
    :members:
 
+.. automodule:: pylorenzmie.utilities.readimage
+   :members:
+
 .. automodule:: pylorenzmie.utilities.noise
    :members:
 

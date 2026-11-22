@@ -14,9 +14,9 @@ TEST_IMAGE = THIS_DIR / 'data' / 'image0010.png'
 class TestLocalizer(unittest.TestCase):
 
     def setUp(self):
-        import cv2
+        from pylorenzmie.utilities import imread
         self.localizer = Localizer()
-        data = cv2.imread(str(TEST_IMAGE), cv2.IMREAD_GRAYSCALE)
+        data = imread(TEST_IMAGE)
         self.data = data.astype(float) / 100.
 
     def test_properties(self):

@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-import cv2
+from pylorenzmie.utilities import imread
 import numpy as np
 import pandas as pd
 
@@ -24,7 +24,7 @@ TEST_IMAGE = str(THIS_DIR / 'data' / 'crop.png')
 class TestOptimizer(unittest.TestCase):
 
     def setUp(self):
-        img = cv2.imread(TEST_IMAGE, cv2.IMREAD_GRAYSCALE).astype(float)
+        img = imread(TEST_IMAGE).astype(float)
         img /= np.mean(img)
         shape = img.shape
         coords = LMObject.meshgrid(shape)
@@ -213,7 +213,7 @@ class TestOptimizerAnalyticalJac(unittest.TestCase):
 
     def setUp(self):
         from unittest.mock import MagicMock
-        img = cv2.imread(TEST_IMAGE, cv2.IMREAD_GRAYSCALE).astype(float)
+        img = imread(TEST_IMAGE).astype(float)
         img /= np.mean(img)
         shape = img.shape
         coords = LMObject.meshgrid(shape)
@@ -290,7 +290,7 @@ class TestOptimizerFit(unittest.TestCase):
     '''Fits of the image of one sphere, every fourth pixel.'''
 
     def setUp(self):
-        img = cv2.imread(TEST_IMAGE, cv2.IMREAD_GRAYSCALE).astype(float)
+        img = imread(TEST_IMAGE).astype(float)
         img /= np.mean(img)
         img = img[::4, ::4]
         shape = img.shape

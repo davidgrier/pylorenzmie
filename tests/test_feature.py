@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import cv2
+from pylorenzmie.utilities import imread
 
 from pylorenzmie.analysis import Feature
 from pylorenzmie.analysis.Hologram import Hologram
@@ -17,7 +17,7 @@ TEST_IMAGE = THIS_DIR / 'data' / 'crop.png'
 class TestFeature(unittest.TestCase):
 
     def setUp(self):
-        data = cv2.imread(str(TEST_IMAGE), cv2.IMREAD_GRAYSCALE).astype(float)
+        data = imread(TEST_IMAGE).astype(float)
         data /= 100.
         model = LorenzMie()
         model.instrument.wavelength = 0.447
@@ -137,7 +137,7 @@ class TestFeatureFit(unittest.TestCase):
     '''A fit of the feature in the image of one sphere.'''
 
     def setUp(self):
-        data = cv2.imread(str(TEST_IMAGE), cv2.IMREAD_GRAYSCALE).astype(float)
+        data = imread(TEST_IMAGE).astype(float)
         data /= 100.
         self.data = data
         model = LorenzMie()

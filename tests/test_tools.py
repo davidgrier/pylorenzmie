@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-import cv2
+from PIL import Image
 import numpy as np
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -31,7 +31,7 @@ def load(name: str):
 
 def read(path: Path) -> np.ndarray:
     '''Read an image as RGB.'''
-    return cv2.imread(str(path), cv2.IMREAD_COLOR)[..., ::-1]
+    return np.asarray(Image.open(path).convert('RGB'))
 
 
 class TestMakeSplash(unittest.TestCase):
@@ -74,6 +74,8 @@ class TestMakeSplash(unittest.TestCase):
         self.assertIn('bytes', out.getvalue())
 
 
+@unittest.skipUnless(importlib.util.find_spec('sklearn'),
+                     'scikit-learn is not installed')
 class TestTrainMLPEstimator(unittest.TestCase):
 
     @classmethod

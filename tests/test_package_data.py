@@ -14,7 +14,7 @@ class TestPackageData(unittest.TestCase):
 
     def test_the_trained_estimator_is_installed(self):
         analysis = importlib.import_module('pylorenzmie.analysis')
-        weights = Path(analysis.__file__).parent / 'mlp_estimator.joblib'
+        weights = Path(analysis.__file__).parent / 'mlp_estimator.npz'
         self.assertTrue(weights.exists())
 
     def test_the_gui_files_are_installed(self):

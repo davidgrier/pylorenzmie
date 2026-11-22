@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import cv2
+from pylorenzmie.utilities import imread
 
 from pylorenzmie.analysis import Estimator, Hologram, BaseEstimator
 from pylorenzmie.lib import LMObject
@@ -19,7 +19,7 @@ class TestEstimator(unittest.TestCase):
     def setUp(self):
         self.instrument = Instrument()
         self.estimator = Estimator(instrument=self.instrument)
-        data = cv2.imread(str(TEST_IMAGE), cv2.IMREAD_GRAYSCALE)
+        data = imread(TEST_IMAGE)
         self.hologram = Hologram(data.astype(float) / 100.)
 
     def test_is_base_estimator(self):

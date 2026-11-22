@@ -2,7 +2,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-import cv2
+from pylorenzmie.utilities import imread
 
 from pylorenzmie.lib import (Azimuthal, circletransform)
 from pylorenzmie.theory import Sphere, Instrument
@@ -40,8 +40,7 @@ THIS_DIR = Path(__file__).parent
 class TestCircleTransform(unittest.TestCase):
 
     def setUp(self) -> None:
-        self.data = cv2.imread(str(THIS_DIR / 'data' / 'crop.png'),
-                               cv2.IMREAD_GRAYSCALE)
+        self.data = imread(THIS_DIR / 'data' / 'crop.png')
 
     def test_transform(self) -> None:
         b = circletransform(self.data)

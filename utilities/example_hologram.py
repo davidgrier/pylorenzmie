@@ -8,6 +8,7 @@ the classes in ``pylorenzmie.analysis`` use it.
 
 from pathlib import Path
 from pylorenzmie.analysis.Hologram import Hologram
+from pylorenzmie.utilities.readimage import imread
 
 
 # The three images that the examples use ship with the package; the other
@@ -36,11 +37,10 @@ def example_hologram(name: str = 'crop.png') -> Hologram:
         Hologram intensity divided by the background level (100 counts),
         shape ``(height, width)``, dtype ``float64``.
     '''
-    import cv2
     path = _DATA / name
     if not path.exists():
         path = _TUTORIALS / name
-    image = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+    image = imread(path)
     if image is None:
         raise FileNotFoundError(f'No example image named {name!r}')
     return Hologram(image.astype(float) / 100.)

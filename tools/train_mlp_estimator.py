@@ -26,7 +26,7 @@ Three improvements over the naive uniform-sampling baseline:
 Default instrument: 447 nm laser, 0.048 um/px, water (n_m=1.340).
 To retrain for a different instrument, edit INSTRUMENT below and re-run.
 
-Output: ../analysis/mlp_estimator.joblib
+Output: ../analysis/mlp_estimator.npz (see MLPNetwork)
 
 Pass --regen to force regeneration of training data even if the cache exists.
 '''
@@ -40,9 +40,8 @@ from sklearn.compose import TransformedTargetRegressor
 from sklearn.neural_network import MLPRegressor
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
-import joblib
 
-from pylorenzmie.analysis.MLPEstimator import _log_targets, _exp_targets
+from pylorenzmie.analysis.MLPEstimator import MLPNetwork
 from pylorenzmie.theory import LorenzMie, Sphere
 from pylorenzmie.theory.LorenzMie import LorenzMie as Calculator
 
@@ -74,7 +73,7 @@ HIDDEN = (256, 128, 64)
 # ── paths
 
 _HERE  = Path(__file__).parent
-OUTPUT  = _HERE.parent / 'analysis' / 'mlp_estimator.joblib'
+OUTPUT  = _HERE.parent / 'analysis' / 'mlp_estimator.npz'
 _CACHE  = _HERE / 'mlp_training_data.npz'
 
 
@@ -160,6 +159,35 @@ def load_or_generate(regen: bool = False) -> tuple[np.ndarray, np.ndarray]:
     return X, y
 
 
+def _log_targets(y: np.ndarray) -> np.ndarray:
+    '''Log-scale z_p (col 0) and a_p (col 1); n_p (col 2) unchanged.'''
+    out = y.astype(float, copy=True)
+    out[:, 0] = np.log(out[:, 0])
+    out[:, 1] = np.log(out[:, 1])
+    return out
+
+
+def _exp_targets(y: np.ndarray) -> np.ndarray:
+    out = y.astype(float, copy=True)
+    out[:, 0] = np.exp(out[:, 0])
+    out[:, 1] = np.exp(out[:, 1])
+    return out
+
+
+def to_network(pipe: Pipeline) -> MLPNetwork:
+    '''Return the trained pipeline as the NumPy network that ships.'''
+    regressor = pipe.named_steps['regressor']
+    mlp = regressor.regressor_
+    targets = regressor.transformer_.named_steps['scale']
+    inputs = pipe.named_steps['scaler']
+    return MLPNetwork(inputs.mean_,
+                      inputs.scale_,
+                      mlp.coefs_,
+                      mlp.intercepts_,
+                      targets.mean_,
+                      targets.scale_)
+
+
 def build_pipeline() -> Pipeline:
     mlp = MLPRegressor(
         hidden_layer_sizes=HIDDEN,
@@ -227,7 +255,10 @@ def main() -> None:
     evaluate(pipe, X, y)
 
     OUTPUT.parent.mkdir(parents=True, exist_ok=True)
-    joblib.dump(pipe, OUTPUT)
+    network = to_network(pipe)
+    check = np.abs(network.predict(X[-n_val:]) - pipe.predict(X[-n_val:]))
+    print(f'  NumPy network differs from scikit-learn by {check.max():.2g}')
+    network.save(OUTPUT)
     print(f'\nSaved → {OUTPUT}')
 
 

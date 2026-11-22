@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-import cv2
+from PIL import Image
 import numpy as np
 import pandas as pd
 
@@ -568,7 +568,7 @@ class TestBackground(ToolTestCase):
         tool = self.tool()
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'small.png'
-            cv2.imwrite(str(path), np.full((8, 8), 100, dtype=np.uint8))
+            Image.fromarray(np.full((8, 8), 100, dtype=np.uint8)).save(path)
             with self.assertLogs(level='ERROR'):
                 self.assertTrue(tool.setBackground(str(path)))
         self.assertIn('using the median', self.shown(tool))

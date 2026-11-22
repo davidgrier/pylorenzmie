@@ -12,6 +12,9 @@ try:
 except ImportError:                                  # pragma: no cover
     numbaLorenzMie = None
 
+# holograms are of order one: this is a few hundred ulp
+ATOL = 1e-13
+
 
 @unittest.skipIf(numbaLorenzMie is None, 'numba is not available')
 class TestNumbaLorenzMie(unittest.TestCase):
@@ -119,21 +122,29 @@ class TestNumbaLorenzMie(unittest.TestCase):
                                     rtol=0,
                                     atol=1e-10))
 
-    def test_parallel_matches_serial_exactly(self):
+    def test_parallel_matches_serial(self):
+        # the kernels agree to rounding: a thread count or a compiler can
+        # change the last bit (about 1e-16), far below any noise
+
         _, serial = self.models()
         _, parallel = self.models()
         serial.parallel = False
         parallel.parallel = True
         parallel.parallel_threshold = 1
-        self.assertTrue(np.array_equal(serial.hologram(),
-                                       parallel.hologram()))
+        self.assertTrue(np.allclose(serial.hologram(),
+                                    parallel.hologram(),
+                                    rtol=0,
+                                    atol=ATOL))
 
     def test_threshold_does_not_change_the_result(self):
         _, a = self.models()
         _, b = self.models()
         a.parallel_threshold = 1
         b.parallel_threshold = 10**9
-        self.assertTrue(np.array_equal(a.hologram(), b.hologram()))
+        self.assertTrue(np.allclose(a.hologram(),
+                                    b.hologram(),
+                                    rtol=0,
+                                    atol=ATOL))
 
     def test_concurrent_calls_from_threads_are_safe(self):
         # Numba's workqueue threading layer aborts the process if two
@@ -171,8 +182,8 @@ class TestNumbaLorenzMie(unittest.TestCase):
         def child():
             _, m = self.models()
             m.parallel_threshold = 1
-            queue.put((bool(np.array_equal(m.hologram(), expected)),
-                       module._FORKED))
+            same = np.allclose(m.hologram(), expected, rtol=0, atol=ATOL)
+            queue.put((bool(same), module._FORKED))
 
         process = context.Process(target=child)
         process.start()

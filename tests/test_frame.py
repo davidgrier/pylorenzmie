@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import cv2
+from pylorenzmie.utilities import imread
 
 from pylorenzmie.analysis import Frame
 from pylorenzmie.analysis.Hologram import Hologram
@@ -17,7 +17,7 @@ class TestFrame(unittest.TestCase):
 
     def setUp(self):
         self.frame = Frame()
-        self.data = cv2.imread(str(TEST_IMAGE), cv2.IMREAD_GRAYSCALE).astype(float) / 100.
+        self.data = imread(TEST_IMAGE).astype(float) / 100.
 
     def test_is_hologram(self):
         '''Frame is-a Hologram.'''
@@ -158,7 +158,7 @@ class TestFrameOnAnImage(unittest.TestCase):
 
     def setUp(self):
         self.frame = Frame(split_redchi=None)
-        self.data = cv2.imread(str(TEST_IMAGE), 0).astype(float) / 100.
+        self.data = imread(TEST_IMAGE).astype(float) / 100.
 
     def test_optimize(self):
         self.frame.data = self.data

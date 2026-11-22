@@ -22,6 +22,7 @@ from numpy.typing import NDArray
 from scipy.ndimage import median_filter
 
 from pylorenzmie.lib.lmtypes import Image
+from pylorenzmie.utilities.readimage import imread
 
 
 class Normalizer:
@@ -141,8 +142,7 @@ class Normalizer:
         path = Path(background)
         if not path.is_file():
             raise FileNotFoundError(f'Background not found: {str(path)!r}')
-        import cv2
-        image = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+        image = imread(path)
         if image is None:
             raise ValueError(f'Could not read the background: {str(path)!r}')
         normalizer = cls('reference', reference=image.astype(float), **kwargs)

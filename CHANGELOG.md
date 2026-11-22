@@ -6,6 +6,29 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+* `pylorenzmie.utilities.imread` reads an image file as an 8-bit gray-scale
+  array with Pillow (16-bit images are scaled to eight bits, as OpenCV did).
+* The dependencies of the package have minimum versions, and a CI job
+  (`Lowest dependencies`) runs the tests on Python 3.11 with the lowest
+  version of each that `pyproject.toml` allows.
+
+### Changed
+
+* The network of `MLPEstimator` is stored as `analysis/mlp_estimator.npz`
+  (arrays) and evaluated with NumPy (`MLPNetwork`), not stored as a pickled
+  scikit-learn pipeline.  The pickle depended on the versions of NumPy and
+  scikit-learn that wrote it.  The predictions are unchanged, to the last
+  bit.  `scikit-learn` and `joblib` are no longer dependencies of the
+  package: `scikit-learn` is the `train` extra, for
+  `tools/train_mlp_estimator.py`.  `MLPEstimator` refuses a `.joblib` file;
+  train again, which writes a `.npz` file.
+* OpenCV is no longer a dependency of the package, of the tests, or of
+  `tools/`: images are read and written with Pillow, which is now declared
+  (it was already installed with Matplotlib, through `trackpy`).  `dgimage`
+  uses OpenCV for a faster `CircleTransform` if it is installed.
+
 ## [3.7.0] - 2026-11-15
 
 ### Added
