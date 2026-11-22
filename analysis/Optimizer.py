@@ -36,6 +36,15 @@ from pylorenzmie.lib.lmtypes import Image, Properties, Settings
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import LorenzMie, Sphere
+from pylorenzmie.theory.Sphere import ModelDomainError
+
+PENALTY = 1e6
+'''Residual of each pixel for parameters that the model does not compute.
+
+It is far above the residual of any fit that is worth keeping, so that a
+step to such parameters is rejected, and it is finite, so that the solver
+can take it.
+'''
 
 
 class Optimizer(LMObject):
@@ -106,6 +115,7 @@ class Optimizer(LMObject):
             self.robust = robust
         self._data: Image | None = None
         self._result: OptimizeResult | None = None
+        self._started = False
 
     @property
     def properties(self) -> Properties:
@@ -256,6 +266,7 @@ class Optimizer(LMObject):
         jac_params = self.model.jac_params
         if jac_params and set(self.variables) <= jac_params:
             settings['jac'] = self._analytical_jac
+        self._started = False
         fit = least_squares(self._residuals, p0, **settings)
         self._result = fit
         return self._summary(fit)
@@ -297,7 +308,17 @@ class Optimizer(LMObject):
     def _residuals(self, values: NDArray[np.floating]) -> Image:
         self.model.properties = dict(zip(self.variables, values, strict=True))
         noise = self.model.instrument.noise
-        return (self.model.hologram() - self._pixels) / noise
+        try:
+            residuals = (self.model.hologram() - self._pixels) / noise
+        except ModelDomainError:
+            # a step of the fit left the range that the model computes
+            # (a radius of more than 50 um, say): reject the step, but
+            # not the starting point, which the caller must correct
+            if not self._started:
+                raise
+            return np.full(self._pixels.shape, PENALTY)
+        self._started = True
+        return residuals
 
     @property
     def _pixels(self) -> Image:

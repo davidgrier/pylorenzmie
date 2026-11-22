@@ -6,10 +6,12 @@ import numpy as np
 import pandas as pd
 
 from pylorenzmie.analysis import Optimizer
+from pylorenzmie.analysis.Optimizer import PENALTY
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory.Sphere import MAX_RADIUS, ModelDomainError
 try:
     from pylorenzmie.theory.jaxLorenzMie import jaxLorenzMie
     _jax_available = True
@@ -325,6 +327,42 @@ class TestOptimizerFit(unittest.TestCase):
         result = self.optimizer.optimize(bad)
         failure = not result.success or (result.redchi > 100.)
         self.assertTrue(failure)
+
+    def test_a_step_beyond_the_largest_radius_is_rejected(self):
+        # the model refuses a radius of more than MAX_RADIUS, so that an
+        # unbounded fit cannot ask for all the memory of the computer, and
+        # the fit rejects the step with a residual that it cannot accept
+        self.optimizer.optimize(self.hologram)
+        values = [self.optimizer.model.properties[p]
+                  for p in self.optimizer.variables]
+        values[self.optimizer.variables.index('a_p')] = 2. * MAX_RADIUS
+        residuals = self.optimizer._residuals(np.array(values))
+        self.assertEqual(residuals.shape, self.optimizer._pixels.shape)
+        self.assertTrue(np.all(residuals == PENALTY))
+
+    def test_a_starting_point_beyond_the_largest_radius_is_refused(self):
+        self.optimizer.model.particle.a_p = 2. * MAX_RADIUS
+        with self.assertRaises(ModelDomainError):
+            self.optimizer.optimize(self.hologram)
+
+    def test_a_fit_that_steps_beyond_the_largest_radius_finishes(self):
+        # from here the first step of the fit asks for a radius of 50.04 um
+        shape = (101, 101)
+        model = LorenzMie(coordinates=LMObject.meshgrid(shape))
+        model.instrument.wavelength = 0.447
+        model.instrument.magnification = 0.048
+        model.instrument.n_m = 1.34
+        model.particle.r_p = [50., 50., 200.]
+        model.particle.a_p = 1.
+        model.particle.n_p = 1.5
+        rng = np.random.default_rng(0)
+        data = model.hologram().reshape(shape) + rng.normal(0., 0.05, shape)
+        model.particle.r_p = [50., 50., 800.]
+        model.particle.a_p = 49.9
+        model.particle.n_p = 1.9
+        result = Optimizer(model=model).optimize(Hologram(data))
+        self.assertIsInstance(result, pd.Series)
+        self.assertLessEqual(abs(result['a_p']), MAX_RADIUS)
 
 
 if __name__ == '__main__':  # pragma: no cover

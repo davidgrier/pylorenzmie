@@ -26,6 +26,16 @@ from pylorenzmie.theory import Particle
 from pylorenzmie.lib.lmtypes import Coefficients, Properties
 from pylorenzmie.theory._mie import mie_ab
 
+class ModelDomainError(ValueError):
+    '''The parameters are outside the range that the model computes.
+
+    A :class:`ValueError`, so that code that refuses such parameters in
+    general still does.  :class:`~pylorenzmie.analysis.Optimizer.Optimizer`
+    catches this one, and no other, to reject a step of a fit that leaves
+    the range.
+    '''
+
+
 MAX_RADIUS = 50.
 '''Largest radius of a sphere that the model computes, in μm.'''
 
@@ -125,9 +135,10 @@ class Sphere(Particle):
 
         Raises
         ------
-        ValueError
+        ModelDomainError
             If the radius is larger than ``MAX_RADIUS``, or the sum needs
-            more than ``MAX_ORDERS`` partial waves.
+            more than ``MAX_ORDERS`` partial waves.  It is a
+            :class:`ValueError`.
         '''
         return Sphere.mie_coefficients(self.a_p,
                                        self.n_p,
@@ -146,12 +157,12 @@ class Sphere(Particle):
 
         Raises
         ------
-        ValueError
+        ModelDomainError
             If ``abs(a_p)`` is larger than ``MAX_RADIUS``, or is not a
-            number.
+            number.  It is a :class:`ValueError`.
         '''
         if not abs(a_p) <= MAX_RADIUS:
-            raise ValueError(f'the radius of a sphere is at most '
+            raise ModelDomainError(f'the radius of a sphere is at most '
                              f'{MAX_RADIUS:g} um, not a_p = {a_p:g} um')
 
     @staticmethod
@@ -170,11 +181,12 @@ class Sphere(Particle):
 
         Raises
         ------
-        ValueError
-            If ``nmax`` is larger than ``MAX_ORDERS``.
+        ModelDomainError
+            If ``nmax`` is larger than ``MAX_ORDERS``.  It is a
+            :class:`ValueError`.
         '''
         if nmax > MAX_ORDERS:
-            raise ValueError(f'a sphere of radius {a_p:g} um and index '
+            raise ModelDomainError(f'a sphere of radius {a_p:g} um and index '
                              f'{n_p:g} needs {nmax:,} partial waves, '
                              f'at most {MAX_ORDERS:,} are computed')
 
@@ -262,9 +274,10 @@ class Sphere(Particle):
 
         Raises
         ------
-        ValueError
+        ModelDomainError
             If the radius is larger than ``MAX_RADIUS``, or the sum needs
-            more than ``MAX_ORDERS`` partial waves.
+            more than ``MAX_ORDERS`` partial waves.  It is a
+            :class:`ValueError`.
         '''
         Sphere.check_radius(a_p)
 

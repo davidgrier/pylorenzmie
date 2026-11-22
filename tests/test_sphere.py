@@ -1,6 +1,7 @@
 import unittest
 import numpy as np
-from pylorenzmie.theory.Sphere import MAX_ORDERS, MAX_RADIUS, Sphere
+from pylorenzmie.theory.Sphere import (MAX_ORDERS, MAX_RADIUS,
+                                       ModelDomainError, Sphere)
 
 # TODO: add spot-check tests for specific ab coefficient values against
 # a published reference (e.g. Bohren & Huffman Appendix A) once a
@@ -123,6 +124,8 @@ class TestSphere(unittest.TestCase):
             with self.subTest(a_p=a_p):
                 self.sphere.a_p = a_p
                 with self.assertRaisesRegex(ValueError, 'radius'):
+                    self.sphere.ab(self.n_m, self.wavelength)
+                with self.assertRaises(ModelDomainError):
                     self.sphere.ab(self.n_m, self.wavelength)
 
     def test_a_sphere_that_needs_too_many_orders_is_refused(self):

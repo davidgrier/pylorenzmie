@@ -6,6 +6,18 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+* A fit that stepped to a radius of more than 50 um stopped with a
+  `ValueError` instead of going on.  The limit (`Sphere.MAX_RADIUS`, added
+  in 3.7.0 so that a runaway fit cannot use all the memory of the computer)
+  is reached by a step of the solver, which can be a long way from the
+  solution.  `Optimizer` now rejects such a step, as it would a step that
+  fits worse, and the solver tries a shorter one.  The error is a
+  `ModelDomainError`, a `ValueError`, so that `Optimizer` catches that one
+  and no other; a starting point outside the range still raises it.  This
+  failed `TestFrameOnAnImage.test_results` in the PySide6 job of CI.
+
 ## [3.8.0] - 2026-11-21
 
 ### Added
