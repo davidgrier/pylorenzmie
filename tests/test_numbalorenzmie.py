@@ -122,6 +122,31 @@ class TestNumbaLorenzMie(unittest.TestCase):
                                     rtol=0,
                                     atol=1e-10))
 
+    def test_hologram_of_a_large_sphere_matches_numpy(self):
+        # up to the largest radius that the model computes (50 um), with
+        # the sphere above the plane of the camera by at least its radius:
+        # the Mie sum has thousands of terms, and the recurrences of the two
+        # calculators agree to about 1e-9.  Closer than that, the field
+        # point is inside the sphere and the sum overflows.
+        coordinates = np.array([[0., 5., 12., 30., 60.],
+                                [0., 0., 4., -10., 20.]])
+        magnification = 0.048
+        for a_p, n_p in ((10., 1.4), (30., 1.4), (30., 1.9), (50., 1.4)):
+            for height in (1., 2., 4.):
+                with self.subTest(a_p=a_p, n_p=n_p, height=height):
+                    self.particle = Sphere(a_p=a_p,
+                                           n_p=n_p,
+                                           z_p=height * a_p / magnification)
+                    numpy, numba = self.models()
+                    for m in (numpy, numba):
+                        m.coordinates = coordinates
+                    reference = numpy.hologram()
+                    self.assertTrue(np.all(np.isfinite(reference)))
+                    self.assertTrue(np.allclose(reference,
+                                                numba.hologram(),
+                                                rtol=0,
+                                                atol=1e-8))
+
     def test_parallel_matches_serial(self):
         # the kernels agree to rounding: a thread count or a compiler can
         # change the last bit (about 1e-16), far below any noise
