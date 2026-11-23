@@ -150,7 +150,7 @@ class TestParticleTable(unittest.TestCase):
     def test_the_view_data(self):
         self.table.setFound(found())
         self.table.setResult(0, dict(z_p=300., a_p=1.1, n_p=1.45), result())
-        text = lambda r, c: self.table.data(self.table.index(r, c))  # noqa
+        text = lambda r, c: self.table.data(self.table.index(r, c))
         self.assertEqual(text(0, 1), '10.0')                # x_p of the fit
         self.assertEqual(text(0, 4), 'fitted')
         self.assertEqual(text(0, 5), '300.0')

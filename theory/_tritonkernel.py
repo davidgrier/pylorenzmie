@@ -56,7 +56,8 @@ def _lorenzmie_kernel(kx_ptr,                 # [npts] float32, k-scaled
     coskr     = tl.cos(kr)
 
     sign_kz = tl.where(kz > 0, 1.0, tl.where(kz < 0, -1.0, 0.0))
-    if bohren:
+    # A Triton kernel keeps the statement form: bohren is a constexpr.
+    if bohren:  # noqa: SIM108
         factor_im = sign_kz
     else:
         factor_im = -sign_kz

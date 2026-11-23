@@ -103,10 +103,7 @@ def _batch_lorenzmie_kernel(kx_ptr,        # [N, npts] float32, batch-major
     coskr     = tl.cos(kr)
 
     sign_kz = tl.where(kz > 0, 1.0, tl.where(kz < 0, -1.0, 0.0))
-    if bohren:
-        factor_im = sign_kz
-    else:
-        factor_im = -sign_kz
+    factor_im = sign_kz if bohren else -sign_kz
 
     xi_nm2_re = coskr
     xi_nm2_im = factor_im * sinkr

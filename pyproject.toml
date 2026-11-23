@@ -95,20 +95,20 @@ line-length = 79
 extend-exclude = ["devel"]
 
 [tool.ruff.lint]
-# F pyflakes, B bugbear, E501 line length, Q quotes, RUF012 mutable class
+# F pyflakes, B bugbear, E501 line length, Q quotes, SIM simplifications
+# (except SIM905), PERF performance, PIE misc, RUF012 mutable class
 # attributes, RUF100 stale noqa, UP037 quoted annotations; E402 imports at
-# the top, E731 lambda assigned, E741 ambiguous name, SIM105 suppress,
-# SIM115 file without a context manager, SIM118 key in dict, RUF015 first
-# element, RUF059 unused unpacked variable, PERF401 comprehension,
-# PLW0108 needless lambda, PLW1510 subprocess without check, TID252 a
-# relative import of a parent (a sibling is imported as `.name`), A001 and
-# A002 a name that hides a builtin, SIM300 yoda comparison, C400 and C401 a
-# generator that is a comprehension, PLW2901 a loop variable that is
-# overwritten.
-select = ["F", "B", "E402", "E501", "E731", "E741", "Q", "SIM105",
-          "SIM115", "SIM118", "PERF401", "PLW0108", "PLW1510", "RUF012",
-          "RUF015", "RUF059", "RUF100", "TID252", "UP037", "A001", "A002",
-          "SIM300", "C400", "C401", "PLW2901"]
+# the top, E731 lambda assigned, E741 ambiguous name, RUF015 first element,
+# RUF059 unused unpacked variable, PLW0108 needless lambda, PLW1510
+# subprocess without check, TID252 a relative import of a parent (a sibling
+# is imported as `.name`), A001 and A002 a name that hides a builtin, C400
+# and C401 a generator that is a comprehension, PLW2901 a loop variable that
+# is overwritten.
+select = ["F", "B", "E402", "E501", "E731", "E741", "Q", "SIM", "PERF",
+          "PIE", "PLW0108", "PLW1510", "PLW2901", "RUF012", "RUF015",
+          "RUF059", "RUF100", "TID252", "UP037", "A001", "A002", "C400",
+          "C401"]
+ignore = ["SIM905"]
 
 [tool.ruff.lint.flake8-tidy-imports]
 ban-relative-imports = "parents"
@@ -123,12 +123,15 @@ docstring-quotes = "single"
 "__init__.py" = ["F401"]
 # Sphinx reads the name `copyright`.
 "docs/conf.py" = ["A001", "E402"]
+# Tests import after patching, unpack to name what they do not use, keep a
+# temporary file open across a test, and are not held to the style rules
+# that simplify code (a lambda in a test is often late binding on purpose,
+# and a test runs a child process without a check).
+"tests/*" = ["E402", "E501", "F401", "F811", "F841", "B018", "B905",
+             "RUF012", "RUF059", "SIM", "PERF", "PIE", "PLW2901",
+             "UP037", "PLW0108", "PLW1510", "E731", "RUF015", "A002"]
 # Notebooks unpack figures they do not use and zip lists that match.
 "*.ipynb" = ["E501", "B905", "RUF059"]
-# Tests import after patching, unpack to name what they do not use, and
-# keep a temporary file open across a test.
-"tests/*" = ["E402", "E501", "F401", "F811", "F841", "B018", "B905",
-             "RUF012", "RUF059", "SIM115"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
