@@ -160,6 +160,49 @@
       separate numpy/cupy/torch implementations. Requires refactoring the
       multipole loop to `jax.lax.scan` and adopting a functional (non-mutating)
       coding style.
+- [ ] **Analytic Jacobian for the Numba backend** (measured 2026-11-24 from
+      CATCH 3.0.0 on its frozen test set, Linux, TITAN RTX, 8 cores; a
+      starting point, not a settled design).  `numbaLorenzMie.jac_params` is
+      empty, so `Optimizer` leaves the Jacobian to
+      `scipy.optimize.least_squares`, which differences it: about 6 model
+      evaluations per iteration for the 5 free parameters.  In CATCH's fits
+      (4000 pixels, `loss='both'`, crops of 330-590 pixels) one evaluation
+      costs 1.3-4 ms and the number of evaluations is very uneven: median 61
+      per fit, but 300-1800 for spheres of 4-5 um (1-7 s per fit).  Those fits
+      are most of the cost (spheres of 4 um and more take 58% of the CPU time
+      of a 1382-particle run: 1789 CPU-s for 5 starts each).  With
+      `jaxLorenzMie`, which has the analytic Jacobian, the same fits needed
+      far fewer calls (1409 evaluations became 85 + 76 Jacobian calls; 1806
+      became 308 + 301), but JAX on a CPU recompiles per partial-wave count
+      and took 117 s against 18 s for 12 fits, so that timing says nothing
+      about a native Jacobian.
+      * Idea: a Jacobian from the recurrence that gives the field (the
+        derivatives with respect to `x_p`, `y_p`, `z_p` are a displacement of
+        the field; `a_p` and `n_p` enter through `a_n`, `b_n`), added to
+        `numbaLorenzMie` with `jac_params` set, so that `Optimizer` passes it
+        to `least_squares` as it does for JAX.
+      * **Not automatically lossless.**  In 12 fits, 9 gave the same `a_p` to
+        3 decimals with the two Jacobians; in 3 they ended in different
+        places of the degenerate valley of large spheres (for one, 5.04 um
+        with reduced chi-squared 2.13 by finite differences against 4.86 um
+        and 2.26 with JAX).  Stopping rules (`ftol`, `xtol`, `x_scale='jac'`)
+        and step paths differ.  Check on many fits: the lock-on rate (radius
+        within 5 nm of the truth) and the reduced chi-squared against the
+        current `Optimizer` on simulated holograms of 0.5-5 um.  CATCH's
+        `python -m CATCH.customization.evaluation.scene_run --set test`
+        (frozen set of 400 scenes, 1381 particles) scores it end to end; CATCH
+        3.0.0 locks on 67.8% from the best start and 72.8% from all 5.
+      * Not worth it: a batched GPU solver on `TorchLorenzMieBatch`.  Its
+        kernel makes a hologram of 4000 pixels in 0.15 ms (B = 64 to 256,
+        float32) against 0.75 ms for one Numba core, i.e. about 6,500
+        holograms per second against 10,000 for 8 cores, and the single-fit
+        GPU paths (`cupyOptimizer`) send each residual back to the host for
+        scipy.  Re-test if the Triton kernel gets faster (see `theory`).
+      * Related, from CATCH: fitting only the best start, or gating the other
+        starts on the reduced chi-squared, did not help (the reduced
+        chi-squared of a fit that locks on and of one that does not overlap:
+        medians 0.8 and 1.5); the extra starts matter above 2 um (4.7 points
+        of lock-on, none below 2 um).
 - [ ] Global optimizer stage: add `method='cmaes'` or `method='basin'` options
       to `Optimizer` (wrapping `scipy.optimize.differential_evolution` or
       `basinhopping`) as a coarse-to-fine strategy before LM refinement. Improves
