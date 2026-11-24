@@ -389,5 +389,6 @@ Open findings of the review of the code base; the notes behind them are in
       `CLAUDE.md` and `CONTRIBUTING.md`, and `.gitignore` has `.venv/`,
       `venv/` and `.lm/`
 
-- [ ] `_setupTheory` in `LMTool`: fragile `layout.replaceWidget` by widget name;
-      consider a cleaner injection mechanism
+- [x] `LMTool._setupControls` (was `_setupTheory`): the layout has an empty
+      container with a layout of its own, and the panel is added to it, instead
+      of replacing a placeholder found by its name

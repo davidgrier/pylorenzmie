@@ -663,5 +663,34 @@ class TestModelChoice(ToolTestCase):
         self.assertIn('spherical', tool.session.properties)
 
 
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestControlsPanel(ToolTestCase):
+    '''The panel of parameters sits in the container of the layout.'''
+
+    def test_the_panel_is_in_the_container_and_is_all_that_is_there(self):
+        tool = self.tool()
+        self.assertIsInstance(tool.controls, ALMWidget)
+        self.assertEqual(tool.controlsLayout.count(), 1)
+        self.assertIs(tool.controlsLayout.itemAt(0).widget(), tool.controls)
+        self.assertIs(tool.controls.parentWidget(), tool.controlsContainer)
+
+    def test_the_panel_is_the_one_of_the_class_that_was_given(self):
+        for panel in (ALMWidget, LMWidget):
+            with self.subTest(panel=panel.__name__):
+                tool = self.tool(panel)
+                self.assertIs(type(tool.controls), panel)
+                self.assertIs(tool.session, tool.controls.session)
+
+    def test_the_panel_is_disabled_while_a_task_runs(self):
+        tool = self.tool()
+        started = self.slowly('estimate')
+        tool.estimate()
+        self.assertTrue(started.wait(10))
+        self.assertFalse(tool.controls.isEnabled())
+        tool.tasks.cancel()
+        self.wait(tool)
+        self.assertTrue(tool.controls.isEnabled())
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

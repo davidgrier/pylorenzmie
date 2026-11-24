@@ -17,7 +17,8 @@ from qtpy.QtCore import Slot, QRectF
 from qtpy.QtGui import QAction, QCloseEvent
 from qtpy.QtWidgets import (QAbstractItemView, QFileDialog,
                             QHeaderView, QLabel, QMainWindow, QMenu,
-                            QProgressBar, QTableView, QTabWidget)
+                            QProgressBar, QTableView, QTabWidget,
+                            QVBoxLayout)
 
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
@@ -100,6 +101,7 @@ class LMTool(QMainWindow):
     uiFile = 'LMTool.ui'
 
     # what the layout in LMTool.ui makes
+    controlsLayout: QVBoxLayout
     tabs: QTabWidget
     imageWidget: ImageWidget
     profileWidget: ProfileWidget
@@ -119,6 +121,10 @@ class LMTool(QMainWindow):
     actionOptimize: QAction
     actionCancel: QAction
     actionRobust: QAction
+
+    #: The panel with the parameters of the model, made by the class that the
+    #: window was given and put in ``controlsLayout`` when the window is made.
+    controls: LMWidget
 
     #: Number of candidate particles that Find Particles keeps, the
     #: strongest first.  A noisy image can have hundreds of candidates.
@@ -153,7 +159,7 @@ class LMTool(QMainWindow):
             Task.ESTIMATE: self._onEstimated,
             Task.OPTIMIZE: self._onOptimized}
         uic.loadUi(_DIR / self.uiFile, self)
-        self._setupTheory(controls())
+        self._setupControls(controls())
         self._setupStatusBar()
         self._setupParticles()
         self._connectSignals()
@@ -162,10 +168,10 @@ class LMTool(QMainWindow):
             self._showBackground()
         self.readHologram(filename)
 
-    def _setupTheory(self, controls: LMWidget) -> None:
-        layout = required(required(self.controls.parentWidget()).layout())
-        layout.replaceWidget(self.controls, controls)
-        self.controls.close()
+    def _setupControls(self, controls: LMWidget) -> None:
+        '''Show the panel of parameters, and connect what depends on its
+        session: the preview of the model and the settings of the fit.'''
+        self.controlsLayout.addWidget(controls)
         self.controls = controls
         self.session = controls.session
         self.preview = Preview(self.session)
