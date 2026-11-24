@@ -176,6 +176,35 @@
       became 308 + 301), but JAX on a CPU recompiles per partial-wave count
       and took 117 s against 18 s for 12 fits, so that timing says nothing
       about a native Jacobian.
+      * **Tried 2026-11-24 and reverted: a wash as built.**  A
+        `numbaLorenzMie.jac()` with a fused kernel (analytic derivatives
+        with respect to `x_p`, `y_p`, `z_p`; central differences of the
+        Mie coefficients, at a fixed number of orders, for `a_p` and
+        `n_p`) matched finite differences to 1e-9 and `jaxLorenzMie.jac()`
+        to 1e-7, but did not make fits faster.  On 720 paired fits
+        (201x201, 2% noise, polystyrene in water, 0.5-5 um, z = 150-600
+        px, 4000 pixels, one thread; starts from the truth displaced by 1%
+        and 2% in `z_p`, `a_p`, `n_p`, and from `Estimator`):
+        lock-on 45.0% against 44.9% (the same outcome in 717 of 720
+        pairs), total time 0.96 of the finite-difference run, the same
+        number of iterations.  The Jacobian cost 3.8 to 4.7 hologram
+        evaluations (0.5 to 4.5 um), and `lm` with differences spends 5
+        per iteration, so the saving is about 5.5 against 6 evaluations
+        per iteration.  The 16 fits that needed 300 or more evaluations
+        (up to 2715) took 74.7 s against 67.3 s, and none locked on.
+        **The JAX comparison above (1409 evaluations became 85 + 76
+        Jacobian calls) counts the evaluations of the differences, not
+        iterations, so it does not predict a speedup.**  A native Jacobian
+        pays only if it costs about 2 evaluations or less (then about 2x);
+        the kernel carried 20 complex accumulators per partial wave, so the
+        place to start would be a profile of it, or a Jacobian for the
+        position only with the coefficients differenced.  It also needs a
+        guard: `Aberrated` and `Distorted` inherit `jac_params` from the
+        base class, which would be wrong for a Jacobian that leaves out
+        the phase mask or the warp (`jaxLorenzMie` applies the phase in
+        its kernel).  The failures of fits above 2 um come from the
+        starts, not from the derivatives (see the review item on the
+        estimation of large spheres).
       * Idea: a Jacobian from the recurrence that gives the field (the
         derivatives with respect to `x_p`, `y_p`, `z_p` are a displacement of
         the field; `a_p` and `n_p` enter through `a_n`, `b_n`), added to
