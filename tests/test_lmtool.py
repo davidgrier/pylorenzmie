@@ -77,7 +77,7 @@ class TestSession(ToolTestCase):
 
     def test_a_session(self):
         tool = self.tool()
-        self.assertEqual(tool._data.shape, (390, 390))
+        self.assertEqual(tool.data.shape, (390, 390))
         # the ROI controls the position of the model
         tool.imageWidget.x_p, tool.imageWidget.y_p = 195.5, 193.2
         properties = tool.controls.properties
@@ -499,7 +499,7 @@ class TestBackground(ToolTestCase):
         self.assertEqual(tool.normalizer.method, 'reference')
         self.assertEqual(tool.normalizer.reference, 100.)
         self.assertIsNone(tool.normalizer.source)
-        np.testing.assert_allclose(tool.data, tool._raw / 100.)
+        np.testing.assert_allclose(tool.data, tool.raw / 100.)
         self.assertEqual(self.shown(tool), 'background: 100')
 
     def test_a_number_given_as_text(self):
@@ -543,17 +543,17 @@ class TestBackground(ToolTestCase):
         tool = self.tool()
         before = tool.data.copy()
         self.assertTrue(tool.setBackground(50))
-        np.testing.assert_allclose(tool.data, tool._raw / 50.)
+        np.testing.assert_allclose(tool.data, tool.raw / 50.)
         self.assertFalse(np.allclose(tool.data, before))
 
     def test_the_dark_count_is_subtracted_before_dividing(self):
         tool = self.tool(background=100)
         tool.setDark(20.)
-        np.testing.assert_allclose(tool.data, (tool._raw - 20.) / 80.)
+        np.testing.assert_allclose(tool.data, (tool.raw - 20.) / 80.)
         self.assertEqual(self.shown(tool), 'background: 100, dark 20')
         # it stays when the background changes
         tool.setBackground(120)
-        np.testing.assert_allclose(tool.data, (tool._raw - 20.) / 100.)
+        np.testing.assert_allclose(tool.data, (tool.raw - 20.) / 100.)
         with self.assertRaises(ValueError):
             tool.setDark(-1.)
         self.assertEqual(tool.dark, 20.)
@@ -562,7 +562,7 @@ class TestBackground(ToolTestCase):
         tool = LMTool(ALMWidget, str(IMAGE), 100, 20.)
         self.addCleanup(tool.close)
         self.wait(tool)
-        np.testing.assert_allclose(tool.data, (tool._raw - 20.) / 80.)
+        np.testing.assert_allclose(tool.data, (tool.raw - 20.) / 80.)
 
     def test_a_background_of_another_shape_falls_back_to_the_median(self):
         tool = self.tool()
@@ -573,7 +573,7 @@ class TestBackground(ToolTestCase):
                 self.assertTrue(tool.setBackground(str(path)))
         self.assertIn('using the median', self.shown(tool))
         np.testing.assert_allclose(tool.data,
-                                   Normalizer()(tool._raw))
+                                   Normalizer()(tool.raw))
         # a background of the right shape brings the label back
         self.assertTrue(tool.setBackground(100))
         self.assertEqual(self.shown(tool), 'background: 100')

@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from enum import StrEnum
 import logging
 import threading
 from typing import Any
@@ -33,6 +34,17 @@ from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.theory import LorenzMie
 
 logger = logging.getLogger(__name__)
+
+
+class Task(StrEnum):
+    '''The tasks that the program runs in the background.
+
+    A member is the name that :class:`TaskRunner` reports with its signals.
+    '''
+
+    LOCALIZE = 'localize'
+    ESTIMATE = 'estimate'
+    OPTIMIZE = 'optimize'
 
 
 class Cancelled(Exception):

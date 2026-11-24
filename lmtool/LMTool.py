@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 import json
 import logging
@@ -19,6 +21,7 @@ from qtpy.QtWidgets import (QAbstractItemView, QFileDialog,
 
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
+from pylorenzmie.lmtool.background import Background
 from pylorenzmie.lmtool.FitWidget import FitWidget
 from pylorenzmie.lmtool.ImageWidget import ImageWidget
 from pylorenzmie.lmtool.LMWidget import LMWidget
@@ -29,13 +32,49 @@ from pylorenzmie.lmtool.ProfileWidget import ProfileWidget
 from pylorenzmie.lmtool.required import required
 from pylorenzmie.lmtool.results import save_results
 from pylorenzmie.lmtool.tasks import (FitResult, LocalizeRequest, Snapshot,
-                                       TaskRunner, run_estimate, run_fit,
-                                       run_localize)
+                                       Task, TaskRunner, run_estimate,
+                                       run_fit, run_localize)
 from pylorenzmie.utilities import Normalizer, estimate_noise, imread
 
 _DIR = Path(__file__).parent
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class LoadedImage:
+    '''The hologram that the window shows, in the forms that it needs.
+
+    Parameters
+    ----------
+    raw : numpy.ndarray
+        The hologram as it was read.
+    data : numpy.ndarray
+        The hologram divided by its background.
+    coordinates : numpy.ndarray
+        Pixel coordinates of the hologram, shape (2, ny, nx).
+    '''
+
+    raw: Image
+    data: NDArray[np.floating]
+    coordinates: Coordinates
+
+
+@dataclass(frozen=True)
+class _TaskInfo:
+    '''What the window says about a task, and whether it can be used while
+    the task runs.'''
+
+    running: str          # 'Estimating' in 'Estimating ... (Esc cancels)'
+    failed: str           # 'Estimation' in 'Estimation failed: ...'
+    modal: bool = True    # a search changes nothing: the window stays usable
+
+
+_TASKS = {Task.LOCALIZE: _TaskInfo('Looking for particles',
+                                   'Search for particles',
+                                   modal=False),
+          Task.ESTIMATE: _TaskInfo('Estimating', 'Estimation'),
+          Task.OPTIMIZE: _TaskInfo('Optimizing', 'Optimization')}
 
 
 class LMTool(QMainWindow):
@@ -94,29 +133,33 @@ class LMTool(QMainWindow):
                  background: str | float | None = None,
                  dark: float = 0.) -> None:
         super().__init__()
-        uic.loadUi(_DIR / self.uiFile, self)
-        self.dark = float(dark)
-        self.normalizer = Normalizer(dark=self.dark)
-        self._refused = ''        # why the last background was not used
-        self._raw = None
-        self._data: NDArray[np.floating] | None = None
-        self.coordinates = None
-        self._pre_estimate = None
-        self._moving = False
-        self._syncing = False
-        self._nfound = 0
-        self._datafile = None
-        self._metadata = None
-        self._row = -1
-        self._search_again = False
+        # The state comes first: loading the layout reads the attributes of
+        # the window, and a property that needs the state would fail.
+        #: What the holograms are divided by.
+        self.background = Background(dark)
+        self._image: LoadedImage | None = None
+        self._datafile: str | None = None
+        self._pre_estimate: dict[str, float] | None = None   # for undo
+        self._metadata: pd.Series | None = None    # of the last fit
+        self._row = -1            # particle that a task works on
+        self._nfound = 0          # candidates that the last search found
+        self._search_again = False    # a new image replaced the searched one
+        self._moving = False      # the ROI follows the session
+        self._syncing = False     # the session moves the ROI
         self.particles = ParticleTable()
         self.tasks = TaskRunner()
+        self._handlers: dict[Task, Callable[[Any], None]] = {
+            Task.LOCALIZE: self._onLocalized,
+            Task.ESTIMATE: self._onEstimated,
+            Task.OPTIMIZE: self._onOptimized}
+        uic.loadUi(_DIR / self.uiFile, self)
         self._setupTheory(controls())
         self._setupStatusBar()
         self._setupParticles()
         self._connectSignals()
         if background is not None:
-            self._useBackground(background)
+            self.background.use(background)
+            self._showBackground()
         self.readHologram(filename)
 
     def _setupTheory(self, controls: LMWidget) -> None:
@@ -168,25 +211,11 @@ class LMTool(QMainWindow):
         # for: a message would be replaced by the next one
         self._background = QLabel()
         required(self.statusBar()).addPermanentWidget(self._background)
-        self._showBackground(self.normalizer)
+        self._showBackground()
 
-    def _showBackground(self, normalizer: Normalizer,
-                        fallback: str = '') -> None:
-        '''Show the background that ``normalizer`` divides by, and what is
-        wrong: why a hologram is divided by the median instead
-        (``fallback``), or why the last background was refused.'''
-        if normalizer.method != 'reference':
-            used = normalizer.method
-        elif normalizer.source:
-            used = Path(normalizer.source).name
-        elif np.ndim(normalizer.reference) == 0:
-            used = f'{normalizer.reference:g}'
-        else:
-            used = 'image'
-        problem = fallback or self._refused
-        dark = f', dark {normalizer.dark:g}' if normalizer.dark else ''
-        self._background.setText(f'background: {used}{dark}'
-                                 + (f' ({problem})' if problem else ''))
+    def _showBackground(self) -> None:
+        '''Show what the holograms are divided by, and what is wrong.'''
+        self._background.setText(self.background.describe())
 
     def _connectSignals(self) -> None:
         self.imageWidget.roiChanged.connect(self._handleROIChanged)
@@ -229,31 +258,45 @@ class LMTool(QMainWindow):
         self.actionCancel.setEnabled(busy)
 
     @property
+    def normalizer(self) -> Normalizer:
+        '''What the holograms are divided by.'''
+        return self.background.normalizer
+
+    @property
+    def dark(self) -> float:
+        '''The dark count that is subtracted before the division.'''
+        return self.background.dark
+
+    @property
+    def raw(self) -> Image | None:
+        '''The hologram as it was read, or None before one is.'''
+        return None if self._image is None else self._image.raw
+
+    @property
     def data(self) -> NDArray[np.floating] | None:
         '''The normalized hologram, or None before one is read.
 
         Setting it takes the raw hologram, normalizes it by the background
         and shows it.'''
-        return self._data
+        return None if self._image is None else self._image.data
 
     @data.setter
     def data(self, data: Image) -> None:
-        self._raw = data
-        try:
-            self._data = self.normalizer(data)
-            self._showBackground(self.normalizer)
-        except ValueError as error:
-            logger.error(f'Could not normalize by the background: {error}')
-            fallback = Normalizer(dark=self.dark)
-            self._data = fallback(data)
-            self._showBackground(fallback, f'{error}; using the median')
-        self.coordinates = LMObject.meshgrid(data.shape, flatten=False)
+        normalized, description = self.background.normalize(data)
+        self._background.setText(description)
+        coordinates = LMObject.meshgrid(data.shape, flatten=False)
+        self._image = LoadedImage(data, normalized, coordinates)
         self.controls.x_p.setRange((0, data.shape[1]-1))
         self.controls.y_p.setRange((0, data.shape[0]-1))
-        self.imageWidget.data = self._data
-        self._setNoise(self._data)
+        self.imageWidget.data = normalized
+        self._setNoise(normalized)
         self._updateProfile()
         self._showCrop()
+
+    @property
+    def coordinates(self) -> Coordinates | None:
+        '''Pixel coordinates of the hologram, or None before one is read.'''
+        return None if self._image is None else self._image.coordinates
 
     @Slot()
     def readHologram(self, filename: str | None = None) -> None:
@@ -292,7 +335,7 @@ class LMTool(QMainWindow):
         residual in the Fit tab is divided by it, so the reduced chi-squared
         of a fit is meaningful only when it is right.
         '''
-        if self._data is None:
+        if self.data is None:
             return
         data, _, _ = self.crop()
         self._setNoise(data)
@@ -308,16 +351,17 @@ class LMTool(QMainWindow):
         :meth:`nextParticle` selects the others.  Particles that were added
         by hand stay.
         '''
-        if self._data is None:
+        if self.data is None:
             return
         if self.tasks.busy:
-            if self.tasks.name == 'localize':    # an older image: start over
+            # a search of an older image is replaced by one of this image
+            if self.tasks.name == Task.LOCALIZE:
                 self._search_again = True
                 self.tasks.cancel()
             return
-        self.tasks.start('localize',
+        self.tasks.start(Task.LOCALIZE,
                          run_localize,
-                         LocalizeRequest(self._data, self.MAX_CANDIDATES))
+                         LocalizeRequest(self.data, self.MAX_CANDIDATES))
 
     def _onLocalized(self, found: pd.DataFrame) -> None:
         self._nfound = found.attrs.get('nfound', len(found))
@@ -344,7 +388,7 @@ class LMTool(QMainWindow):
     @Slot()
     def addParticle(self) -> None:
         '''Add the region of interest to the particles.'''
-        if self._data is None:
+        if self.data is None:
             return
         row = self.particles.add(self.session.get('x_p'),
                                  self.session.get('y_p'),
@@ -392,14 +436,6 @@ class LMTool(QMainWindow):
             row = self.particles.add(x_p, y_p, self.imageWidget.radius)
         return row
 
-    def _background_start(self) -> str:
-        '''Where the dialog for a background starts: at the last background
-        or, failing that, in the folder of the hologram, which is where a
-        background is likely to be.'''
-        if self.normalizer.source:
-            return self.normalizer.source
-        return str(Path(self._datafile).parent) if self._datafile else ''
-
     @Slot()
     def readBackground(self, filename: str | None = None) -> None:
         '''Read a background image from a file, which is asked for if
@@ -408,26 +444,10 @@ class LMTool(QMainWindow):
             get = QFileDialog.getOpenFileName
             filename, _ = get(self,
                               'Open Background',
-                              self._background_start(),
+                              self.background.start_directory(self._datafile),
                               'Images (*.png *.tif *.tiff)')
         if filename:
             self.setBackground(filename)
-
-    def _useBackground(self, background: str | float) -> str | None:
-        '''Normalize by a background; return why it could not, if it could
-        not, and keep the previous background.'''
-        try:
-            self.normalizer = Normalizer.read(background, dark=self.dark)
-        except (OSError, ValueError) as error:
-            logger.error(f'Could not set the background: {error}')
-            self._refused = str(error)
-            self._showBackground(self.normalizer)
-            return self._refused
-        self._refused = ''
-        self._showBackground(self.normalizer)
-        if self._raw is not None:
-            self.data = self._raw
-        return None
 
     def setDark(self, dark: float) -> None:
         '''Subtract a dark count (black level) before normalizing.
@@ -442,11 +462,10 @@ class LMTool(QMainWindow):
         ValueError
             If the dark count is not finite and non-negative.
         '''
-        self.normalizer.dark = dark        # validates it
-        self.dark = self.normalizer.dark
-        self._showBackground(self.normalizer)
-        if self._raw is not None:
-            self.data = self._raw
+        self.background.set_dark(dark)
+        self._showBackground()
+        if self._image is not None:
+            self.data = self._image.raw
 
     def setBackground(self, background: str | float) -> bool:
         '''Normalize holograms by a background.
@@ -463,9 +482,12 @@ class LMTool(QMainWindow):
             True if the background was set, False if it could not be read,
             which leaves the previous background and reports the reason.
         '''
-        error = self._useBackground(background)
+        error = self.background.use(background)
+        self._showBackground()
         if error:
             self._say(error, 8000)
+        elif self._image is not None:
+            self.data = self._image.raw
         return error is None
 
     @Slot()
@@ -493,11 +515,11 @@ class LMTool(QMainWindow):
     def _updateProfile(self) -> None:
         x_p = self.session.get('x_p')
         y_p = self.session.get('y_p')
-        self.profileWidget.data = Azimuthal.std(self._data, (x_p, y_p))
+        self.profileWidget.data = Azimuthal.std(self.data, (x_p, y_p))
 
     @Slot(float, float)
     def _handleROIChanged(self, x_p: float, y_p: float) -> None:
-        if self._data is None:
+        if self.data is None:
             return
         if not self._syncing:             # else the session moved the ROI,
             self._moving = True           # and has the position already
@@ -510,7 +532,7 @@ class LMTool(QMainWindow):
 
     @Slot(int)
     def _handleRadiusChanged(self, radius: int) -> None:
-        if self._data is None:
+        if self.data is None:
             return
         self.profileWidget.radius = radius
         self.preview.setRadius(radius)
@@ -552,10 +574,11 @@ class LMTool(QMainWindow):
     def crop(self) -> tuple[NDArray[np.floating], QRectF, Coordinates]:
         '''Return the pixels inside the ROI, the rectangle that they cover
         and their coordinates.'''
-        if self._data is None or self.coordinates is None:
+        image = self._image
+        if image is None:
             raise RuntimeError('there is no hologram')
         get = self.imageWidget.roi.getArraySlice
-        found = get(self._data, self.imageWidget.image)
+        found = get(image.data, self.imageWidget.image)
         if found is None:
             raise RuntimeError('the ROI is outside the image')
         (sy, sx), _ = cast(tuple[tuple[slice, slice], Any], found)
@@ -565,7 +588,7 @@ class LMTool(QMainWindow):
                       sy.start,
                       sx.stop - sx.start,
                       sy.stop - sy.start)
-        return (self._data[sy, sx], rect, self.coordinates[:, sy, sx])
+        return (image.data[sy, sx], rect, image.coordinates[:, sy, sx])
 
     def _busy(self) -> bool:
         '''True, with a message, if a task is running.'''
@@ -593,7 +616,7 @@ class LMTool(QMainWindow):
 
         The search runs in a thread, on a copy of the session.
         '''
-        if self._data is None or self._busy():
+        if self.data is None or self._busy():
             return
         props = self.session.properties
         # Save only the scalar physical parameters for undo; x_p/y_p are
@@ -602,7 +625,7 @@ class LMTool(QMainWindow):
                               if k in props}
         self.actionUndoEstimate.setEnabled(True)
         self._row = self._particleRow()
-        self.tasks.start('estimate', run_estimate, self._snapshot())
+        self.tasks.start(Task.ESTIMATE, run_estimate, self._snapshot())
 
     def _onEstimated(self, result: pd.Series) -> None:
         fixed = self.session.fixed
@@ -646,10 +669,10 @@ class LMTool(QMainWindow):
         The fit runs in a thread, on a copy of the session; the result
         arrives when it is done, and Cancel (Esc) stops it.
         '''
-        if self._data is None or self._busy():
+        if self.data is None or self._busy():
             return
         self._row = self._particleRow()
-        self.tasks.start('optimize', run_fit, self._snapshot())
+        self.tasks.start(Task.OPTIMIZE, run_fit, self._snapshot())
 
     def _onOptimized(self, fit: FitResult) -> None:
         self.session.update(fit.properties)
@@ -667,50 +690,41 @@ class LMTool(QMainWindow):
 
     @Slot(str)
     def _onTaskStarted(self, name: str) -> None:
-        if name == 'localize':
-            # the window stays usable: a search changes nothing
+        info = _TASKS[Task(name)]
+        if info.modal:
+            self._setUIBusy(True)
+        else:
             self.actionFindParticles.setEnabled(False)
             self.actionCancel.setEnabled(True)
-            self._say('Looking for particles ... '
-                                         '(Esc cancels)')
-            return
-        self._setUIBusy(True)
-        verb = 'Estimating' if name == 'estimate' else 'Optimizing'
-        self._say(f'{verb} ... (Esc cancels)')
+        self._say(f'{info.running} ... (Esc cancels)')
 
     def _taskEnded(self, name: str) -> None:
-        if name == 'localize':
+        if _TASKS[Task(name)].modal:
+            self._setUIBusy(False)
+        else:
             self.actionFindParticles.setEnabled(True)
             self.actionCancel.setEnabled(False)
-        else:
-            self._setUIBusy(False)
 
     @Slot(str, object)
     def _onTaskFinished(self, name: str, result: object) -> None:
         self._taskEnded(name)
-        if name == 'localize':
-            self._onLocalized(cast(pd.DataFrame, result))
-        elif name == 'estimate':
-            self._onEstimated(cast(pd.Series, result))
-        else:
-            self._onOptimized(cast(FitResult, result))
+        self._handlers[Task(name)](result)
 
     @Slot(str, str)
     def _onTaskFailed(self, name: str, message: str) -> None:
         self._taskEnded(name)
-        what = {'localize': 'Search for particles', 'estimate': 'Estimation',
-                'optimize': 'Optimization'}[name]
+        what = _TASKS[Task(name)].failed
         logger.error(f'{what} failed: {message}')
         self._say(f'{what} failed: {message}', 8000)
 
     @Slot(str)
     def _onTaskCancelled(self, name: str) -> None:
         self._taskEnded(name)
-        if name == 'estimate':            # nothing changed: nothing to undo
+        if name == Task.ESTIMATE:         # nothing changed: nothing to undo
             self._pre_estimate = None
             self.actionUndoEstimate.setEnabled(False)
         self._say('Cancelled', 3000)
-        if name == 'localize' and self._search_again:
+        if name == Task.LOCALIZE and self._search_again:
             self._search_again = False
             self.findParticles()          # for the image that replaced it
 
