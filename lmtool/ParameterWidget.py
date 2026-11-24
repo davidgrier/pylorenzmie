@@ -157,13 +157,19 @@ class ParameterWidget(QFrame):
     def setSettings(self, settings: dict) -> None:
         '''Apply a dict of the form that :meth:`settings` returns.
 
-        A key without a matching setter (``set`` and the capitalized key)
-        is ignored.
+        A key that :meth:`settings` does not return is ignored.
         '''
+        setters = dict(text=self.setText,
+                       range=self.setRange,
+                       value=self.setValue,
+                       step=self.setStep,
+                       fixed=self.setFixed,
+                       decimals=self.setDecimals,
+                       prefix=self.setPrefix,
+                       suffix=self.setSuffix)
         for setting, value in settings.items():
-            setter = f'set{setting.capitalize()}'
-            if hasattr(self, setter):
-                getattr(self, setter)(value)
+            if setting in setters:
+                setters[setting](value)
 
     @classmethod
     def example(cls) -> None:

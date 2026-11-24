@@ -20,6 +20,7 @@ class ImageWidget(pg.GraphicsLayoutWidget):
                  **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._radius = 100
+        self._shape: tuple[int, ...] | None = None  # of the image shown
         self._configurePlot()
         self._connectSignals()
         self.data = np.ones((480, 640)) if data is None else data
@@ -66,12 +67,13 @@ class ImageWidget(pg.GraphicsLayoutWidget):
 
     @data.setter
     def data(self, data: NDArray[np.floating]) -> None:
-        prev_data = getattr(self, '_data', None)
+        changed = data.shape != self._shape
+        self._shape = data.shape
         self._data = data
         self.image.setImage(data)
         h, w = data.shape
         self.image.setRect(QRectF(0, 0, w, h))
-        if prev_data is None or prev_data.shape != data.shape:
+        if changed:
             self.roi.setPos([0, 0])
             self.roi.setSize([200, 200])
 

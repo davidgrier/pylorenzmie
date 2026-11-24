@@ -327,8 +327,8 @@ class LMTool(QMainWindow):
 
     def _setNoise(self, image: NDArray[np.floating]) -> None:
         '''Set the noise of the model to the estimate for ``image``.'''
-        noise = getattr(self.controls, 'noise', None)
-        low, high = noise.range() if noise is not None else (0., np.inf)
+        control = self.controls.control('noise')
+        low, high = control.range() if control else (0., np.inf)
         noise = float(np.clip(estimate_noise(image), low, high))
         self.session.update(dict(noise=noise))
 
@@ -553,11 +553,14 @@ class LMTool(QMainWindow):
         # session must not take that back while it moves the ROI to y_p.
         self._syncing = True
         try:
-            for name in ('x_p', 'y_p'):
-                if name in names:
-                    value = self.session.get(name)
-                    if abs(getattr(self.imageWidget, name) - value) > 1e-6:
-                        setattr(self.imageWidget, name, value)
+            if 'x_p' in names:
+                x_p = self.session.get('x_p')
+                if abs(self.imageWidget.x_p - x_p) > 1e-6:
+                    self.imageWidget.x_p = x_p
+            if 'y_p' in names:
+                y_p = self.session.get('y_p')
+                if abs(self.imageWidget.y_p - y_p) > 1e-6:
+                    self.imageWidget.y_p = y_p
         finally:
             self._syncing = False
         # the preview shows the other parameters when the session announces

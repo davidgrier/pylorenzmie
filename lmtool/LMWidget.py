@@ -154,10 +154,16 @@ class LMWidget(QFrame):
         '''Keep the controls that ``config`` names, and apply its settings.'''
         self.controls = []
         for control, settings in config.items():
-            if hasattr(self, control):
-                widget = getattr(self, control)
+            widget = self.findChild(ParameterWidget, control)
+            if widget is not None:
                 self.controls.append(widget)
                 widget.setSettings(settings)
+
+    def control(self, name: str) -> ParameterWidget | None:
+        '''Return the control of the parameter ``name``, or None if the
+        panel does not show it.'''
+        return next((c for c in self.controls if c.objectName() == name),
+                    None)
 
     @classmethod
     def example(cls) -> None:

@@ -259,6 +259,17 @@ class TestControlPanels(unittest.TestCase):
         self.assertEqual(seen[0][0], 'a_p')
         self.assertAlmostEqual(panel.model.particle.a_p, 1.25, delta=0.01)
 
+    def test_control_finds_a_control_by_name(self):
+        panel = LMWidget()
+        self.assertIs(panel.control('a_p'), panel.a_p)
+        self.assertIsNone(panel.control('noise'))
+        self.assertIsNotNone(ALMWidget().control('noise'))
+
+    def test_a_config_names_only_controls(self):
+        panel = LMWidget()
+        panel.setConfig(dict(model=dict(value=1.), a_p=dict(value=1.5)))
+        self.assertEqual([c.objectName() for c in panel.controls], ['a_p'])
+
     def test_the_aberrated_panel_has_the_aberration_controls(self):
         panel = ALMWidget()
         self.assertIn('spherical', panel.properties)
