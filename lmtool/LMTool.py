@@ -103,6 +103,7 @@ class LMTool(QMainWindow):
         self.coordinates = None
         self._pre_estimate = None
         self._moving = False
+        self._syncing = False
         self._nfound = 0
         self._datafile = None
         self._metadata = None
@@ -476,9 +477,18 @@ class LMTool(QMainWindow):
             filename, _ = get(self, 'Save Parameters', '', 'JSON (*.json)')
         if not filename:
             return
-        properties = self.session.properties
-        with open(filename, 'w') as f:
-            json.dump(properties, f, indent=4, sort_keys=True)
+        try:
+            # the text first: a value that is not JSON must not leave a
+            # truncated file
+            text = json.dumps(self.session.properties,
+                              indent=4,
+                              sort_keys=True)
+            Path(filename).write_text(text)
+        except (OSError, TypeError, ValueError) as error:
+            logger.exception('Could not save the parameters')
+            self._say(f'Could not save the parameters: {error}', 8000)
+            return
+        self._say(f'Saved the parameters to {filename}', 5000)
 
     def _updateProfile(self) -> None:
         x_p = self.session.get('x_p')
@@ -489,11 +499,12 @@ class LMTool(QMainWindow):
     def _handleROIChanged(self, x_p: float, y_p: float) -> None:
         if self._data is None:
             return
-        self._moving = True               # the ROI moved, so do not move it
-        try:
-            self.session.update(dict(x_p=x_p, y_p=y_p))
-        finally:
-            self._moving = False
+        if not self._syncing:             # else the session moved the ROI,
+            self._moving = True           # and has the position already
+            try:
+                self.session.update(dict(x_p=x_p, y_p=y_p))
+            finally:
+                self._moving = False
         self._updateProfile()
         self._showCrop()
 
@@ -510,11 +521,17 @@ class LMTool(QMainWindow):
         '''Show parameters that changed in the ROI, the profile and the fit.'''
         if self._moving:
             return
-        for name in ('x_p', 'y_p'):
-            if name in names:
-                value = self.session.get(name)
-                if abs(getattr(self.imageWidget, name) - value) > 1e-6:
-                    setattr(self.imageWidget, name, value)
+        # Moving the ROI to x_p announces its position, with the old y_p: the
+        # session must not take that back while it moves the ROI to y_p.
+        self._syncing = True
+        try:
+            for name in ('x_p', 'y_p'):
+                if name in names:
+                    value = self.session.get(name)
+                    if abs(getattr(self.imageWidget, name) - value) > 1e-6:
+                        setattr(self.imageWidget, name, value)
+        finally:
+            self._syncing = False
         # the preview shows the other parameters when the session announces
         # them
 

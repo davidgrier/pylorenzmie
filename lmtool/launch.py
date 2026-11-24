@@ -9,11 +9,12 @@ exist before :mod:`pylorenzmie.lmtool.LMTool` is imported.
 import logging
 from pathlib import Path
 import sys
+from types import TracebackType
 
 try:
     from qtpy.QtCore import Qt
     from qtpy.QtGui import QColor, QFont, QPainter, QPixmap
-    from qtpy.QtWidgets import QApplication, QSplashScreen
+    from qtpy.QtWidgets import QApplication, QMessageBox, QSplashScreen
 except ImportError as error:
     raise ImportError(
         'lmtool needs a Qt binding: install pylorenzmie with the extra '
@@ -22,6 +23,46 @@ except ImportError as error:
 
 from pylorenzmie import __version__
 from pylorenzmie.lmtool.arguments import argument_parser
+
+logger = logging.getLogger(__name__)
+
+
+def report_exception(kind: type[BaseException],
+                     value: BaseException,
+                     traceback: TracebackType | None) -> None:
+    '''Report an exception that nothing caught, and keep the program.
+
+    PyQt5 and PyQt6 abort the process when a slot raises an exception and
+    ``sys.excepthook`` is the default one, which would close the window and
+    lose the fits that have not been saved.  This hook logs the exception,
+    and says what happened in a message box.
+
+    Parameters
+    ----------
+    kind : type
+        Class of the exception.
+    value : BaseException
+        The exception.
+    traceback : types.TracebackType or None
+        Where it was raised.
+    '''
+    if issubclass(kind, KeyboardInterrupt):
+        sys.__excepthook__(kind, value, traceback)
+        return
+    logger.error('Unhandled exception', exc_info=(kind, value, traceback))
+    try:
+        if QApplication.instance() is None:
+            return
+        box = QMessageBox(QMessageBox.Icon.Critical,
+                          'lmtool',
+                          f'{kind.__name__}: {value}',
+                          QMessageBox.StandardButton.Ok,
+                          QApplication.activeWindow())
+        box.setInformativeText('The program continues; the error is in '
+                               'the log.  Save your work if in doubt.')
+        box.exec()
+    except Exception:              # the report itself must not raise
+        logger.exception('Could not show the exception')
 
 
 def _splash() -> QSplashScreen:
@@ -83,6 +124,7 @@ def lmtool() -> None:
     '''
     logging.basicConfig(level=logging.WARNING,
                         format='%(name)s: %(levelname)s: %(message)s')
+    sys.excepthook = report_exception
 
     parser = argument_parser()
     args, unparsed = parser.parse_known_args()
