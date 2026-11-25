@@ -110,5 +110,17 @@ class TestHologram(unittest.TestCase):
         self.assertNotEqual(self.hologram, other)
 
 
+    def test_from_coordinates_keeps_the_given_coordinates(self):
+        crop = self.hologram[2:6, 3:9]
+        hologram = Hologram.from_coordinates(crop.data, crop.coordinates)
+        self.assertEqual(hologram.corner, crop.corner)
+        self.assertIs(hologram.coordinates, crop.coordinates)
+        self.assertEqual(hologram, crop)
+
+    def test_from_coordinates_checks_the_shape(self):
+        with self.assertRaises(ValueError):
+            Hologram.from_coordinates(self.data, self.hologram.coordinates[0])
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

@@ -162,7 +162,7 @@ def _model(snapshot: Snapshot, cancel: threading.Event) -> LorenzMie:
 
 
 def _hologram(snapshot: Snapshot) -> Hologram:
-    return Hologram._from_slice(snapshot.data, snapshot.coordinates)
+    return Hologram.from_coordinates(snapshot.data, snapshot.coordinates)
 
 
 def run_fit(snapshot: Snapshot, cancel: threading.Event) -> FitResult:

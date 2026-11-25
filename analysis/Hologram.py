@@ -82,17 +82,38 @@ class Hologram:
         '''Pixel coordinates as a 2-D view, shape ``(2, npts)``.'''
         return self.coordinates.reshape(2, -1)
 
-    @staticmethod
-    def _from_slice(data: Image,
-                    coordinates: NDArray[np.floating]) -> 'Hologram':
-        '''Create a Hologram from pre-computed coordinates (no meshgrid call).
+    @classmethod
+    def from_coordinates(cls,
+                         data: Image,
+                         coordinates: NDArray[np.floating]) -> 'Hologram':
+        '''Create a Hologram from pixel coordinates that are already known.
 
-        The corner is read directly from the coordinate array so that the
-        result is always consistent with the parent frame.
+        Nothing is computed, so a crop of a frame (or a region that a
+        program has cut out of one) keeps the coordinates of the frame.
+
+        Parameters
+        ----------
+        data : numpy.ndarray
+            Image, shape ``(ny, nx)``.
+        coordinates : numpy.ndarray
+            Pixel coordinates of ``data``, shape ``(2, ny, nx)``.  The
+            corner is read from the first pixel.
+
+        Returns
+        -------
+        Hologram
+            A hologram that shares ``data`` and ``coordinates``.
+
+        Raises
+        ------
+        ValueError
+            If the shape of ``coordinates`` is not ``(2, ny, nx)``.
         '''
-        h = object.__new__(Hologram)
-        h.data = data
-        h.corner = (float(coordinates[0, 0, 0]), float(coordinates[1, 0, 0]))
+        if coordinates.shape != (2, *data.shape):
+            raise ValueError(f'coordinates have shape {coordinates.shape}, '
+                             f'not {(2, *data.shape)}')
+        h = cls(data, (float(coordinates[0, 0, 0]),
+                       float(coordinates[1, 0, 0])))
         h._coordinates = coordinates
         return h
 
@@ -111,8 +132,8 @@ class Hologram:
             Cropped hologram with coordinates inherited from the parent.
         '''
         sy, sx = key
-        return Hologram._from_slice(self.data[key],
-                                    self.coordinates[:, sy, sx])
+        return Hologram.from_coordinates(self.data[key],
+                                         self.coordinates[:, sy, sx])
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

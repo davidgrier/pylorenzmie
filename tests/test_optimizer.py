@@ -310,7 +310,7 @@ class TestOptimizerFit(unittest.TestCase):
         model.particle.n_p = 1.4
         self.img = img
         self.coords = coords
-        self.hologram = Hologram._from_slice(img, coords.reshape(2, *shape))
+        self.hologram = Hologram.from_coordinates(img, coords.reshape(2, *shape))
         self.optimizer = Optimizer(model=model)
 
     def test_optimize(self):
@@ -326,8 +326,9 @@ class TestOptimizerFit(unittest.TestCase):
         self.assertIn('χ²', report)
 
     def test_optimize_failure(self):
-        bad = Hologram._from_slice(self.img + 100.,
-                                   self.coords.reshape(2, *self.img.shape))
+        shape = self.img.shape
+        bad = Hologram.from_coordinates(self.img + 100.,
+                                        self.coords.reshape(2, *shape))
         result = self.optimizer.optimize(bad)
         failure = not result.success or (result.redchi > 100.)
         self.assertTrue(failure)
