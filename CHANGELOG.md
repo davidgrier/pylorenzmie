@@ -6,6 +6,15 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.10.1] - 2026-11-25
+
+### Fixed
+
+* The `Types` CI job failed on the optional import of CATCH, which CI does
+  not install; pyright now ignores it.  3.10.0 was tagged but not released
+  because of it, so 3.10.1 is the first release with the CATCH option of
+  `lmtool`.
+
 ## [3.10.0] - 2026-11-25
 
 ### Added
