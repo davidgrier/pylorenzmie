@@ -8,6 +8,11 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Added
 
+* `lmtool`: **Particles → Use CATCH**, enabled when the CATCH package is
+  installed, makes Find Particles and Estimate use CATCH's detector and
+  network instead of the circle transform and differential evolution.
+  Nothing from CATCH or PyTorch is imported until a task needs it
+  (`tasks.catch_available()` only looks for the package).
 * `Frame(estimator=...)`: a factory (a class, say) that makes the estimator
   of each single-particle feature.  A factory, because a feature sets the
   pixel mask of its estimator.

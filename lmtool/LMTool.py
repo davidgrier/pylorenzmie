@@ -30,8 +30,8 @@ from pylorenzmie.lmtool.ProfileWidget import ProfileWidget
 from pylorenzmie.lmtool.required import required
 from pylorenzmie.lmtool.results import save_results
 from pylorenzmie.lmtool.tasks import (FitResult, LocalizeRequest, Snapshot,
-                                       Task, TaskRunner, run_estimate,
-                                       run_fit, run_localize)
+                                       Task, TaskRunner, catch_available,
+                                       run_estimate, run_fit, run_localize)
 from pylorenzmie.utilities import Normalizer, estimate_noise, imread
 
 _DIR = Path(__file__).parent
@@ -204,6 +204,19 @@ class LMTool(QMainWindow):
         self.menuParticles.addAction(self.actionAddParticle)
         self.menuParticles.addAction(self.actionRemoveParticle)
 
+        # CATCH is optional: it needs PyTorch and its own package.
+        self.actionCATCH = QAction('Use CATCH', self)
+        self.actionCATCH.setCheckable(True)
+        available = catch_available()
+        self.actionCATCH.setEnabled(available)
+        self.actionCATCH.setToolTip(
+            'Find and estimate particles with the neural networks of CATCH'
+            if available else
+            'CATCH is not installed: pip install CATCH')
+        self.actionCATCH.setStatusTip(self.actionCATCH.toolTip())
+        self.menuParticles.addSeparator()
+        self.menuParticles.addAction(self.actionCATCH)
+
     def _say(self, message: str, timeout: int = 0) -> None:
         '''Show a message in the status bar for *timeout* ms (0: until the
         next message).'''
@@ -369,7 +382,10 @@ class LMTool(QMainWindow):
             return
         self.tasks.start(Task.LOCALIZE,
                          run_localize,
-                         LocalizeRequest(self.data, self.MAX_CANDIDATES))
+                         LocalizeRequest(self.data,
+                                         self.MAX_CANDIDATES,
+                                         self.useCATCH,
+                                         self._instrument()))
 
     def _onLocalized(self, found: pd.DataFrame) -> None:
         self._nfound = found.attrs.get('nfound', len(found))
@@ -619,7 +635,19 @@ class LMTool(QMainWindow):
                              coordinates,
                              self.session.fixed,
                              optimizer.settings,
-                             optimizer.fraction)
+                             optimizer.fraction,
+                             self.useCATCH)
+
+    @property
+    def useCATCH(self) -> bool:
+        '''True if CATCH, and not the circle transform and the search of
+        differential evolution, finds and estimates the particles.'''
+        return self.actionCATCH.isEnabled() and self.actionCATCH.isChecked()
+
+    def _instrument(self) -> dict[str, float]:
+        '''Wavelength, magnification and index of the medium of the model.'''
+        return {name: self.session.get(name)
+                for name in ('wavelength', 'magnification', 'n_m')}
 
     @Slot()
     def estimate(self) -> None:

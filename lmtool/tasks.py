@@ -19,6 +19,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
+import importlib.util
 import logging
 import threading
 from typing import Any, cast
@@ -34,6 +35,15 @@ from pylorenzmie.lib.lmtypes import Coordinates, Image, Properties, Property
 from pylorenzmie.theory import LorenzMie
 
 logger = logging.getLogger(__name__)
+
+
+def catch_available() -> bool:
+    '''True if CATCH is installed.
+
+    CATCH needs PyTorch, which takes seconds to import, so this only looks
+    for the package: nothing is imported until a task asks for CATCH.
+    '''
+    return importlib.util.find_spec('CATCH') is not None
 
 
 class Task(StrEnum):
@@ -73,6 +83,9 @@ class Snapshot:
         Default: those of the optimizer.
     fraction : float, optional
         Fraction of the pixels that a fit uses.  Default: 0.25.
+    catch : bool, optional
+        Estimate with CATCH rather than with differential evolution.
+        Default: False.
     '''
 
     cls: type[LorenzMie]
@@ -82,6 +95,7 @@ class Snapshot:
     fixed: tuple[str, ...] = ()
     settings: dict[str, Any] | None = None
     fraction: float = 0.25
+    catch: bool = False
 
     @classmethod
     def take(cls, model_cls: type[LorenzMie],
@@ -90,7 +104,8 @@ class Snapshot:
              coordinates: Coordinates,
              fixed: list[str] | None = None,
              settings: dict[str, Any] | None = None,
-             fraction: float = 0.25) -> Snapshot:
+             fraction: float = 0.25,
+             catch: bool = False) -> Snapshot:
         '''A snapshot with its own copy of every array and dictionary.'''
         return cls(model_cls,
                    dict(properties),
@@ -98,7 +113,8 @@ class Snapshot:
                    np.array(coordinates, copy=True),
                    tuple(fixed or ()),
                    None if settings is None else dict(settings),
-                   fraction)
+                   fraction,
+                   catch)
 
 
 @dataclass(frozen=True)
@@ -112,10 +128,18 @@ class LocalizeRequest:
         request does not copy it.
     maxfeatures : int, optional
         Number of candidates to keep, the strongest first.  Default: 10.
+    catch : bool, optional
+        Look with CATCH rather than with the circle transform.
+        Default: False.
+    instrument : dict, optional
+        ``wavelength``, ``magnification`` and ``n_m`` of the microscope,
+        which CATCH needs.  Default: the instrument of CATCH.
     '''
 
     image: np.ndarray
     maxfeatures: int = 10
+    catch: bool = False
+    instrument: Mapping[str, float] | None = None
 
 
 @dataclass
@@ -197,6 +221,8 @@ def run_estimate(snapshot: Snapshot, cancel: threading.Event) -> pd.Series:
     Cancelled
         If ``cancel`` is set before the search is done.
     '''
+    if snapshot.catch:
+        return _catch_estimate(snapshot, cancel)
     model = _model(snapshot, cancel)
     defaults = default_bounds(model.instrument.magnification)
     bounds = {name: limits for name, limits in defaults.items()
@@ -227,9 +253,80 @@ def run_localize(request: LocalizeRequest,
             raise Cancelled
 
     check()
+    if request.catch:
+        return _catch_localize(request, cancel)
     return Localizer().localize(request.image,
                                 maxfeatures=request.maxfeatures,
                                 check=check)
+
+
+_catch_lock = threading.Lock()
+_catch_app: Any = None
+
+
+def _catch(instrument: Mapping[str, Property] | None) -> Any:
+    '''The :class:`CATCH.CATCHapp.CATCHapp` for an instrument.
+
+    The networks load once, on the first call, and stay.  The Estimator is
+    not compiled: compiling takes longer than the single estimate that
+    lmtool asks for.
+    '''
+    global _catch_app
+    with _catch_lock:
+        if _catch_app is None:
+            from CATCH import CATCHapp
+            _catch_app = CATCHapp(compile=False)
+        if instrument is not None:
+            _catch_app.instrument = {
+                name: float(cast(float, instrument[name]))
+                for name in ('wavelength', 'magnification', 'n_m')}
+        return _catch_app
+
+
+def _catch_localize(request: LocalizeRequest,
+                    cancel: threading.Event) -> pd.DataFrame:
+    '''Find the particles in an image with CATCH.
+
+    The result has the columns of the output of
+    :meth:`~pylorenzmie.analysis.Localizer.Localizer.localize` that lmtool
+    uses: ``x_p``, ``y_p`` and ``bbox``, the strongest candidate first.
+    '''
+    found = _catch(request.instrument)(request.image)
+    if cancel.is_set():
+        raise Cancelled
+    if len(found) == 0:
+        found = pd.DataFrame(columns=['x_p', 'y_p', 'bbox'])
+        found.attrs['nfound'] = 0
+        return found
+    nfound = len(found)
+    found = found.sort_values('confidence', ascending=False)
+    found = found.head(request.maxfeatures).reset_index(drop=True)
+    found.attrs['nfound'] = nfound
+    return found
+
+
+def _catch_estimate(snapshot: Snapshot,
+                    cancel: threading.Event) -> pd.Series:
+    '''Estimate the height, radius and index of a particle with CATCH.
+
+    CATCH measures the profile of the hologram around the position of the
+    particle, which is in the region of the snapshot.
+    '''
+    app = _catch(snapshot.properties)
+    if cancel.is_set():
+        raise Cancelled
+    x_0 = float(snapshot.coordinates[0].min())
+    y_0 = float(snapshot.coordinates[1].min())
+    x_p = float(cast(float, snapshot.properties['x_p']))
+    y_p = float(cast(float, snapshot.properties['y_p']))
+    estimates = app.estimator(snapshot.data,
+                              [x_p - x_0],
+                              [y_p - y_0],
+                              app.instrument)
+    if len(estimates) == 0:
+        raise ValueError('CATCH has no estimate for this particle')
+    return pd.Series({name: float(estimates[name].iloc[0])
+                      for name in ('z_p', 'a_p', 'n_p')})
 
 
 class _Worker(QObject):
