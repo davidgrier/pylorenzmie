@@ -76,8 +76,11 @@ class Optimizer(LMObject):
         Default: everything that is not a property of the particle (the
         instrument parameters ``wavelength``, ``magnification``, ``n_m``
         and ``noise``, and for an aberrated model the aberration
-        coefficients and center), together with ``k_p``.  That leaves the
-        particle's position, radius and refractive index free.
+        coefficients and center), together with ``k_p`` (and ``k_s``, the
+        absorption of the shell of a
+        :class:`~pylorenzmie.theory.LayeredSphere.LayeredSphere`).  That
+        leaves the particle's position, radius and refractive index free,
+        and the thickness and index of a shell.
     settings : dict, optional
         Keyword arguments forwarded to ``scipy.optimize.least_squares``.
         Defaults to sensible values for holographic particle fitting.
@@ -118,7 +121,8 @@ class Optimizer(LMObject):
         if fixed is None:
             fixed = [p for p in self.model.properties
                      if p not in self.model.single().properties]
-            fixed.append('k_p')
+            fixed.extend(p for p in ('k_p', 'k_s')
+                         if p in self.model.single().properties)
         self.fixed = fixed
         if robust is not None:
             self.robust = robust

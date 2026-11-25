@@ -47,6 +47,12 @@ Sphere
 .. automodule:: pylorenzmie.theory.Sphere
    :members:
 
+LayeredSphere
+-------------
+
+.. automodule:: pylorenzmie.theory.LayeredSphere
+   :members:
+
 Cluster
 -------
 

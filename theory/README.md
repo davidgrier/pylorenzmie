@@ -3,8 +3,9 @@
 The physical model: scatterers, the instrument, and the Lorenz-Mie
 calculators that turn them into holograms.
 
-- `Instrument.py`, `Particle.py`, `Sphere.py`, `Cluster.py`, `Dimer.py` and
-  `Pair.py` describe the scatterers and the microscope.
+- `Instrument.py`, `Particle.py`, `Sphere.py`, `LayeredSphere.py`,
+  `Cluster.py`, `Dimer.py` and `Pair.py` describe the scatterers and the
+  microscope.  `_mie.py` has the recurrences of the Mie coefficients.
 - `LorenzMie.py` is the NumPy calculator.  `numbaLorenzMie.py`,
   `cupyLorenzMie.py`, `torchLorenzMie.py` (with `_tritonkernel.py` and
   `torchLorenzMieBatch.py`) and `jaxLorenzMie.py` are accelerated

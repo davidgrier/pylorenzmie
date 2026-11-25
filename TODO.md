@@ -108,10 +108,28 @@
 - [ ] Piston (constant relative phase) and explicit saturation handling in
       `Feature`/`Aberrated` (patch on hold: the piston needs a physical
       explanation before it is introduced)
-- [ ] `LayeredSphere`: core-shell particle class with appropriate Mie coefficients
+- [x] `LayeredSphere`: core-shell particle class (unreleased, with the notes below) with appropriate Mie coefficients
       a_n/b_n for layered geometries. Relevant for coated beads, lipid vesicles,
       and protein-coated colloids. HoloPy and PyMieScatt both support this;
-      pylorenzmie does not.
+      pylorenzmie does not.  An earlier layered `Sphere` was removed in 2023.
+      Review of 2026-11-22: thin shells (a few nm to ~20 nm, index close to the
+      core's) are below the single-hologram detection limit and `t` and `n_s`
+      are degenerate, so the effective-sphere model is right for molecular
+      coatings; microshells, vesicles and high-contrast shells are the
+      opportunity.  Backends only call `particle.ab`, so the class needs the
+      coefficients (Yang recursion) and fit variables.  Prototype and numbers:
+      the local `devel/layered/`, and the project memory.
+      Open: estimators that start a layered sphere (the effective sphere has
+      the core radius plus about half the shell), lmtool controls for the shell,
+      the effective-sphere-to-shell calibration for thin coatings, shared shell
+      parameters across a population, and more than one shell.
+- [ ] Absorbing particles: the model works (complex index, validated against
+      Bohren-Huffman) and a free `k_p` is recovered on simulated holograms, but
+      `Optimizer` and `lmtool` hold `k_p` fixed and no estimator estimates it, so
+      an absorbing sphere is silently fitted as non-absorbing (radius biased by
+      tens of nm at k = 0.01).  Free `k_p` with a lower bound of 0
+      (`Optimizer.bounds`), estimate it, test and document; validate on real
+      absorbing particles.
 - [ ] Near-field E and H maps: expose the full near-field spatial distribution
       around a sphere as explicit output alongside `field()` and `hologram()`.
       Relevant for optical trapping force calculations and near-field imaging.

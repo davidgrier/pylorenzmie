@@ -6,6 +6,31 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+* `LayeredSphere`: a sphere with one concentric shell (`t_s`, `n_s`, `k_s`),
+  a `Sphere` whose `a_p`, `n_p` and `k_p` are those of the core.  The
+  coefficients come from a recursion of Yang's, in the logarithmic
+  derivatives of the Riccati-Bessel functions of the incident and the
+  outgoing wave (`theory._mie.layered_ab`, compiled with Numba), which is
+  stable for thin shells, hollow cores and large spheres; they agree with an
+  independent evaluation of Bohren and Huffman's formulas to 1e-9 or better.
+  Any calculator that computes with `particle.ab` takes it (NumPy, Numba,
+  Torch, CuPy), and an estimator or optimizer takes it where it takes a
+  sphere.  `Optimizer` holds `k_s` fixed by default, as it holds `k_p`.
+  A thin shell with an index near that of the core fixes only
+  `t_s * (n_s**2 - n_m**2)`: fix `n_s` for such a shell (see the docstring).
+  The shell and the core must have a positive radius and a thickness that is
+  not negative, and the whole sphere is limited to `MAX_RADIUS`; otherwise
+  `ab` raises a `ModelDomainError`.
+
+### Fixed
+
+* `jaxLorenzMie` computed a subclass of `Sphere` as a plain sphere, which
+  would have left out the shell of a `LayeredSphere`: its kernel and its
+  analytical Jacobian are now those of a `Sphere` only, and a layered sphere
+  is computed by the NumPy calculator.
+
 ## [3.10.1] - 2026-11-25
 
 ### Fixed
