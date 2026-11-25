@@ -6,6 +6,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.11.0] - 2026-11-25
+
 ### Added
 
 * `LayeredSphere`: a sphere with one concentric shell (`t_s`, `n_s`, `k_s`),
