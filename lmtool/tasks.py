@@ -274,7 +274,8 @@ def _catch(instrument: Mapping[str, Property] | None) -> Any:
     global _catch_app
     with _catch_lock:
         if _catch_app is None:
-            from CATCH import CATCHapp
+            # CATCH is optional, and CI does not install it
+            from CATCH import CATCHapp  # pyright: ignore
             _catch_app = CATCHapp(compile=False)
         if instrument is not None:
             _catch_app.instrument = {
