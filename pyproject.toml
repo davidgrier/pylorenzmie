@@ -56,9 +56,9 @@ numba   = ["numba"]
 torch   = ["torch", "triton; sys_platform == 'linux'"]
 # lmtool needs one Qt binding, which pip cannot choose for the user, and
 # PyTables for HDF5; ``gui`` is the same as ``pyqt6``
-gui     = ["PyQt6", "tables"]
+gui     = ["PyQt6>=6.12.0", "tables"]
 pyqt5   = ["PyQt5>=5.15", "tables"]
-pyqt6   = ["PyQt6", "tables"]
+pyqt6   = ["PyQt6>=6.12.0", "tables"]
 pyside6 = ["PySide6", "tables"]
 # scikit-learn trains the network of MLPEstimator (tools/train_mlp_estimator.py);
 # the network that ships needs only NumPy

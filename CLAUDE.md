@@ -116,8 +116,10 @@ update it when the role or contents of the directory change.
   absent from the wheel.
 - `pyright` checks everything but the backends that need Torch, Triton, JAX
   or CuPy (CI installs Numba and PyQt6 only).  Run it in an environment with
-  exactly one Qt binding, PyQt6 (6.12.0: 6.12.1 types every `Signal(...)` as
-  missing an argument), because pyright reads the stubs of a second one.  Fix
+  exactly one Qt binding, PyQt6 (the code needs 6.12.0 or later, but pyright
+  needs exactly 6.12.0 until a release has its stubs right: 6.12.1 types every
+  `Signal(...)` as missing an argument, and CI pins 6.12.0 for that job),
+  because pyright reads the stubs of a second one.  Fix
   what it reports rather than silencing it; a `# pyright: ignore` says why.
   A model that can scatter from a list of particles has no position of its
   own, so code that reads or sets one asks `model.single()` (or
@@ -200,9 +202,13 @@ It provides:
 
 **`Azimuthal`** — module of functions (`avg`, `std`, `med`, `mad`) that compute
 azimuthal statistics of 2-D images. They come from the `dgimage` package (the
-image transformations that pylorenzmie shares with QVideo; edit them there, in
-`~/python/dgimage`, not here): `lib/Azimuthal.py` only re-exports
-them. Decorated with `@azimuthaloperator` so they accept `(data, center)` and
+image transformations that pylorenzmie shares with QVideo; edit them in its
+own repository, not here): `lib/Azimuthal.py` only re-exports them.  Install
+`dgimage` with `pip` (`pip install dgimage`, which `pip install -e .` does as
+a dependency): an editable install (`pip install -e ~/python/dgimage`)
+works at run time, but pyright cannot follow its import hook and reports
+`dgimage` as unresolved.  To edit `dgimage` alongside, use `pip install -e
+~/python/dgimage --config-settings editable_mode=compat`. Decorated with `@azimuthaloperator` so they accept `(data, center)` and
 handle coordinate generation internally. Radial geometry is cached per
 `(shape, center)`; the sort that only `med` and `mad` need is made lazily.
 
