@@ -6,6 +6,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.10.0] - 2026-11-25
+
 ### Added
 
 * `lmtool`: **Particles → Use CATCH**, enabled when the CATCH package is
