@@ -408,6 +408,7 @@ class jaxLorenzMie(LorenzMie):
     method: str = 'jax numpy'
     jac_params: frozenset[str] = frozenset({'x_p', 'y_p', 'z_p', 'a_p', 'n_p'})
     fork_safe: bool = False     # the device holds its memory
+    warpable: bool = False      # the field is formed in a compiled graph
 
     def _aberration_coefficients(self) -> np.ndarray | None:
         '''Aberration coefficients for the JAX kernel, or None.

@@ -11,7 +11,7 @@ try:
     import qtpy     # chooses the Qt binding (QT_API) before pyqtgraph can
     from pyqtgraph import mkQApp
     from pylorenzmie.lmtool.tasks import (Cancelled, Snapshot, TaskRunner,
-                                          run_estimate, run_fit)
+                                          _Worker, run_estimate, run_fit)
     from pylorenzmie.theory import AberratedLorenzMie, LorenzMie
     _qt = True
 except Exception:       # no Qt binding, or no usable platform plugin
@@ -131,6 +131,40 @@ class TestTasks(unittest.TestCase):
             run_fit(snap, cancel)
         self.assertLess(len(calls), 20)
 
+    def test_a_fit_with_a_jacobian_stops_in_the_middle(self):
+        # stop at the first hologram, and so in the Jacobian that follows
+        # it, and at the second, after a Jacobian that was computed
+        for stop in (1, 2):
+            with self.subTest(stop=stop):
+                self.stops_in_the_middle(stop)
+
+    def stops_in_the_middle(self, stop):
+        cancel = threading.Event()
+        snap = snapshot()
+        calls = []
+
+        class Analytic(AberratedLorenzMie):
+            jac_params = frozenset({'x_p', 'y_p', 'z_p', 'a_p', 'n_p'})
+
+            def hologram(self, *args, **kwargs):
+                calls.append(1)
+                if len(calls) == stop:
+                    cancel.set()
+                return super().hologram(*args, **kwargs)
+
+            def jac(self):
+                npts = self.coordinates.shape[1]
+                return {name: np.ones(npts) for name in self.jac_params}
+
+        snap = Snapshot.take(Analytic,
+                             snap.properties,
+                             snap.data,
+                             snap.coordinates,
+                             snap.fixed)
+        with self.assertRaises(Cancelled):
+            run_fit(snap, cancel)
+        self.assertLess(len(calls), 20)
+
     def test_an_estimate_returns_the_particle(self):
         result = run_estimate(snapshot(), threading.Event())
         for name in ('z_p', 'a_p', 'n_p'):
@@ -158,6 +192,38 @@ class TestTasks(unittest.TestCase):
         result = run_estimate(fixed, threading.Event())
         for name in ('z_p', 'a_p', 'n_p'):
             self.assertEqual(result[name], fixed.properties[name])
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestWorker(unittest.TestCase):
+    '''The worker, run here and not in a thread, reports how a task ends.'''
+
+    def run_worker(self, function):
+        events = []
+        worker = _Worker(function, None, threading.Event())
+        worker.finished.connect(lambda r: events.append(('finished', r)))
+        worker.cancelled.connect(lambda: events.append(('cancelled',)))
+        worker.error.connect(lambda m: events.append(('error', m)))
+        worker.run()
+        return events
+
+    def test_a_result_is_reported(self):
+        self.assertEqual(self.run_worker(lambda s, c: 7),
+                         [('finished', 7)])
+
+    def test_a_cancel_is_reported(self):
+        def function(snapshot, cancel):
+            raise Cancelled
+
+        self.assertEqual(self.run_worker(function), [('cancelled',)])
+
+    def test_a_failure_is_logged_and_reported_with_its_kind(self):
+        def function(snapshot, cancel):
+            raise KeyError('missing')
+
+        with self.assertLogs(level='ERROR'):
+            events = self.run_worker(function)
+        self.assertEqual(events, [('error', "KeyError: 'missing'")])
 
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')
@@ -216,6 +282,20 @@ class TestTaskRunner(unittest.TestCase):
             mkQApp().processEvents()
             time.sleep(0.005)
         self.assertEqual(self.runner._retired, [])
+
+    def test_shutdown_stops_a_task_that_is_running(self):
+        started = threading.Event()
+
+        def function(snapshot, cancel):
+            started.set()
+            cancel.wait(20)
+            raise Cancelled
+
+        self.assertTrue(self.runner.start('wait', function, None))
+        self.assertTrue(started.wait(20))
+        self.runner.shutdown()
+        self.wait()
+        self.assertFalse(self.runner.busy)
 
     def test_one_task_at_a_time(self):
         release = threading.Event()

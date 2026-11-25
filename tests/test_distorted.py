@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import importlib
 import unittest
 
 import numpy as np
@@ -347,10 +348,24 @@ class TestDistortedLorenzMie(unittest.TestCase):
 
     def test_unsupported_backend_is_rejected(self):
         class FakeCuPy(LorenzMie):
-            method = 'cupy numpy'
+            warpable = False
 
         with self.assertRaises(TypeError):
             Distorted(FakeCuPy)
+
+    def test_the_calculators_say_whether_they_can_be_warped(self):
+        self.assertTrue(LorenzMie.warpable)
+        for module, name in (('jaxLorenzMie', 'jaxLorenzMie'),
+                             ('torchLorenzMie', 'TorchLorenzMie'),
+                             ('cupyLorenzMie', 'cupyLorenzMie')):
+            with self.subTest(name=name):
+                try:
+                    calculator = getattr(
+                        importlib.import_module(f'pylorenzmie.theory.{module}'),
+                        name)
+                except Exception:               # pragma: no cover
+                    continue                    # the library is not installed
+                self.assertFalse(calculator.warpable)
 
     def test_numba_backend_if_available(self):
         try:

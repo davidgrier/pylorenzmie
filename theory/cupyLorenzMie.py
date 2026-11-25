@@ -54,6 +54,7 @@ class cupyLorenzMie(LorenzMie):
 
     method: str = 'cupy numpy'
     fork_safe: bool = False     # the device holds its memory
+    warpable: bool = False      # the field is formed on the device
 
     def __init__(self,
                  *args: Any,

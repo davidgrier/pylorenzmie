@@ -102,6 +102,12 @@ class LorenzMie(LMObject):
     #: hologram: none, for a calculator without an analytical Jacobian.
     jac_params: frozenset[str] = frozenset()
 
+    #: Whether the field is computed from the displacements of the points
+    #: from the particle, so that :func:`~pylorenzmie.theory.Distorted`
+    #: can evaluate it at warped points.  The GPU and JAX calculators form
+    #: the field on a device, or inside a compiled graph, and do not.
+    warpable: bool = True
+
     #: Constant phase of the scattered field, in cycles.  It is zero unless
     #: the model is aberrated.
     piston: float = 0.

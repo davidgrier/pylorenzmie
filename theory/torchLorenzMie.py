@@ -268,6 +268,7 @@ class TorchLorenzMie(LorenzMie):
     '''
 
     method: str = 'torch numpy'
+    warpable: bool = False      # the field is formed on the device
 
     def __init__(self,
                  *args: Any,

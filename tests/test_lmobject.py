@@ -3,7 +3,20 @@ import unittest
 import numpy as np
 import pandas as pd
 
+from pylorenzmie.lib import LMObject
 from pylorenzmie.theory import Instrument, Sphere
+
+
+class Plain(LMObject):
+    '''An object that is not a dataclass, so that it has the methods of
+    ``LMObject`` itself.'''
+
+    def __init__(self, value=1.):
+        self.value = value
+
+    @LMObject.properties.getter
+    def properties(self):
+        return dict(value=self.value)
 
 
 class TestLMObject(unittest.TestCase):
@@ -51,6 +64,24 @@ class TestLMObject(unittest.TestCase):
         other = Sphere()
         other.from_pandas(series)
         self.assertEqual(sphere, other)
+
+
+class TestLMObjectBase(unittest.TestCase):
+    '''The methods of ``LMObject`` that a dataclass replaces or overrides.'''
+
+    def test_equality_compares_the_properties(self):
+        self.assertEqual(Plain(2.), Plain(2.))
+        self.assertNotEqual(Plain(2.), Plain(3.))
+
+    def test_an_object_of_another_class_is_not_equal(self):
+        self.assertNotEqual(Plain(), Instrument())
+        self.assertIs(Plain().__eq__(1), NotImplemented)
+
+    def test_numpy_scalars_are_serialized(self):
+        obj = Plain(np.float32(2.5))
+        other = Plain()
+        other.from_json(obj.to_json())
+        self.assertEqual(other.value, 2.5)
 
 
 if __name__ == '__main__':  # pragma: no cover

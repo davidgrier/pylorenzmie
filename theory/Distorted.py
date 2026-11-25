@@ -37,15 +37,14 @@ except Exception:                                    # pragma: no cover
     _warp = None                                     # no (working) Numba
 
 
-def supported(base_class: type) -> bool:
+def supported(base_class: type[LorenzMie]) -> bool:
     '''True if *base_class* can be distorted.
 
     The warp needs a calculator that computes the field from the
     displacements ``kdr``, as the NumPy and Numba ones do, and not one that
     forms the field on a GPU or inside a compiled graph.
     '''
-    method = getattr(base_class, 'method', 'numpy')
-    return not any(name in method for name in ('cupy', 'jax', 'torch'))
+    return base_class.warpable
 
 
 def Distorted(base_class: type) -> type:
