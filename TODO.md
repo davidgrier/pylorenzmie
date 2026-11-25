@@ -361,6 +361,17 @@ Open findings of the review of the code base; the notes behind them are in
       `torchLorenzMieBatch.py`, about 100 lines); unify with CUDA hardware to
       test it.  The two kernels have no type annotations (`@triton.jit` reads
       them).
+- [ ] **`TorchLorenzMieBatch` disagrees with the NumPy calculator on CUDA**
+      (found 2026-11-25 on a TITAN RTX with torch 2.15 and Triton 3.9;
+      `tests/test_torchlorenzmie.py::test_batch_hologram_positive` fails,
+      and CI cannot run it).  For the four test spheres, `batch_hologram`
+      gives NaN at four pixels of two holograms, and one sphere
+      (`a_p` 0.5, `n_p` 1.5, `z_p` 100) is wrong by up to 2.4 even as a batch
+      of one, while `TorchLorenzMie` matches NumPy to 1e-5 for all of them.
+      The failure is the same at v3.2.0, v3.3.2, v3.5.1, v3.8.0 and v3.9.0,
+      so it is the batch kernel on this stack and not a recent change;
+      `TRITON_DEFAULT_FP_FUSION` makes no difference.  Not yet tried: an
+      older Triton or another GPU.
 - [ ] The macOS GUI job hung once (the stack was in `LMTool._onCurrentParticle`
       during the event loop) and has not since; a stuck test now ends the run
       after five minutes with the stacks of its threads.  Watch the next runs; the `TaskRunner` fix

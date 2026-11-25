@@ -27,6 +27,33 @@ All notable changes to pylorenzmie are recorded here. The format follows
   closer to the focal plane than its radius, say) raises a
   `ModelDomainError` that names the values, in place of scipy's
   "Residuals are not finite in the initial point".
+* `lmtool`: an unhandled exception in a slot is logged and shown in a
+  dialog, and the program goes on.  PyQt5 and PyQt6 abort the process on
+  one, which lost the session.
+* `lmtool`: saving the parameters reports a file that cannot be written in
+  the status bar, and no longer truncates the file when the parameters
+  cannot be serialized.  The name of a results file that the program makes
+  is `results_YYYY-MM-DD_HH-MM-SS.h5`, which sorts by date (it was
+  `results_MM_DD_YYYY-...`), in `lmtool.LMTool.RESULTS_DIRECTORY`.
+* `lmtool`: the window keeps the background and the dark count in a
+  `Background` class that does not need Qt, the hologram in a
+  `LoadedImage`, and the names of the tasks in a `Task` enum with one table
+  of messages.  The panel of parameters goes into a container that the
+  layout provides, in place of a widget found by its name, and a control is
+  found by name (`LMWidget.control(name)`) and not with `hasattr`.
+* `LorenzMie.warpable` says whether a calculator computes the field from
+  displacements, so that `Distorted` can warp it.  The CuPy, JAX and Torch
+  calculators set it to `False`; `Distorted` no longer reads the name of the
+  method.
+* `Hologram.from_coordinates(data, coordinates)` replaces the private
+  `Hologram._from_slice`, and raises a `ValueError` for coordinates whose
+  shape is not `(2, ny, nx)`.
+
+### Fixed
+
+* `lmtool`: undoing an estimate, or any change of `x_p` that moves the
+  region of interest, no longer sets `y_p` back to its old value (setting
+  the region to `x_p` announced its position with the old `y_p`).
 
 ## [3.9.0] - 2026-11-22
 
