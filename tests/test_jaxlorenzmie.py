@@ -281,6 +281,34 @@ class TestJaxFallback(unittest.TestCase):
         with self.assertRaises(TypeError):
             self.model.jac()
 
+    def test_a_layered_sphere_is_computed_with_its_shell(self) -> None:
+        # the kernel knows a plain sphere only: a layered sphere is a Sphere,
+        # and must not be computed without its shell
+        from pylorenzmie.theory import LayeredSphere
+        layered = LayeredSphere(
+            x_p=16.,
+            y_p=16.,
+            z_p=150.,
+            a_p=0.75,
+            n_p=1.45,
+            t_s=0.1,
+            n_s=1.6,
+        )
+        self.model.particle = layered
+        ref = LorenzMie(coordinates=self.model.coordinates)
+        ref.particle = layered
+        np.testing.assert_allclose(self.model.hologram(),
+                                   ref.hologram(),
+                                   rtol=1e-12,
+                                   atol=1e-12)
+        self.assertEqual(self.model.jac_params, frozenset())
+        with self.assertRaises(TypeError):
+            self.model.jac()
+
+    def test_a_sphere_has_the_analytical_jacobian(self) -> None:
+        self.assertEqual(self.model.jac_params,
+                         frozenset({'x_p', 'y_p', 'z_p', 'a_p', 'n_p'}))
+
 
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

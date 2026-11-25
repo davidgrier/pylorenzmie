@@ -6,6 +6,7 @@ from pylorenzmie.backends import BACKENDS
 
 from .Particle import Particle
 from .Sphere import Sphere, mie_coefficients, ModelDomainError
+from .LayeredSphere import LayeredSphere
 from .Cluster import Cluster
 from .Dimer import Dimer
 from .Pair import Pair
@@ -189,7 +190,7 @@ def model_class(backend: str | None = None, distorted: bool = False) -> type:
 # Alias for backward compatibility
 LMHologram = LorenzMie
 
-__all__ = '''Instrument Particle Sphere Cluster Dimer Pair
+__all__ = '''Instrument Particle Sphere LayeredSphere Cluster Dimer Pair
           LorenzMie LMHologram Aberrated AberratedLorenzMie
           Distorted DistortedLorenzMie model_class BACKENDS
           mie_coefficients ModelDomainError'''.split()

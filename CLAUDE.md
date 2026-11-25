@@ -249,6 +249,15 @@ downward recurrence for the logarithmic derivative starts
 kept; a start at `nmax` itself left errors of 1e-4 to 100% for large spheres
 of a high index (`jaxLorenzMie` has the same margin).
 
+**`LayeredSphere(Sphere)`** — a sphere with one shell (`t_s`, `n_s`, `k_s`;
+`a_p`, `n_p`, `k_p` are the core).  `theory/_mie.layered_ab` is Yang's
+recursion in the logarithmic derivatives of `Ψ` and `ζ`; Bohren and Huffman's
+formulas with `χ` divide by functions that have real zeros.  A calculator that
+computes with `particle.ab` takes it; `jaxLorenzMie` computes a plain `Sphere`
+only (`type(...) is Sphere`, not `isinstance`, because a subclass may have
+coefficients that the kernel does not).  A thin shell fixes only
+`t_s (n_s^2 - n_m^2)`: fit it with `n_s` fixed.
+
 **`Cluster`, `Dimer`** — multi-sphere assemblies.
 
 **`LorenzMie(LMObject)`** — core scattering calculator (`method = 'numpy'`).

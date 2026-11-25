@@ -374,6 +374,20 @@ _jax_hologram_jac = jax.jit(
 )
 
 
+_JAC_PARAMS = frozenset({'x_p', 'y_p', 'z_p', 'a_p', 'n_p'})
+
+
+def _is_plain_sphere(particle: Any) -> bool:
+    '''True for a sphere that the kernel computes.
+
+    A subclass of :class:`~pylorenzmie.theory.Sphere.Sphere`, such as a
+    :class:`~pylorenzmie.theory.LayeredSphere.LayeredSphere`, has
+    coefficients that the kernel does not: ``isinstance`` would accept it
+    and leave out its shell.
+    '''
+    return type(particle) is Sphere
+
+
 class jaxLorenzMie(LorenzMie):
     '''LorenzMie with JAX JIT compilation and analytical Jacobian.
 
@@ -406,7 +420,15 @@ class jaxLorenzMie(LorenzMie):
     '''
 
     method: str = 'jax numpy'
-    jac_params: frozenset[str] = frozenset({'x_p', 'y_p', 'z_p', 'a_p', 'n_p'})
+    @property
+    def jac_params(self) -> frozenset[str]:  # pyright: ignore[reportIncompatibleVariableOverride]
+        '''The properties that :meth:`jac` has: those of a plain sphere.
+
+        Empty for any other particle, a
+        :class:`~pylorenzmie.theory.LayeredSphere.LayeredSphere`
+        included, whose shell the kernel does not know.
+        '''
+        return _JAC_PARAMS if _is_plain_sphere(self.particle) else frozenset()
     fork_safe: bool = False     # the device holds its memory
     warpable: bool = False      # the field is formed in a compiled graph
 
@@ -455,7 +477,7 @@ class jaxLorenzMie(LorenzMie):
         arguments are ignored when the JAX path is active (both are
         always True).
         '''
-        if not isinstance(self.particle, Sphere):
+        if not _is_plain_sphere(self.particle):
             return super().hologram(**kwargs)
 
         return np.asarray(_jax_hologram_jit(*self._jax_arguments()))
@@ -480,7 +502,7 @@ class jaxLorenzMie(LorenzMie):
             If ``particle`` is not a single
             :class:`~pylorenzmie.theory.Sphere.Sphere`.
         '''
-        if not isinstance(self.particle, Sphere):
+        if not _is_plain_sphere(self.particle):
             raise TypeError('jac() supports single Sphere particles only')
 
         J_r, J_a, J_n = _jax_hologram_jac(*self._jax_arguments())
