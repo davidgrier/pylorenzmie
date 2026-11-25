@@ -256,7 +256,7 @@ class TestSaveResultsAs(ToolTestCase):
         path = Path(tool._output_path())
         self.assertEqual(path.parent, Path('~/data/lmtool').expanduser())
         self.assertRegex(path.name,
-                         r'^results_\d\d_\d\d_\d{4}-\d\d_\d\d_\d\d\.h5$')
+                         r'^results_\d{4}(-\d\d){2}_\d\d(-\d\d){2}\.h5$')
 
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')

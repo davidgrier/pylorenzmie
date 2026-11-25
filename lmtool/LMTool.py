@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -40,6 +37,9 @@ from pylorenzmie.utilities import Normalizer, estimate_noise, imread
 _DIR = Path(__file__).parent
 
 logger = logging.getLogger(__name__)
+
+#: Where results go when the user has not chosen a file.
+RESULTS_DIRECTORY = Path('~/data/lmtool')
 
 
 @dataclass(frozen=True)
@@ -185,8 +185,10 @@ class LMTool(QMainWindow):
         '''The Particles tab, and the actions that add and remove particles.'''
         view = QTableView()
         view.setModel(self.particles)
-        view.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        view.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        view.setSelectionBehavior(
+            QAbstractItemView.SelectionBehavior.SelectRows)
+        view.setSelectionMode(
+            QAbstractItemView.SelectionMode.SingleSelection)
         required(view.verticalHeader()).hide()
         header = required(view.horizontalHeader())
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -667,6 +669,7 @@ class LMTool(QMainWindow):
         optimizer.robust = state
         self.optimizerWidget.settings = optimizer.settings
 
+    # Optional, and not a union with None, as in FitWidget.showEvent
     def closeEvent(self, event: Optional[QCloseEvent]) -> None:
         self.tasks.shutdown()
         super().closeEvent(event)
@@ -742,8 +745,8 @@ class LMTool(QMainWindow):
     # ------------------------------------------------------------------
 
     def _output_path(self) -> str:
-        timestamp = datetime.now().strftime('%m_%d_%Y-%H_%M_%S')
-        return str(Path('~/data/lmtool').expanduser() /
+        timestamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        return str(RESULTS_DIRECTORY.expanduser() /
                    f'results_{timestamp}.h5')
 
     @Slot()

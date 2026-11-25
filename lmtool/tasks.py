@@ -16,12 +16,12 @@ signals.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 import logging
 import threading
-from typing import Any
+from typing import Any, cast
 
 import numpy as np
 import pandas as pd
@@ -30,7 +30,7 @@ from qtpy.QtCore import QObject, QThread, Signal, Slot
 from pylorenzmie.analysis import DEEstimator, Localizer, Mask, Optimizer
 from pylorenzmie.analysis.DEEstimator import default_bounds
 from pylorenzmie.analysis.Hologram import Hologram
-from pylorenzmie.lib.lmtypes import Coordinates, Image
+from pylorenzmie.lib.lmtypes import Coordinates, Image, Properties, Property
 from pylorenzmie.theory import LorenzMie
 
 logger = logging.getLogger(__name__)
@@ -75,21 +75,21 @@ class Snapshot:
         Fraction of the pixels that a fit uses.  Default: 0.25.
     '''
 
-    cls: type
-    properties: dict
+    cls: type[LorenzMie]
+    properties: Properties
     data: np.ndarray
     coordinates: np.ndarray
     fixed: tuple[str, ...] = ()
-    settings: dict | None = None
+    settings: dict[str, Any] | None = None
     fraction: float = 0.25
 
     @classmethod
-    def take(cls, model_cls: type,
-             properties: dict,
+    def take(cls, model_cls: type[LorenzMie],
+             properties: Mapping[str, Property],
              data: Image,
              coordinates: Coordinates,
              fixed: list[str] | None = None,
-             settings: dict | None = None,
+             settings: dict[str, Any] | None = None,
              fraction: float = 0.25) -> Snapshot:
         '''A snapshot with its own copy of every array and dictionary.'''
         return cls(model_cls,
@@ -133,7 +133,7 @@ class FitResult:
         result when it is saved.
     '''
 
-    properties: dict
+    properties: dict[str, float]
     result: pd.Series
     metadata: pd.Series = field(default_factory=pd.Series)
 
@@ -182,7 +182,8 @@ def run_fit(snapshot: Snapshot, cancel: threading.Event) -> FitResult:
                           fixed=list(snapshot.fixed),
                           settings=snapshot.settings)
     result = optimizer.optimize(_hologram(snapshot))
-    return FitResult(dict(model.properties), result, optimizer.metadata)
+    properties = cast(dict[str, float], dict(model.properties))
+    return FitResult(properties, result, optimizer.metadata)
 
 
 def run_estimate(snapshot: Snapshot, cancel: threading.Event) -> pd.Series:
@@ -238,7 +239,7 @@ class _Worker(QObject):
     cancelled = Signal()
     error = Signal(str)
 
-    def __init__(self, function: Callable,
+    def __init__(self, function: Callable[..., Any],
                  snapshot: Snapshot | LocalizeRequest,
                  cancel: threading.Event) -> None:
         super().__init__()
@@ -298,7 +299,7 @@ class TaskRunner(QObject):
 
     def start(self,
               name: str,
-              function: Callable,
+              function: Callable[..., Any],
               snapshot: Snapshot | LocalizeRequest) -> bool:
         '''Start a task; returns False, and does nothing, if one is running.'''
         if self.busy:
