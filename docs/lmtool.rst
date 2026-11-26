@@ -108,15 +108,24 @@ The ROI centre is used as the initial estimate of the particle's lateral
 position (:math:`x_p, y_p`).
 
 If `CATCH <https://github.com/laltman2/CATCH>`_ is installed in the same
-environment (``pip install CATCH``, which needs PyTorch), **Particles → Use
-CATCH** is enabled.  When it is checked, **Find Particles** uses the
-detector of CATCH, and **Optimization → Estimate** uses its network, instead
-of the circle transform and the search of differential evolution.  The
-networks load the first time that you use them, which takes a few seconds,
-and they use the wavelength, the magnification and the index of the medium
-that the model has.  CATCH is meant for instruments whose pixel is close to
-that of its reference microscope; see its documentation.  Without CATCH the
-entry is disabled and everything else works as before.
+environment, **Particles → Use CATCH** is enabled.  When it is checked,
+**Find Particles** uses the detector of CATCH, and **Optimization →
+Estimate** uses its network, instead of the circle transform and the search
+of differential evolution.  The networks load the first time that you use
+them, which takes a few seconds, and they use the wavelength, the
+magnification and the index of the medium that the model has.  CATCH is
+meant for instruments whose pixel is close to that of its reference
+microscope; see its documentation.  Without CATCH the entry is disabled and
+everything else works as before.
+
+CATCH needs PyTorch.  Install it from its repository:
+
+.. code-block:: sh
+
+   pip install git+https://github.com/laltman2/CATCH.git
+
+Do not use ``pip install CATCH``, which installs an unrelated package from
+PyPI.
 
 Particles tab
 ^^^^^^^^^^^^^

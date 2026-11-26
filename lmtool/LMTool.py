@@ -220,7 +220,8 @@ class LMTool(QMainWindow):
         self.actionCATCH.setToolTip(
             'Find and estimate particles with the neural networks of CATCH'
             if available else
-            'CATCH is not installed: pip install CATCH')
+            'CATCH is not installed: pip install '
+            'git+https://github.com/laltman2/CATCH.git')
         self.actionCATCH.setStatusTip(self.actionCATCH.toolTip())
         self.menuParticles.addSeparator()
         self.menuParticles.addAction(self.actionCATCH)

@@ -39,6 +39,9 @@ All notable changes to pylorenzmie are recorded here. The format follows
   `cupyLorenzMie` in single precision is unchanged.
 * `Optimizer.optimize` left the model at the last point that it had evaluated,
   which was a step of a finite difference: it now leaves it at the fit.
+* The documentation of `lmtool`, and its tooltip, said to install CATCH with
+  `pip install CATCH`, which installs an unrelated package from PyPI.  They
+  now say to install it from its repository.
 
 ### Changed
 
