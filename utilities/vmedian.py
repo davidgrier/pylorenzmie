@@ -11,6 +11,10 @@ class VMedian:
     factor of 3, so a tree of depth ``order`` accumulates
     ``3**(order + 1)`` frames before producing its first output.
 
+    The median has the type of the frames: 8-bit and 16-bit frames, and
+    floating-point ones, keep their values.  A frame of another shape or
+    type than the one before it starts the filter over.
+
     Parameters
     ----------
     order : int
@@ -21,6 +25,8 @@ class VMedian:
 
     def __init__(self, order: int = 0, shape: tuple | None = None) -> None:
         self.child: VMedian | None = None
+        # the type of the frames, unknown until the first one arrives
+        self._dtype: np.dtype | None = None
         self.shape = shape
         self.order = order
         self.index = 0
@@ -44,6 +50,8 @@ class VMedian:
         Returns
         -------
         median : ndarray
+            Median of the frames, of their type.  Until the filter is
+            :attr:`initialized`, the first frame.
         '''
         return self._data.reshape(self.shape) if reshape else self._data
 
@@ -55,11 +63,13 @@ class VMedian:
         data : ndarray
             New image frame.
         '''
-        if data.shape != self.shape:
-            self._data = data.astype(np.uint8).ravel()
-            self.shape = data.shape
+        if (data.shape != self.shape or self._dtype is None
+                or data.dtype != self._dtype):
+            self._dtype = data.dtype
+            self.shape = data.shape         # allocates the buffer
+            self._data = data.flatten()
         if self.order == 0:
-            self.buffer[self.index, :] = data.astype(np.uint8).ravel()
+            self.buffer[self.index, :] = data.ravel()
             self.index += 1
         else:
             child = self.child
@@ -71,14 +81,16 @@ class VMedian:
                 self.index += 1
         if self.index == 3:
             self.index = 0
-            self._data = np.median(self.buffer, axis=0).astype(np.uint8)
+            median = np.median(self.buffer, axis=0)
+            self._data = median.astype(self.buffer.dtype)
             self._initialized = True
             self._cycled = True
         else:
             self._cycled = False
 
     def reset(self) -> None:
-        '''Reset the filter state.'''
+        '''Discard the frames: the next one starts the filter over.'''
+        self._dtype = None
         self._initialized = False
         self._cycled = False
         if self.child is not None:
@@ -110,7 +122,7 @@ class VMedian:
         if self.child is not None:
             self.child.shape = shape
         npts = int(np.prod(shape))
-        self.buffer = np.zeros((3, npts), dtype=np.uint8)
+        self.buffer = np.zeros((3, npts), dtype=self._dtype or np.uint8)
         self.index = 0
         self._initialized = False
 
