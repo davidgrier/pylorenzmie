@@ -38,8 +38,9 @@ normalization::
 
     lmtool image.png --background background.png
 
-A scalar background value is also accepted (useful for 8-bit images with a
-known camera offset)::
+Images are read at their own bit depth, so a background image must have the
+bit depth of the hologram.  A scalar background value is also accepted, in
+the gray levels of the image (useful with a known camera offset)::
 
     lmtool image.png --background 100
 

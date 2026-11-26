@@ -112,8 +112,10 @@ class Normalizer:
         background : str, path-like or float
             A number is the intensity of a uniform background.  A string
             that reads as a number is the same.  Any other string, and a
-            path, is the name of an image file, which is read as 8-bit gray
-            levels, as lmtool reads holograms.
+            path, is the name of an image file, which is read in gray at its
+            own bit depth (see
+            :func:`~pylorenzmie.utilities.readimage.imread`), as lmtool reads
+            holograms.
         **kwargs
             Passed to the constructor (``size``, ``dark``).
 

@@ -6,6 +6,24 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.11.1] - 2026-11-25
+
+### Fixed
+
+* `utilities.imread` reduced an image of more than eight bits to its high
+  byte, without a warning: a 12-bit camera frame in a 16-bit file (values up
+  to 4095) became the levels 0 to 15.  It now returns the values of the file
+  (`uint16`; `int32` for wider integers, and `float32` for a floating-point
+  image, which was clipped to eight bits), and so do `lmtool` and
+  `Normalizer.read`.  For such images, a dark count (`--dark`) and a
+  background that is given as a number are in the units of the file, and a
+  background image must have the bit depth of the hologram.  Eight-bit
+  images are read as before.  The examples in the quickstart use `imread`
+  in place of OpenCV, which reduces the depth in the same way.
+* `lmtool` offered **Use CATCH** when CATCH was not installed but a directory
+  named `CATCH` was on the Python path (run from the directory that holds a
+  checkout, say), and the task then failed to import it.
+
 ## [3.11.0] - 2026-11-25
 
 ### Added
