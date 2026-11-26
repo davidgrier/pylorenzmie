@@ -3,8 +3,9 @@
 The pipeline that finds particles in a hologram and fits them: localize,
 estimate, optimize.
 
-- `Hologram.py` holds an image with its coordinates, and `Mask.py` and
-  `RadialMask.py` choose the pixels that take part in a fit.
+- `Hologram.py` holds an image with its coordinates and its saturated
+  pixels, and `Mask.py` and `RadialMask.py` choose the pixels that take part
+  in a fit.
 - `Localizer.py` finds the features in a frame.
 - `Estimator.py`, `DEEstimator.py`, `RadialEstimator.py`,
   `MLPEstimator.py` and `PairEstimator.py` estimate starting values

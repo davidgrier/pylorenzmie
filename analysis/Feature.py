@@ -12,15 +12,15 @@ hologram and its difference from the data.
 
 The pixels that the fit uses are those that
 the :class:`~pylorenzmie.analysis.Mask.Mask` in :attr:`~Feature.mask` selects.
-By default the mask leaves out the pixels with the largest value of the
-crop (saturated pixels) and any NaN or infinite ones.  A feature is also
-what :class:`~pylorenzmie.analysis.Frame.Frame` creates for each particle that
-it finds.
+By default the mask leaves out the pixels in
+:attr:`~pylorenzmie.analysis.Hologram.Hologram.excluded`: the saturated
+pixels that the hologram names, and any NaN or infinite ones.  A feature is
+also what :class:`~pylorenzmie.analysis.Frame.Frame` creates for each particle
+that it finds.
 '''
 
 import logging
 
-import numpy as np
 import pandas as pd
 from pylorenzmie.analysis import (BaseEstimator, DEEstimator, Mask, Optimizer,
                                   PairEstimator)
@@ -80,7 +80,9 @@ class Feature(Hologram):
                  centers: list[tuple[float, float]] | None = None,
                  fixed: list[str] | None = None,
                  estimator: BaseEstimator | None = None) -> None:
-        super().__init__(hologram.data, hologram.corner)
+        super().__init__(hologram.data,
+                         hologram.corner,
+                         hologram.saturated)
         self._coordinates = hologram.coordinates    # the crop's own view
         self.model = model or LorenzMie()
 
@@ -97,11 +99,7 @@ class Feature(Hologram):
         m = Mask()
         m.shape = self.data.shape
         # TODO: detect bad pixels to exclude from Mask
-        m.exclude = (
-            (self.data == np.max(self.data))
-            | np.isnan(self.data)
-            | np.isinf(self.data)
-        )
+        m.exclude = self.excluded
 
         if estimator is None:
             estimator_cls = PairEstimator if pair else DEEstimator

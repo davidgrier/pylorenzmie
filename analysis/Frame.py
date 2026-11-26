@@ -22,6 +22,7 @@ from collections.abc import Callable
 from typing import cast
 
 import numpy as np
+from numpy.typing import NDArray
 import pandas as pd
 from pylorenzmie.theory import Instrument, LorenzMie
 from pylorenzmie.analysis import (BaseEstimator, DEEstimator, Feature,
@@ -78,6 +79,10 @@ class Frame(Hologram):
         Default: ``None``, the
         :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` of a
         :class:`~pylorenzmie.analysis.Feature.Feature`.
+    saturated : numpy.ndarray of bool, optional
+        Saturated pixels of ``data``, which the fits leave out (see
+        :class:`~pylorenzmie.analysis.Hologram.Hologram`).  Setting
+        :attr:`data` clears it.  Default: ``None``.
 
     Attributes
     ----------
@@ -96,8 +101,8 @@ class Frame(Hologram):
                  instrument: Instrument | None = None,
                  localizer: Localizer | None = None,
                  split_redchi: float | None = 2.0,
-                 estimator: Callable[[], BaseEstimator] | None = None
-                 ) -> None:
+                 estimator: Callable[[], BaseEstimator] | None = None,
+                 saturated: NDArray[np.bool_] | None = None) -> None:
         self.instrument = instrument or Instrument()
         self.estimator = estimator
         self.localizer = localizer or Localizer()
@@ -107,7 +112,7 @@ class Frame(Hologram):
         self._results: pd.DataFrame = pd.DataFrame()
         self._data: Image | None = None
         # A Frame has no image until data is set; its data property says so.
-        super().__init__(cast(Image, data), corner)
+        super().__init__(cast(Image, data), corner, saturated)
 
     # Override the dataclass-generated 'data' field with a property so
     # that assigning frame.data triggers coordinate regeneration and a
@@ -123,6 +128,7 @@ class Frame(Hologram):
         self._results = pd.DataFrame()
         self._data = data
         self._coordinates = None
+        self.saturated = None       # it belonged to the previous image
 
     @property
     def shape(self) -> tuple[int, int]:
@@ -332,13 +338,19 @@ class Frame(Hologram):
             [feature.optimizer.result for feature in self.features])
         return self._results
 
-    def analyze(self, data: Image | None = None) -> pd.DataFrame:
+    def analyze(self,
+                data: Image | None = None,
+                saturated: NDArray[np.bool_] | None = None
+                ) -> pd.DataFrame:
         '''Detect features, estimate parameters, and optimize fits.
 
         Parameters
         ----------
         data : numpy.ndarray, optional
             Normalized hologram.  Updates :attr:`data` if provided.
+        saturated : numpy.ndarray of bool, optional
+            Saturated pixels of the hologram.  Updates ``saturated`` if
+            provided.
 
         Returns
         -------
@@ -346,7 +358,10 @@ class Frame(Hologram):
             Optimized parameters of the generative model for each
             detected feature.
         '''
-        self.data = data  # pyright: ignore[reportIncompatibleVariableOverride]
+        if data is not None:
+            self.data = data  # pyright: ignore[reportIncompatibleVariableOverride]
+        if saturated is not None:
+            self.saturated = saturated
         self.detect()
         self.estimate()
         return self.optimize()

@@ -46,6 +46,19 @@ Holograms and fits
   without particles is 1.  Divide a raw image by its background (after
   subtracting the dark count of the camera) with a
   :class:`~pylorenzmie.utilities.normalizer.Normalizer`.
+* **Saturated pixels** are left out of fits, and only the raw image shows
+  which they are.  A :class:`~pylorenzmie.analysis.Hologram.Hologram` carries
+  them in ``saturated``; NaN and infinite pixels are left out as well.  A
+  pixel is not saturated just because it is the brightest one::
+
+      raw = imread('hologram.png')    # in the type of the file
+      normalizer = Normalizer.read('background.png')
+      frame = Frame()
+      results = frame.analyze(normalizer(raw), normalizer.saturated(raw))
+
+  By default a pixel is saturated at the largest value that the type of the
+  image can hold.  A camera of 10 or 12 bits that writes 16-bit files
+  saturates below that: ``Normalizer(saturation=4095)`` says where.
 * The ``noise`` of an instrument is the noise of the camera as a fraction of
   the background.  A fit weights each pixel by it, so the reduced chi-squared
   that a fit reports is about 1 only if the noise is right and the model

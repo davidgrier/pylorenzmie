@@ -19,7 +19,7 @@ def argument_parser() -> argparse.ArgumentParser:
     -------
     argparse.ArgumentParser
         Parser of the file to open and of the options ``--background``,
-        ``--distorted`` and ``--backend``.
+        ``--dark``, ``--saturation``, ``--distorted`` and ``--backend``.
     '''
     default_file = str(_ROOT / 'docs' / 'tutorials' / 'crop.png')
 
@@ -42,6 +42,13 @@ def argument_parser() -> argparse.ArgumentParser:
         default=0.,
         help=('dark count (black level) of the camera, in '
               'gray levels, subtracted before normalizing'),
+    )
+    parser.add_argument(
+        '--saturation',
+        type=float,
+        default=None,
+        help=('gray level at which the camera saturates, such as 4095 '
+              'for 12 bits (default: the largest that the file can hold)'),
     )
     parser.add_argument(
         '-d',

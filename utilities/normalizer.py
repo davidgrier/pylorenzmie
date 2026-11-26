@@ -11,6 +11,11 @@ median background.  A camera adds a constant dark count (black level) to
 every pixel, and the hologram must be divided by the background of the light
 alone: give the dark count to the :class:`Normalizer`, which subtracts it from
 the image and the background before it divides.
+
+A saturated pixel does not measure the light that fell on it, and its value
+after the division does not show that it was saturated.
+:meth:`Normalizer.saturated` finds these pixels in the raw image, so that a
+fit can leave them out.
 '''
 
 import os
@@ -60,12 +65,18 @@ class Normalizer:
         image and from the reference before the division, so that the
         background is 1 and the fringes have their true contrast.
         Default: 0.
+    saturation : float, optional
+        Raw value at and above which a pixel is saturated, in the units of
+        the image: 4095 for a 12-bit camera, say.  Default: ``None``, the
+        largest value that an integer image can hold (255 for 8 bits); a
+        floating-point image then has no saturation level.
 
     Raises
     ------
     ValueError
-        If *method* is not one of :attr:`methods`, or if *reference* is a
-        scalar that is not positive and finite.
+        If *method* is not one of :attr:`methods`, if *reference* is a
+        scalar that is not positive and finite, or if *saturation* is not
+        positive and finite.
 
     Notes
     -----
@@ -95,11 +106,13 @@ class Normalizer:
                  method: str = 'median',
                  size: int = 51,
                  reference: NDArray[np.floating] | float | None = None,
-                 dark: float = 0.) -> None:
+                 dark: float = 0.,
+                 saturation: float | None = None) -> None:
         self.method = method
         self.size = size
         self.reference = reference
         self.dark = dark
+        self.saturation = saturation
 
     @classmethod
     def read(cls,
@@ -117,7 +130,7 @@ class Normalizer:
             :func:`~pylorenzmie.utilities.readimage.imread`), as lmtool reads
             holograms.
         **kwargs
-            Passed to the constructor (``size``, ``dark``).
+            Passed to the constructor (``size``, ``dark``, ``saturation``).
 
         Returns
         -------
@@ -175,6 +188,52 @@ class Normalizer:
             raise ValueError('The dark count must be finite and not '
                              f'negative, not {dark}')
         self._dark = dark
+
+    @property
+    def saturation(self) -> float | None:
+        '''Raw value at which a pixel is saturated, or None for the largest
+        value of the type of the image.'''
+        return self._saturation
+
+    @saturation.setter
+    def saturation(self, saturation: float | None) -> None:
+        if saturation is not None:
+            saturation = float(saturation)
+            if not (np.isfinite(saturation) and saturation > 0):
+                raise ValueError('The saturation level must be positive and '
+                                 f'finite, not {saturation}')
+        self._saturation = saturation
+
+    def saturated(self, image: Image) -> NDArray[np.bool_] | None:
+        '''Find the saturated pixels of a raw image.
+
+        Parameters
+        ----------
+        image : ndarray
+            Raw hologram pixel values, in the type that the camera or the
+            file gave them: converting an integer image to floating point
+            loses the largest value that it can hold.
+
+        Returns
+        -------
+        saturated : ndarray of bool or None
+            True where the image is at or above the saturation level, or
+            where a reference image of the same shape is (a pixel that was
+            divided by a saturated background means nothing either).  None
+            if the level is not known, for a floating-point image without
+            :attr:`saturation`.
+        '''
+        raw = np.asarray(image)
+        level = self.saturation
+        if level is None:
+            if raw.dtype.kind not in 'iu':
+                return None
+            level = float(np.iinfo(raw.dtype.name).max)
+        saturated = raw >= level
+        if (self.method == 'reference'
+                and np.shape(self.reference) == raw.shape):
+            saturated |= np.asarray(self.reference) >= level
+        return saturated
 
     @property
     def reference(self) -> NDArray[np.floating] | float | None:

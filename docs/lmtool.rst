@@ -50,6 +50,13 @@ background that cannot be read is reported there and in the log, and the
 previous one stays.  A background image must have the shape of the hologram:
 otherwise the hologram is divided by its median, and the status bar says so.
 
+Estimates and fits leave out the pixels at which the camera saturated, in the
+hologram or in the background image.  These are the pixels at the largest
+value that the file can hold: 255 for 8 bits.  A camera of 10 or 12 bits that
+writes 16-bit files saturates below that, so give its level::
+
+    lmtool image.tif --saturation 4095
+
 Model
 ^^^^^
 

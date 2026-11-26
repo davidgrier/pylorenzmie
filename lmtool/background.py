@@ -26,6 +26,9 @@ class Background:
         Dark count (black level) of the camera, in gray levels, subtracted
         from the hologram and the background before the division (see
         :class:`~pylorenzmie.utilities.normalizer.Normalizer`).  Default: 0.
+    saturation : float, optional
+        Gray level at and above which a pixel is saturated.  Default:
+        ``None``, the largest value that the image can hold.
 
     Attributes
     ----------
@@ -41,12 +44,16 @@ class Background:
     Raises
     ------
     ValueError
-        If the dark count is not finite and non-negative.
+        If the dark count is not finite and non-negative, or the saturation
+        level is not positive and finite.
     '''
 
-    def __init__(self, dark: float = 0.) -> None:
+    def __init__(self,
+                 dark: float = 0.,
+                 saturation: float | None = None) -> None:
         self.dark = float(dark)
-        self.normalizer = Normalizer(dark=self.dark)
+        self.saturation = saturation
+        self.normalizer = Normalizer(dark=self.dark, saturation=saturation)
         self.refused = ''
 
     def use(self, background: str | float) -> str | None:
@@ -65,7 +72,9 @@ class Background:
             one; None if it could.
         '''
         try:
-            self.normalizer = Normalizer.read(background, dark=self.dark)
+            self.normalizer = Normalizer.read(background,
+                                              dark=self.dark,
+                                              saturation=self.saturation)
         except (OSError, ValueError) as error:
             logger.error(f'Could not set the background: {error}')
             self.refused = str(error)
@@ -114,9 +123,25 @@ class Background:
             return self.normalizer(raw), self.describe()
         except ValueError as error:
             logger.error(f'Could not normalize by the background: {error}')
-            median = Normalizer(dark=self.dark)
+            median = Normalizer(dark=self.dark, saturation=self.saturation)
             return (median(raw),
                     self.describe(median, f'{error}; using the median'))
+
+    def saturated(self, raw: Image) -> NDArray[np.bool_] | None:
+        '''The saturated pixels of a hologram, or of its background.
+
+        Parameters
+        ----------
+        raw : numpy.ndarray
+            The hologram as the camera made it.
+
+        Returns
+        -------
+        numpy.ndarray of bool or None
+            As for
+            :meth:`~pylorenzmie.utilities.normalizer.Normalizer.saturated`.
+        '''
+        return self.normalizer.saturated(raw)
 
     def describe(self,
                  normalizer: Normalizer | None = None,
@@ -147,6 +172,8 @@ class Background:
             used = 'image'
         problem = fallback or self.refused
         dark = f', dark {normalizer.dark:g}' if normalizer.dark else ''
+        if normalizer.saturation is not None:
+            dark += f', saturation {normalizer.saturation:g}'
         return (f'background: {used}{dark}'
                 + (f' ({problem})' if problem else ''))
 

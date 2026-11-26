@@ -154,7 +154,8 @@ def lmtool() -> None:
     tool = LMTool(ALMWidget.with_model(model),
                   args.filename,
                   args.background,
-                  args.dark)
+                  args.dark,
+                  args.saturation)
     tool.show()
     splash.finish(tool)
     sys.exit(app.exec())

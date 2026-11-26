@@ -313,8 +313,14 @@ and `y_p`, and `a_p` in μm.  `bounds=None` (the default) searches `z_p` from
 the default does not depend on the camera; bounds that are given are taken
 as they are.  A seed makes an estimate reproducible (`Mask` takes it too).
 
-**`Mask`** — selects which pixels participate in the fit (excludes
-saturated/NaN pixels; supports random subsampling via `fraction`: exactly
+**`Hologram`** — a normalized image with its pixel coordinates and,
+optionally, `saturated`, which only the raw image can tell
+(`Normalizer.saturated`).  `excluded` (saturated, NaN or infinite) is what
+`Feature` and `lmtool` leave out of estimates and fits.  Do not infer
+saturation from the values of normalized data.
+
+**`Mask`** — selects which pixels participate in the fit (never those in
+its `exclude`; supports random subsampling via `fraction`: exactly
 `round(fraction * n)` of the usable pixels, drawn from a private generator;
 `seed` makes the draw reproducible).
 

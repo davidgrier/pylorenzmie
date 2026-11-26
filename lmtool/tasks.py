@@ -89,6 +89,9 @@ class Snapshot:
     catch : bool, optional
         Estimate with CATCH rather than with differential evolution.
         Default: False.
+    saturated : numpy.ndarray of bool, optional
+        Saturated pixels of the region, shape (ny, nx), which estimates and
+        fits leave out.  Default: none.
     '''
 
     cls: type[LorenzMie]
@@ -99,6 +102,7 @@ class Snapshot:
     settings: dict[str, Any] | None = None
     fraction: float = 0.25
     catch: bool = False
+    saturated: np.ndarray | None = None
 
     @classmethod
     def take(cls, model_cls: type[LorenzMie],
@@ -108,7 +112,8 @@ class Snapshot:
              fixed: list[str] | None = None,
              settings: dict[str, Any] | None = None,
              fraction: float = 0.25,
-             catch: bool = False) -> Snapshot:
+             catch: bool = False,
+             saturated: np.ndarray | None = None) -> Snapshot:
         '''A snapshot with its own copy of every array and dictionary.'''
         return cls(model_cls,
                    dict(properties),
@@ -117,7 +122,9 @@ class Snapshot:
                    tuple(fixed or ()),
                    None if settings is None else dict(settings),
                    fraction,
-                   catch)
+                   catch,
+                   None if saturated is None else np.array(saturated,
+                                                           copy=True))
 
 
 @dataclass(frozen=True)
@@ -189,7 +196,9 @@ def _model(snapshot: Snapshot, cancel: threading.Event) -> LorenzMie:
 
 
 def _hologram(snapshot: Snapshot) -> Hologram:
-    return Hologram.from_coordinates(snapshot.data, snapshot.coordinates)
+    return Hologram.from_coordinates(snapshot.data,
+                                     snapshot.coordinates,
+                                     snapshot.saturated)
 
 
 def run_fit(snapshot: Snapshot, cancel: threading.Event) -> FitResult:
@@ -201,14 +210,14 @@ def run_fit(snapshot: Snapshot, cancel: threading.Event) -> FitResult:
         If ``cancel`` is set before the fit is done.
     '''
     model = _model(snapshot, cancel)
-    # a pixel at the maximum is taken to be saturated
+    hologram = _hologram(snapshot)
     mask = Mask(fraction=snapshot.fraction)
-    mask.exclude = snapshot.data == np.max(snapshot.data)
+    mask.exclude = hologram.excluded
     optimizer = Optimizer(model=model,
                           mask=mask,
                           fixed=list(snapshot.fixed),
                           settings=snapshot.settings)
-    result = optimizer.optimize(_hologram(snapshot))
+    result = optimizer.optimize(hologram)
     properties = cast(dict[str, float], dict(model.properties))
     return FitResult(properties, result, optimizer.metadata)
 
@@ -232,8 +241,11 @@ def run_estimate(snapshot: Snapshot, cancel: threading.Event) -> pd.Series:
               if name not in snapshot.fixed}
     if not bounds:
         return pd.Series(model.single().properties)
-    return DEEstimator(model=model, bounds=bounds).estimate(
-        _hologram(snapshot))
+    hologram = _hologram(snapshot)
+    estimator = DEEstimator(model=model,
+                            bounds=bounds,
+                            exclude=hologram.excluded)
+    return estimator.estimate(hologram)
 
 
 def run_localize(request: LocalizeRequest,

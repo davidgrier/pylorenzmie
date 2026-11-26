@@ -48,6 +48,17 @@ class TestFeature(unittest.TestCase):
         self.assertIs(self.feature.estimator.exclude,
                       self.feature.optimizer.mask.exclude)
 
+    def test_only_saturated_and_nonfinite_pixels_are_excluded(self):
+        data = np.ones((20, 20))
+        data[3, 4] = 2.                     # the brightest, and a good one
+        data[5, 5] = np.nan
+        saturated = np.zeros(data.shape, dtype=bool)
+        saturated[7, 8:10] = True
+        feature = Feature(Hologram(data, saturated=saturated))
+        self.assertEqual(np.argwhere(feature.mask.exclude).tolist(),
+                         [[5, 5], [7, 8], [7, 9]])
+        np.testing.assert_array_equal(feature.saturated, saturated)
+
     def test_is_hologram(self):
         '''Feature is-a Hologram.'''
         self.assertIsInstance(self.feature, Hologram)

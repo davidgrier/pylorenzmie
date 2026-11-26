@@ -578,6 +578,34 @@ class TestBackground(ToolTestCase):
         self.assertTrue(tool.setBackground(100))
         self.assertEqual(self.shown(tool), 'background: 100')
 
+    def test_a_snapshot_names_the_saturated_pixels_of_its_region(self):
+        tool = self.tool()
+        raw = np.full((390, 390), 100, dtype=np.uint8)
+        raw[200, 190:193] = 255
+        tool.data = raw
+        tool.imageWidget.setRegion(195., 195., 60)
+        snapshot = tool._snapshot()
+        self.assertEqual(snapshot.saturated.shape, snapshot.data.shape)
+        self.assertEqual(snapshot.saturated.sum(), 3)
+        np.testing.assert_allclose(
+            snapshot.data[snapshot.saturated],
+            255. / np.median(raw))
+
+    def test_a_file_keeps_the_type_that_says_where_it_saturates(self):
+        tool = self.tool()
+        self.assertEqual(tool.raw.dtype, np.uint8)
+        self.assertIsNotNone(tool._snapshot().saturated)
+
+    def test_a_saturation_level_at_startup(self):
+        tool = LMTool(ALMWidget, str(IMAGE), saturation=120.)
+        self.addCleanup(tool.close)
+        self.wait(tool)
+        np.testing.assert_array_equal(tool._snapshot().saturated.sum(),
+                                      (tool.crop()[0]
+                                       >= 120. / np.median(tool.raw)
+                                       - 1e-9).sum())
+        self.assertIn('saturation 120', self.shown(tool))
+
     def test_the_dialog_sets_the_background(self):
         tool = self.tool()
         with mock.patch('pylorenzmie.lmtool.LMTool.QFileDialog.'
@@ -620,6 +648,11 @@ class TestModelChoice(ToolTestCase):
         self.assertEqual(self.parse().dark, 0.)
         self.assertEqual(self.parse('-D', '29').dark, 29.)
         self.assertEqual(self.parse('--dark', '28.5').dark, 28.5)
+
+    def test_the_saturation_level_is_an_option(self):
+        self.assertIsNone(self.parse().saturation)
+        self.assertEqual(self.parse('--saturation', '4095').saturation,
+                         4095.)
 
     def test_an_unknown_backend_is_refused(self):
         with self.assertRaises(SystemExit):

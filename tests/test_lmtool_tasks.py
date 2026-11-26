@@ -2,6 +2,7 @@ import os
 import threading
 import time
 import unittest
+from unittest import mock
 
 import numpy as np
 
@@ -164,6 +165,46 @@ class TestTasks(unittest.TestCase):
         with self.assertRaises(Cancelled):
             run_fit(snap, cancel)
         self.assertLess(len(calls), 20)
+
+    def test_saturated_pixels_do_not_change_a_fit(self):
+        clean = snapshot(fraction=1.)
+        saturated = np.zeros(clean.data.shape, dtype=bool)
+        saturated[45:55, 45:55] = True
+        data = clean.data.copy()
+        data[saturated] = 5.            # what the camera did not measure
+        snap = Snapshot.take(clean.cls,
+                             clean.properties,
+                             data,
+                             clean.coordinates,
+                             clean.fixed,
+                             fraction=1.,
+                             saturated=saturated)
+        fit = run_fit(snap, threading.Event())
+        self.assertEqual(fit.result['npix'], (~saturated).sum())
+        self.assertAlmostEqual(fit.properties['z_p'], 300., delta=15.)
+        self.assertAlmostEqual(fit.properties['a_p'], 1.0, delta=0.1)
+
+    def test_every_good_pixel_is_fitted(self):
+        snap = snapshot(fraction=1.)
+        fit = run_fit(snap, threading.Event())
+        self.assertEqual(fit.result['npix'], snap.data.size)
+
+    def test_an_estimate_leaves_out_saturated_pixels(self):
+        clean = snapshot()
+        saturated = np.zeros(clean.data.shape, dtype=bool)
+        saturated[10:20, 30:40] = True
+        snap = Snapshot.take(clean.cls,
+                             clean.properties,
+                             clean.data,
+                             clean.coordinates,
+                             clean.fixed,
+                             saturated=saturated)
+        saturated[:] = False            # a snapshot has its own copy
+        with mock.patch('pylorenzmie.lmtool.tasks.DEEstimator') as make:
+            run_estimate(snap, threading.Event())
+        np.testing.assert_array_equal(make.call_args.kwargs['exclude'],
+                                      snap.saturated)
+        self.assertEqual(snap.saturated.sum(), 100)
 
     def test_an_estimate_returns_the_particle(self):
         result = run_estimate(snapshot(), threading.Event())

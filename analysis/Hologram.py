@@ -20,6 +20,17 @@ class Hologram:
     corner : tuple[float, float], optional
         ``(left, top)`` pixel coordinates of the top-left corner of
         this image within the full camera frame.  Default: ``(0., 0.)``.
+    saturated : numpy.ndarray of bool, optional
+        Pixels at which the camera saturated, shape ``(ny, nx)``.  The
+        normalized ``data`` cannot show this, so it comes from the raw
+        image (see
+        :meth:`~pylorenzmie.utilities.normalizer.Normalizer.saturated`).
+        Default: ``None``, no pixel is known to be saturated.
+
+    Raises
+    ------
+    ValueError
+        If ``saturated`` does not have the shape of ``data``.
 
     Notes
     -----
@@ -39,14 +50,25 @@ class Hologram:
         crop = hologram[y0:y1, x0:x1]
 
     returns a new :class:`Hologram` whose ``corner`` is updated so
-    that its coordinates are consistent with those of the parent frame.
+    that its coordinates are consistent with those of the parent frame,
+    with the same part of ``saturated``.
     '''
 
     data: Image
     corner: tuple[float, float] = (0., 0.)
+    saturated: NDArray[np.bool_] | None = None
 
     def __post_init__(self) -> None:
         self._coordinates: NDArray[np.floating] | None = None
+        if self.data is not None:
+            self._check_saturated()
+
+    def _check_saturated(self) -> None:
+        '''Raise a ValueError if ``saturated`` does not fit ``data``.'''
+        if (self.saturated is not None
+                and np.shape(self.saturated) != self.shape):
+            raise ValueError(f'saturated has shape '
+                             f'{np.shape(self.saturated)}, not {self.shape}')
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Hologram):
@@ -73,6 +95,18 @@ class Hologram:
         return self._coordinates
 
     @property
+    def excluded(self) -> NDArray[np.bool_]:
+        '''Pixels that a fit must not use, shape ``(ny, nx)``.
+
+        The saturated pixels and those whose value is NaN or infinite.
+        '''
+        self._check_saturated()
+        excluded = ~np.isfinite(self.data)
+        if self.saturated is not None:
+            excluded |= np.asarray(self.saturated, dtype=bool)
+        return excluded
+
+    @property
     def flat_data(self) -> Image:
         '''Pixel values as a 1-D view, shape ``(npts,)``.'''
         return self.data.ravel()
@@ -85,7 +119,9 @@ class Hologram:
     @classmethod
     def from_coordinates(cls,
                          data: Image,
-                         coordinates: NDArray[np.floating]) -> 'Hologram':
+                         coordinates: NDArray[np.floating],
+                         saturated: NDArray[np.bool_] | None = None
+                         ) -> 'Hologram':
         '''Create a Hologram from pixel coordinates that are already known.
 
         Nothing is computed, so a crop of a frame (or a region that a
@@ -98,6 +134,9 @@ class Hologram:
         coordinates : numpy.ndarray
             Pixel coordinates of ``data``, shape ``(2, ny, nx)``.  The
             corner is read from the first pixel.
+        saturated : numpy.ndarray of bool, optional
+            Saturated pixels of ``data``, shape ``(ny, nx)``.
+            Default: ``None``.
 
         Returns
         -------
@@ -107,13 +146,14 @@ class Hologram:
         Raises
         ------
         ValueError
-            If the shape of ``coordinates`` is not ``(2, ny, nx)``.
+            If the shape of ``coordinates`` is not ``(2, ny, nx)``, or
+            that of ``saturated`` is not ``(ny, nx)``.
         '''
         if coordinates.shape != (2, *data.shape):
             raise ValueError(f'coordinates have shape {coordinates.shape}, '
                              f'not {(2, *data.shape)}')
-        h = cls(data, (float(coordinates[0, 0, 0]),
-                       float(coordinates[1, 0, 0])))
+        corner = (float(coordinates[0, 0, 0]), float(coordinates[1, 0, 0]))
+        h = cls(data, corner, saturated)
         h._coordinates = coordinates
         return h
 
@@ -132,8 +172,12 @@ class Hologram:
             Cropped hologram with coordinates inherited from the parent.
         '''
         sy, sx = key
+        self._check_saturated()
+        saturated = (None if self.saturated is None
+                     else self.saturated[key])
         return Hologram.from_coordinates(self.data[key],
-                                         self.coordinates[:, sy, sx])
+                                         self.coordinates[:, sy, sx],
+                                         saturated)
 
     @classmethod
     def example(cls) -> None:  # pragma: no cover

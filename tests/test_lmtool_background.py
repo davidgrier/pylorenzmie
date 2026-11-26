@@ -32,6 +32,22 @@ class TestBackground(unittest.TestCase):
         self.assertEqual(background.refused, '')
         self.assertEqual(background.describe(), 'background: median')
 
+    def test_the_saturation_level_goes_to_the_normalizer(self):
+        background = Background(saturation=140.)
+        saturated = background.saturated(HOLOGRAM)
+        np.testing.assert_array_equal(saturated, HOLOGRAM >= 140.)
+        self.assertEqual(background.describe(),
+                         'background: median, saturation 140')
+        background.use(100)                 # it stays with a background
+        self.assertEqual(background.normalizer.saturation, 140.)
+        small = self.write('small.png', np.full((8, 8), 100.))
+        background.use(small)               # and when the median is used
+        with self.assertLogs(level='ERROR'):
+            _, description = background.normalize(HOLOGRAM)
+        self.assertIn('saturation 140', description)
+        with self.assertRaises(ValueError):
+            Background(saturation=0.)
+
     def test_a_dark_count_is_validated(self):
         with self.assertRaises(ValueError):
             Background(dark=-1.)

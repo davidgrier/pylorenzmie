@@ -30,6 +30,33 @@ class TestFrame(unittest.TestCase):
         self.frame = Frame()
         self.data = imread(TEST_IMAGE).astype(float) / 100.
 
+    def test_features_leave_out_the_saturated_pixels(self):
+        saturated = self.data >= 2.55
+        self.frame.data = self.data
+        self.frame.saturated = saturated
+        feature = self.frame[600:800, 500:650]
+        self.assertTrue(feature.saturated.any())
+        np.testing.assert_array_equal(feature.mask.exclude,
+                                      saturated[600:800, 500:650])
+
+    def test_new_data_has_no_saturated_pixels(self):
+        frame = Frame(self.data, saturated=self.data >= 2.55)
+        self.assertTrue(frame.saturated.any())
+        frame.data = self.data
+        self.assertIsNone(frame.saturated)
+
+    def test_analyze_takes_the_saturated_pixels(self):
+        frame = Frame()
+        saturated = np.zeros((64, 64), dtype=bool)
+        frame.analyze(np.ones((64, 64)), saturated)
+        self.assertIs(frame.saturated, saturated)
+
+    def test_analyze_without_data_keeps_the_data(self):
+        data = np.ones((64, 64))
+        self.frame.data = data
+        self.frame.analyze()
+        self.assertIs(self.frame.data, data)
+
     def test_is_hologram(self):
         '''Frame is-a Hologram.'''
         self.assertIsInstance(self.frame, Hologram)

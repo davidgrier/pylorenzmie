@@ -54,11 +54,14 @@ class LoadedImage:
         The hologram divided by its background.
     coordinates : numpy.ndarray
         Pixel coordinates of the hologram, shape (2, ny, nx).
+    saturated : numpy.ndarray of bool or None
+        Saturated pixels, if the saturation level is known.
     '''
 
     raw: Image
     data: NDArray[np.floating]
     coordinates: Coordinates
+    saturated: NDArray[np.bool_] | None
 
 
 @dataclass(frozen=True)
@@ -96,6 +99,10 @@ class LMTool(QMainWindow):
         from the hologram and the background before the division (see
         :class:`~pylorenzmie.utilities.normalizer.Normalizer`).
         Default: 0.
+    saturation : float, optional
+        Gray level at and above which a pixel is saturated, so that fits
+        leave it out.  Default: ``None``, the largest value that the image
+        can hold (255 for 8 bits).
     '''
 
     uiFile = 'LMTool.ui'
@@ -137,12 +144,13 @@ class LMTool(QMainWindow):
                  controls: type[LMWidget],
                  filename: str | None = None,
                  background: str | float | None = None,
-                 dark: float = 0.) -> None:
+                 dark: float = 0.,
+                 saturation: float | None = None) -> None:
         super().__init__()
         # The state comes first: loading the layout reads the attributes of
         # the window, and a property that needs the state would fail.
         #: What the holograms are divided by.
-        self.background = Background(dark)
+        self.background = Background(dark, saturation)
         self._image: LoadedImage | None = None
         self._datafile: str | None = None
         self._pre_estimate: dict[str, float] | None = None   # for undo
@@ -306,7 +314,8 @@ class LMTool(QMainWindow):
         normalized, description = self.background.normalize(data)
         self._background.setText(description)
         coordinates = LMObject.meshgrid(data.shape, flatten=False)
-        self._image = LoadedImage(data, normalized, coordinates)
+        saturated = self.background.saturated(data)
+        self._image = LoadedImage(data, normalized, coordinates, saturated)
         self.controls.x_p.setRange((0, data.shape[1]-1))
         self.controls.y_p.setRange((0, data.shape[0]-1))
         self.imageWidget.data = normalized
@@ -337,7 +346,8 @@ class LMTool(QMainWindow):
             return
         self._datafile = filename
         self.particles.clear()
-        self.data = data.astype(float)
+        # in the type of the file, which tells where it saturates
+        self.data = data
         self.findParticles()
 
     def _setNoise(self, image: NDArray[np.floating]) -> None:
@@ -598,9 +608,8 @@ class LMTool(QMainWindow):
         self.fitWidget.showModel(hologram, noise)
         self.profileWidget.showTheory(profile)
 
-    def crop(self) -> tuple[NDArray[np.floating], QRectF, Coordinates]:
-        '''Return the pixels inside the ROI, the rectangle that they cover
-        and their coordinates.'''
+    def _roiSlices(self) -> tuple[slice, slice]:
+        '''Rows and columns of the pixels inside the ROI.'''
         image = self._image
         if image is None:
             raise RuntimeError('there is no hologram')
@@ -608,7 +617,14 @@ class LMTool(QMainWindow):
         found = get(image.data, self.imageWidget.image)
         if found is None:
             raise RuntimeError('the ROI is outside the image')
-        (sy, sx), _ = cast(tuple[tuple[slice, slice], Any], found)
+        slices, _ = cast(tuple[tuple[slice, slice], Any], found)
+        return slices
+
+    def crop(self) -> tuple[NDArray[np.floating], QRectF, Coordinates]:
+        '''Return the pixels inside the ROI, the rectangle that they cover
+        and their coordinates.'''
+        sy, sx = self._roiSlices()
+        image = cast(LoadedImage, self._image)
         # the rectangle of the pixels that were cut out: the ROI itself
         # extends past the image when the particle is near an edge
         rect = QRectF(sx.start,
@@ -628,6 +644,9 @@ class LMTool(QMainWindow):
     def _snapshot(self) -> Snapshot:
         '''A copy of what a task needs: the session and the region.'''
         data, _, coordinates = self.crop()
+        saturated = cast(LoadedImage, self._image).saturated
+        if saturated is not None:
+            saturated = saturated[self._roiSlices()]
         optimizer = self.fitWidget.optimizer
         return Snapshot.take(self.session.cls,
                              self.session.properties,
@@ -636,7 +655,8 @@ class LMTool(QMainWindow):
                              self.session.fixed,
                              optimizer.settings,
                              optimizer.fraction,
-                             self.useCATCH)
+                             self.useCATCH,
+                             saturated)
 
     @property
     def useCATCH(self) -> bool:

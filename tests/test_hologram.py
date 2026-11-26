@@ -122,5 +122,49 @@ class TestHologram(unittest.TestCase):
             Hologram.from_coordinates(self.data, self.hologram.coordinates[0])
 
 
+
+class TestExcludedPixels(unittest.TestCase):
+
+    def setUp(self):
+        self.data = np.ones((6, 8))
+        self.saturated = np.zeros((6, 8), dtype=bool)
+        self.saturated[2, 3] = True
+
+    def test_the_brightest_pixel_is_not_excluded_by_itself(self):
+        self.data[1, 1] = 3.
+        hologram = Hologram(self.data)
+        self.assertIsNone(hologram.saturated)
+        self.assertFalse(hologram.excluded.any())
+
+    def test_saturated_and_nonfinite_pixels_are_excluded(self):
+        self.data[0, 0] = np.nan
+        self.data[5, 7] = np.inf
+        excluded = Hologram(self.data, saturated=self.saturated).excluded
+        self.assertEqual(np.argwhere(excluded).tolist(),
+                         [[0, 0], [2, 3], [5, 7]])
+
+    def test_excluding_does_not_change_saturated(self):
+        self.data[0, 0] = np.nan
+        hologram = Hologram(self.data, saturated=self.saturated)
+        hologram.excluded
+        self.assertEqual(hologram.saturated.sum(), 1)
+
+    def test_a_crop_has_its_part_of_saturated(self):
+        hologram = Hologram(self.data, saturated=self.saturated)
+        crop = hologram[1:4, 2:6]
+        self.assertEqual(np.argwhere(crop.saturated).tolist(), [[1, 1]])
+        self.assertIsNone(Hologram(self.data)[1:4, 2:6].saturated)
+
+    def test_saturated_of_another_shape_is_refused(self):
+        with self.assertRaisesRegex(ValueError, 'saturated'):
+            Hologram(self.data, saturated=np.zeros((3, 3), dtype=bool))
+        hologram = Hologram(self.data)
+        hologram.saturated = np.zeros((9, 9), dtype=bool)
+        with self.assertRaisesRegex(ValueError, 'saturated'):
+            hologram.excluded
+        with self.assertRaisesRegex(ValueError, 'saturated'):
+            hologram[0:2, 0:2]
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

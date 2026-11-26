@@ -127,9 +127,13 @@
       intensity formed in the kernel, aberration phase in the kernel)
 - [x] `Distorted`: the exact geometric-flow counterpart of `Aberrated`, with a
       fused Numba warp kernel; `lmtool --distorted` and `--backend`
-- [ ] Piston (constant relative phase) and explicit saturation handling in
-      `Feature`/`Aberrated` (patch on hold: the piston needs a physical
-      explanation before it is introduced)
+- [x] Explicit saturation handling (`Hologram.saturated`,
+      `Normalizer.saturated`, `lmtool --saturation`)
+- [ ] Piston (constant relative phase) in `Feature`/`Aberrated` (patch on
+      hold: the piston needs a physical explanation before it is introduced)
+- [ ] Missing pixels (NaN, where the background is not positive):
+      `Localizer` finds nothing in an image with a few of them, and
+      `estimate_noise` returns NaN
 - [x] `LayeredSphere`: core-shell particle class (released in 3.11.0) with appropriate Mie coefficients
       a_n/b_n for layered geometries. Relevant for coated beads, lipid vesicles,
       and protein-coated colloids. HoloPy and PyMieScatt both support this;

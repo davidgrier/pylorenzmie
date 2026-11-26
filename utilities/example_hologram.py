@@ -8,6 +8,7 @@ the classes in ``pylorenzmie.analysis`` use it.
 
 from pathlib import Path
 from pylorenzmie.analysis.Hologram import Hologram
+from pylorenzmie.utilities.normalizer import Normalizer
 from pylorenzmie.utilities.readimage import imread
 
 
@@ -35,7 +36,8 @@ def example_hologram(name: str = 'crop.png') -> Hologram:
     -------
     hologram : Hologram
         Hologram intensity divided by the background level (100 counts),
-        shape ``(height, width)``, dtype ``float64``.
+        shape ``(height, width)``, dtype ``float64``, with the pixels that
+        are saturated in the image.
     '''
     path = _DATA / name
     if not path.exists():
@@ -43,4 +45,6 @@ def example_hologram(name: str = 'crop.png') -> Hologram:
     image = imread(path)
     if image is None:
         raise FileNotFoundError(f'No example image named {name!r}')
-    return Hologram(image.astype(float) / 100.)
+    normalizer = Normalizer('reference', reference=100.)
+    return Hologram(normalizer(image),
+                    saturated=normalizer.saturated(image))

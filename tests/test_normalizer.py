@@ -189,5 +189,65 @@ class TestRead(unittest.TestCase):
             Normalizer.read(None)
 
 
+
+class TestSaturated(unittest.TestCase):
+
+    def image(self, dtype, high):
+        image = np.full((4, 4), 100, dtype=dtype)
+        image[1, 2] = high
+        return image
+
+    def where(self, saturated):
+        return np.argwhere(saturated).tolist()
+
+    def test_the_default_is_the_largest_value_of_the_type(self):
+        for dtype, high in ((np.uint8, 255), (np.uint16, 65535)):
+            with self.subTest(dtype=dtype):
+                saturated = Normalizer().saturated(self.image(dtype, high))
+                self.assertEqual(self.where(saturated), [[1, 2]])
+
+    def test_a_bright_pixel_below_the_level_is_not_saturated(self):
+        saturated = Normalizer().saturated(self.image(np.uint8, 254))
+        self.assertFalse(saturated.any())
+
+    def test_a_given_level(self):
+        normalizer = Normalizer(saturation=4095)
+        for high, expected in ((4094, []), (4095, [[1, 2]])):
+            with self.subTest(high=high):
+                image = self.image(np.uint16, high)
+                self.assertEqual(self.where(normalizer.saturated(image)),
+                                 expected)
+
+    def test_a_floating_point_image_needs_a_level(self):
+        image = self.image(float, 255)
+        self.assertIsNone(Normalizer().saturated(image))
+        saturated = Normalizer(saturation=255).saturated(image)
+        self.assertEqual(self.where(saturated), [[1, 2]])
+
+    def test_a_saturated_background_counts(self):
+        reference = self.image(np.uint8, 255).astype(float)
+        normalizer = Normalizer('reference', reference=reference)
+        image = np.full((4, 4), 90, dtype=np.uint8)
+        image[0, 0] = 255
+        self.assertEqual(self.where(normalizer.saturated(image)),
+                         [[0, 0], [1, 2]])
+        # not when it is not the background that is used
+        normalizer.method = 'median'
+        self.assertEqual(self.where(normalizer.saturated(image)), [[0, 0]])
+        # nor one of another shape
+        normalizer = Normalizer('reference', reference=np.full((2, 2), 255.))
+        self.assertEqual(self.where(normalizer.saturated(image)), [[0, 0]])
+
+    def test_a_level_must_be_positive_and_finite(self):
+        for level in (0., -1., np.nan, np.inf):
+            with self.subTest(level=level):
+                with self.assertRaises(ValueError):
+                    Normalizer(saturation=level)
+
+    def test_read_takes_the_level(self):
+        normalizer = Normalizer.read(100, saturation=4095)
+        self.assertEqual(normalizer.saturation, 4095.)
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

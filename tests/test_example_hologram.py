@@ -24,6 +24,11 @@ class TestExampleHologram(unittest.TestCase):
                 self.assertTrue((data / name).exists())
                 self.assertIsInstance(example_hologram(name), Hologram)
 
+    def test_the_clipped_pixels_are_saturated(self):
+        hologram = example_hologram()
+        self.assertEqual(hologram.saturated.sum(), 101)
+        self.assertTrue((hologram.data[hologram.saturated] == 2.55).all())
+
     def test_unknown_image_raises_a_clear_error(self):
         with self.assertRaises(FileNotFoundError):
             example_hologram('no_such_image.png')
