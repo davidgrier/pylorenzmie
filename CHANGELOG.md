@@ -6,6 +6,46 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.12.0] - 2026-11-26
+
+### Added
+
+* `Hologram.saturated` marks the pixels at which the camera saturated, and
+  `Hologram.excluded` those that a fit must not use (saturated, NaN or
+  infinite).  Crops keep them, `Frame` takes them
+  (`frame.analyze(data, saturated)`), and `Normalizer.saturated(raw)` finds
+  them in a raw image or its background.  `Normalizer(saturation=...)` and
+  `lmtool --saturation` set the level, for cameras of 10 or 12 bits that
+  write 16-bit files; by default it is the largest value of the type of the
+  image.
+
+### Changed
+
+* `Feature` and `lmtool` no longer take the brightest pixels of a region to be
+  saturated.  A good pixel was left out of every fit, and when the image was
+  divided by a background image, saturated pixels went into the fit, since
+  their normalized values differ.  **A hologram that you normalize yourself
+  has no saturated pixels unless you name them**: pass
+  `Normalizer.saturated(raw)` if your images can saturate.
+  `example_hologram` names those of its images.
+* `LMTool.raw` has the type of the file (`uint8` or `uint16`, say) and is no
+  longer converted to floating point.  Convert it before arithmetic that can
+  leave the range of the type.
+
+### Fixed
+
+* `lmtool` estimates ran on all pixels, saturated ones included.
+* A fit in `lmtool` failed if the region had a NaN pixel (where the
+  background is zero, say).
+* `VMedian` cast every frame to eight bits, so that a 16-bit frame gave a
+  wrong median (the median of 1000, 3000 and 2000 was 208).  The median now
+  has the type of the frames.  Frames of 8 bits are filtered as before; a
+  frame of another type starts the filter over, as one of another shape does.
+* After `VMedian.reset`, frames from before the reset went into the next
+  median, and `VMedian.get` raised an `AttributeError` for a filter that was
+  made with a shape.
+* `Frame.analyze()` without data discarded the data of the frame.
+
 ## [3.11.1] - 2026-11-25
 
 ### Fixed
