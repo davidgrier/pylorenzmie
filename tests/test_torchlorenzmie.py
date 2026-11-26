@@ -2,6 +2,9 @@ import unittest
 
 import numpy as np
 
+from pylorenzmie.analysis import Mask, Optimizer
+from pylorenzmie.analysis.Hologram import Hologram
+from pylorenzmie.theory.Aberrated import Aberrated
 from pylorenzmie.theory.LorenzMie import LorenzMie
 
 try:
@@ -239,6 +242,75 @@ class TestTorchLorenzMie(unittest.TestCase):
     def test_repr(self) -> None:
         r = repr(self.model)
         self.assertIsInstance(r, str)
+
+
+@unittest.skipUnless(_device, 'torch with a CUDA or Apple (MPS) GPU '
+                              'not available')
+class TestTorchFit(unittest.TestCase):
+    '''Single-precision fits against double precision.'''
+
+    shape = (201, 201)
+
+    def model(self, cls, **properties):
+        model = cls(coordinates=cls.meshgrid(self.shape, corner=(700., 500.)))
+        model.instrument.noise = 0.02
+        model.properties = {'x_p': 801.3, 'y_p': 598.6, 'z_p': 300.,
+                            'a_p': 1.2, 'n_p': 1.45}
+        model.properties = properties
+        return model
+
+    def test_the_differences_resolve_the_derivatives(self) -> None:
+        single = self.model(TorchLorenzMie)
+        double = self.model(LorenzMie)
+        base = single.hologram().copy()
+        for name in ('x_p', 'y_p', 'z_p', 'a_p', 'n_p', 'k_p'):
+            with self.subTest(name=name):
+                value = double.properties[name]
+                step = single.diff_steps[name]
+                single.properties = {name: value + step}
+                difference = (single.hologram() - base) / step
+                single.properties = {name: value}
+                double.properties = {name: value + 1e-7}
+                exact = double.hologram().copy()
+                double.properties = {name: value}
+                exact = (exact - double.hologram()) / 1e-7
+                error = np.linalg.norm(difference - exact)
+                # steps in proportion to the values are wrong by 60% here
+                self.assertLess(error, 0.1 * np.linalg.norm(exact))
+
+    def test_a_fit_agrees_with_double_precision(self) -> None:
+        data = self.model(LorenzMie).hologram().reshape(self.shape)
+        data += np.random.default_rng(0).normal(0., 0.02, self.shape)
+        hologram = Hologram(data, (700., 500.))
+        start = {'x_p': 801., 'y_p': 599., 'z_p': 306.,
+                 'a_p': 1.17, 'n_p': 1.46}
+        results = []
+        for cls in (LorenzMie, TorchLorenzMie):
+            optimizer = Optimizer(model=self.model(cls, **start))
+            optimizer.mask = Mask(fraction=0.25, seed=0)
+            results.append(optimizer.optimize(hologram))
+        double, single = results
+        for name in ('x_p', 'y_p', 'z_p', 'a_p', 'n_p'):
+            with self.subTest(name=name):
+                self.assertAlmostEqual(single[name],
+                                       double[name],
+                                       delta=0.1 * double['d' + name])
+
+    def test_an_aberration_that_starts_at_zero_is_fitted(self) -> None:
+        # a step relative to zero is too small for single precision
+        model = self.model(Aberrated(TorchLorenzMie))
+        model.spherical = 0.2
+        data = model.hologram().reshape(self.shape)
+        data += np.random.default_rng(1).normal(0., 0.02, self.shape)
+        model.spherical = 0.
+        optimizer = Optimizer(model=model)
+        optimizer.mask = Mask(fraction=0.25, seed=0)
+        optimizer.variables = ['x_p', 'y_p', 'z_p', 'a_p', 'n_p',
+                               'spherical']
+        result = optimizer.optimize(Hologram(data, (700., 500.)))
+        self.assertAlmostEqual(result['spherical'],
+                               0.2,
+                               delta=3. * result['dspherical'] + 0.01)
 
 
 @unittest.skipUnless(_batch_available, 'torch/triton/CUDA not available')

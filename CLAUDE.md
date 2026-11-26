@@ -104,7 +104,7 @@ update it when the role or contents of the directory change.
   `getattr(self, 'name', default)` or a test of the name of the backend:
   `LorenzMie` declares the attribute, with its default, and a subclass
   overrides it (`fork_safe`, `parallel`, `parallel_threshold`, `jac_params`,
-  `piston`, `_aberration`).
+  `diff_steps`, `piston`, `_aberration`).
 - A parent package is never imported with dots (`from pylorenzmie.lib import
   LMObject`, not `from ..lib import LMObject`; ruff `TID252`).
   `tests/test_import_cycles.py` imports every module of every package first
@@ -278,7 +278,9 @@ and `lorenzmie()`:
   radii of a few um). On an M1 Pro it matches Numba for fits of 4,000
   pixels and is 2 to 3 times faster above about 25,000 pixels. The Metal
   kernel applies the `Aberrated` phase itself (the Triton path still
-  multiplies by the mask in Python)
+  multiplies by the mask in Python).  It declares `diff_steps`, absolute
+  finite-difference steps that single precision resolves, which
+  `Optimizer` uses in place of scipy's
 - `jaxLorenzMie` — JAX JIT with an analytical Jacobian; single spheres only
   (clusters fall back to NumPy) and it recompiles when the number of partial
   waves changes, so it is slower than Numba on a CPU

@@ -28,7 +28,8 @@ The class attribute ``method`` names the calculator, and an
 can work with the model.
 '''
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from types import MappingProxyType
 from typing import Any, TypeVar, overload
 
 import numpy as np
@@ -101,6 +102,13 @@ class LorenzMie(LMObject):
     #: The properties for which :meth:`jac` has the derivative of the
     #: hologram: none, for a calculator without an analytical Jacobian.
     jac_params: frozenset[str] = frozenset()
+
+    #: Steps for the finite differences of the hologram, by property and in
+    #: its units, for a calculator whose precision does not resolve the
+    #: small steps that suit double precision.  A property of a particle of
+    #: several (``z_p1``) takes the step of its name without the number.
+    #: None, for double precision: the optimizer chooses the steps.
+    diff_steps: Mapping[str, float] = MappingProxyType({})
 
     #: Whether the field is computed from the displacements of the points
     #: from the particle, so that :func:`~pylorenzmie.theory.Distorted`

@@ -423,5 +423,134 @@ class TestOptimizerFit(unittest.TestCase):
         self.assertIsInstance(result, pd.Series)
         self.assertLessEqual(abs(result['a_p']), 2.)
 
+class _Stepped(LorenzMie):
+    '''A calculator that gives the steps of its differences.'''
+
+    diff_steps = {'x_p': 1e-4, 'y_p': 1e-4, 'z_p': 1e-3,
+                  'a_p': 1e-6, 'n_p': 1e-6, 'k_p': 1e-6}
+
+
+class TestOptimizerDifferences(unittest.TestCase):
+
+    def setUp(self):
+        self.truth = {'x_p': 40.3, 'y_p': 38.6, 'z_p': 150.,
+                      'a_p': 0.8, 'n_p': 1.45}
+        self.data = self.model(LorenzMie).hologram().reshape(80, 80)
+        noise = np.random.default_rng(0).normal(0., 0.02, self.data.shape)
+        self.hologram = Hologram(self.data + noise)
+        self.start = {'x_p': 40., 'y_p': 39., 'z_p': 153.,
+                      'a_p': 0.78, 'n_p': 1.46}
+
+    def model(self, cls):
+        model = cls(coordinates=cls.meshgrid((80, 80)))
+        model.instrument.noise = 0.02
+        model.properties = self.truth
+        return model
+
+    def optimizer(self, cls=_Stepped, **kwargs):
+        optimizer = Optimizer(model=self.model(cls), **kwargs)
+        optimizer.model.properties = self.start
+        return optimizer
+
+    def evaluated(self, optimizer):
+        '''Ready to evaluate the residuals, without a fit.'''
+        optimizer._data = self.hologram.flat_data
+        return np.array([optimizer.model.properties[p]
+                         for p in optimizer.variables], dtype=float)
+
+    def test_the_model_steps_are_used(self):
+        optimizer = self.optimizer()
+        values = self.evaluated(optimizer)
+        np.testing.assert_array_equal(optimizer._steps(values),
+                                      [1e-4, 1e-4, 1e-3, 1e-6, 1e-6])
+
+    def test_the_other_steps_are_fractions_of_the_values(self):
+        optimizer = self.optimizer(LorenzMie)
+        optimizer.variables = ['z_p', 'a_p', 'k_p']
+        values = self.evaluated(optimizer)
+        np.testing.assert_allclose(optimizer._steps(values),
+                                   [153e-5, 0.78e-5, np.sqrt(2.**-52)])
+
+    def test_a_particle_of_several_takes_the_step_without_the_number(self):
+        optimizer = self.optimizer()
+        optimizer._variables = ['z_p1', 'a_p2']
+        np.testing.assert_array_equal(
+            optimizer._steps(np.array([100., 1.])), [1e-3, 1e-6])
+
+    def test_the_jacobian_is_the_derivative(self):
+        optimizer = self.optimizer()
+        values = self.evaluated(optimizer)
+        optimizer.model.coordinates = self.hologram.flat_coordinates
+        jacobian = optimizer._difference_jac(values)
+        for index, name in enumerate(optimizer.variables):
+            with self.subTest(name=name):
+                step = np.zeros(values.size)
+                step[index] = optimizer._steps(values)[index]
+                central = (optimizer._residuals(values + step)
+                           - optimizer._residuals(values - step))
+                central /= 2. * step[index]
+                np.testing.assert_allclose(jacobian[:, index],
+                                           central,
+                                           atol=2e-2 * np.abs(central).max())
+
+    def test_the_residuals_are_not_computed_twice(self):
+        optimizer = self.optimizer()
+        values = self.evaluated(optimizer)
+        optimizer.model.coordinates = self.hologram.flat_coordinates
+        optimizer._residuals(values)
+        with patch.object(optimizer.model,
+                          'hologram',
+                          wraps=optimizer.model.hologram) as hologram:
+            optimizer._difference_jac(values)
+        self.assertEqual(hologram.call_count, values.size)
+
+    def test_a_step_does_not_leave_a_bound(self):
+        optimizer = self.optimizer()
+        optimizer.bounds = {'a_p': (0.5, 0.78)}     # the start is on it
+        values = self.evaluated(optimizer)
+        optimizer.model.coordinates = self.hologram.flat_coordinates
+        seen = []
+        residuals = optimizer._residuals
+
+        def record(moved):
+            seen.append(moved[3])
+            return residuals(moved)
+
+        with patch.object(optimizer, '_residuals', record):
+            optimizer._difference_jac(values)
+        self.assertLessEqual(max(seen), 0.78)
+        self.assertLess(min(seen), 0.78)
+
+    def test_the_fit_is_that_of_the_default_differences(self):
+        stepped = self.optimizer().optimize(self.hologram)
+        default = self.optimizer(LorenzMie).optimize(self.hologram)
+        for name in ('x_p', 'y_p', 'z_p', 'a_p', 'n_p'):
+            with self.subTest(name=name):
+                self.assertAlmostEqual(stepped[name],
+                                       default[name],
+                                       delta=0.1 * default['d' + name])
+                self.assertAlmostEqual(stepped['d' + name],
+                                       default['d' + name],
+                                       delta=0.02 * default['d' + name])
+
+    def test_the_model_is_left_at_the_fit(self):
+        for cls in (LorenzMie, _Stepped):
+            for method in ('lm', 'trf'):
+                with self.subTest(cls=cls.__name__, method=method):
+                    optimizer = self.optimizer(cls)
+                    optimizer.settings['method'] = method
+                    result = optimizer.optimize(self.hologram)
+                    for name in optimizer.variables:
+                        self.assertEqual(optimizer.model.properties[name],
+                                         result[name])
+
+    def test_a_jacobian_that_is_asked_for_is_kept(self):
+        optimizer = self.optimizer()
+        optimizer.settings['jac'] = '3-point'
+        with patch.object(optimizer, '_difference_jac') as ours:
+            optimizer.optimize(self.hologram)
+        ours.assert_not_called()
+
+
 if __name__ == '__main__':  # pragma: no cover
     unittest.main()

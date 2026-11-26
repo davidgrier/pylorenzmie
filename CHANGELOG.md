@@ -6,6 +6,27 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+* `LorenzMie.diff_steps` gives the steps, by property and in its units, with
+  which `Optimizer` differences a calculator.  It is empty for double
+  precision.
+
+### Fixed
+
+* Fits with the Torch calculator, which works in single precision, often ended
+  far from the minimum: the finite-difference steps, `1e-5` of each value,
+  were too small for it (the derivative with respect to `z_p` was wrong by
+  tens of percent or more), and a parameter that started at zero, such as an
+  aberration, got a step of `1.5e-8`.  `TorchLorenzMie` now gives steps of
+  its own.  On an Apple GPU, the share of simulated fits that ended within a
+  tenth of their uncertainties of the double-precision fit rose from 44% to
+  95%, with 40% fewer evaluations; for spheres of 2.5 to 5 um, the share
+  within one uncertainty rose from 19% to 88%.  Not tested on CUDA, and
+  `cupyLorenzMie` in single precision is unchanged.
+* `Optimizer.optimize` left the model at the last point that it had evaluated,
+  which was a step of a finite difference: it now leaves it at the fit.
+
 ### Changed
 
 * The default stopping tolerances of `Optimizer`, and of `lmtool`, are

@@ -9,7 +9,9 @@ is near 1 when the model explains the data.  The solver is the
 Levenberg-Marquardt algorithm by default and the trust-region reflective
 algorithm with a Cauchy loss for a robust fit (``robust = True``).  When the
 model provides an analytical Jacobian (``jac()``, as the JAX calculator does)
-it is used; otherwise the solver differences numerically.
+it is used.  A model that declares ``diff_steps``, as the single-precision
+Torch calculator does, is differenced with those steps; otherwise the solver
+differences numerically, with steps in proportion to the values.
 
 Which parameters are fitted is set by ``fixed`` and ``variables``.  By default
 only the position, radius and refractive index of the particle are free:
@@ -129,6 +131,8 @@ class Optimizer(LMObject):
         self._data: Image | None = None
         self._result: OptimizeResult | None = None
         self._started = False
+        # the point of the last evaluation, and the residuals there
+        self._last: tuple[NDArray[np.floating], Image] | None = None
 
     @property
     def properties(self) -> Properties:
@@ -156,6 +160,10 @@ class Optimizer(LMObject):
 
         ``x_scale``: ``'jac'`` for dynamic rescaling, or an explicit
         array of scales matched to the free parameters.
+
+        ``diff_step``: the step of the finite differences, as a fraction
+        of each value.  It applies to the parameters for which the model
+        does not give a step of its own in ``diff_steps``.
 
         ``ftol``: the fit stops when a step lowers the sum of squares by
         less than this fraction.  That sum is about the number of pixels
@@ -325,6 +333,9 @@ class Optimizer(LMObject):
         jac_params = self.model.jac_params
         if jac_params and set(self.variables) <= jac_params:
             settings['jac'] = self._analytical_jac
+        elif (self.model.diff_steps
+                and settings.get('jac', '2-point') == '2-point'):
+            settings['jac'] = self._difference_jac
         if self._bounds:
             lower = [self._bounds.get(p, (-np.inf, np.inf))[0]
                      for p in self.variables]
@@ -340,7 +351,11 @@ class Optimizer(LMObject):
             if settings.get('method', 'trf') == 'lm':
                 settings['method'] = 'trf'
         self._started = False
+        self._last = None
         fit = least_squares(self._residuals, p0, **settings)
+        # the last evaluation may be a step of a finite difference, or one
+        # that was rejected: leave the model at the fit
+        self.model.properties = dict(zip(self.variables, fit.x, strict=True))
         self._result = fit
         return self._summary(fit)
 
@@ -378,6 +393,46 @@ class Optimizer(LMObject):
         noise = self.model.instrument.noise
         return np.column_stack([J[p] for p in self.variables]) / noise
 
+    def _steps(self, values: NDArray[np.floating]) -> NDArray[np.floating]:
+        '''Step of the finite difference of each variable.
+
+        The step of the model's ``diff_steps`` where there is one, and
+        otherwise the fraction ``diff_step`` of the value, as scipy takes it
+        (the square root of the machine precision for a value of zero).
+        '''
+        smallest = float(np.sqrt(np.finfo(float).eps))
+        fraction = self.settings.get('diff_step')
+        fraction = smallest if fraction is None else fraction
+        steps = np.abs(values) * fraction
+        steps[steps == 0.] = smallest
+        for index, name in enumerate(self.variables):
+            step = self.model.diff_steps.get(name.rstrip('0123456789'))
+            if step is not None:
+                steps[index] = step
+        return steps
+
+    def _difference_jac(self, values: NDArray[np.floating]
+                        ) -> NDArray[np.floating]:
+        '''Jacobian of the residuals by forward differences.'''
+        values = np.array(values, dtype=float)
+        last = self._last
+        if last is not None and np.array_equal(last[0], values):
+            residuals = last[1]
+        else:
+            residuals = self._residuals(values)
+        columns = []
+        for index, step in enumerate(self._steps(values)):
+            moved = values.copy()
+            moved[index] += step
+            # a step upward leaves a bound only when the value is on it
+            upper = self._bounds.get(self.variables[index],
+                                     (-np.inf, np.inf))[1]
+            if moved[index] > upper:
+                moved[index] = values[index] - step
+            columns.append((self._residuals(moved) - residuals)
+                           / (moved[index] - values[index]))
+        return np.column_stack(columns)
+
     def _residuals(self, values: NDArray[np.floating]) -> Image:
         self.model.properties = dict(zip(self.variables, values, strict=True))
         noise = self.model.instrument.noise
@@ -389,7 +444,9 @@ class Optimizer(LMObject):
             # not the starting point, which the caller must correct
             if not self._started:
                 raise
-            return np.full(self._pixels.shape, PENALTY)
+            residuals = np.full(self._pixels.shape, PENALTY)
+            self._last = (np.array(values), residuals)
+            return residuals
         if not self._started and not np.isfinite(residuals).all():
             raise ModelDomainError(
                 'the model is not finite at the starting values '
@@ -398,6 +455,7 @@ class Optimizer(LMObject):
                 + ': a sphere that is closer to the focal plane than its '
                 'radius, or a value that is not a number, does this')
         self._started = True
+        self._last = (np.array(values), residuals)
         return residuals
 
     @property

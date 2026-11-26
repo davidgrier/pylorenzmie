@@ -13,6 +13,7 @@ tested; ROCm and XPU should work but have not been run.
 
 import cmath
 import logging
+from types import MappingProxyType
 from typing import Any, Union
 
 import numpy as np
@@ -264,11 +265,26 @@ class TorchLorenzMie(LorenzMie):
     calculator the hologram differs by about 1e-5 for a sphere of 0.5 um
     radius and by up to about 1e-3 for radii of a few um, which is below
     typical camera noise but not negligible for the largest spheres.
-    The returned hologram is a float64 NumPy array.
+    The returned hologram is a float64 NumPy array.  A fit differences it
+    with the steps of ``diff_steps``, which single precision resolves.
     '''
 
     method: str = 'torch numpy'
     warpable: bool = False      # the field is formed on the device
+
+    # Chosen against double precision for spheres of 0.3 to 3 um at heights
+    # of 50 to 700 pixels (positions in pixels, radii in um).  The steps of
+    # the radius, the index and the instrument are those that give the most
+    # accurate derivative; fits converged better with steps of the position
+    # five times the most accurate ones.
+    diff_steps = MappingProxyType({
+        'x_p': 5e-2, 'y_p': 5e-2, 'z_p': 0.15,
+        'a_p': 1e-4, 'n_p': 3e-5, 'k_p': 3e-5,
+        't_s': 1e-4, 'n_s': 3e-5, 'k_s': 3e-5,
+        'wavelength': 1e-5, 'magnification': 1e-6, 'n_m': 1e-4,
+        'defocus': 1e-3, 'spherical': 1e-3, 'coma': 1e-4,
+        'astigmatism': 1e-5, 'distortion': 1e-6, 'piston': 1e-4,
+        'x_c': 3e-3, 'y_c': 3e-3})
 
     def __init__(self,
                  *args: Any,
