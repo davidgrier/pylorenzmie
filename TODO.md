@@ -61,6 +61,28 @@
       Polynomial fit: `numpy.polynomial.polynomial.polyfit2d` on a downsampled
       version of the image, then evaluate on the full grid.
 
+## pipeline
+
+- [ ] **Automated video analysis pipeline**, probably an app of its own,
+      downstream of pylorenzmie as CATCH is, rather than part of `lmtool`.
+      A Claude session examines a video with diagnostic tools (intensity and
+      noise over time, native-resolution views, trial normalizations,
+      detections, trial fits), asks for what it cannot infer (instrument
+      parameters, dark count), and writes a *recipe* (normalization,
+      instrument, estimator and optimizer settings) that the user approves.
+      Ordinary code then runs the recipe on every frame, so the analysis is
+      reproducible.  Check a recipe on frames it was not tuned on, and for
+      physical plausibility, not only reduced chi-squared.  The diagnostics
+      and the background estimation (see `normalization`) belong in
+      pylorenzmie and are useful without it.  First test the idea in a coding
+      session, on videos whose right processing is known.
+- [ ] Particles that hardly move (microrheology, optical tweezers), where a
+      running median fails: investigate a joint multi-frame fit with an
+      unknown background at every pixel (it cancels in frame ratios), and a
+      prior that uses the symmetry of the hologram of a sphere (only the
+      azimuthal harmonics 0 and 2 about its center).  Compare with the
+      fit-and-divide estimator under `normalization`.  Not yet tested.
+
 ## estimation
 
 - [x] **MLP estimator**: `analysis/MLPEstimator.py` implemented; pre-trained
@@ -108,7 +130,7 @@
 - [ ] Piston (constant relative phase) and explicit saturation handling in
       `Feature`/`Aberrated` (patch on hold: the piston needs a physical
       explanation before it is introduced)
-- [x] `LayeredSphere`: core-shell particle class (unreleased, with the notes below) with appropriate Mie coefficients
+- [x] `LayeredSphere`: core-shell particle class (released in 3.11.0) with appropriate Mie coefficients
       a_n/b_n for layered geometries. Relevant for coated beads, lipid vesicles,
       and protein-coated colloids. HoloPy and PyMieScatt both support this;
       pylorenzmie does not.  An earlier layered `Sphere` was removed in 2023.
