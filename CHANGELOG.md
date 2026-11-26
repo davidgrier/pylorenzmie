@@ -6,6 +6,23 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+* The default stopping tolerances of `Optimizer`, and of `lmtool`, are
+  `ftol=1e-7` and `xtol=1e-8` (from `1e-4` and `1e-6`).  Fits often stopped
+  short of the minimum that they were approaching: in a benchmark, about a
+  third of the fits of example holograms ended within a tenth of their
+  uncertainties of it, and nearly all do now.  On simulated holograms with
+  the right model the old values were adequate for spheres below 2.5 um.
+  The tolerances do not help a fit that approaches the wrong minimum, as
+  fits of large spheres can.  **Fitted values differ slightly from those of
+  earlier versions** (the radius of a real feature by up to a few tenths of
+  a nanometer, typically).  A fit of one sphere takes about 30% longer, and
+  60% longer for the example holograms; a fit of a pair of spheres can take
+  several times as long.  For the earlier behavior set
+  `optimizer.settings['ftol'] = 1e-4` and
+  `optimizer.settings['xtol'] = 1e-6`.
+
 ## [3.12.0] - 2026-11-26
 
 ### Added

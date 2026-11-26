@@ -156,6 +156,17 @@ class Optimizer(LMObject):
 
         ``x_scale``: ``'jac'`` for dynamic rescaling, or an explicit
         array of scales matched to the free parameters.
+
+        ``ftol``: the fit stops when a step lowers the sum of squares by
+        less than this fraction.  That sum is about the number of pixels
+        (times the reduced chi-squared), so a fit can stop short of its
+        minimum by an amount that matters unless ``ftol`` is much smaller
+        than the inverse of the number of pixels, and the more so when the
+        model does not explain the data, because the fit then approaches
+        the minimum slowly.  With the default, ``1e-7``, fits of simulated
+        and example holograms nearly always ended within a tenth of their
+        uncertainties of the minimum that they were approaching, which need
+        not be the lowest one; with ``1e-4`` they often did not.
         '''
         return self._settings
 
@@ -163,8 +174,8 @@ class Optimizer(LMObject):
     def settings(self, settings: Settings | None) -> None:
         if settings is None:
             settings = {'method': 'lm',
-                        'ftol': 1e-4,
-                        'xtol': 1e-6,
+                        'ftol': 1e-7,
+                        'xtol': 1e-8,
                         'gtol': 1e-6,
                         'loss': 'linear',
                         'max_nfev': 2000,

@@ -8,6 +8,7 @@ import unittest
 
 import numpy as np
 
+from pylorenzmie.analysis import Optimizer
 from pylorenzmie.theory import LorenzMie
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
@@ -152,6 +153,14 @@ class TestOptimizerWidget(unittest.TestCase):
             {'fraction', 'method', 'loss', 'ftol', 'xtol', 'gtol',
              'diff_step'},
         )
+
+    def test_the_defaults_are_those_of_the_optimizer(self):
+        # the panel keeps a copy of them
+        defaults = Optimizer().settings
+        for name, value in self.widget.settings.items():
+            if name != 'fraction':
+                with self.subTest(name=name):
+                    self.assertEqual(value, defaults[name])
 
     def test_levenberg_marquardt_is_the_default(self):
         self.assertEqual(self.widget.settings['method'], 'lm')
