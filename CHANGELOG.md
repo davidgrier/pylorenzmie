@@ -8,7 +8,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Added
 
-* `Optimizer.settings['f_scale'] = 'auto'` matches the scale of a robust loss
+* `Optimizer.settings['f_scale'] = 'auto'`, which robust fits now select
+  (see Changed), matches the scale of a robust loss
   to the data: it fits by least squares first, and then fits with the loss
   from that solution, with a scale of 1.5 times the spread of those
   residuals.  A scale of 1 (the noise of the instrument, still the default)
@@ -20,8 +21,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
   evaluations of the model than a scale of 1 and about twice those of least
   squares.  In simulations of 900 spheres with known values, the error of the
   radius was 4% to 21% below that of a scale of 1.  The reduced chi-squared
-  of such a fit is larger than with a scale of 1 and is not comparable
-  between fits.
+  of such a fit is computed with a scale of 1, so that it keeps its meaning
+  and can be compared between fits.
 * A second fitting method of `Optimizer`, `settings['method'] = 'broyden'`
   (`analysis.broyden.broyden_least_squares`): Levenberg-Marquardt that
   updates the Jacobian from the steps that it takes (Broyden's update), and
@@ -59,6 +60,12 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* Setting `Optimizer.robust` to `True` (the `robust` argument, and
+  **Optimization > Robust** of `lmtool`) now selects `f_scale='auto'`, unless
+  the settings give an `f_scale`.  **Robust fits differ from those of earlier
+  versions**, and take longer, because a least-squares fit comes first.  For
+  the earlier behavior set `optimizer.settings['f_scale'] = 1`.  Choosing a
+  loss in `settings` alone leaves the scale as it was.
 * The default stopping tolerances of `Optimizer`, and of `lmtool`, are
   `ftol=1e-7` and `xtol=1e-8` (from `1e-4` and `1e-6`).  Fits often stopped
   short of the minimum that they were approaching: in a benchmark, about a

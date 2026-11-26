@@ -6,6 +6,7 @@ from unittest.mock import patch
 from pylorenzmie.utilities import imread
 import numpy as np
 import pandas as pd
+from scipy.optimize import least_squares
 
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.analysis.Optimizer import PENALTY
@@ -127,6 +128,22 @@ class TestOptimizer(unittest.TestCase):
                               robust=False)
         self.assertEqual(optimizer.settings['loss'], 'linear')
         self.assertEqual(optimizer.settings['method'], 'lm')
+
+    def test_robust_matches_the_scale(self):
+        self.optimizer.robust = True
+        self.assertEqual(self.optimizer.settings['f_scale'], 'auto')
+        self.optimizer.robust = False
+        self.assertNotIn('f_scale', self.optimizer.settings)
+
+    def test_robust_keeps_a_scale_that_was_given(self):
+        optimizer = Optimizer(settings={'f_scale': 2.}, robust=True)
+        self.assertEqual(optimizer.settings['f_scale'], 2.)
+        optimizer.robust = False
+        self.assertEqual(optimizer.settings['f_scale'], 2.)
+
+    def test_a_loss_of_the_settings_keeps_the_scale_of_scipy(self):
+        self.optimizer.settings.update(method='trf', loss='cauchy')
+        self.assertNotIn('f_scale', self.optimizer.settings)
 
     def test_default_fixed_includes_noise(self):
         '''noise is fixed by default to prevent degenerate fits.'''
@@ -467,7 +484,38 @@ class TestOptimizerMatchedScale(unittest.TestCase):
         )
         self.model.properties = {p: linear[p] for p in self.TRUTH}
         manual = optimizer.optimize(self.hologram)
-        pd.testing.assert_series_equal(auto, manual)
+        pd.testing.assert_series_equal(auto.drop('redchi'),
+                                       manual.drop('redchi'))
+
+    def test_redchi_is_that_of_a_scale_of_one(self):
+        for loss in ('cauchy', 'huber', 'soft_l1', 'arctan'):
+            with self.subTest(loss=loss):
+                result = self.fit(loss=loss, f_scale='auto')
+                residuals = (self.model.hologram()
+                             - self.hologram.flat_data) / 0.05
+                unit = least_squares(lambda _, r=residuals: r,
+                                     [0.],
+                                     loss=loss,
+                                     max_nfev=1)
+                ndeg = residuals.size - len(self.TRUTH)
+                self.assertAlmostEqual(result['redchi'],
+                                       2. * unit.cost / ndeg,
+                                       places=8)
+
+    def test_redchi_of_a_loss_that_is_a_function(self):
+        def cauchy(z):
+            return np.array([np.log1p(z), 1. / (1. + z), -1. / (1. + z)**2])
+
+        named = self.fit(loss='cauchy', f_scale='auto')
+        function = self.fit(loss=cauchy, f_scale='auto')
+        pd.testing.assert_series_equal(function, named)
+
+    def test_a_result_does_not_follow_later_settings(self):
+        self.model.properties = dict(self.TRUTH, noise=0.05)
+        optimizer = Optimizer(model=self.model, robust=True)
+        result = optimizer.optimize(self.hologram)
+        optimizer.robust = False
+        pd.testing.assert_series_equal(optimizer.result, result)
 
     def test_does_not_depend_on_the_noise_of_the_instrument(self):
         right = self.fit(noise=0.05, loss='cauchy', f_scale='auto')

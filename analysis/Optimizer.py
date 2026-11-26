@@ -61,6 +61,12 @@ MINIMUM_SPREAD = 1e-2
 '''Smallest spread of residuals, in units of the noise, that ``'auto'``
 takes: data without noise would otherwise give a scale of zero.'''
 
+RHO = {'soft_l1': lambda z: 2. * (np.sqrt(1. + z) - 1.),
+       'huber': lambda z: np.where(z <= 1., z, 2. * np.sqrt(z) - 1.),
+       'cauchy': np.log1p,
+       'arctan': np.arctan}
+'''The robust losses of scipy, as functions of the squared residual.'''
+
 PENALTY = 1e6
 '''Residual of each pixel for parameters that the model does not compute.
 
@@ -88,8 +94,10 @@ class Optimizer(LMObject):
         :attr:`~pylorenzmie.analysis.Hologram.Hologram.flat_data` and
         :attr:`~pylorenzmie.analysis.Hologram.Hologram.flat_coordinates`.
     robust : bool, optional
-        ``True`` selects the robust Cauchy loss and ``False`` standard
-        least squares, replacing ``method`` and ``loss`` in *settings*.
+        ``True`` selects the robust Cauchy loss, with ``f_scale='auto'``
+        unless *settings* give an ``f_scale``, and ``False`` standard
+        least squares, replacing ``method`` and ``loss`` in *settings*
+        (see :attr:`robust`).
         Default: ``None``, which leaves *settings* as they are (standard
         least squares for the default settings).
     fixed : list[str], optional
@@ -186,8 +194,9 @@ class Optimizer(LMObject):
         ``'soft_l1'``, or ``'arctan'``.
 
         ``f_scale``: the residual, in units of the noise, beyond which a
-        loss other than ``'linear'`` discounts a pixel.  Default: 1, that
-        of scipy.  With ``'auto'``, :meth:`optimize` first fits by least
+        loss other than ``'linear'`` discounts a pixel.  Without it, 1, that
+        of scipy; setting :attr:`robust` selects ``'auto'``.  With
+        ``'auto'``, :meth:`optimize` first fits by least
         squares from the starting values, measures the spread of those
         residuals (1.4826 times the median of their magnitudes), and fits
         with the loss from that solution, with a scale of
@@ -195,11 +204,12 @@ class Optimizer(LMObject):
         follows data whose residuals are larger than the noise of the
         instrument, because of structure that the model does not explain.
         ``max_nfev`` limits each of the two fits.  The linear loss ignores
-        ``'auto'``.  The scale differs from fit to fit, and the reduced
-        chi-squared of a robust fit depends on it, so do not compare
-        ``redchi`` between such fits.  It is also well above 1, so a
-        threshold such as ``split_redchi`` of
-        :class:`~pylorenzmie.analysis.Frame.Frame` does not apply to them.
+        ``'auto'``.  The ``redchi`` of such a fit is the cost of the loss
+        with a scale of 1, per degree of freedom, at the solution: it does
+        not depend on the scale that was matched, so it can be compared
+        between fits, as ``split_redchi`` of
+        :class:`~pylorenzmie.analysis.Frame.Frame` does.  The
+        uncertainties come from the cost with the matched scale.
 
         ``x_scale``: ``'jac'`` for dynamic rescaling, or an explicit
         array of scales matched to the free parameters.
@@ -272,7 +282,14 @@ class Optimizer(LMObject):
 
     @property
     def robust(self) -> bool:
-        '''True if using robust (non-linear loss) optimization.'''
+        '''True if using robust (non-linear loss) optimization.
+
+        Setting ``True`` selects the methods ``'trf'`` and the Cauchy loss,
+        and ``f_scale='auto'`` unless the settings give an ``f_scale``.
+        Setting ``False`` selects least squares by ``'lm'``, and removes an
+        ``f_scale`` of ``'auto'``.  Choosing a loss in :attr:`settings`
+        leaves ``f_scale`` as it is.
+        '''
         return self.settings['loss'] != 'linear'
 
     @robust.setter
@@ -280,9 +297,12 @@ class Optimizer(LMObject):
         if robust:
             self.settings['method'] = 'trf'
             self.settings['loss'] = 'cauchy'
+            self.settings.setdefault('f_scale', 'auto')
         else:
             self.settings['method'] = 'lm'
             self.settings['loss'] = 'linear'
+            if self.settings.get('f_scale') == 'auto':
+                del self.settings['f_scale']
 
     @property
     def fraction(self) -> float:
@@ -425,6 +445,8 @@ class Optimizer(LMObject):
             if auto and robust:
                 p0, settings['f_scale'] = self._match_scale(p0, settings)
             fit = least_squares(self._residuals, p0, **settings)
+            if auto and robust:
+                fit.unit_loss = settings['loss']   # see _statistics
         # the last evaluation may be a step of a finite difference, or one
         # that was rejected: leave the model at the fit
         self.model.properties = dict(zip(self.variables, fit.x, strict=True))
@@ -577,7 +599,9 @@ class Optimizer(LMObject):
 
         Uncertainties are square roots of the diagonal of the covariance
         matrix, estimated from the Jacobian via Moore-Penrose SVD with
-        small singular values discarded.
+        small singular values discarded.  For a fit with a matched scale
+        (``res.unit_loss``), the reduced chi-squared that is returned is
+        that of the loss with a scale of 1.
         '''
         ndeg = self._pixels.size - res.x.size
         redchi = 2. * res.cost / ndeg
@@ -587,6 +611,14 @@ class Optimizer(LMObject):
         VT = VT[:s.size]
         pcov = np.dot(VT.T / s**2, VT)
         uncertainty = np.sqrt(redchi * np.diag(pcov))
+        loss: Any = res.get('unit_loss')    # a name, or a callable
+        if loss is not None:
+            squared = res.fun**2
+            if isinstance(loss, str):
+                rho = RHO[loss](squared)
+            else:                   # a callable, as scipy takes it
+                rho = loss(squared)[0]
+            redchi = float(np.sum(rho)) / ndeg
         return redchi, uncertainty
 
     @classmethod
