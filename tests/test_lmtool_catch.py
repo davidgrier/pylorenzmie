@@ -3,6 +3,7 @@
 The tests of the window need a Qt binding and run without a display; those
 of the networks need CATCH, and are skipped without it.
 '''
+import importlib.machinery
 import importlib.util
 import os
 import threading
@@ -27,7 +28,8 @@ except Exception:       # no Qt binding, or no usable platform plugin
     _qt = False
     ToolTestCase = unittest.TestCase
 
-_catch = importlib.util.find_spec('CATCH') is not None
+_spec = importlib.util.find_spec('CATCH')
+_catch = _spec is not None and _spec.origin is not None
 INSTRUMENT = dict(wavelength=0.447, magnification=0.048, n_m=1.34)
 
 
@@ -38,6 +40,16 @@ def setUpModule():
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')
 class TestCatchAction(ToolTestCase):
+
+    def test_a_directory_named_catch_is_not_catch(self):
+        spec = importlib.machinery.ModuleSpec
+        namespace = spec('CATCH', None, is_package=True)
+        installed = spec('CATCH', None, origin='__init__.py')
+        for found, available in ((None, False),
+                                 (namespace, False),
+                                 (installed, True)):
+            with mock.patch('importlib.util.find_spec', return_value=found):
+                self.assertEqual(catch_available(), available)
 
     def test_it_is_available_when_catch_is_installed(self):
         self.assertEqual(catch_available(), _catch)
