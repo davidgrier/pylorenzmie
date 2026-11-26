@@ -43,7 +43,10 @@ def catch_available() -> bool:
     CATCH needs PyTorch, which takes seconds to import, so this only looks
     for the package: nothing is imported until a task asks for CATCH.
     '''
-    return importlib.util.find_spec('CATCH') is not None
+    spec = importlib.util.find_spec('CATCH')
+    # a directory of that name without an __init__.py (a checkout of the
+    # project, say) is found as a namespace package, which has no origin
+    return spec is not None and spec.origin is not None
 
 
 class Task(StrEnum):
