@@ -59,12 +59,12 @@ Fitting a hologram
 
 .. code-block:: python
 
-   import cv2
    from pylorenzmie.analysis import Feature, Hologram
    from pylorenzmie.theory import LorenzMie
+   from pylorenzmie.utilities import imread
 
    # Load and normalize a hologram (divide by background level)
-   data = cv2.imread('crop.png', cv2.IMREAD_GRAYSCALE).astype(float)
+   data = imread('crop.png').astype(float)
    data /= data.mean()
 
    # Set up the model
@@ -86,11 +86,11 @@ Analyzing a full frame
 
 .. code-block:: python
 
-   import cv2
    from pylorenzmie.analysis import Frame
+   from pylorenzmie.utilities import imread
 
    frame = Frame()
-   data = cv2.imread('image.png', cv2.IMREAD_GRAYSCALE).astype(float)
+   data = imread('image.png').astype(float)
    data /= data.mean()
    results = frame.analyze(data)
    print(results)   # pandas.DataFrame with one row per particle
