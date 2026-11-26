@@ -3,15 +3,25 @@
 An :class:`Optimizer` fits the parameters of a generative model, such as a
 :class:`~pylorenzmie.theory.LorenzMie.LorenzMie` calculator with a sphere, to a
 normalized :class:`~pylorenzmie.analysis.Hologram.Hologram` with
-:func:`scipy.optimize.least_squares`.  The residual of each pixel is weighted
-by the noise of the instrument, so that the reduced chi-squared of the result
-is near 1 when the model explains the data.  The solver is the
-Levenberg-Marquardt algorithm by default and the trust-region reflective
-algorithm with a Cauchy loss for a robust fit (``robust = True``).  When the
-model provides an analytical Jacobian (``jac()``, as the JAX calculator does)
-it is used.  A model that declares ``diff_steps``, as the single-precision
-Torch calculator does, is differenced with those steps; otherwise the solver
-differences numerically, with steps in proportion to the values.
+:func:`scipy.optimize.least_squares`, or with
+:func:`~pylorenzmie.analysis.broyden.broyden_least_squares`.  The residual of
+each pixel is weighted by the noise of the instrument, so that the reduced
+chi-squared of the result is near 1 when the model explains the data.  The
+solver is the Levenberg-Marquardt algorithm by default and the trust-region
+reflective algorithm with a Cauchy loss for a robust fit (``robust = True``).
+When the model provides an analytical Jacobian (``jac()``, as the JAX
+calculator does) it is used.  A model that declares ``diff_steps``, as the
+single-precision Torch calculator does, is differenced with those steps;
+otherwise the solver differences numerically, with steps in proportion to the
+values.
+
+The settings ``method = 'broyden'`` select a Levenberg-Marquardt algorithm
+that updates the Jacobian from the steps that it takes, and so evaluates the
+model less often, and that stops when the parameters are within about a tenth
+of their uncertainties of the minimum (``chi2tol``).  It does least squares
+without limits: neither a robust loss nor ``bounds``.  It suits a calculator
+in double precision; in single precision it gains little, and does worse than
+``'lm'`` for large spheres.
 
 Which parameters are fitted is set by ``fixed`` and ``variables``.  By default
 only the position, radius and refractive index of the particle are free:
@@ -35,6 +45,7 @@ import pandas as pd
 
 from pylorenzmie.lib import LMObject
 from pylorenzmie.lib.lmtypes import Image, Properties, Settings
+from pylorenzmie.analysis.broyden import broyden_least_squares
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.Mask import Mask
 from pylorenzmie.theory import LorenzMie, Sphere
@@ -152,8 +163,16 @@ class Optimizer(LMObject):
         Notes
         -----
         ``method``: ``'lm'`` (Levenberg-Marquardt, default), ``'trf'``,
-        or ``'dogbox'``. Only ``'lm'`` cannot use a loss other than
+        or ``'dogbox'``, the algorithms of scipy, or ``'broyden'``
+        (:func:`~pylorenzmie.analysis.broyden.broyden_least_squares`).
+        Neither ``'lm'`` nor ``'broyden'`` can use a loss other than
         ``'linear'``.
+
+        ``chi2tol``: the tolerance of ``'broyden'``, the predicted fall of
+        chi-squared, in units of the reduced chi-squared, below which the
+        fit stops.  Default: 0.01.  The other methods ignore it, and
+        ``'broyden'`` ignores ``ftol``, ``xtol`` and ``gtol``; it takes
+        ``max_nfev`` and ``diff_step``.
 
         ``loss``: ``'linear'`` (standard LS), ``'cauchy'``, ``'huber'``,
         ``'soft_l1'``, or ``'arctan'``.
@@ -207,7 +226,9 @@ class Optimizer(LMObject):
         Only ``trf`` and ``dogbox`` honor limits.  When the method of
         *settings* is ``lm`` (the default), :meth:`optimize` uses ``trf``
         for as long as there are limits, and leaves *settings* as they are.
-        The starting values must lie within the limits.
+        The method ``broyden`` does not take limits: :meth:`optimize` then
+        raises a :class:`ValueError`.  The starting values must lie within
+        the limits.
         '''
         return dict(self._bounds)
 
@@ -322,14 +343,24 @@ class Optimizer(LMObject):
         -------
         result : pandas.Series
             Fitted values, uncertainties, and goodness-of-fit statistics.
+
+        Raises
+        ------
+        ValueError
+            If a starting value is outside its bounds, or the settings ask
+            ``'broyden'`` for what it does not do.
         '''
+        settings = dict(self.settings)
+        chi2tol = settings.pop('chi2tol', 0.01)
+        broyden = settings.get('method') == 'broyden'
+        if broyden:
+            self._check_broyden(settings)
         if self.mask is None:
             self._data = hologram.flat_data
             self.model.coordinates = hologram.flat_coordinates
         else:
             self._data, self.model.coordinates = self.mask.apply(hologram)
         p0 = np.array([self.model.properties[p] for p in self.variables])
-        settings = dict(self.settings)
         jac_params = self.model.jac_params
         if jac_params and set(self.variables) <= jac_params:
             settings['jac'] = self._analytical_jac
@@ -352,12 +383,32 @@ class Optimizer(LMObject):
                 settings['method'] = 'trf'
         self._started = False
         self._last = None
-        fit = least_squares(self._residuals, p0, **settings)
+        if broyden:
+            fit = broyden_least_squares(self._residuals,
+                                        p0,
+                                        self._jacobian_at,
+                                        tol=chi2tol,
+                                        max_nfev=settings.get('max_nfev'))
+        else:
+            fit = least_squares(self._residuals, p0, **settings)
         # the last evaluation may be a step of a finite difference, or one
         # that was rejected: leave the model at the fit
         self.model.properties = dict(zip(self.variables, fit.x, strict=True))
         self._result = fit
         return self._summary(fit)
+
+    def _check_broyden(self, settings: Settings) -> None:
+        '''Raise a ValueError for what the 'broyden' method does not do.'''
+        if settings.get('loss', 'linear') != 'linear':
+            raise ValueError("the method 'broyden' does least squares: use "
+                             "'trf' for a robust loss")
+        if self._bounds:
+            raise ValueError("the method 'broyden' does not take bounds: "
+                             "use 'trf'")
+        for name, usual in (('x_scale', 'jac'), ('jac', '2-point')):
+            if settings.get(name, usual) != usual:
+                raise ValueError(f"the method 'broyden' needs {name} = "
+                                 f'{usual!r}, not {settings[name]!r}')
 
     def report(self) -> str:
         '''Format fitting results as a human-readable string.
@@ -410,6 +461,16 @@ class Optimizer(LMObject):
             if step is not None:
                 steps[index] = step
         return steps
+
+    def _jacobian_at(self,
+                     values: NDArray[np.floating],
+                     residuals: Image) -> NDArray[np.floating]:
+        '''Jacobian at a point whose residuals are known, for 'broyden'.'''
+        jac_params = self.model.jac_params
+        if jac_params and set(self.variables) <= jac_params:
+            return self._analytical_jac(values)
+        self._last = (np.array(values, dtype=float), residuals)
+        return self._difference_jac(values)
 
     def _difference_jac(self, values: NDArray[np.floating]
                         ) -> NDArray[np.floating]:

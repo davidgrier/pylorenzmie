@@ -326,7 +326,9 @@ its `exclude`; supports random subsampling via `fraction`: exactly
 `round(fraction * n)` of the usable pixels, drawn from a private generator;
 `seed` makes the draw reproducible).
 
-**`Optimizer(LMObject)`** — wraps `scipy.optimize.least_squares`. The `method`
+**`Optimizer(LMObject)`** — wraps `scipy.optimize.least_squares`, and
+`analysis.broyden` for the setting `method='broyden'` (fewer model
+evaluations; least squares without bounds or robust loss). The `method`
 attribute must be compatible with the model's `method`. Properties `fixed` and
 `variables` control which particle/instrument parameters are held constant vs.
 optimized. Returns a `pandas.Series` with fitted values, uncertainties, and

@@ -8,6 +8,19 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Added
 
+* A second fitting method of `Optimizer`, `settings['method'] = 'broyden'`
+  (`analysis.broyden.broyden_least_squares`): Levenberg-Marquardt that
+  updates the Jacobian from the steps that it takes (Broyden's update), and
+  stops when the predicted fall of chi-squared, in units of the reduced
+  chi-squared, is below `chi2tol` (default 0.01, about a tenth of the
+  uncertainties).  In double precision, on 1,120 benchmark holograms, it
+  reached the best fit (within a tenth of the uncertainties) in 97% of the
+  fits against 96% for the default, with 28% fewer evaluations of the model,
+  about as many as with the former tolerances; for spheres of 2.5 to 5 um,
+  93% against 88%.  The gain in time is smaller than in evaluations, most
+  for the example holograms.  It does least squares without a robust loss or
+  bounds.  In single precision (Torch) it gains little and does worse for
+  large spheres.  The default method is unchanged.
 * `LorenzMie.diff_steps` gives the steps, by property and in its units, with
   which `Optimizer` differences a calculator.  It is empty for double
   precision.

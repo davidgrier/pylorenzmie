@@ -25,6 +25,12 @@ Localizer
 .. automodule:: pylorenzmie.analysis.Localizer
    :members:
 
+Broyden
+-------
+
+.. automodule:: pylorenzmie.analysis.broyden
+   :members:
+
 BaseEstimator
 -------------
 

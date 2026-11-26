@@ -10,8 +10,9 @@ estimate, optimize.
 - `Estimator.py`, `DEEstimator.py`, `RadialEstimator.py`,
   `MLPEstimator.py` and `PairEstimator.py` estimate starting values
   (`BaseEstimator.py` is their base class).
-- `Optimizer.py` (and `cupyOptimizer.py`) refine them with
-  Levenberg-Marquardt.
+- `Optimizer.py` (and `cupyOptimizer.py`) refine them with the least
+  squares of scipy, Levenberg-Marquardt by default, or with `broyden.py`,
+  which evaluates the model less often.
 - `Feature.py` bundles one particle, `Frame.py` a whole image, and
   `Trajectory.py` links frames in time.  `pair_grouping.py` groups
   features that overlap.
