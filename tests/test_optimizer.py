@@ -423,6 +423,94 @@ class TestOptimizerFit(unittest.TestCase):
         self.assertIsInstance(result, pd.Series)
         self.assertLessEqual(abs(result['a_p']), 2.)
 
+class TestOptimizerMatchedScale(unittest.TestCase):
+    """f_scale='auto', for a simulated sphere with structured noise."""
+
+    SHAPE = (51, 51)
+    TRUTH = dict(x_p=25.3, y_p=24.6, z_p=150., a_p=0.75, n_p=1.45)
+
+    def setUp(self):
+        model = LorenzMie(coordinates=LMObject.meshgrid(self.SHAPE))
+        model.properties = self.TRUTH
+        clean = model.hologram().reshape(self.SHAPE)
+        rng = np.random.default_rng(0)
+        data = clean + rng.normal(0., 0.05, self.SHAPE)
+        data[5:14, 30:39] += 0.8        # a defect that the model lacks
+        self.clean = clean
+        self.hologram = Hologram(data)
+        self.model = model
+
+    def fit(self, noise=0.05, hologram=None, **settings):
+        start = dict(z_p=153., a_p=0.76, noise=noise)
+        self.model.properties = self.TRUTH | start
+        optimizer = Optimizer(model=self.model)
+        optimizer.settings.update({'method': 'trf'} | settings)
+        result = optimizer.optimize(hologram or self.hologram)
+        self.assertEqual(optimizer.settings.get('f_scale'),
+                         settings.get('f_scale'))
+        return result
+
+    def values(self, result):
+        return result[list(self.TRUTH)].to_numpy(dtype=float)
+
+    def test_is_two_fits_with_the_scale_of_the_first(self):
+        auto = self.fit(loss='cauchy', f_scale='auto')
+        linear = self.fit()
+        residuals = (self.model.hologram()
+                     - self.hologram.flat_data) / 0.05
+        scale = 1.5 * 1.4826 * np.median(np.abs(residuals))
+        optimizer = Optimizer(model=self.model)
+        optimizer.settings.update(
+            method='trf',
+            loss='cauchy',
+            f_scale=scale,
+        )
+        self.model.properties = {p: linear[p] for p in self.TRUTH}
+        manual = optimizer.optimize(self.hologram)
+        pd.testing.assert_series_equal(auto, manual)
+
+    def test_does_not_depend_on_the_noise_of_the_instrument(self):
+        right = self.fit(noise=0.05, loss='cauchy', f_scale='auto')
+        small = self.fit(noise=0.01, loss='cauchy', f_scale='auto')
+        np.testing.assert_allclose(self.values(small),
+                                   self.values(right),
+                                   rtol=1e-4)
+
+    def test_discounts_a_defect(self):
+        truth = np.array(list(self.TRUTH.values()))
+        linear = np.abs(self.values(self.fit()) - truth)
+        matched = self.fit(loss='cauchy', f_scale='auto')
+        robust = np.abs(self.values(matched) - truth)
+        self.assertLess(robust[2], linear[2])
+        self.assertLess(robust[3], linear[3])
+
+    def test_the_linear_loss_ignores_it(self):
+        for method in ('lm', 'trf', 'broyden'):
+            with self.subTest(method=method):
+                pd.testing.assert_series_equal(
+                    self.fit(method=method, f_scale='auto'),
+                    self.fit(method=method))
+
+    def test_keeps_the_bounds(self):
+        self.model.properties = dict(self.TRUTH, a_p=0.76, noise=0.05)
+        optimizer = Optimizer(model=self.model,
+                              bounds={'a_p': (0.755, 0.8)})
+        optimizer.settings.update(loss='cauchy', f_scale='auto')
+        result = optimizer.optimize(self.hologram)
+        self.assertGreaterEqual(result['a_p'], 0.755)
+
+    def test_lm_cannot_do_a_robust_loss(self):
+        with self.assertRaisesRegex(ValueError, "'lm'"):
+            self.fit(method='lm', loss='cauchy', f_scale='auto')
+        self.assertEqual(self.model.properties['a_p'], 0.76)
+
+    def test_data_without_noise(self):
+        clean = Hologram(self.clean)
+        result = self.fit(hologram=clean, loss='cauchy', f_scale='auto')
+        truth = list(self.TRUTH.values())
+        np.testing.assert_allclose(self.values(result), truth, rtol=1e-5)
+
+
 class _Stepped(LorenzMie):
     '''A calculator that gives the steps of its differences.'''
 

@@ -328,7 +328,10 @@ its `exclude`; supports random subsampling via `fraction`: exactly
 
 **`Optimizer(LMObject)`** — wraps `scipy.optimize.least_squares`, and
 `analysis.broyden` for the setting `method='broyden'` (fewer model
-evaluations; least squares without bounds or robust loss). The `method`
+evaluations; least squares without bounds or robust loss).
+`settings['f_scale'] = 'auto'` matches the scale of a robust loss to the
+residuals of a least-squares fit made first (scipy's scale of 1 noise unit
+discounts many good pixels of real holograms). The `method`
 attribute must be compatible with the model's `method`. Properties `fixed` and
 `variables` control which particle/instrument parameters are held constant vs.
 optimized. Returns a `pandas.Series` with fitted values, uncertainties, and

@@ -53,6 +53,14 @@ from pylorenzmie.theory.Sphere import ModelDomainError
 
 Bounds = dict[str, tuple[float | None, float | None]]
 
+MATCHED_SCALE = 1.5
+'''``f_scale='auto'``: the scale of a robust loss, in units of the spread of
+the least-squares residuals.'''
+
+MINIMUM_SPREAD = 1e-2
+'''Smallest spread of residuals, in units of the noise, that ``'auto'``
+takes: data without noise would otherwise give a scale of zero.'''
+
 PENALTY = 1e6
 '''Residual of each pixel for parameters that the model does not compute.
 
@@ -176,6 +184,22 @@ class Optimizer(LMObject):
 
         ``loss``: ``'linear'`` (standard LS), ``'cauchy'``, ``'huber'``,
         ``'soft_l1'``, or ``'arctan'``.
+
+        ``f_scale``: the residual, in units of the noise, beyond which a
+        loss other than ``'linear'`` discounts a pixel.  Default: 1, that
+        of scipy.  With ``'auto'``, :meth:`optimize` first fits by least
+        squares from the starting values, measures the spread of those
+        residuals (1.4826 times the median of their magnitudes), and fits
+        with the loss from that solution, with a scale of
+        :data:`MATCHED_SCALE` (1.5) times the spread.  The scale then
+        follows data whose residuals are larger than the noise of the
+        instrument, because of structure that the model does not explain.
+        ``max_nfev`` limits each of the two fits.  The linear loss ignores
+        ``'auto'``.  The scale differs from fit to fit, and the reduced
+        chi-squared of a robust fit depends on it, so do not compare
+        ``redchi`` between such fits.  It is also well above 1, so a
+        threshold such as ``split_redchi`` of
+        :class:`~pylorenzmie.analysis.Frame.Frame` does not apply to them.
 
         ``x_scale``: ``'jac'`` for dynamic rescaling, or an explicit
         array of scales matched to the free parameters.
@@ -347,11 +371,16 @@ class Optimizer(LMObject):
         Raises
         ------
         ValueError
-            If a starting value is outside its bounds, or the settings ask
-            ``'broyden'`` for what it does not do.
+            If a starting value is outside its bounds, the settings ask
+            ``'broyden'`` for what it does not do, or ``'lm'`` for a robust
+            loss with ``f_scale='auto'``.
         '''
         settings = dict(self.settings)
         chi2tol = settings.pop('chi2tol', 0.01)
+        auto = settings.get('f_scale') == 'auto'
+        if auto:
+            del settings['f_scale']
+        robust = settings.get('loss', 'linear') != 'linear'
         broyden = settings.get('method') == 'broyden'
         if broyden:
             self._check_broyden(settings)
@@ -381,6 +410,9 @@ class Optimizer(LMObject):
             settings['bounds'] = (lower, upper)
             if settings.get('method', 'trf') == 'lm':
                 settings['method'] = 'trf'
+        if auto and robust and settings.get('method') == 'lm':
+            raise ValueError("the method 'lm' does least squares: use "
+                             "'trf' for a robust loss")
         self._started = False
         self._last = None
         if broyden:
@@ -390,12 +422,25 @@ class Optimizer(LMObject):
                                         tol=chi2tol,
                                         max_nfev=settings.get('max_nfev'))
         else:
+            if auto and robust:
+                p0, settings['f_scale'] = self._match_scale(p0, settings)
             fit = least_squares(self._residuals, p0, **settings)
         # the last evaluation may be a step of a finite difference, or one
         # that was rejected: leave the model at the fit
         self.model.properties = dict(zip(self.variables, fit.x, strict=True))
         self._result = fit
         return self._summary(fit)
+
+    def _match_scale(self,
+                     p0: NDArray[np.floating],
+                     settings: Settings
+                     ) -> tuple[NDArray[np.floating], float]:
+        '''The least-squares solution from p0, and the matching f_scale.'''
+        first = least_squares(self._residuals,
+                              p0,
+                              **dict(settings, loss='linear'))
+        spread = 1.4826 * float(np.median(np.abs(first.fun)))
+        return first.x, MATCHED_SCALE * max(spread, MINIMUM_SPREAD)
 
     def _check_broyden(self, settings: Settings) -> None:
         '''Raise a ValueError for what the 'broyden' method does not do.'''

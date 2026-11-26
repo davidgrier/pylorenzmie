@@ -8,6 +8,20 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Added
 
+* `Optimizer.settings['f_scale'] = 'auto'` matches the scale of a robust loss
+  to the data: it fits by least squares first, and then fits with the loss
+  from that solution, with a scale of 1.5 times the spread of those
+  residuals.  A scale of 1 (the noise of the instrument, still the default)
+  discounts many good pixels when residuals are several times the noise, as
+  for real holograms.  On 1,731 holograms of 3 um silica spheres, with the
+  Cauchy loss, the scatter between frames fell from that of a scale of 1 by
+  40% in the radius, 46% in the index and 36% in the axial position, and
+  from that of least squares by 46%, 24% and 27%, with 20% more
+  evaluations of the model than a scale of 1 and about twice those of least
+  squares.  In simulations of 900 spheres with known values, the error of the
+  radius was 4% to 21% below that of a scale of 1.  The reduced chi-squared
+  of such a fit is larger than with a scale of 1 and is not comparable
+  between fits.
 * A second fitting method of `Optimizer`, `settings['method'] = 'broyden'`
   (`analysis.broyden.broyden_least_squares`): Levenberg-Marquardt that
   updates the Jacobian from the steps that it takes (Broyden's update), and

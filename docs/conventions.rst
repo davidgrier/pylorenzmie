@@ -64,6 +64,16 @@ Holograms and fits
   that a fit reports is about 1 only if the noise is right and the model
   explains the data.  A reduced chi-squared of a robust fit is computed from
   the robust cost and is not comparable with one from least squares.
+* A robust loss discounts the pixels whose residuals exceed ``f_scale`` times
+  the noise, 1 unless the settings say otherwise.  Residuals of real
+  holograms are often several times the noise, and the loss then discounts
+  many good pixels.  ``f_scale='auto'`` takes the scale from the residuals of
+  a least-squares fit of the same pixels::
+
+      optimizer.robust = True
+      optimizer.settings['f_scale'] = 'auto'
+
+  See :attr:`~pylorenzmie.analysis.Optimizer.Optimizer.settings`.
 * The table that an optimizer returns holds each fitted parameter ``p``
   followed by its uncertainty ``dp``, then ``success``, ``npix`` (the number
   of pixels used) and ``redchi``.
