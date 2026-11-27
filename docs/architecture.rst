@@ -85,6 +85,13 @@ two spheres) and
 :class:`~pylorenzmie.analysis.MLPEstimator.MLPEstimator` (a trained network).
 :class:`~pylorenzmie.analysis.Mask.Mask` selects the pixels that a fit uses.
 
+A :class:`~pylorenzmie.analysis.CATCHAnalyzer.CATCHAnalyzer`, which needs the
+optional package CATCH, does the first two steps at once: it finds the
+particles of a frame and estimates them (see
+:ref:`finding-particles-with-catch`).  A frame starts each fit from the
+estimates of any localizer whose table has ``z_p``, ``a_p`` and ``n_p``,
+unless it is given an estimator.
+
 The global searches take ``bounds``, a range for each parameter in the units
 of the parameter, with ``z_p`` in pixels.  Without bounds they search 1 to
 200 micrometers in height, converted to pixels with the magnification of the

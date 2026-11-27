@@ -94,7 +94,8 @@ def group_overlapping(predictions: pd.DataFrame) -> pd.DataFrame:
     Returns
     -------
     grouped : pandas.DataFrame
-        Columns: ``x_p``, ``y_p``, ``bbox``, ``n_particles``.
+        Columns: ``x_p``, ``y_p``, ``bbox``, ``n_particles``, and any other
+        columns of ``predictions``, which merged rows leave empty.
         For merged rows, ``x_p`` and ``y_p`` are two-element lists of
         the original centers, ``bbox`` is the union of the two input
         boxes, and ``n_particles`` is 2. Single rows are unchanged,
@@ -119,10 +120,11 @@ def group_overlapping(predictions: pd.DataFrame) -> pd.DataFrame:
                              n_particles=2))
             continue
         for i in sorted(component):
-            row = predictions.iloc[i][['x_p', 'y_p', 'bbox']].to_dict()
+            row = predictions.iloc[i].to_dict()
             row['n_particles'] = 1
             rows.append(row)
     columns = ['x_p', 'y_p', 'bbox', 'n_particles']
+    columns += [c for c in predictions.columns if c not in columns]
     return pd.DataFrame(rows, columns=columns)
 
 

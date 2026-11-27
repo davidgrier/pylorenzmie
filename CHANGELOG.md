@@ -8,6 +8,29 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Added
 
+* `analysis.CATCHAnalyzer` finds and estimates particles with the neural
+  networks of the optional package CATCH.  It is the localizer of a `Frame`,
+  `Frame(localizer=CATCHAnalyzer(instrument))`, which then runs CATCH once for
+  each image, starts each fit from its estimates instead of searching, fits
+  with a robust loss, leaves out saturated pixels, and adds the `confidence`
+  and `quality` of each detection to its results.  A particle without an
+  estimate keeps its row, with empty values and `success` False.  It is also
+  the estimator of a single `Feature`, and `lmtool` uses it.  On 365
+  holograms of 3 um silica spheres, robust fits that started from CATCH
+  agreed with earlier fits (radius within 0.05 um, position within a pixel)
+  slightly more often than fits that started from a global search with ranges
+  chosen for the sample, in 0.24 s a particle against 0.35 s (the earlier
+  fits had also started from CATCH, which favors it).  `lmtool` now leaves
+  saturated pixels out of the detection of CATCH too.
+* `pair_grouping.group_overlapping` keeps the other columns of its input,
+  so that estimates stay with the detections that are not paired.
+* `Frame(robust=...)` fits every feature with a robust loss, or by least
+  squares.  By default it is robust with a `CATCHAnalyzer`, unless
+  `split_redchi` is set: the reduced chi-squared of a robust fit is too small
+  to be compared with that threshold, so asking for both raises a
+  `ValueError`.
+* A `Frame` starts each fit from `z_p`, `a_p` and `n_p` when the table of its
+  localizer has them, unless it is given an `estimator`.
 * `Optimizer.settings['f_scale'] = 'auto'`, which robust fits now select
   (see Changed), matches the scale of a robust loss
   to the data: it fits by least squares first, and then fits with the loss

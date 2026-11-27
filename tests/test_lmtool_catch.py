@@ -18,10 +18,11 @@ os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 try:
     import qtpy     # chooses the Qt binding (QT_API) before pyqtgraph can
     from pyqtgraph import mkQApp
+    from pylorenzmie.analysis import catch_available
     from pylorenzmie.lmtool.tasks import (LocalizeRequest, Snapshot,
-                                          catch_available, run_estimate,
-                                          run_localize)
+                                          run_estimate, run_localize)
     from pylorenzmie.theory import LorenzMie
+    from tests.test_catchanalyzer import StandIn, analyzer, detections
     from tests.test_lmtool import ToolTestCase
     _qt = True
 except Exception:       # no Qt binding, or no usable platform plugin
@@ -123,32 +124,31 @@ class TestCatchAction(ToolTestCase):
                          found.attrs['warning'])
 
 
-class _StandIn:
-    '''CATCHapp for an instrument whose pixels are *scale* times those of
-    its reference.'''
-
-    def __init__(self, scale):
-        self.scale = scale
-        self.localizer = self.estimator = mock.Mock(scales=(1., 2.5))
-        self.instrument = INSTRUMENT
-
-    def __call__(self, image):
-        return pd.DataFrame(columns=['x_p', 'y_p', 'bbox'])
-
-
 @unittest.skipUnless(_qt, 'a Qt binding is not available')
-class TestCatchRange(unittest.TestCase):
+class TestCatchTasksStandIn(unittest.TestCase):
 
-    def test_pixels_outside_the_range_of_the_networks_are_reported(self):
+    def run_with(self, found, request):
+        app = StandIn(found=found)
+        with mock.patch.object(analyzer, '_app', return_value=app):
+            return app, run_localize(request, threading.Event())
+
+    def test_the_strongest_candidates_come_first(self):
+        found = detections([0.3, 0.9, 0.6])
+        saturated = np.zeros((64, 64), bool)
+        image = np.ones((64, 64))
+        request = LocalizeRequest(image, 2, True, INSTRUMENT, saturated)
+        app, result = self.run_with(found, request)
+        self.assertEqual(list(result.confidence), [0.9, 0.6])
+        self.assertEqual(result.attrs['nfound'], 3)
+        self.assertEqual(result.attrs['warning'], '')
+        self.assertIs(app.saturation, saturated)
+        self.assertEqual(app.instrument, INSTRUMENT)
+
+    def test_finding_nothing_gives_an_empty_table(self):
         request = LocalizeRequest(np.ones((64, 64)), 10, True, INSTRUMENT)
-        for scale, warned in ((0.5, True), (1., False), (2.504, False),
-                              (2.6, False), (3., True)):
-            with self.subTest(scale=scale):
-                app = _StandIn(scale)
-                with mock.patch('pylorenzmie.lmtool.tasks._catch',
-                                return_value=app):
-                    found = run_localize(request, threading.Event())
-                self.assertEqual(bool(found.attrs['warning']), warned)
+        _, result = self.run_with(pd.DataFrame(), request)
+        self.assertEqual(len(result), 0)
+        self.assertIn('bbox', result.columns)
 
 
 @unittest.skipUnless(_qt and _catch, 'CATCH is not installed')

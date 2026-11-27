@@ -340,12 +340,15 @@
       `Estimator`, and use CNN predictions as initial conditions for LM
       refinement. The original TensorFlow 2.2 / Darknet implementation is defunct;
       a PyTorch rewrite would be maintainable and integrate with `torchLorenzMie`.
-- [ ] CATCH localizer: offer CATCH's trained localizer (a CenterNet-style
-      detector) as an alternative to the `CircleTransform` + trackpy
-      `Localizer`, behind the same `x_p`, `y_p`, `bbox` table and with a lazy
-      import so that pylorenzmie does not need PyTorch.  First compare the two
-      on the frozen CATCH test set and on recorded frames, and decide
-      whether to replace or to offer both.
+- [x] CATCH localizer and estimator: `analysis/CATCHAnalyzer.py`, optional,
+      used by `Frame` and `lmtool`; the built-in `Localizer` remains.
+- [ ] `CATCHAnalyzer`: it uses the first of CATCH's starting points, which
+      did as well as the rest on 3 um silica spheres; test large spheres, where
+      other starts may matter.  Tested only on silica and simulations.
+- [ ] A robust fit reports a smaller reduced chi-squared than a least-squares
+      fit, so `Frame(split_redchi=...)` cannot be used with robust fits (two
+      overlapping spheres: 1.2-1.4 robust, 6-7 least squares).  Pair
+      splitting would need a threshold and trial fits suited to both.
 
 ## tests
 

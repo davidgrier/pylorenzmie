@@ -120,6 +120,10 @@ medium, and lmtool warns when the pixels of the model are more than 5%
 outside that range.  Without CATCH the entry is disabled and the built-in
 methods are used.
 
+Saturated pixels are left out.  Scripts get the same detector and estimates
+from :class:`~pylorenzmie.analysis.CATCHAnalyzer.CATCHAnalyzer` (see
+:ref:`finding-particles-with-catch`).
+
 CATCH needs PyTorch.  Install it from its repository:
 
 .. code-block:: sh

@@ -25,18 +25,26 @@ of the table, with columns of its own (``x_p1``, ``x_p2`` and so on).
 '''
 
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import cast
 
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
 from pylorenzmie.theory import Instrument, LorenzMie, Pair
-from pylorenzmie.analysis import (BaseEstimator, DEEstimator, Feature,
-                                  Localizer)
+from pylorenzmie.analysis import (BaseEstimator, CATCHAnalyzer, DEEstimator,
+                                  Feature, Localizer)
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.analysis.pair_grouping import group_overlapping
-from pylorenzmie.lib.lmtypes import Image
+from pylorenzmie.lib import LMObject
+from pylorenzmie.lib.lmtypes import Image, Properties
 
+
+ESTIMATES = ('z_p', 'a_p', 'n_p')
+'''Columns of a localizer's table that estimate a particle.'''
+
+REPORTED = ('confidence', 'quality')
+'''Columns of a localizer's table that :class:`Frame` adds to its results.'''
 
 TRIAL_NFEV = 100
 '''Largest number of evaluations of the residuals (``max_nfev``) in each fit
@@ -50,6 +58,30 @@ def _fit(feature: Feature) -> pd.Series:
     if result is None:
         raise RuntimeError('the feature has not been optimized')
     return result
+
+
+@dataclass
+class _Detected(BaseEstimator):
+    '''The estimate that came with a detection.'''
+
+    z_p: float
+    a_p: float
+    n_p: float
+
+    @LMObject.properties.getter
+    def properties(self) -> Properties:
+        '''The estimate.'''
+        return dict(z_p=self.z_p, a_p=self.a_p, n_p=self.n_p)
+
+    @property
+    def complete(self) -> bool:
+        '''True if every value of the estimate is a finite number.'''
+        return bool(np.isfinite([self.z_p, self.a_p, self.n_p]).all())
+
+    def estimate(self, hologram: Hologram) -> pd.Series:
+        '''The estimate of the detector, at the detected position.'''
+        x_p, y_p = self.center or (np.nan, np.nan)
+        return pd.Series(dict(x_p=x_p, y_p=y_p, **self.properties))
 
 
 class Frame(Hologram):
@@ -70,10 +102,15 @@ class Frame(Hologram):
         Top-left corner of this image within the full camera frame.
         Default: ``(0., 0.)``.
     instrument : Instrument, optional
-        Microscope parameters shared by all features.
-        Default: ``Instrument()``.
-    localizer : Localizer, optional
-        Feature detection backend.  Default: ``Localizer()``.
+        Microscope parameters shared by all features.  Default: that of a
+        :class:`~pylorenzmie.analysis.CATCHAnalyzer.CATCHAnalyzer` that is
+        the localizer, and otherwise ``Instrument()``.  The two must agree.
+    localizer : Localizer or CATCHAnalyzer, optional
+        Finds the particles: any object whose ``localize(image)`` returns a
+        table with the columns ``x_p``, ``y_p`` and ``bbox``.  If the table
+        also has ``z_p``, ``a_p`` and ``n_p``, as that of a
+        :class:`~pylorenzmie.analysis.CATCHAnalyzer.CATCHAnalyzer` does,
+        each fit starts from them.  Default: ``Localizer()``.
     split_redchi : float or None, optional
         Reduced chi-squared above which a single-particle fit is
         suspected to be two particles and is refit as a
@@ -89,7 +126,9 @@ class Frame(Hologram):
         sets the pixel mask of its estimator, so that features cannot share
         one.  Pairs keep their
         :class:`~pylorenzmie.analysis.PairEstimator.PairEstimator`.
-        Default: ``None``, the
+        An estimator that is given is used instead of any estimates that
+        the localizer returns.  Default: ``None``, those estimates, or
+        without them the
         :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` of a
         :class:`~pylorenzmie.analysis.Feature.Feature`.
     saturated : numpy.ndarray of bool, optional
@@ -101,6 +140,16 @@ class Frame(Hologram):
         as one :class:`~pylorenzmie.theory.Pair.Pair`
         (see :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`).
         Default: ``False``, every detection is fitted as a single particle.
+    robust : bool, optional
+        ``True`` fits each feature with a robust loss (see
+        :attr:`~pylorenzmie.analysis.Optimizer.Optimizer.robust`), ``False``
+        by least squares.  Default: ``None``, robust if the localizer is a
+        :class:`~pylorenzmie.analysis.CATCHAnalyzer.CATCHAnalyzer` and
+        ``split_redchi`` is not set.  The optimizer of each feature may be
+        changed after :meth:`detect`.  A robust fit reports a smaller
+        reduced chi-squared than a least-squares fit of the same data, so
+        ``split_redchi`` cannot judge it: :meth:`detect` raises a
+        ``ValueError`` if both are asked for.
 
     Attributes
     ----------
@@ -110,19 +159,26 @@ class Frame(Hologram):
         Bounding boxes ``((x0, y0), w, h)`` for current features.
     results : pandas.DataFrame
         Optimized parameters from the most recent :meth:`optimize` or
-        :meth:`analyze` call.
+        :meth:`analyze` call, with the ``confidence`` and ``quality`` of
+        each detection if the localizer reports them.  A particle whose
+        detection came without a complete estimate is not fitted: its row
+        has its position, empty values and ``success`` False.
     '''
 
     def __init__(self,
                  data: Image | None = None,
                  corner: tuple[float, float] = (0., 0.),
                  instrument: Instrument | None = None,
-                 localizer: Localizer | None = None,
+                 localizer: Localizer | CATCHAnalyzer | None = None,
                  split_redchi: float | None = None,
                  estimator: Callable[[], BaseEstimator] | None = None,
                  saturated: NDArray[np.bool_] | None = None,
-                 pairs: bool = False) -> None:
+                 pairs: bool = False,
+                 robust: bool | None = None) -> None:
+        if instrument is None and isinstance(localizer, CATCHAnalyzer):
+            instrument = localizer.instrument
         self.instrument = instrument or Instrument()
+        self.robust = robust
         self.estimator = estimator
         self.localizer = localizer or Localizer()
         self.split_redchi = split_redchi
@@ -130,6 +186,7 @@ class Frame(Hologram):
         self._features: list[Feature] = []
         self._bboxes: list = []
         self._results: pd.DataFrame = pd.DataFrame()
+        self._reports: list[dict] = []
         self._data: Image | None = None
         # A Frame has no image until data is set; its data property says so.
         super().__init__(cast(Image, data), corner, saturated)
@@ -145,6 +202,7 @@ class Frame(Hologram):
     @data.setter
     def data(self, data: Image | None) -> None:
         self._features = []
+        self._reports = []
         self._results = pd.DataFrame()
         self._data = data
         self._coordinates = None
@@ -179,6 +237,7 @@ class Frame(Hologram):
             bboxes = [bboxes]
         self._bboxes = list(bboxes)
         self._features = [self[self._slices(bbox)] for bbox in self._bboxes]
+        self._reports = [{} for _ in self._bboxes]
 
     @staticmethod
     def _slices(bbox: tuple) -> tuple[slice, slice]:
@@ -190,16 +249,25 @@ class Frame(Hologram):
 
     def _feature(self,
                  key: tuple,
-                 centers: list[tuple[float, float]] | None = None) -> Feature:
-        '''Build a Feature crop with matching corner and shared instrument.'''
+                 centers: list[tuple[float, float]] | None = None,
+                 detected: BaseEstimator | None = None) -> Feature:
+        '''Build a Feature crop with matching corner and shared instrument.
+
+        *detected* holds the estimate of a detection, for a single particle
+        and a frame that was not given an estimator.
+        '''
         estimator = None
         single = centers is None or len(centers) == 1
-        if single and self.estimator is not None:
-            estimator = self.estimator()
-        return Feature(Hologram.__getitem__(self, key),
-                       model=LorenzMie(instrument=self.instrument),
-                       centers=centers,
-                       estimator=estimator)
+        if single:
+            estimator = (self.estimator() if self.estimator is not None
+                         else detected)
+        feature = Feature(Hologram.__getitem__(self, key),
+                          model=LorenzMie(instrument=self.instrument),
+                          centers=centers,
+                          estimator=estimator)
+        if self._robust():
+            feature.optimizer.robust = True
+        return feature
 
     def __getitem__(self, key: tuple) -> Feature:
         '''Return a Feature crop with matching corner and instrument.
@@ -215,6 +283,13 @@ class Frame(Hologram):
             Cropped Feature with correct corner and shared instrument.
         '''
         return self._feature(key)
+
+    def _robust(self) -> bool:
+        '''True if the features are to be fitted with a robust loss.'''
+        if self.robust is None:
+            return (self.split_redchi is None
+                    and isinstance(self.localizer, CATCHAnalyzer))
+        return self.robust
 
     def detect(self) -> int:
         '''Detect and localize features in :attr:`data`.
@@ -233,29 +308,67 @@ class Frame(Hologram):
         nfeatures : int
             Number of features found.
         '''
-        if self._data is None:
-            self._features = []
-            self._bboxes = []
-            return 0
-        df = self.localizer.localize(self._data)
-        df = (group_overlapping(df) if self.pairs
-              else df.assign(n_particles=1))
         self._features = []
         self._bboxes = []
+        self._reports = []
+        if self._data is None:
+            return 0
+        if self.robust and self.split_redchi is not None:
+            raise ValueError('split_redchi cannot judge robust fits: use '
+                             'one or the other')
+        if isinstance(self.localizer, CATCHAnalyzer):
+            self._check_instrument(self.localizer.instrument)
+        self.localizer.saturated = self.saturated
+        df = self.localizer.localize(self._data)
+        estimated = set(ESTIMATES) <= set(df.columns)
+        df = (group_overlapping(df) if self.pairs
+              else df.assign(n_particles=1))
         for _, row in df.iterrows():
+            detected = None
             if row.n_particles == 2:
                 centers = list(zip(row.x_p, row.y_p, strict=True))
             else:
                 centers = [(row.x_p, row.y_p)]
-            self._features.append(
-                self._feature(self._slices(row.bbox), centers))
+                if estimated:
+                    detected = _Detected(*(float(cast(float, row[p]))
+                                           for p in ESTIMATES))
+            self._features.append(self._feature(self._slices(row.bbox),
+                                                centers,
+                                                detected))
             self._bboxes.append(row.bbox)
+            self._reports.append({name: row[name] for name in REPORTED
+                                  if name in row})
         return len(self._features)
+
+    def _check_instrument(self, other: Instrument) -> None:
+        '''Raise a ValueError if the localizer has other optics.'''
+        for name in ('wavelength', 'magnification', 'n_m'):
+            mine, theirs = getattr(self.instrument, name), getattr(other, name)
+            if not np.isclose(mine, theirs):
+                raise ValueError(
+                    f'the localizer has {name} = {theirs:g} and the frame '
+                    f'{mine:g}: give them the same instrument')
+
+    @staticmethod
+    def _fittable(feature: Feature) -> bool:
+        '''False for a detection that came without a complete estimate.'''
+        estimator = feature.estimator
+        return not isinstance(estimator, _Detected) or estimator.complete
 
     def estimate(self) -> None:
         '''Estimate parameters for all current features.'''
         for feature in self.features:
             feature.estimate()
+
+    @staticmethod
+    def _unfitted(feature: Feature) -> pd.Series:
+        '''The row of a feature that could not be fitted.'''
+        row: dict = {}
+        for name in feature.optimizer.variables:
+            row.update({name: np.nan, 'd' + name: np.nan})
+        x_p, y_p = (feature.centers or [(np.nan, np.nan)])[0]
+        row.update(x_p=x_p, y_p=y_p, success=False, npix=0, redchi=np.nan)
+        return pd.Series(row)
 
     def _split(self, feature: Feature) -> Feature:
         '''Refit an optimized single-particle feature as a Pair.
@@ -337,6 +450,8 @@ class Frame(Hologram):
             return 0
         nsplit = 0
         for i, feature in enumerate(self.features):
+            if not self._fittable(feature):
+                continue
             result = _fit(feature)
             single = not isinstance(feature.particle, Pair)
             if single and result.redchi > self.split_redchi:
@@ -359,10 +474,16 @@ class Frame(Hologram):
             feature.
         '''
         for feature in self.features:
-            feature.optimize()
+            if self._fittable(feature):
+                feature.optimize()
         self.split_suspects()
-        self._results = pd.DataFrame(
-            [feature.optimizer.result for feature in self.features])
+        rows = [feature.optimizer.result if self._fittable(feature)
+                else self._unfitted(feature) for feature in self.features]
+        results = pd.DataFrame(rows)
+        for name in REPORTED:
+            if any(name in report for report in self._reports):
+                results[name] = [r.get(name) for r in self._reports]
+        self._results = results
         return self._results
 
     def analyze(self,

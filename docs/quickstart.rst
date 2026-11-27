@@ -135,6 +135,53 @@ sphere explains poorly, and ``Frame(pairs=True)`` fits two detections with
 overlapping boxes together.  Check what a pair fit returns, since a lower
 reduced chi-squared does not make it physical.
 
+.. _finding-particles-with-catch:
+
+Finding particles with CATCH
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+`CATCH <https://github.com/laltman2/CATCH>`_ uses neural networks to find
+holograms and to estimate each particle's height, radius and refractive index.
+It is optional, needs PyTorch, and is installed from its repository (the
+package ``CATCH`` of PyPI is something else)::
+
+    pip install git+https://github.com/laltman2/CATCH.git
+
+A :class:`~pylorenzmie.analysis.CATCHAnalyzer.CATCHAnalyzer` is the localizer
+of a frame:
+
+.. code-block:: python
+
+   from pylorenzmie.analysis import CATCHAnalyzer, Frame
+   from pylorenzmie.theory import Instrument
+
+   instrument = Instrument()
+   instrument.wavelength = 0.447
+   instrument.magnification = 0.048
+   instrument.n_m = 1.340
+
+   catch = CATCHAnalyzer(instrument)
+   frame = Frame(localizer=catch)     # shares the instrument of catch
+   results = frame.analyze(data)      # data: a normalized hologram
+
+CATCH runs once for the whole frame.  Each fit starts from its estimates, so
+there is no search and there are no ranges of parameters to choose.  The fits
+are robust unless ``Frame(robust=False)`` asks for least squares, and the
+results have two more columns: the ``confidence`` of each detection and its
+``quality``, which is empty or says why not to trust the particle.  A particle
+for which CATCH has no estimate keeps its row, with empty values and
+``success`` False.  Pass the saturated pixels of the image, if there are any,
+as ``frame.analyze(data, saturated=saturated)``.  For many frames,
+``CATCHAnalyzer(instrument, compile=True)`` found particles about twice as
+fast after the first frame on an Apple GPU, though the fits take most of the
+time of a frame.
+
+The networks were trained for a range of pixel sizes, measured in wavelengths
+in the medium; ``found.attrs['warning']`` of ``catch.localize(data)`` says if
+yours is outside it.  A frame with ``split_redchi`` is fitted by least
+squares, because a robust fit's reduced chi-squared cannot be compared with
+that threshold.
+
 .. note::
 
    The global search that starts each fit runs in a single process by

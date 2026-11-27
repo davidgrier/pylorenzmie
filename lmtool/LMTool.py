@@ -17,6 +17,7 @@ from qtpy.QtWidgets import (QAbstractItemView, QFileDialog,
                             QProgressBar, QTableView, QTabWidget,
                             QVBoxLayout)
 
+from pylorenzmie.analysis import catch_available
 from pylorenzmie.lib import (Azimuthal, LMObject)
 from pylorenzmie.lib.lmtypes import Coordinates, Image
 from pylorenzmie.lmtool.background import Background
@@ -30,8 +31,8 @@ from pylorenzmie.lmtool.ProfileWidget import ProfileWidget
 from pylorenzmie.lmtool.required import required
 from pylorenzmie.lmtool.results import save_results
 from pylorenzmie.lmtool.tasks import (FitResult, LocalizeRequest, Snapshot,
-                                       Task, TaskRunner, catch_available,
-                                       run_estimate, run_fit, run_localize)
+                                       Task, TaskRunner, run_estimate,
+                                       run_fit, run_localize)
 from pylorenzmie.utilities import Normalizer, estimate_noise, imread
 
 _DIR = Path(__file__).parent
@@ -406,12 +407,17 @@ class LMTool(QMainWindow):
                 self._search_again = True
                 self.tasks.cancel()
             return
-        self.tasks.start(Task.LOCALIZE,
-                         run_localize,
-                         LocalizeRequest(self.data,
-                                         self.MAX_CANDIDATES,
-                                         self.useCATCH,
-                                         self._instrument()))
+        self.tasks.start(
+            Task.LOCALIZE,
+            run_localize,
+            LocalizeRequest(
+                self.data,
+                self.MAX_CANDIDATES,
+                self.useCATCH,
+                self._instrument(),
+                cast(LoadedImage, self._image).saturated,
+            ),
+        )
 
     def _onLocalized(self, found: pd.DataFrame) -> None:
         self._nfound = found.attrs.get('nfound', len(found))

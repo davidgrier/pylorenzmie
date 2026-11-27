@@ -19,7 +19,6 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-import importlib.util
 import logging
 import threading
 from typing import Any, cast
@@ -28,25 +27,14 @@ import numpy as np
 import pandas as pd
 from qtpy.QtCore import QObject, QThread, Signal, Slot
 
-from pylorenzmie.analysis import DEEstimator, Localizer, Mask, Optimizer
+from pylorenzmie.analysis import (CATCHAnalyzer, DEEstimator, Localizer,
+                                  Mask, Optimizer)
 from pylorenzmie.analysis.DEEstimator import default_bounds
 from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.lib.lmtypes import Coordinates, Image, Properties, Property
-from pylorenzmie.theory import LorenzMie
+from pylorenzmie.theory import Instrument, LorenzMie
 
 logger = logging.getLogger(__name__)
-
-
-def catch_available() -> bool:
-    '''True if CATCH is installed.
-
-    CATCH needs PyTorch, which takes seconds to import, so this only looks
-    for the package: nothing is imported until a task asks for CATCH.
-    '''
-    spec = importlib.util.find_spec('CATCH')
-    # a directory of that name without an __init__.py (a checkout of the
-    # project, say) is found as a namespace package, which has no origin
-    return spec is not None and spec.origin is not None
 
 
 class Task(StrEnum):
@@ -143,13 +131,17 @@ class LocalizeRequest:
         Default: False.
     instrument : dict, optional
         ``wavelength``, ``magnification`` and ``n_m`` of the microscope,
-        which CATCH needs.  Default: the instrument of CATCH.
+        which CATCH needs.  Default: those of ``Instrument()``.
+    saturated : numpy.ndarray of bool, optional
+        Saturated pixels of the image, which CATCH leaves out.
+        Default: none.
     '''
 
     image: np.ndarray
     maxfeatures: int = 10
     catch: bool = False
     instrument: Mapping[str, float] | None = None
+    saturated: np.ndarray | None = None
 
 
 @dataclass
@@ -278,58 +270,19 @@ def run_localize(request: LocalizeRequest,
                                 check=check)
 
 
-_catch_lock = threading.Lock()
-_catch_app: Any = None
+def _analyzer(properties: Mapping[str, Property] | None) -> CATCHAnalyzer:
+    '''An analyzer of CATCH for the optics among the properties of a model,
+    or for the default instrument.
 
-#: How far outside the range of pixel sizes that CATCH was trained for an
-#: instrument may be, as a fraction, before lmtool warns.
-CATCH_MARGIN = 0.05
-
-
-def _catch_warning(app: Any, network: Any) -> str:
-    '''Why a network of CATCH may not suit the instrument, if it may not.
-
-    A network was trained for pixels of a range of sizes, measured in
-    wavelengths in the medium, relative to those of its reference microscope.
-
-    Parameters
-    ----------
-    app : CATCH.CATCHapp.CATCHapp
-        With the instrument of the model.
-    network : CATCH.Localizer.Localizer or CATCH.Estimator.Estimator
-        The network that is used, with its range in ``scales``.
-
-    Returns
-    -------
-    warning : str
-        Empty if the instrument is within the range, or close to it.
+    Its estimator is not compiled: compiling takes longer than the single
+    estimate that lmtool asks for.
     '''
-    low, high = network.scales
-    if low / (1. + CATCH_MARGIN) <= app.scale <= high * (1. + CATCH_MARGIN):
-        return ''
-    return (f'CATCH is meant for pixels {low:g} to {high:g} times those of '
-            f'its reference microscope, and these are {app.scale:.2g} times: '
-            'check its results')
-
-
-def _catch(instrument: Mapping[str, Property] | None) -> Any:
-    '''The :class:`CATCH.CATCHapp.CATCHapp` for an instrument.
-
-    The networks load once, on the first call, and stay.  The Estimator is
-    not compiled: compiling takes longer than the single estimate that
-    lmtool asks for.
-    '''
-    global _catch_app
-    with _catch_lock:
-        if _catch_app is None:
-            # CATCH is optional, and CI does not install it
-            from CATCH import CATCHapp  # pyright: ignore
-            _catch_app = CATCHapp(compile=False)
-        if instrument is not None:
-            _catch_app.instrument = {
-                name: float(cast(float, instrument[name]))
-                for name in ('wavelength', 'magnification', 'n_m')}
-        return _catch_app
+    instrument = Instrument()
+    if properties is not None:
+        instrument.properties = {
+            name: float(cast(float, properties[name]))
+            for name in ('wavelength', 'magnification', 'n_m')}
+    return CATCHAnalyzer(instrument, compile=False)
 
 
 def _catch_localize(request: LocalizeRequest,
@@ -337,22 +290,19 @@ def _catch_localize(request: LocalizeRequest,
     '''Find the particles in an image with CATCH.
 
     The result has the columns of the output of
-    :meth:`~pylorenzmie.analysis.Localizer.Localizer.localize` that lmtool
-    uses: ``x_p``, ``y_p`` and ``bbox``, the strongest candidate first.
+    :meth:`~pylorenzmie.analysis.CATCHAnalyzer.CATCHAnalyzer.localize`, the
+    strongest candidate first.
     '''
-    app = _catch(request.instrument)
-    found = app(request.image)
+    analyzer = _analyzer(request.instrument)
+    analyzer.saturated = request.saturated
+    found = analyzer.localize(request.image)
     if cancel.is_set():
         raise Cancelled
-    if len(found) == 0:
-        found = pd.DataFrame(columns=['x_p', 'y_p', 'bbox'])
-        nfound = 0
-    else:
-        nfound = len(found)
+    attrs = dict(found.attrs)
+    if len(found) > 0:
         found = found.sort_values('confidence', ascending=False)
         found = found.head(request.maxfeatures).reset_index(drop=True)
-    found.attrs['nfound'] = nfound
-    found.attrs['warning'] = _catch_warning(app, app.localizer)
+    found.attrs.update(attrs)
     return found
 
 
@@ -363,22 +313,16 @@ def _catch_estimate(snapshot: Snapshot,
     CATCH measures the profile of the hologram around the position of the
     particle, which is in the region of the snapshot.
     '''
-    app = _catch(snapshot.properties)
+    analyzer = _analyzer(snapshot.properties)
     if cancel.is_set():
         raise Cancelled
-    x_0 = float(snapshot.coordinates[0].min())
-    y_0 = float(snapshot.coordinates[1].min())
-    x_p = float(cast(float, snapshot.properties['x_p']))
-    y_p = float(cast(float, snapshot.properties['y_p']))
-    estimates = app.estimator(snapshot.data,
-                              [x_p - x_0],
-                              [y_p - y_0],
-                              app.instrument)
-    if len(estimates) == 0:
-        raise ValueError('CATCH has no estimate for this particle')
-    result = pd.Series({name: float(estimates[name].iloc[0])
-                        for name in ('z_p', 'a_p', 'n_p')})
-    result.attrs['warning'] = _catch_warning(app, app.estimator)
+    hologram = _hologram(snapshot)
+    analyzer.center = (float(cast(float, snapshot.properties['x_p'])),
+                       float(cast(float, snapshot.properties['y_p'])))
+    analyzer.exclude = hologram.excluded
+    estimate = analyzer.estimate(hologram)
+    result = cast(pd.Series, estimate[['z_p', 'a_p', 'n_p']])
+    result.attrs.update(estimate.attrs)
     return result
 
 

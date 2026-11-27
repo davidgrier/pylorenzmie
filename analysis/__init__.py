@@ -7,6 +7,7 @@ from .PairEstimator import PairEstimator
 from .RadialEstimator import RadialEstimator
 with suppress(ImportError):
     from .MLPEstimator import MLPEstimator
+from .CATCHAnalyzer import CATCHAnalyzer, catch_available
 from .Optimizer import Optimizer
 with suppress(ImportError):
     from .cupyOptimizer import cupyOptimizer
@@ -20,5 +21,6 @@ from .pair_grouping import group_overlapping
 
 __all__ = ['Hologram', 'Localizer', 'BaseEstimator', 'Estimator',
            'DEEstimator', 'PairEstimator', 'RadialEstimator', 'MLPEstimator',
+           'CATCHAnalyzer', 'catch_available',
            'Optimizer', 'cupyOptimizer', 'Mask', 'RadialMask', 'Feature',
            'Frame', 'Trajectory', 'group_overlapping']

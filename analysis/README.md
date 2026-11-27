@@ -7,6 +7,8 @@ estimate, optimize.
   pixels, and `Mask.py` and `RadialMask.py` choose the pixels that take part
   in a fit.
 - `Localizer.py` finds the features in a frame.
+- `CATCHAnalyzer.py` finds them and estimates them with the neural networks
+  of the optional package CATCH.
 - `Estimator.py`, `DEEstimator.py`, `RadialEstimator.py`,
   `MLPEstimator.py` and `PairEstimator.py` estimate starting values
   (`BaseEstimator.py` is their base class).

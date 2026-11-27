@@ -25,6 +25,12 @@ Localizer
 .. automodule:: pylorenzmie.analysis.Localizer
    :members:
 
+CATCHAnalyzer
+-------------
+
+.. automodule:: pylorenzmie.analysis.CATCHAnalyzer
+   :members:
+
 Broyden
 -------
 

@@ -21,6 +21,7 @@ from typing import Any, overload
 import numpy as np
 import trackpy as tp
 import pandas as pd
+from numpy.typing import NDArray
 
 from pylorenzmie.lib import LMObject, Azimuthal, CircleTransform
 from pylorenzmie.lib.lmtypes import Image, Properties
@@ -61,6 +62,10 @@ class Localizer(LMObject):
 
     Attributes
     ----------
+    saturated : numpy.ndarray of bool or None
+        Saturated pixels of the image, which a
+        :class:`~pylorenzmie.analysis.Frame.Frame` sets for a localizer
+        that uses them.  This one does not.
     limits : tuple[float, float]
         The detector sees the image limited to this range.  Default:
         ``(0., 3.)``, in units of the background.  Where a background is
@@ -72,6 +77,7 @@ class Localizer(LMObject):
     '''
 
     limits: tuple[float, float] = (0., 3.)
+    saturated: NDArray[np.bool_] | None = None
 
     def __init__(self,
                  diameter: int = 31,
