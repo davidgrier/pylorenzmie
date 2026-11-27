@@ -57,9 +57,6 @@ All notable changes to pylorenzmie are recorded here. The format follows
   95%, with 40% fewer evaluations; for spheres of 2.5 to 5 um, the share
   within one uncertainty rose from 19% to 88%.  Not tested on CUDA, and
   `cupyLorenzMie` in single precision is unchanged.
-* With SciPy 1.15, `max_nfev` of the `'lm'` method counted the evaluations of
-  the finite differences, so that a limit allowed several times fewer steps
-  than with later versions.  It now means the same with all of them.
 * `cupyOptimizer` could not fit: `optimize` raised `AttributeError`, because
   the pixels were no longer copied to the GPU (since 1.2.0).  A step outside
   the range that the model computes is now rejected there too, as by
@@ -72,6 +69,9 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* **SciPy 1.16 or later is required** (from 1.15).  With 1.15, `max_nfev` of
+  the `'lm'` method also counted the evaluations of the finite differences,
+  so that a limit allowed several times fewer steps than with later versions.
 * Setting `Optimizer.robust` to `True` (the `robust` argument, and
   **Optimization > Robust** of `lmtool`) now selects `f_scale='auto'`, unless
   the settings give an `f_scale`.  **Robust fits differ from those of earlier

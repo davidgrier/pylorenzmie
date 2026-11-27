@@ -48,7 +48,6 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy import __version__ as scipy_version
 from scipy.optimize import OptimizeResult, least_squares
 from scipy.linalg import svd
 import pandas as pd
@@ -76,10 +75,6 @@ RHO = {'soft_l1': lambda z: 2. * (np.sqrt(1. + z) - 1.),
        'cauchy': np.log1p,
        'arctan': np.arctan}
 '''The robust losses of scipy, as functions of the squared residual.'''
-
-LM_COUNTS_DIFFERENCES = np.lib.NumpyVersion(scipy_version) < '1.16.0'
-'''SciPy before 1.16 counts the evaluations of its own differences in
-``max_nfev`` for ``'lm'``.'''
 
 PENALTY = 1e6
 '''Residual of each pixel for parameters that the model does not compute.
@@ -470,12 +465,6 @@ class Optimizer(LMObject):
         if auto and robust and settings.get('method') == 'lm':
             raise ValueError("the method 'lm' does least squares: use "
                              "'trf' for a robust loss")
-        limit = settings.get('max_nfev')
-        if (LM_COUNTS_DIFFERENCES and limit is not None
-                and settings.get('method') == 'lm'
-                and not callable(settings.get('jac'))):
-            # one evaluation of each step, and one for each variable
-            settings['max_nfev'] = limit * (p0.size + 1)
         self._started = False
         self._last = None
         if broyden:

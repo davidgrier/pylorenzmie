@@ -408,18 +408,6 @@ class TestOptimizerFit(unittest.TestCase):
         self.assertEqual(residuals.shape, self.optimizer._pixels.shape)
         self.assertTrue(np.all(residuals == PENALTY))
 
-    def test_max_nfev_does_not_count_the_differences(self):
-        # this fit takes about 30 steps, and about 140 evaluations with the
-        # differences, which SciPy before 1.16 counted for 'lm'
-        start = dict(self.optimizer.model.particle.properties, a_p=1.3)
-        for limit, success in ((4, False), (40, True)):
-            with self.subTest(max_nfev=limit):
-                self.optimizer.model.particle.properties = start
-                self.optimizer.settings['max_nfev'] = limit
-                result = self.optimizer.optimize(self.hologram)
-                self.assertEqual(result.success, success)
-                self.assertEqual(self.optimizer.settings['max_nfev'], limit)
-
     def test_a_starting_point_that_is_not_finite_is_named(self):
         shape = self.hologram.data.shape
         nan = np.full(shape[0] * shape[1], np.nan)
