@@ -197,7 +197,26 @@ parameter.  Each slider has a lock button; locked parameters are held fixed
 during optimization and are excluded from uncertainty estimates.
 
 **Optimizer settings** (right) — controls the behaviour of the least-squares
-solver: pixel fraction, method, loss function, and convergence tolerances.
+solver: pixel fraction, method, loss function, convergence tolerances and the
+step of the finite differences.
+
+Robust fits
+^^^^^^^^^^^
+
+**Optimization → Robust** limits the influence of pixels that the model does
+not explain, such as dust or the fringes of a neighbor.  It selects the
+trust-region reflective method with a Cauchy loss, and matches the scale of
+the loss to the data: each fit is made by least squares first, and the loss
+then discounts the pixels that differ from the model by much more than those
+residuals typically do (see ``f_scale='auto'`` in
+:attr:`~pylorenzmie.analysis.Optimizer.Optimizer.settings`).  The reduced
+chi-squared in the status bar of such a fit is computed from the robust cost,
+and is not comparable with that of least squares.
+
+A loss chosen in the settings panel, without **Robust**, discounts pixels on
+the scale of the **noise** control instead, which for many real holograms
+discounts too many of them.  The panel does not show the scale, so use
+**Robust** to have it matched.
 
 Workflow
 --------

@@ -81,6 +81,39 @@ Fitting a hologram
    result = feature.optimize()
    print(result)    # fitted values, uncertainties and goodness of fit
 
+Choosing how to fit
+~~~~~~~~~~~~~~~~~~~
+
+The optimizer of a feature, ``feature.optimizer``, does least squares with the
+Levenberg-Marquardt algorithm.  Three settings change that; set them before
+calling ``feature.optimize()``.
+
+A robust fit limits the influence of pixels that the model does not explain,
+such as dust or the fringes of a neighbor:
+
+.. code-block:: python
+
+   feature.optimizer.robust = True
+
+Bounds keep the parameters within limits, with positions in pixels and the
+radius in micrometers.  The starting values must lie within them:
+
+.. code-block:: python
+
+   feature.optimizer.bounds = {'a_p': (0.5, 2.), 'n_p': (1.38, 1.7)}
+
+The method ``'broyden'`` updates the Jacobian instead of computing it at
+every step.  It is a little more reliable than the default in double
+precision, at about the same cost, and takes neither a robust loss nor
+bounds:
+
+.. code-block:: python
+
+   feature.optimizer.settings['method'] = 'broyden'
+
+See :class:`~pylorenzmie.analysis.Optimizer.Optimizer` for all of the
+settings.
+
 Analyzing a full frame
 ----------------------
 

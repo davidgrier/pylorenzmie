@@ -31,6 +31,11 @@ Optional features:
 * ``jac()`` and ``jac_params``: if the calculator can return the derivative of
   the hologram with respect to the particle parameters, an optimizer uses it
   whenever every parameter that it fits is in ``jac_params``.
+* ``diff_steps``: a calculator in single precision cannot resolve the small
+  finite-difference steps that suit double precision, and its fits then stop
+  far from the minimum.  It gives the steps that it needs, by property and in
+  the units of the property; see
+  :class:`~pylorenzmie.theory.torchLorenzMie.TorchLorenzMie`.
 * ``_aberration_coefficients()``: a calculator that evaluates the field inside
   a compiled kernel can apply the aberrations of
   :func:`~pylorenzmie.theory.Aberrated.Aberrated` itself; the existing Metal
