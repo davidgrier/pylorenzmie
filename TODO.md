@@ -357,7 +357,12 @@ Open findings of the review of the code base; the notes behind them are in
 `CHANGELOG.md` (what was done) and in the commit messages.
 
 - [ ] **Pair-split rule** (`Frame._split`): a pair is accepted when its
-      reduced chi-squared is lower than the single fit's, with no margin.
+      reduced chi-squared is lower than the single fit's, with no margin, and
+      with no test that it is physical: negative radii, radii of tens of
+      micrometers and coincident spheres have been accepted.  Splitting and
+      the grouping of overlapping boxes are off by default since 3.13.
+      Each trial is limited to 100 evaluations (checked on one noiseless
+      pair only).
       After the unit fix both features of `image0010.png` become pairs
       (3.6 to 2.6 and 3.9 to 2.8), which may be overfitting.  Decide a margin
       (or an F-test) and look at how many splits survive on the test images.

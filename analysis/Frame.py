@@ -16,6 +16,12 @@ the features in between, as the single-frame tutorial does.  Each feature is
 fitted on its own, so a particle whose pattern overlaps another's is fitted
 with the neighbor's fringes as noise.  The table of a series of frames can be
 collected in a :class:`~pylorenzmie.analysis.Trajectory.Trajectory`.
+
+Fitting particles as pairs is something to ask for.  With ``pairs=True``,
+two detections whose boxes overlap are fitted together as a
+:class:`~pylorenzmie.theory.Pair.Pair`, and with ``split_redchi`` a particle
+that a single sphere explains poorly is refit as a pair.  A pair has one row
+of the table, with columns of its own (``x_p1``, ``x_p2`` and so on).
 '''
 
 from collections.abc import Callable
@@ -72,8 +78,9 @@ class Frame(Hologram):
         Reduced chi-squared above which a single-particle fit is
         suspected to be two particles and is refit as a
         :class:`~pylorenzmie.theory.Pair.Pair`.  The pair fit replaces the
-        single fit only if it has a lower redchi.  ``None`` disables
-        this check.  Default: 2.0.
+        single fit only if it has a lower redchi, which does not ensure that
+        it is physical.  ``None`` (default) disables this check; 2.0 is a
+        reasonable threshold.
     estimator : callable, optional
         Makes the estimator of each single-particle feature: it is called
         with no arguments, once for each feature, and returns a
@@ -89,6 +96,11 @@ class Frame(Hologram):
         Saturated pixels of ``data``, which the fits leave out (see
         :class:`~pylorenzmie.analysis.Hologram.Hologram`).  Setting
         :attr:`data` clears it.  Default: ``None``.
+    pairs : bool, optional
+        ``True`` makes :meth:`detect` fit two detections whose boxes overlap
+        as one :class:`~pylorenzmie.theory.Pair.Pair`
+        (see :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`).
+        Default: ``False``, every detection is fitted as a single particle.
 
     Attributes
     ----------
@@ -106,13 +118,15 @@ class Frame(Hologram):
                  corner: tuple[float, float] = (0., 0.),
                  instrument: Instrument | None = None,
                  localizer: Localizer | None = None,
-                 split_redchi: float | None = 2.0,
+                 split_redchi: float | None = None,
                  estimator: Callable[[], BaseEstimator] | None = None,
-                 saturated: NDArray[np.bool_] | None = None) -> None:
+                 saturated: NDArray[np.bool_] | None = None,
+                 pairs: bool = False) -> None:
         self.instrument = instrument or Instrument()
         self.estimator = estimator
         self.localizer = localizer or Localizer()
         self.split_redchi = split_redchi
+        self.pairs = pairs
         self._features: list[Feature] = []
         self._bboxes: list = []
         self._results: pd.DataFrame = pd.DataFrame()
@@ -202,13 +216,12 @@ class Frame(Hologram):
     def detect(self) -> int:
         '''Detect and localize features in :attr:`data`.
 
-        Localized bounding boxes are passed through
-        :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`:
-        an isolated box becomes a single-particle
-        :class:`~pylorenzmie.analysis.Feature.Feature`,
-        while two mutually overlapping boxes are merged into one
-        :class:`~pylorenzmie.analysis.Feature.Feature` configured for a
-        :class:`~pylorenzmie.theory.Pair.Pair`.
+        Each detection of the localizer becomes a single-particle
+        :class:`~pylorenzmie.analysis.Feature.Feature`.  If ``pairs``
+        is ``True``, two detections whose boxes overlap only each other
+        (see :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`)
+        become one :class:`~pylorenzmie.analysis.Feature.Feature`
+        configured for a :class:`~pylorenzmie.theory.Pair.Pair`.
 
         Returns
         -------
@@ -219,7 +232,9 @@ class Frame(Hologram):
             self._features = []
             self._bboxes = []
             return 0
-        df = group_overlapping(self.localizer.localize(self._data))
+        df = self.localizer.localize(self._data)
+        df = (group_overlapping(df) if self.pairs
+              else df.assign(n_particles=1))
         self._features = []
         self._bboxes = []
         for _, row in df.iterrows():
@@ -258,8 +273,7 @@ class Frame(Hologram):
         that 1/8 alone produces) where the wider candidate starts
         local refinement too far from the true spacing to converge
         correctly.  A wider 1/4 offset was tried and dropped: a pair
-        that separated is normally resolved as two boxes by
-        :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`
+        that separated is normally detected as two particles
         before ever reaching this single-to-pair promotion, so a
         feature that got this far is already blended tightly enough
         that 1/4 of the crop size overshoots past any separation it
@@ -336,8 +350,8 @@ class Frame(Hologram):
     def optimize(self) -> pd.DataFrame:
         '''Optimize parameters for all current features.
 
-        Suspect single-particle fits are then refit as pairs, as in
-        :meth:`split_suspects`.
+        If ``split_redchi`` is set, suspect single-particle fits are
+        then refit as pairs, as in :meth:`split_suspects`.
 
         Returns
         -------

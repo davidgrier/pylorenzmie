@@ -79,14 +79,11 @@ def group_overlapping(predictions: pd.DataFrame) -> pd.DataFrame:
 
     Intended for a Pair fitter, where a bounding box may contain at
     most two particles. Boxes are partitioned into connected
-    components under the "overlaps" relation. An isolated box (no
-    overlaps) passes through unchanged as a single-particle box. A
-    component of exactly two mutually overlapping boxes is merged
-    into one two-particle box. A component of three or more boxes is
-    discarded entirely: even the boxes at the ends of a chain, such
-    as A overlapping B and B overlapping C, still contain pixels from
-    a third particle and so cannot be analyzed as an isolated single
-    or pair.
+    components under the "overlaps" relation. A component of exactly two
+    mutually overlapping boxes is merged into one two-particle box. Every
+    other box passes through unchanged as a single-particle box: an
+    isolated one, and those of a component of three or more, which a pair
+    cannot describe.  No detection is dropped.
 
     Parameters
     ----------
@@ -113,19 +110,18 @@ def group_overlapping(predictions: pd.DataFrame) -> pd.DataFrame:
 
     rows = []
     for component in _connected_components(neighbors):
-        if len(component) == 1:
-            i, = component
-            row = predictions.iloc[i][['x_p', 'y_p', 'bbox']].to_dict()
-            row['n_particles'] = 1
-            rows.append(row)
-        elif len(component) == 2:
-            i, j = component
+        if len(component) == 2:
+            i, j = sorted(component)
             a, b = predictions.iloc[i], predictions.iloc[j]
             rows.append(dict(x_p=[a.x_p, b.x_p],
                              y_p=[a.y_p, b.y_p],
                              bbox=_merge_bbox(a.bbox, b.bbox),
                              n_particles=2))
-        # else: three or more overlapping boxes — discard the group.
+            continue
+        for i in sorted(component):
+            row = predictions.iloc[i][['x_p', 'y_p', 'bbox']].to_dict()
+            row['n_particles'] = 1
+            rows.append(row)
     columns = ['x_p', 'y_p', 'bbox', 'n_particles']
     return pd.DataFrame(rows, columns=columns)
 

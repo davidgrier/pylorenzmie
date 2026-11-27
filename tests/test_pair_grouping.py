@@ -40,29 +40,30 @@ class TestPairGrouping(unittest.TestCase):
         self.assertEqual(row.bbox, ((0, 0), 35, 20))
         self.assertEqual(row.n_particles, 2)
 
-    def test_chain_of_three_discarded(self):
-        # A overlaps B, B overlaps C, A does not overlap C. Even
-        # though A and C aren't directly touching, their boxes still
-        # contain pixels from B's particle, so the whole chain drops.
+    def test_chain_of_three_stays_single(self):
+        # A overlaps B, B overlaps C, A does not overlap C: a pair cannot
+        # describe the three, and none of them is dropped.
         predictions = pd.DataFrame([
             _prediction(10., 10., ((0, 0), 20, 20)),
             _prediction(28., 10., ((18, 0), 20, 20)),
             _prediction(46., 10., ((36, 0), 20, 20)),
         ])
         result = group_overlapping(predictions)
-        self.assertEqual(len(result), 0)
+        self.assertEqual(list(result.x_p), [10., 28., 46.])
+        self.assertEqual(list(result.bbox), list(predictions.bbox))
+        self.assertTrue((result.n_particles == 1).all())
 
-    def test_chain_of_three_does_not_affect_unrelated_box(self):
+    def test_chain_of_three_does_not_affect_unrelated_pair(self):
         predictions = pd.DataFrame([
             _prediction(10., 10., ((0, 0), 20, 20)),
             _prediction(28., 10., ((18, 0), 20, 20)),
             _prediction(46., 10., ((36, 0), 20, 20)),
             _prediction(500., 500., ((490, 490), 20, 20)),
+            _prediction(515., 500., ((505, 490), 20, 20)),
         ])
         result = group_overlapping(predictions)
-        self.assertEqual(len(result), 1)
-        self.assertEqual(result.iloc[0].x_p, 500.)
-        self.assertEqual(result.iloc[0].n_particles, 1)
+        self.assertEqual(list(result.n_particles), [1, 1, 1, 2])
+        self.assertEqual(result.iloc[3].x_p, [500., 515.])
 
     def test_returns_dataframe_with_expected_columns(self):
         predictions = pd.DataFrame([

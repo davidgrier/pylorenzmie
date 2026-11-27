@@ -15,7 +15,7 @@ estimate, optimize.
   which updates the Jacobian instead of recomputing it.
 - `Feature.py` bundles one particle, `Frame.py` a whole image, and
   `Trajectory.py` links frames in time.  `pair_grouping.py` groups
-  features that overlap.
+  features that overlap, when a `Frame` is asked for pairs.
 - `mlp_estimator.npz` is the trained network of `MLPEstimator`; retrain
   it with `tools/train_mlp_estimator.py`.
 

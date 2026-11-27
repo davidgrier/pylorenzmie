@@ -128,6 +128,13 @@ Analyzing a full frame
    results = frame.analyze(data)
    print(results)   # pandas.DataFrame with one row per particle
 
+Each particle that is detected is fitted on its own, even if its pattern
+overlaps another's.  Two particles too close to be told apart can be fitted
+as a pair instead: ``Frame(split_redchi=2.0)`` refits a particle that one
+sphere explains poorly, and ``Frame(pairs=True)`` fits two detections with
+overlapping boxes together.  Check what a pair fit returns, since a lower
+reduced chi-squared does not make it physical.
+
 .. note::
 
    The global search that starts each fit runs in a single process by

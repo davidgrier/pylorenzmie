@@ -136,10 +136,35 @@ class TestFrame(unittest.TestCase):
         crop = self.frame[50:150, 50:150]
         self.assertEqual(crop.corner, (50., 50.))
 
+    def test_overlapping_boxes_are_single_particles(self):
+        self.frame.localizer.nfringes = 10     # as below: the boxes overlap
+        self.frame.data = self.data
+        self.assertEqual(self.frame.detect(), 2)
+        for feature in self.frame.features:
+            self.assertIsNone(feature.centers)
+
+    def test_no_detection_is_dropped(self):
+        found = pd.DataFrame(dict(
+            x_p=[60., 90., 120.],
+            y_p=[60., 60., 60.],
+            bbox=[((x - 30, 30), 60, 60) for x in (60, 90, 120)]))
+        for pairs in (False, True):
+            with self.subTest(pairs=pairs):
+                frame = Frame(self.data, pairs=pairs)
+                localizer = frame.localizer
+                with patch.object(localizer, 'localize', return_value=found):
+                    self.assertEqual(frame.detect(), 3)
+
+    def test_pairs_are_something_to_ask_for(self):
+        frame = Frame()
+        self.assertFalse(frame.pairs)
+        self.assertIsNone(frame.split_redchi)
+
     def test_detect_groups_overlap_into_pair_feature(self):
         '''image0010's two overlapping boxes become one Pair Feature.'''
         from pylorenzmie.analysis import PairEstimator
         from pylorenzmie.theory import Pair
+        self.frame.pairs = True
         self.frame.instrument.wavelength = 0.447
         # Wide enough that the two particles' boxes overlap (6 already
         # suffices; the default of 4 keeps them separate).
@@ -217,16 +242,10 @@ class TestFrame(unittest.TestCase):
 
 
 class TestFrameOnAnImage(unittest.TestCase):
-    '''The pipeline on a real image of two spheres.
-
-    Splitting a feature into a pair is turned off.  It refits both features
-    with a differential-evolution search for each of eight candidate pairs,
-    which takes a minute on this image and finds no pair; the tests above
-    cover the split.
-    '''
+    '''The pipeline on a real image of two spheres.'''
 
     def setUp(self):
-        self.frame = Frame(split_redchi=None)
+        self.frame = Frame()
         self.data = imread(TEST_IMAGE).astype(float) / 100.
 
     def test_optimize(self):

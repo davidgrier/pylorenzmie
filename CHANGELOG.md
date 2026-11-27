@@ -69,6 +69,16 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* **`Frame` fits every particle that it detects on its own.**  Pairs are now
+  something to ask for.  `Frame(pairs=True)` fits two detections whose boxes
+  overlap as a pair, as was done before, and `Frame(split_redchi=2.0)` refits
+  as a pair a particle that one sphere explains poorly (the default of
+  `split_redchi` is now `None`).  Three or more overlapping boxes were
+  discarded without a word, 81% of the particles that CATCH detected in
+  frames of silica spheres and 11% of those of `Localizer`;
+  `group_overlapping` now returns them as single particles.  Pair splitting
+  also accepted unphysical pairs.  **Results of `Frame` differ from those of
+  earlier versions** where boxes overlap or fits are poor.
 * The menu entry **Optimization > Robust** of `lmtool` is replaced by a button,
   **Robust fit**, in the optimizer settings.  It sets up a robust fit, and the
   settings, which now include `f_scale`, may then be changed.  `lmtool`
