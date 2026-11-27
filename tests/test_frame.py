@@ -1,11 +1,14 @@
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 from pylorenzmie.utilities import imread
 
-from pylorenzmie.analysis import BaseEstimator, DEEstimator, Frame
+from pylorenzmie.analysis import (BaseEstimator, DEEstimator, Frame,
+                                  Optimizer)
+from pylorenzmie.analysis.Frame import TRIAL_NFEV
 from pylorenzmie.analysis.Hologram import Hologram
 
 
@@ -187,9 +190,23 @@ class TestFrame(unittest.TestCase):
         from pylorenzmie.theory import Pair
         frame = self._pair_frame()
         frame.estimate()
-        results = frame.optimize()
+        limits = []
+        optimize = Optimizer.optimize
+
+        def recorded(optimizer, hologram):
+            limits.append((len(optimizer.variables),
+                           optimizer.settings['max_nfev']))
+            return optimize(optimizer, hologram)
+
+        with patch.object(Optimizer, 'optimize', recorded):
+            results = frame.optimize()
         self.assertIsInstance(frame.features[0].particle, Pair)
         self.assertLess(results.redchi.iloc[0], 2.0)
+        # the single fit has the usual budget; each trial of a pair less,
+        # and the pair that is chosen has the usual one again
+        self.assertEqual(limits, [(5, 2000)] + 8 * [(10, TRIAL_NFEV)])
+        chosen = frame.features[0].optimizer
+        self.assertEqual(chosen.settings['max_nfev'], 2000)
 
     def test_split_disabled_keeps_single(self):
         '''split_redchi=None leaves a single-particle fit alone.'''

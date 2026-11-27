@@ -32,6 +32,12 @@ from pylorenzmie.analysis.pair_grouping import group_overlapping
 from pylorenzmie.lib.lmtypes import Image
 
 
+TRIAL_NFEV = 200
+'''Largest number of evaluations of the residuals (``max_nfev``) in each fit
+of a pair that :class:`Frame` tries in place of a single sphere.  A trial that
+starts far from any good solution can otherwise take a thousand.'''
+
+
 def _fit(feature: Feature) -> pd.Series:
     '''The fit of a feature that has been optimized.'''
     result = feature.optimizer.result
@@ -259,6 +265,10 @@ class Frame(Hologram):
         that 1/4 of the crop size overshoots past any separation it
         is likely to have.
 
+        Each candidate is fitted with at most :data:`TRIAL_NFEV`
+        evaluations.  If the one that is returned stopped there, its
+        result is not marked as successful.
+
         Parameters
         ----------
         feature : Feature
@@ -286,7 +296,11 @@ class Frame(Hologram):
                         and isinstance(pair.estimator, DEEstimator)):
                     pair.estimator.seed = feature.estimator.seed
                 pair.estimate()
+                settings = pair.optimizer.settings
+                limit = settings['max_nfev']
+                settings['max_nfev'] = TRIAL_NFEV
                 pair.optimize()
+                settings['max_nfev'] = limit     # for later fits
                 if best is None or _fit(pair).redchi < _fit(best).redchi:
                     best = pair
         if best is None:

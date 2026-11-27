@@ -12,16 +12,15 @@ import cupy as cp
 
 from pylorenzmie.analysis import Optimizer
 from pylorenzmie.lib.lmtypes import Image
-from pylorenzmie.theory.cupyLorenzMie import cupyLorenzMie
 
 
 class cupyOptimizer(Optimizer):
     '''GPU-accelerated optimizer using CuPy.
 
     Subclass of :class:`~pylorenzmie.analysis.Optimizer.Optimizer` that keeps
-    hologram computation and residual evaluation on the GPU.  Only the final
-    residual vector is transferred to the CPU for scipy's Levenberg-Marquardt
-    solver.
+    hologram computation and residual evaluation on the GPU.  The pixels are
+    copied to the GPU when a fit starts, and only the residual vector comes
+    back to the CPU for the solver.
 
     Inherits from :class:`~pylorenzmie.analysis.Optimizer`.
 
@@ -49,21 +48,24 @@ class cupyOptimizer(Optimizer):
 
     @property
     def data(self) -> Image | None:
+        '''Pixels being fitted; setting them copies them to the GPU.'''
         return self._data
 
     @data.setter
     def data(self, data: Image | None) -> None:
-        self._data = data
-        self.devicedata = (cp.asarray(data, dtype=self.model.dtype)
-                           if data is not None else None)
+        if data is None:
+            self._data = self.devicedata = None
+        else:
+            self._load(data)
 
-    def _residuals(self, values: list[float]) -> cupyLorenzMie.Image:
-        '''Compute residuals on the GPU; return numpy array to scipy.'''
-        self.model.properties = dict(zip(self.variables, values, strict=True))
+    def _load(self, pixels: Image) -> None:
+        super()._load(pixels)
+        self.devicedata = cp.asarray(pixels, dtype=self.model.dtype)
+
+    def _difference(self) -> Image:
         noise = self.model.instrument.noise
         hologram = self.model.hologram(device=True)
-        residuals = (hologram - self.devicedata) / noise
-        return residuals.get()
+        return ((hologram - self.devicedata) / noise).get()
 
 
 if __name__ == '__main__':  # pragma: no cover

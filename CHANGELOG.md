@@ -57,6 +57,13 @@ All notable changes to pylorenzmie are recorded here. The format follows
   95%, with 40% fewer evaluations; for spheres of 2.5 to 5 um, the share
   within one uncertainty rose from 19% to 88%.  Not tested on CUDA, and
   `cupyLorenzMie` in single precision is unchanged.
+* With SciPy 1.15, `max_nfev` of the `'lm'` method counted the evaluations of
+  the finite differences, so that a limit allowed several times fewer steps
+  than with later versions.  It now means the same with all of them.
+* `cupyOptimizer` could not fit: `optimize` raised `AttributeError`, because
+  the pixels were no longer copied to the GPU (since 1.2.0).  A step outside
+  the range that the model computes is now rejected there too, as by
+  `Optimizer`.  Tested with a stand-in for CuPy, not on a GPU.
 * `Optimizer.optimize` left the model at the last point that it had evaluated,
   which was a step of a finite difference: it now leaves it at the fit.
 * The documentation of `lmtool`, and its tooltip, said to install CATCH with
@@ -82,7 +89,9 @@ All notable changes to pylorenzmie are recorded here. The format follows
   earlier versions** (the radius of a real feature by up to a few tenths of
   a nanometer, typically).  A fit of one sphere takes about 30% longer, and
   60% longer for the example holograms; a fit of a pair of spheres can take
-  several times as long.  Real holograms that the model explains less well
+  several times as long, so `Frame` limits each of the pair fits that it
+  tries in place of a single sphere to 200 evaluations (`max_nfev`).
+  Real holograms that the model explains less well
   can cost more still: for 3 um silica spheres, with a reduced chi-squared of
   about 36, a fit took about twice the evaluations of the model.  Those fits
   ended much closer to their minimum (94% within a tenth of the

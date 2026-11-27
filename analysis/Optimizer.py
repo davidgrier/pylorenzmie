@@ -7,8 +7,10 @@ normalized :class:`~pylorenzmie.analysis.Hologram.Hologram` with
 :func:`~pylorenzmie.analysis.broyden.broyden_least_squares`.  The residual of
 each pixel is weighted by the noise of the instrument, so that the reduced
 chi-squared of the result is near 1 when the model explains the data.  The
-solver is the Levenberg-Marquardt algorithm by default and the trust-region
-reflective algorithm with a Cauchy loss for a robust fit (``robust = True``).
+solver is the Levenberg-Marquardt algorithm by default.  A robust fit
+(``robust = True``) uses the trust-region reflective algorithm with a Cauchy
+loss, whose scale is matched to the residuals of a least-squares fit made
+first (``f_scale = 'auto'``).
 When the model provides an analytical Jacobian (``jac()``, as the JAX
 calculator does) it is used.  A model that declares ``diff_steps``, as the
 single-precision Torch calculator does, is differenced with those steps;
@@ -29,9 +31,16 @@ the instrument, the absorption and the aberrations are fixed.  A
 :class:`~pylorenzmie.analysis.Mask.Mask` can restrict the fit to a subset of
 the pixels.  The result of :meth:`~Optimizer.optimize` is a table of fitted
 values with their uncertainties, the number of pixels and the reduced
-chi-squared.  The uncertainties assume that the instrument noise is correct,
-and a reduced chi-squared well above 1 means that the model leaves structure in
-the data.
+chi-squared.  A reduced chi-squared well above 1 means that the noise is
+underestimated or that the model leaves structure in the data.
+
+The uncertainties are scaled by the cost of the fit per degree of freedom,
+which for least squares is the reduced chi-squared.  For least squares, and
+for a robust fit with ``f_scale = 'auto'``, they therefore do not depend on
+the value given for the noise of the instrument; with a fixed ``f_scale``
+they do, a little.  They assume that the residuals of different pixels are
+independent, and are too small when the residuals are correlated, as the
+structure that a model does not explain usually is.
 '''
 
 from collections.abc import Sequence
@@ -39,6 +48,7 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy import __version__ as scipy_version
 from scipy.optimize import OptimizeResult, least_squares
 from scipy.linalg import svd
 import pandas as pd
@@ -67,6 +77,10 @@ RHO = {'soft_l1': lambda z: 2. * (np.sqrt(1. + z) - 1.),
        'arctan': np.arctan}
 '''The robust losses of scipy, as functions of the squared residual.'''
 
+LM_COUNTS_DIFFERENCES = np.lib.NumpyVersion(scipy_version) < '1.16.0'
+'''SciPy before 1.16 counts the evaluations of its own differences in
+``max_nfev`` for ``'lm'``.'''
+
 PENALTY = 1e6
 '''Residual of each pixel for parameters that the model does not compute.
 
@@ -79,10 +93,11 @@ can take it.
 class Optimizer(LMObject):
     '''Fit a generative light-scattering model to holographic data.
 
-    Wraps :func:`scipy.optimize.least_squares`.  The ``method`` class
-    attribute must appear as a substring of the model's ``method`` string
-    for the pairing to be valid (e.g. ``'numpy'`` matches both
-    ``'numpy'`` and ``'cupy numpy'``).
+    Fits with :func:`scipy.optimize.least_squares`, or with
+    :func:`~pylorenzmie.analysis.broyden.broyden_least_squares`.  The
+    ``method`` class attribute must appear as a substring of the model's
+    ``method`` string for the pairing to be valid (e.g. ``'numpy'`` matches
+    both ``'numpy'`` and ``'cupy numpy'``).
 
     Parameters
     ----------
@@ -111,9 +126,10 @@ class Optimizer(LMObject):
         leaves the particle's position, radius and refractive index free,
         and the thickness and index of a shell.
     settings : dict, optional
-        Keyword arguments forwarded to ``scipy.optimize.least_squares``.
-        Defaults to sensible values for holographic particle fitting.
-        The dictionary is copied.
+        Settings of the fit: keyword arguments of
+        ``scipy.optimize.least_squares``, with the additions that
+        :attr:`settings` describes.  Defaults to sensible values for
+        holographic particle fitting.  The dictionary is copied.
     bounds : dict, optional
         Limits of the variables; see :attr:`bounds`.  Default: ``None``,
         no limits.
@@ -174,7 +190,13 @@ class Optimizer(LMObject):
 
     @property
     def settings(self) -> Settings:
-        '''Settings forwarded to ``scipy.optimize.least_squares``.
+        '''Settings of the fit.
+
+        These are keyword arguments of ``scipy.optimize.least_squares``,
+        and are passed to it, with three additions of this class: the
+        ``method`` ``'broyden'`` selects another solver, ``chi2tol``
+        belongs to that solver, and an ``f_scale`` of ``'auto'`` is replaced
+        by a number.
 
         Notes
         -----
@@ -230,6 +252,18 @@ class Optimizer(LMObject):
         and example holograms nearly always ended within a tenth of their
         uncertainties of the minimum that they were approaching, which need
         not be the lowest one; with ``1e-4`` they often did not.
+
+        ``xtol``: the fit stops when the step, or the region within which it
+        may be taken, is smaller than this fraction of the size of the
+        parameters.  Default: 1e-8.
+
+        ``gtol``: the fit stops when the gradient of the cost is this small,
+        by a measure that depends on the method (see
+        :func:`scipy.optimize.least_squares`).  Default: 1e-6.
+
+        ``max_nfev``: the largest number of evaluations of the residuals,
+        not counting those that a Jacobian by differences takes.  A fit that
+        reaches it is not successful.  Default: 2000.
         '''
         return self._settings
 
@@ -286,7 +320,7 @@ class Optimizer(LMObject):
     def robust(self) -> bool:
         '''True if using robust (non-linear loss) optimization.
 
-        Setting ``True`` selects the methods ``'trf'`` and the Cauchy loss,
+        Setting ``True`` selects the method ``'trf'`` and the Cauchy loss,
         and ``f_scale='auto'`` unless the settings give an ``f_scale``.
         Setting ``False`` selects least squares by ``'lm'``, and removes an
         ``f_scale`` of ``'auto'``.  Choosing a loss in :attr:`settings`
@@ -407,10 +441,11 @@ class Optimizer(LMObject):
         if broyden:
             self._check_broyden(settings)
         if self.mask is None:
-            self._data = hologram.flat_data
+            pixels = hologram.flat_data
             self.model.coordinates = hologram.flat_coordinates
         else:
-            self._data, self.model.coordinates = self.mask.apply(hologram)
+            pixels, self.model.coordinates = self.mask.apply(hologram)
+        self._load(pixels)
         p0 = np.array([self.model.properties[p] for p in self.variables])
         jac_params = self.model.jac_params
         if jac_params and set(self.variables) <= jac_params:
@@ -435,6 +470,12 @@ class Optimizer(LMObject):
         if auto and robust and settings.get('method') == 'lm':
             raise ValueError("the method 'lm' does least squares: use "
                              "'trf' for a robust loss")
+        limit = settings.get('max_nfev')
+        if (LM_COUNTS_DIFFERENCES and limit is not None
+                and settings.get('method') == 'lm'
+                and not callable(settings.get('jac'))):
+            # one evaluation of each step, and one for each variable
+            settings['max_nfev'] = limit * (p0.size + 1)
         self._started = False
         self._last = None
         if broyden:
@@ -563,11 +604,23 @@ class Optimizer(LMObject):
                            / (moved[index] - values[index]))
         return np.column_stack(columns)
 
+    def _load(self, pixels: Image) -> None:
+        '''Take the pixels that are to be fitted.
+
+        A subclass that forms the residuals elsewhere copies them there.
+        '''
+        self._data = pixels
+
+    def _difference(self) -> Image:
+        '''The model less the pixels, in units of the noise, at the
+        properties that the model has.'''
+        noise = self.model.instrument.noise
+        return (self.model.hologram() - self._pixels) / noise
+
     def _residuals(self, values: NDArray[np.floating]) -> Image:
         self.model.properties = dict(zip(self.variables, values, strict=True))
-        noise = self.model.instrument.noise
         try:
-            residuals = (self.model.hologram() - self._pixels) / noise
+            residuals = self._difference()
         except ModelDomainError:
             # a step of the fit left the range that the model computes
             # (a radius of more than 50 um, say): reject the step, but
