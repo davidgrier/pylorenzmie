@@ -354,12 +354,22 @@ class LMTool(QMainWindow):
         self.data = data
         self.findParticles()
 
-    def _setNoise(self, image: NDArray[np.floating]) -> None:
-        '''Set the noise of the model to the estimate for ``image``.'''
+    def _setNoise(self, image: NDArray[np.floating]) -> bool:
+        '''Set the noise of the model to the estimate for ``image``.
+
+        Returns False, and leaves the noise as it is, if the image has too
+        few finite pixels for an estimate.
+        '''
+        try:
+            estimate = estimate_noise(image)
+        except ValueError as error:
+            logger.warning(f'The noise could not be estimated: {error}')
+            return False
         control = self.controls.control('noise')
         low, high = control.range() if control else (0., np.inf)
-        noise = float(np.clip(estimate_noise(image), low, high))
+        noise = float(np.clip(estimate, low, high))
         self.session.update(dict(noise=noise))
+        return True
 
     @Slot()
     def estimateNoise(self) -> None:
@@ -373,9 +383,11 @@ class LMTool(QMainWindow):
         if self.data is None:
             return
         data, _, _ = self.crop()
-        self._setNoise(data)
-        self._say(
-            f'Noise: {self.session.get("noise"):.3f}', 5000)
+        if self._setNoise(data):
+            self._say(f'Noise: {self.session.get("noise"):.3f}', 5000)
+        else:
+            self._say('Too few pixels of the region can be used to '
+                      'estimate the noise', 8000)
 
     @Slot()
     def findParticles(self) -> None:

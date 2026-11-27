@@ -132,8 +132,8 @@
 - [ ] Piston (constant relative phase) in `Feature`/`Aberrated` (patch on
       hold: the piston needs a physical explanation before it is introduced)
 - [ ] Missing pixels (NaN, where the background is not positive):
-      `Localizer` finds nothing in an image with a few of them, and
-      `estimate_noise` returns NaN
+      `Localizer` finds nothing in an image with a few of them.
+      (`estimate_noise` leaves them out since 3.13.)
 - [x] `LayeredSphere`: core-shell particle class (released in 3.11.0) with appropriate Mie coefficients
       a_n/b_n for layered geometries. Relevant for coated beads, lipid vesicles,
       and protein-coated colloids. HoloPy and PyMieScatt both support this;

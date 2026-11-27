@@ -128,6 +128,37 @@ class TestSession(ToolTestCase):
                                delta=0.01)
         self.assertIn('Noise: 0.1', tool.statusBar().currentMessage())
 
+    def test_a_background_at_the_dark_count_does_not_stop_a_fit(self):
+        # isolated pixels of the background are not above the dark count,
+        # so the normalized hologram has pixels that are not finite
+        background = np.full((390, 390), 100, np.uint8)
+        background[::37, ::41] = 0
+        with tempfile.TemporaryDirectory() as directory:
+            filename = str(Path(directory) / 'background.png')
+            Image.fromarray(background).save(filename)
+            tool = self.tool(background=filename)
+        self.assertFalse(np.isfinite(tool.data).all())
+        noise = tool.session.get('noise')
+        self.assertTrue(0. < noise < 0.1)
+        tool.estimateNoise()                     # from the region
+        self.assertTrue(0. < tool.session.get('noise') < 0.1)
+        tool.optimize()
+        self.wait(tool)
+        self.assertIn('Optimization complete',
+                      tool.statusBar().currentMessage())
+
+    def test_a_region_with_no_finite_pixels_keeps_the_noise(self):
+        tool = self.tool()
+        image = 1. + np.random.default_rng(0).normal(0., 0.05, (390, 390))
+        image[100:300, 100:300] = np.nan
+        tool.data = image
+        noise = tool.session.get('noise')
+        tool.imageWidget.setRegion(200., 200., 60)
+        with self.assertLogs(level='WARNING'):
+            tool.estimateNoise()
+        self.assertEqual(tool.session.get('noise'), noise)
+        self.assertIn('Too few pixels', tool.statusBar().currentMessage())
+
     def test_a_region_past_the_edge_is_drawn_where_it_is(self):
         tool = self.tool()
         tool.imageWidget.setRegion(20., 195., 60)

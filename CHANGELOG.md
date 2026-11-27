@@ -57,6 +57,10 @@ All notable changes to pylorenzmie are recorded here. The format follows
   95%, with 40% fewer evaluations; for spheres of 2.5 to 5 um, the share
   within one uncertainty rose from 19% to 88%.  Not tested on CUDA, and
   `cupyLorenzMie` in single precision is unchanged.
+* `estimate_noise` returned NaN for an image with a single pixel that is NaN
+  or infinite, as a background no brighter than the dark count leaves, and
+  `lmtool` then could not fit.  Such pixels are now left out; an image with
+  no block of 3 by 3 finite pixels raises a `ValueError`.
 * `cupyOptimizer` could not fit: `optimize` raised `AttributeError`, because
   the pixels were no longer copied to the GPU (since 1.2.0).  A step outside
   the range that the model computes is now rejected there too, as by

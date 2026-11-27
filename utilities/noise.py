@@ -34,6 +34,18 @@ def estimate_noise(image: NDArray[np.floating]) -> float:
         Estimate of the standard deviation of the noise, in the units of
         the image.
 
+    Raises
+    ------
+    ValueError
+        If the image is not two-dimensional with at least 3 pixels on a
+        side, or has no block of 3 by 3 finite pixels.
+
+    Notes
+    -----
+    Pixels that are NaN or infinite, as where a background is no brighter
+    than the dark count, are left out, with the neighbors whose response
+    they would spoil.
+
     References
     ----------
     J. Immerkaer, "Fast noise variance estimation," Computer Vision and
@@ -43,6 +55,10 @@ def estimate_noise(image: NDArray[np.floating]) -> float:
     if image.ndim != 2 or min(image.shape) < 3:
         raise ValueError('an image with at least 3 pixels on a side is '
                          f'required, not shape {image.shape}')
+    image = np.where(np.isfinite(image), image, np.nan)
     response = convolve(image, _KERNEL, mode='nearest')[1:-1, 1:-1]
+    response = response[np.isfinite(response)]
+    if response.size == 0:
+        raise ValueError('the image has no block of 3 by 3 finite pixels')
     mad = np.median(np.abs(response - np.median(response)))
     return float(_MAD * mad / 6.)

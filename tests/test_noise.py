@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import numpy as np
 
@@ -44,6 +45,24 @@ class TestEstimateNoise(unittest.TestCase):
         image = 1. + self.rng.normal(0., 0.05, (100, 100))
         self.assertAlmostEqual(estimate_noise(3. * image) /
                                estimate_noise(image), 3.)
+
+    def test_pixels_that_are_not_finite_are_left_out(self):
+        sigma = 0.05
+        image = 1. + self.rng.normal(0., sigma, (300, 300))
+        bad = self.rng.random(image.shape) < 0.01
+        for value in (np.nan, np.inf, -np.inf):
+            with self.subTest(value=value):
+                spoiled = np.where(bad, value, image)
+                with warnings.catch_warnings():
+                    warnings.simplefilter('error')
+                    estimate = estimate_noise(spoiled)
+                self.assertAlmostEqual(estimate / sigma, 1., delta=0.03)
+
+    def test_an_image_without_finite_blocks_is_refused(self):
+        image = np.ones((20, 20))
+        image[::2] = np.nan
+        with self.assertRaisesRegex(ValueError, 'finite'):
+            estimate_noise(image)
 
     def test_bad_shapes_are_refused(self):
         with self.assertRaises(ValueError):
