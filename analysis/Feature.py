@@ -55,10 +55,14 @@ class Feature(Hologram):
     model : LorenzMie, optional
         Generative scattering model.  Default: ``LorenzMie()``.
     centers : list[tuple[float, float]], optional
-        Rough ``(x_p, y_p)`` pixel centers of the particles in the crop.
-        ``None`` (default) or one center configures a single-particle
-        feature; two centers configure a
-        :class:`~pylorenzmie.theory.Pair.Pair`.
+        Rough ``(x_p, y_p)`` pixel centers of the particles in the crop, as
+        a localizer saw them.  ``None`` (default) or one center configures a
+        single-particle feature; two centers configure a
+        :class:`~pylorenzmie.theory.Pair.Pair`.  One center is given to the
+        estimator as its
+        :attr:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator.center`,
+        where it starts to look, and the particle is put there until it is
+        estimated.
     fixed : list[str], optional
         Model properties held constant during fitting.  Default: the
         Optimizer default for a single particle, or ``k_p1``/``k_p2``
@@ -107,6 +111,10 @@ class Feature(Hologram):
         else:
             estimator.exclude = m.exclude
         self.estimator = estimator
+        if self._centers is not None and len(self._centers) == 1:
+            estimator.center = self._centers[0]
+            particle = self.model.single()
+            particle.x_p, particle.y_p = self._centers[0]
 
         self.optimizer = Optimizer(model=self.model, mask=m)
         if fixed is None and pair:
@@ -116,7 +124,7 @@ class Feature(Hologram):
 
     @property
     def centers(self) -> list[tuple[float, float]] | None:
-        '''Pinned centers for a two-particle feature, else ``None``.'''
+        '''Where the particles were seen, if the feature was told.'''
         return self._centers
 
     @property

@@ -142,15 +142,23 @@ class TestFeature(unittest.TestCase):
         self.feature.estimate()
         self.assertGreater(self.feature.particle.a_p, 0)
 
-    def test_estimate_uses_coordinates_for_position(self):
-        '''estimate() places x_p/y_p at center of hologram coordinates.'''
+    def test_estimate_without_a_center_uses_the_middle(self):
+        '''A feature that was not told keeps the middle of its crop.'''
         self.feature.estimate()
-        self.assertAlmostEqual(self.feature.particle.x_p,
-                               float(self.feature.coordinates[0].mean()),
-                               places=5)
-        self.assertAlmostEqual(self.feature.particle.y_p,
-                               float(self.feature.coordinates[1].mean()),
-                               places=5)
+        for value, axis in ((self.feature.particle.x_p, 0),
+                            (self.feature.particle.y_p, 1)):
+            middle = float(self.feature.coordinates[axis].mean())
+            self.assertAlmostEqual(value, middle, places=5)
+
+    def test_a_center_goes_to_the_estimator_and_the_particle(self):
+        feature = Feature(self.feature, centers=[(190., 200.)])
+        self.assertEqual(feature.estimator.center, (190., 200.))
+        self.assertEqual((feature.particle.x_p, feature.particle.y_p),
+                         (190., 200.))
+        given = Feature(self.feature,
+                        centers=[(190., 200.)],
+                        estimator=DEEstimator(model=feature.model))
+        self.assertEqual(given.estimator.center, (190., 200.))
 
     def test_predicted_shape(self):
         '''predicted() returns an array with the same shape as the feature.'''

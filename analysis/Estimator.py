@@ -23,6 +23,7 @@ network).
 '''
 
 from dataclasses import dataclass
+from typing import ClassVar
 
 import pandas as pd
 import numpy as np
@@ -36,8 +37,6 @@ from pylorenzmie.analysis.Hologram import Hologram
 from pylorenzmie.theory import Instrument, LorenzMie, Sphere
 
 
-_NPIXELS = 20000      # pixels used to find the center
-_RING = 0.5           # width (pixels) of the rings used to find the center
 _RADII = (0.1, 5.)    # range (um) searched for the radius
 
 
@@ -63,23 +62,26 @@ class Estimator(BaseEstimator):
         Imaginary part of the refractive index. Default: 0.
     max_shift : float, optional
         Largest distance (pixels) by which the center of the particle may
-        differ from the center of the crop.  Default: 10.  Zero keeps the
-        center of the crop.
+        differ from where the search starts (see
+        :meth:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator.find_center`).
+        Default: ``None``, 5 from
+        :attr:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator.center`
+        and 10 from the middle of the crop.  Zero keeps the start.
 
     Notes
     -----
     Call :meth:`estimate` to populate all particle parameters.
     Results are available via :attr:`properties` afterwards.
 
-    The center is found by minimizing the variance of the pixels within rings
-    of 0.5 pixel about it, on a coarse grid within ``max_shift`` of the center
-    of the crop and then on finer grids.  It needs neither the radius nor the
-    height, and it recovers the center to about 0.1 pixel to 1 pixel, the
+    The center is found by
+    :meth:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator.find_center`,
+    which minimizes the variance of the pixels within rings of 0.5 pixel
+    about it.  It recovers the center to about 0.1 pixel to 1 pixel, the
     larger value for crops of 100 pixels, from a start that is 10 pixels off,
     which keeps the radius within a few percent of that of a fit.  Without it
     the radius of a small sphere is too small by 25% to 40% at that error.
-    The search assumes that the feature is the only rotationally symmetric
-    pattern in the crop.
+    Without a hint of where the particle is, the search assumes that it is the
+    only rotationally symmetric pattern near the middle of the crop.
 
     The radius is the one for which the Lorenz-Mie profile at ``n_p`` best
     matches the azimuthal average, searched on a grid of radii and of heights
@@ -108,7 +110,8 @@ class Estimator(BaseEstimator):
     instrument: Instrument
     n_p: float = 1.5
     k_p: float = 0.
-    max_shift: float = 10.
+    max_shift: float | None = None
+    unhinted_shift: ClassVar[float] = 10.     # it looks without a hint too
 
     def __post_init__(self) -> None:
         self.predict = self.estimate
@@ -131,40 +134,9 @@ class Estimator(BaseEstimator):
         self._k = self.instrument.wavenumber()
         self._data = hologram.data
         self._corner = hologram.corner
-        self.x_p, self.y_p = self._find_center(hologram)
+        self.x_p, self.y_p = self.find_center(hologram)
         center = (self.x_p - self._corner[0], self.y_p - self._corner[1])
         self._profile = Azimuthal.avg(self._data, center)
-
-    def _find_center(self, hologram: Hologram) -> tuple[float, float]:
-        '''Center of the most rotationally symmetric pattern.
-
-        Minimizes the variance of the pixels within rings of 0.5 pixel
-        about a trial center, on grids of decreasing size and spacing.
-        '''
-        x = float(hologram.coordinates[0].mean())
-        y = float(hologram.coordinates[1].mean())
-        if self.max_shift <= 0.:
-            return x, y
-        data = hologram.flat_data
-        xy = hologram.flat_coordinates
-        keep = np.isfinite(data)
-        step = max(1, int(np.ceil(keep.sum() / _NPIXELS)))
-        pixels = np.flatnonzero(keep)[::step]
-        d, px, py = data[pixels], xy[0, pixels], xy[1, pixels]
-
-        def unexplained(cx: float, cy: float) -> float:
-            bins = np.floor(np.hypot(px - cx, py - cy) / _RING).astype(int)
-            n = np.bincount(bins)
-            occupied = n > 0
-            total = np.bincount(bins, d)[occupied]
-            squares = np.bincount(bins, d * d)[occupied]
-            return float(np.sum(squares - total**2 / n[occupied]))
-
-        for reach, spacing in ((self.max_shift, 2.), (2., 1.), (1., 0.25)):
-            offsets = np.arange(-reach, reach + spacing / 2., spacing)
-            trials = [(x + dx, y + dy) for dx in offsets for dy in offsets]
-            x, y = min(trials, key=lambda c: unexplained(*c))
-        return x, y
 
     def _estimate_z(self) -> None:
         '''Estimate axial position from fringe spacing.

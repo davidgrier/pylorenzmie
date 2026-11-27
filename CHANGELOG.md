@@ -69,6 +69,16 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* **The estimator provides the center of a particle.**  A `Frame` tells each
+  feature where its particle was detected (`Feature(centers=[(x, y)])`,
+  `BaseEstimator.center`), and `BaseEstimator.find_center` refines that
+  position from the symmetry of the hologram, within 5 pixels.  The global and
+  network estimators used the middle of the crop instead, and `Frame` forced
+  each box square, so a particle near an edge of the image was estimated tens
+  of pixels from where it was.  `Frame` now trims a box to the image without
+  squaring it.  Without a detection, the middle of the crop is used, as
+  before.  `lmtool` starts its estimate from the position of the particle.
+  **Estimates and fits differ from those of earlier versions.**
 * **`Frame` fits every particle that it detects on its own.**  Pairs are now
   something to ask for.  `Frame(pairs=True)` fits two detections whose boxes
   overlap as a pair, as was done before, and `Frame(split_redchi=2.0)` refits

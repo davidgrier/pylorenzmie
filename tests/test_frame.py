@@ -141,7 +141,42 @@ class TestFrame(unittest.TestCase):
         self.frame.data = self.data
         self.assertEqual(self.frame.detect(), 2)
         for feature in self.frame.features:
-            self.assertIsNone(feature.centers)
+            self.assertEqual(len(feature.centers), 1)
+            self.assertEqual(feature.estimator.center, feature.centers[0])
+
+    def test_a_box_that_crosses_the_edge_is_trimmed(self):
+        bbox = [((-30, 0), 100, 100)]
+        found = pd.DataFrame(dict(x_p=[20.], y_p=[50.], bbox=bbox))
+        frame = Frame(self.data, estimator=_Fixed)
+        with patch.object(frame.localizer, 'localize', return_value=found):
+            frame.detect()
+        feature = frame.features[0]
+        self.assertEqual(feature.corner, (0., 0.))
+        self.assertEqual(feature.shape, (100, 70))
+        self.assertEqual(feature.centers, [(20., 50.)])
+        self.assertIsInstance(feature.estimator, _Fixed)
+        self.assertEqual(feature.estimator.center, (20., 50.))
+
+    def test_a_given_box_is_not_made_square(self):
+        frame = Frame(self.data)
+        frame.bboxes = ((100, 200), 80, 40)
+        feature = frame.features[0]
+        self.assertEqual(feature.corner, (100., 200.))
+        self.assertEqual(feature.shape, (40, 80))
+        self.assertIsNone(feature.centers)
+
+    def test_a_single_feature_with_a_center_can_be_split(self):
+        frame = self._pair_frame()
+        frame.features[0].estimator.center = None
+        feature = frame._feature((slice(0, 201), slice(0, 201)),
+                                 [(100., 100.)])
+        frame._features = [feature]
+        result = pd.Series(dict(redchi=5.))
+        with patch.object(frame, '_split', return_value=feature) as split:
+            with patch('pylorenzmie.analysis.Frame._fit',
+                       return_value=result):
+                frame.split_suspects()
+        split.assert_called_once_with(feature)
 
     def test_no_detection_is_dropped(self):
         found = pd.DataFrame(dict(

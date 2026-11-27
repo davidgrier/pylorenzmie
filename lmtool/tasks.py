@@ -245,6 +245,9 @@ def run_estimate(snapshot: Snapshot, cancel: threading.Event) -> pd.Series:
     estimator = DEEstimator(model=model,
                             bounds=bounds,
                             exclude=hologram.excluded)
+    # where the user, or a search, put the particle
+    particle = model.single()
+    estimator.center = (particle.x_p, particle.y_p)
     return estimator.estimate(hologram)
 
 

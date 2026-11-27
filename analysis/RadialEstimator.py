@@ -54,8 +54,9 @@ class RadialEstimator(_DESearch, BaseEstimator):
 
     Notes
     -----
-    ``x_p`` and ``y_p`` are pinned to the pixel-coordinate means before
-    the search begins; only the parameters listed in ``bounds`` are
+    ``x_p`` and ``y_p`` are set by
+    :meth:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator.find_center`
+    before the search begins; only the parameters listed in ``bounds`` are
     varied.
 
     The model coordinates are temporarily replaced by a 1-D radial spoke
@@ -109,8 +110,7 @@ class RadialEstimator(_DESearch, BaseEstimator):
             Estimated particle properties (same keys as
             :attr:`~pylorenzmie.theory.Particle.Particle.properties`).
         '''
-        x_p = float(hologram.coordinates[0].mean())
-        y_p = float(hologram.coordinates[1].mean())
+        x_p, y_p = self.find_center(hologram)
         particle = self.model.single()
         particle.x_p = x_p
         particle.y_p = y_p

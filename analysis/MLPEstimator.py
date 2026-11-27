@@ -182,10 +182,9 @@ class MLPEstimator(BaseEstimator):
 
     Notes
     -----
-    ``x_p`` and ``y_p`` are pinned to the pixel-coordinate means of the
-    hologram (same convention as
-    :class:`~pylorenzmie.analysis.DEEstimator.DEEstimator` and
-    :class:`~pylorenzmie.analysis.RadialEstimator.RadialEstimator`).
+    ``x_p`` and ``y_p`` are those of
+    :meth:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator.find_center`,
+    as for the other estimators, and the profile is taken about them.
 
     The profile from :func:`~pylorenzmie.lib.Azimuthal.avg` is truncated
     to the first *n_features* values. Positions beyond the profile end
@@ -228,8 +227,7 @@ class MLPEstimator(BaseEstimator):
             Estimated particle properties (same keys as
             :attr:`~pylorenzmie.theory.Particle.Particle.properties`).
         '''
-        x_p = float(hologram.coordinates[0].mean())
-        y_p = float(hologram.coordinates[1].mean())
+        x_p, y_p = self.find_center(hologram)
 
         cx, cy = hologram.corner
         profile = Azimuthal.avg(hologram.data,

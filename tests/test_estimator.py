@@ -54,6 +54,13 @@ class TestEstimator(unittest.TestCase):
         self.assertAlmostEqual(result['x_p'], float(h.coordinates[0].mean()))
         self.assertAlmostEqual(result['y_p'], float(h.coordinates[1].mean()))
 
+    def test_the_center_is_found_from_a_hint(self):
+        truth = self.estimator.estimate(self.hologram)
+        self.estimator.center = (truth['x_p'] + 4., truth['y_p'] - 4.)
+        found = self.estimator.estimate(self.hologram)
+        for p in ('x_p', 'y_p'):
+            self.assertAlmostEqual(found[p], truth[p], delta=0.6)
+
     def test_search_is_corner_aware(self):
         '''The search reports pixel coordinates of the image, not the crop.'''
         h = Hologram(self.hologram.data, corner=(10., 20.))

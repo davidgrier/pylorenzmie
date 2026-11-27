@@ -30,7 +30,7 @@ from typing import cast
 import numpy as np
 from numpy.typing import NDArray
 import pandas as pd
-from pylorenzmie.theory import Instrument, LorenzMie
+from pylorenzmie.theory import Instrument, LorenzMie, Pair
 from pylorenzmie.analysis import (BaseEstimator, DEEstimator, Feature,
                                   Localizer)
 from pylorenzmie.analysis.Hologram import Hologram
@@ -178,20 +178,23 @@ class Frame(Hologram):
                 and isinstance(bboxes[0], tuple)):
             bboxes = [bboxes]
         self._bboxes = list(bboxes)
-        self._features = []
-        for (x0, y0), w, h in self._bboxes:
-            dim = min(w, h)
-            feature = self[y0:y0 + dim, x0:x0 + dim]
-            feature.particle.x_p = x0 + dim / 2.
-            feature.particle.y_p = y0 + dim / 2.
-            self._features.append(feature)
+        self._features = [self[self._slices(bbox)] for bbox in self._bboxes]
+
+    @staticmethod
+    def _slices(bbox: tuple) -> tuple[slice, slice]:
+        '''Rows and columns of a bounding box, trimmed to the image.'''
+        (x0, y0), w, h = bbox
+        x0, y0 = int(x0), int(y0)
+        return (slice(max(y0, 0), max(y0 + int(h), 0)),
+                slice(max(x0, 0), max(x0 + int(w), 0)))
 
     def _feature(self,
                  key: tuple,
                  centers: list[tuple[float, float]] | None = None) -> Feature:
         '''Build a Feature crop with matching corner and shared instrument.'''
         estimator = None
-        if centers is None and self.estimator is not None:
+        single = centers is None or len(centers) == 1
+        if single and self.estimator is not None:
             estimator = self.estimator()
         return Feature(Hologram.__getitem__(self, key),
                        model=LorenzMie(instrument=self.instrument),
@@ -217,7 +220,9 @@ class Frame(Hologram):
         '''Detect and localize features in :attr:`data`.
 
         Each detection of the localizer becomes a single-particle
-        :class:`~pylorenzmie.analysis.Feature.Feature`.  If ``pairs``
+        :class:`~pylorenzmie.analysis.Feature.Feature`: the box of the
+        detection, trimmed to the image, with the detected position as the
+        feature's center, from which its estimator starts.  If ``pairs``
         is ``True``, two detections whose boxes overlap only each other
         (see :func:`~pylorenzmie.analysis.pair_grouping.group_overlapping`)
         become one :class:`~pylorenzmie.analysis.Feature.Feature`
@@ -238,19 +243,12 @@ class Frame(Hologram):
         self._features = []
         self._bboxes = []
         for _, row in df.iterrows():
-            (x0, y0), w, h = row.bbox
-            x0, y0 = max(int(x0), 0), max(int(y0), 0)
             if row.n_particles == 2:
-                feature = self._feature(
-                    (slice(y0, y0 + h), slice(x0, x0 + w)),
-                    centers=list(zip(row.x_p, row.y_p, strict=True)))
+                centers = list(zip(row.x_p, row.y_p, strict=True))
             else:
-                dim = min(w, h)
-                feature = self._feature(
-                    (slice(y0, y0 + dim), slice(x0, x0 + dim)))
-                feature.particle.x_p = row.x_p
-                feature.particle.y_p = row.y_p
-            self._features.append(feature)
+                centers = [(row.x_p, row.y_p)]
+            self._features.append(
+                self._feature(self._slices(row.bbox), centers))
             self._bboxes.append(row.bbox)
         return len(self._features)
 
@@ -340,7 +338,8 @@ class Frame(Hologram):
         nsplit = 0
         for i, feature in enumerate(self.features):
             result = _fit(feature)
-            if feature.centers is None and result.redchi > self.split_redchi:
+            single = not isinstance(feature.particle, Pair)
+            if single and result.redchi > self.split_redchi:
                 pair = self._split(feature)
                 if _fit(pair).redchi < result.redchi:
                     self._features[i] = pair

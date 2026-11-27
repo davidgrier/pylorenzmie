@@ -199,8 +199,9 @@ class DEEstimator(_DESearch, BaseEstimator):
 
     Notes
     -----
-    ``x_p`` and ``y_p`` are pinned to the pixel-coordinate means before
-    the search begins; only the parameters listed in ``bounds`` are
+    ``x_p`` and ``y_p`` are set by
+    :meth:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator.find_center`
+    before the search begins; only the parameters listed in ``bounds`` are
     varied.
 
     For large particles (``a_p`` ≳ 1 μm) the hologram fringe pattern
@@ -271,8 +272,7 @@ class DEEstimator(_DESearch, BaseEstimator):
             :attr:`~pylorenzmie.theory.Particle.Particle.properties`).
         '''
         particle = self.model.single()
-        particle.x_p = float(hologram.coordinates[0].mean())
-        particle.y_p = float(hologram.coordinates[1].mean())
+        particle.x_p, particle.y_p = self.find_center(hologram)
 
         # seeded with the estimator, so that a seed makes the whole
         # estimate reproducible

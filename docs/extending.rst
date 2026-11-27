@@ -73,6 +73,13 @@ getter.  Use it by assigning it to the ``estimator`` of a
 :class:`~pylorenzmie.analysis.Feature.Feature`.  If it is random, take a
 ``seed``.
 
+The estimate includes the center of the particle.  A feature that was told
+where the particle was seen, as by the localizer of a
+:class:`~pylorenzmie.analysis.Frame.Frame`, sets the estimator's ``center``,
+and :meth:`~pylorenzmie.analysis.BaseEstimator.BaseEstimator.find_center`
+refines it from the pixels.  Do not assume that the particle is in the middle
+of the crop: a crop at the edge of an image is trimmed.
+
 A new mask or localizer
 -----------------------
 
