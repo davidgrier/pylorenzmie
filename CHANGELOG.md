@@ -90,7 +90,7 @@ All notable changes to pylorenzmie are recorded here. The format follows
   a nanometer, typically).  A fit of one sphere takes about 30% longer, and
   60% longer for the example holograms; a fit of a pair of spheres can take
   several times as long, so `Frame` limits each of the pair fits that it
-  tries in place of a single sphere to 200 evaluations (`max_nfev`).
+  tries in place of a single sphere to 100 evaluations (`max_nfev`).
   Real holograms that the model explains less well
   can cost more still: for 3 um silica spheres, with a reduced chi-squared of
   about 36, a fit took about twice the evaluations of the model.  Those fits

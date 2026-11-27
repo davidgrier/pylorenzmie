@@ -32,7 +32,7 @@ from pylorenzmie.analysis.pair_grouping import group_overlapping
 from pylorenzmie.lib.lmtypes import Image
 
 
-TRIAL_NFEV = 200
+TRIAL_NFEV = 100
 '''Largest number of evaluations of the residuals (``max_nfev``) in each fit
 of a pair that :class:`Frame` tries in place of a single sphere.  A trial that
 starts far from any good solution can otherwise take a thousand.'''
