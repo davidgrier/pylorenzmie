@@ -17,7 +17,9 @@ class ParameterWidget(QFrame):
 
     Exposes a unified interface for reading and setting a single floating-point
     parameter value.  The slider and spinbox are kept in sync via Qt Designer
-    connections in ``ParameterWidget.ui``.
+    connections in ``ParameterWidget.ui``.  Checking the lock disables them,
+    unless the value may be changed while fixed (see
+    :meth:`setEditableWhenFixed`).
     '''
 
     # what the layout in ParameterWidget.ui makes
@@ -33,16 +35,25 @@ class ParameterWidget(QFrame):
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
+        self._editable_when_fixed = False
         uic.loadUi(_DIR / 'ParameterWidget.ui', self)
         self._connectSignals()
 
     def _connectSignals(self) -> None:
         self.slider.valueChanged.connect(self._reportChange)
         self.checkbox.toggled.connect(self.fixedChanged)
+        self.checkbox.toggled.connect(self._enable)
 
     @Slot(float)
     def _reportChange(self, value: float) -> None:
         self.valueChanged.emit(value)
+
+    @Slot()
+    def _enable(self) -> None:
+        '''Let the user change the value, or not.'''
+        enabled = self._editable_when_fixed or not self.fixed()
+        self.slider.setEnabled(enabled)
+        self.spinbox.setEnabled(enabled)
 
     # ------------------------------------------------------------------
     # Value interface
@@ -134,6 +145,16 @@ class ParameterWidget(QFrame):
         '''Hold the parameter fixed in a fit, or release it.'''
         self.checkbox.setChecked(fixed)
 
+    def editableWhenFixed(self) -> bool:
+        '''Return True if the user may change a value that is fixed.'''
+        return self._editable_when_fixed
+
+    def setEditableWhenFixed(self, editable: bool) -> None:
+        '''Let the user change the value while it is fixed, so that the lock
+        only keeps a fit from adjusting it.'''
+        self._editable_when_fixed = bool(editable)
+        self._enable()
+
     # ------------------------------------------------------------------
     # Serialization
     # ------------------------------------------------------------------
@@ -152,6 +173,8 @@ class ParameterWidget(QFrame):
             s['prefix'] = self.prefix()
         if self.suffix():
             s['suffix'] = self.suffix()
+        if self.editableWhenFixed():
+            s['editable_when_fixed'] = True
         return s
 
     def setSettings(self, settings: dict) -> None:
@@ -166,7 +189,8 @@ class ParameterWidget(QFrame):
                        fixed=self.setFixed,
                        decimals=self.setDecimals,
                        prefix=self.setPrefix,
-                       suffix=self.setSuffix)
+                       suffix=self.setSuffix,
+                       editable_when_fixed=self.setEditableWhenFixed)
         for setting, value in settings.items():
             if setting in setters:
                 setters[setting](value)

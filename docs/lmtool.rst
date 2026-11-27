@@ -44,6 +44,16 @@ the gray levels of the image (useful with a known camera offset)::
 
     lmtool image.png --background 100
 
+A camera records a constant dark count (black level) even without light.  It
+must be subtracted from the hologram and the background before the division,
+or the fringes lose contrast and fits are biased.  Give it on the command
+line, in gray levels::
+
+    lmtool image.png --background background.png --dark 22
+
+or set it at any time with **File → Set Dark Count...**.  The status bar shows
+it with the background.
+
 A background image can also be loaded after startup via
 **File → Open Background...**.  The status bar shows the background in use.  A
 background that cannot be read is reported there and in the log, and the
@@ -206,7 +216,10 @@ The bottom section of the window holds two groups of controls.
 
 **Parameter controls** (left) — sliders for every particle and instrument
 parameter.  Each slider has a lock button; locked parameters are held fixed
-during optimization and are excluded from uncertainty estimates.
+during optimization and are excluded from uncertainty estimates.  A locked
+slider cannot be moved, except those of the wavelength, the magnification and
+the index of the medium, which describe the microscope: set them with their
+locks closed, and release one only if a fit is to adjust it.
 
 **Optimizer settings** (right) — controls the behaviour of the least-squares
 solver: pixel fraction, method, loss function, scale of the loss
@@ -224,8 +237,8 @@ After a change of the optics it waits until the value has been left alone for
 half a second.  If a checked particle has a fit that has not been saved,
 lmtool first asks whether to discard it; if you keep it, the previous value of
 the optics returns, or the previous background stays.  A fit that adjusts an
-unlocked parameter of the optics does not start over.  To change one of the
-optics, uncheck its lock, and check it again if fits are not to adjust it.
+unlocked parameter of the optics does not start over.  Opening an image also
+starts over, after the same question about unsaved fits.
 
 Robust fits
 ^^^^^^^^^^^

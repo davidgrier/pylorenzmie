@@ -40,6 +40,9 @@ class ParameterSpec:
     fixed : bool, optional
         True if a fit holds the parameter fixed until the user frees it.
         Default: False.
+    editable_when_fixed : bool, optional
+        True if the user may change the value while the parameter is fixed.
+        Otherwise the control is disabled until it is freed.  Default: False.
     '''
 
     name: str
@@ -51,6 +54,7 @@ class ParameterSpec:
     suffix: str = ''
     prefix: str = ''
     fixed: bool = False
+    editable_when_fixed: bool = False
 
     def __post_init__(self) -> None:
         low, high = self.range
@@ -75,6 +79,8 @@ class ParameterSpec:
             settings['suffix'] = self.suffix
         if self.prefix:
             settings['prefix'] = self.prefix
+        if self.editable_when_fixed:
+            settings['editable_when_fixed'] = True
         return settings
 
 
@@ -87,7 +93,8 @@ PARAMETERS = (
         value=0.447,
         decimals=3,
         suffix=' μm',
-        fixed=True),
+        fixed=True,
+        editable_when_fixed=True),
     ParameterSpec(
         name='magnification',
         text='magnification',
@@ -96,7 +103,8 @@ PARAMETERS = (
         decimals=4,
         step=0.001,
         suffix=' μm/pixel',
-        fixed=True),
+        fixed=True,
+        editable_when_fixed=True),
     ParameterSpec(
         name='n_m',
         text='n<sub>m</sub>',
@@ -104,7 +112,8 @@ PARAMETERS = (
         value=1.34,
         decimals=4,
         step=0.001,
-        fixed=True),
+        fixed=True,
+        editable_when_fixed=True),
     ParameterSpec(
         name='a_p',
         text='a<sub>p</sub>',

@@ -13,9 +13,10 @@ from qtpy import uic
 from qtpy.QtCore import Slot, QRectF, QTimer
 from qtpy.QtGui import QAction, QCloseEvent
 from qtpy.QtWidgets import (QAbstractItemView, QFileDialog,
-                            QHeaderView, QLabel, QMainWindow, QMenu,
+                            QHeaderView, QInputDialog, QLabel,
+                            QMainWindow, QMenu, QMessageBox,
                             QProgressBar, QTableView, QTabWidget,
-                            QVBoxLayout, QMessageBox)
+                            QVBoxLayout)
 
 from pylorenzmie.analysis import catch_available
 from pylorenzmie.lib import (Azimuthal, LMObject)
@@ -119,6 +120,7 @@ class LMTool(QMainWindow):
     menuOptimization: QMenu
     actionOpen: QAction
     actionOpenBackground: QAction
+    actionSetDark: QAction
     actionSaveParameters: QAction
     saveResult: QAction
     saveResultAs: QAction
@@ -148,6 +150,9 @@ class LMTool(QMainWindow):
 
     #: How long the optics must be left alone before that happens [ms].
     SETTLE_TIME = 500
+
+    #: Decimals of the dark count in the dialog that sets it.
+    DARK_DECIMALS = 2
 
     def __init__(self,
                  controls: type[LMWidget],
@@ -273,6 +278,7 @@ class LMTool(QMainWindow):
         self._settle.timeout.connect(self._applyOptics)
         self.actionOpen.triggered.connect(self.readHologram)
         self.actionOpenBackground.triggered.connect(self.readBackground)
+        self.actionSetDark.triggered.connect(self.readDark)
         self.actionEstimateNoise.triggered.connect(self.estimateNoise)
         self.actionFindParticles.triggered.connect(self.findParticles)
         self.actionNextParticle.triggered.connect(self.nextParticle)
@@ -351,7 +357,12 @@ class LMTool(QMainWindow):
 
     @Slot()
     def readHologram(self, filename: str | None = None) -> None:
-        '''Read a hologram from a file, which is asked for if not given.'''
+        '''Read a hologram from a file, which is asked for if not given.
+
+        The particles of the previous image are discarded.  Fits that have
+        not been saved are discarded only if the user agrees; otherwise the
+        previous image stays.
+        '''
         if not filename:
             get = QFileDialog.getOpenFileName
             filename, _ = get(self,
@@ -365,11 +376,12 @@ class LMTool(QMainWindow):
             logger.error(f'Could not read image: {filename!r}')
             self._say(f'Could not read: {filename}', 5000)
             return
+        if not self._confirmDiscard('a new image replaces them'):
+            return
         self._datafile = filename
-        self.particles.clear()
         # in the type of the file, which tells where it saturates
         self.data = data
-        self.findParticles()
+        self.restart()
 
     def _setNoise(self, image: NDArray[np.floating]) -> bool:
         '''Set the noise of the model to the estimate for ``image``.
@@ -470,6 +482,8 @@ class LMTool(QMainWindow):
         A task that is running is cancelled, and what it returns is
         discarded.
         '''
+        self._settle.stop()       # this search uses any new optics
+        self._edited.clear()
         self.particles.clear()
         self._row = -1
         self._metadata = None
@@ -603,6 +617,29 @@ class LMTool(QMainWindow):
         reason = 'a new background makes them wrong'
         if filename and self._confirmDiscard(reason):
             self.setBackground(filename)
+
+    @Slot()
+    def readDark(self) -> None:
+        '''Ask for the dark count of the camera.
+
+        A new value discards the particles and their fits, after asking
+        about fits that have not been saved.
+        '''
+        dark, accepted = QInputDialog.getDouble(
+            self,
+            'Dark Count',
+            'Dark count of the camera [gray levels]:',
+            self.dark,
+            0.,
+            1e6,
+            self.DARK_DECIMALS,
+        )
+        # the dialog rounds the value that it starts with
+        places = self.DARK_DECIMALS
+        if not accepted or round(dark, places) == round(self.dark, places):
+            return
+        if self._confirmDiscard('a new dark count makes them wrong'):
+            self.setDark(dark)
 
     def setDark(self, dark: float) -> None:
         '''Subtract a dark count (black level) before normalizing.

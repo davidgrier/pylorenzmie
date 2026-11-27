@@ -15,6 +15,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import numpy as np
 import pandas as pd
 
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
@@ -23,7 +24,8 @@ try:
     import qtpy     # chooses the Qt binding (QT_API) before pyqtgraph can
     from pyqtgraph import mkQApp
     from qtpy.QtCore import Qt
-    from qtpy.QtWidgets import QFileDialog, QMessageBox
+    from qtpy.QtWidgets import (QFileDialog, QInputDialog, QMenu,
+                                QMessageBox)
     from pylorenzmie.lmtool import launch
     from pylorenzmie.lmtool.ALMWidget import ALMWidget
     from pylorenzmie.lmtool.LMTool import LMTool
@@ -356,6 +358,109 @@ class TestStartingOver(ToolTestCase):
         self.assertFalse(tool.tasks.busy)
         self.assertEqual(tool.particles.unsaved(), 0)
         self.assertFalse(tool._search_again)
+
+    def test_a_new_image_asks_about_unsaved_fits(self):
+        for discard in (False, True):
+            with self.subTest(discard=discard):
+                tool = self.fitted()
+                count = tool.particles.count
+                question = self.answer(discard)
+                search = self.searches(tool)
+                tool.readHologram(str(IMAGE))
+                question.assert_called_once()
+                self.assertEqual(search.called, discard)
+                self.assertEqual(tool.particles.count,
+                                 0 if discard else count)
+
+    def test_a_file_that_cannot_be_read_discards_nothing(self):
+        tool = self.fitted()
+        question = self.answer(discard=True)
+        with self.assertLogs(level='ERROR'):
+            tool.readHologram('no-such-image.png')
+        question.assert_not_called()
+        self.assertEqual(tool.particles.unsaved(), 1)
+
+    def test_a_new_image_cancels_a_running_fit(self):
+        tool = self.tool()
+        started = self.slowly('fit')
+        tool.optimize()
+        self.assertTrue(started.wait(10))
+        with mock.patch.object(tool, '_onOptimized') as record:
+            tool.readHologram(str(IMAGE))
+            self.wait(tool)
+        record.assert_not_called()
+        self.assertFalse(tool.tasks.busy)
+        self.assertEqual(tool.particles.unsaved(), 0)
+
+    def test_a_new_image_uses_optics_that_were_just_changed(self):
+        tool = self.tool()
+        self.edit(tool, 'magnification', 0.1)
+        search = self.searches(tool)
+        tool.readHologram(str(IMAGE))
+        search.assert_called_once_with()
+        self.assertFalse(tool._settle.isActive())
+        self.assertEqual(tool._edited, {})
+
+    def test_the_optics_may_be_typed_while_they_are_fixed(self):
+        tool = self.tool()
+        for name in tool.OPTICS:
+            with self.subTest(name):
+                control = getattr(tool.controls, name)
+                self.assertTrue(control.fixed())
+                self.assertTrue(control.spinbox.isEnabled())
+                self.assertTrue(control.slider.isEnabled())
+        self.edit(tool, 'magnification', 0.1)
+        self.assertIn('magnification', tool.session.fixed)
+
+    def dialog(self, dark, accepted=True):
+        '''Answer the dialog that asks for the dark count.'''
+        patcher = mock.patch.object(QInputDialog,
+                                    'getDouble',
+                                    return_value=(dark, accepted))
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def test_the_file_menu_sets_the_dark_count(self):
+        tool = self.tool(background=100)
+        menu = tool.findChild(QMenu, 'menuFile')
+        self.assertIn(tool.actionSetDark, menu.actions())
+        ask = self.dialog(22.)
+        search = self.searches(tool)
+        tool.actionSetDark.trigger()
+        self.assertEqual(ask.call_args.args[3], 0.)     # the value so far
+        self.assertEqual(tool.dark, 22.)
+        np.testing.assert_allclose(tool.data, (tool.raw - 22.) / 78.)
+        search.assert_called_once_with()
+
+    def test_a_dark_count_that_does_not_change_discards_nothing(self):
+        tool = self.fitted()
+        tool.setDark(22.345)           # more places than the dialog shows
+        tool.particles.add(195., 193., 100)
+        count = tool.particles.count
+        question = self.answer(discard=True)
+        search = self.searches(tool)
+        for dark, accepted in ((50., False), (22.34, True), (22.345, True)):
+            with self.subTest(dark=dark, accepted=accepted):
+                self.dialog(round(dark, 2), accepted)
+                tool.readDark()
+                self.assertEqual(tool.dark, 22.345)
+        question.assert_not_called()
+        search.assert_not_called()
+        self.assertEqual(tool.particles.count, count)
+
+    def test_a_dark_count_asks_about_unsaved_fits(self):
+        for discard in (False, True):
+            with self.subTest(discard=discard):
+                tool = self.fitted()
+                question = self.answer(discard)
+                search = self.searches(tool)
+                self.dialog(10.)
+                tool.readDark()
+                question.assert_called_once()
+                self.assertEqual(tool.dark, 10. if discard else 0.)
+                self.assertEqual(search.called, discard)
+                self.assertEqual(tool.particles.unsaved(),
+                                 0 if discard else 1)
 
     def test_a_new_dark_count_starts_over(self):
         tool = self.tool(background=100)

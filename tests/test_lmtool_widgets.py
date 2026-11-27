@@ -301,6 +301,19 @@ class TestControlPanels(unittest.TestCase):
                 panel.n_m.setValue(panel.n_m.slider.value())
             self.assertEqual(panel.n_m.slider.value(), first)
 
+    def test_a_lock_disables_a_control_that_is_not_of_the_optics(self):
+        panel = ALMWidget()
+        for name, editable in (('a_p', False), ('noise', False),
+                               ('magnification', True), ('n_m', True),
+                               ('wavelength', True)):
+            control = getattr(panel, name)
+            for fixed in (True, False, True):
+                with self.subTest(name, fixed=fixed):
+                    control.setFixed(fixed)
+                    enabled = editable or not fixed
+                    self.assertEqual(control.spinbox.isEnabled(), enabled)
+                    self.assertEqual(control.slider.isEnabled(), enabled)
+
     def test_a_config_names_only_controls(self):
         panel = LMWidget()
         panel.setConfig(dict(model=dict(value=1.), a_p=dict(value=1.5)))

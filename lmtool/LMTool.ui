@@ -177,6 +177,7 @@
     </property>
     <addaction name="actionOpen"/>
     <addaction name="actionOpenBackground"/>
+    <addaction name="actionSetDark"/>
     <addaction name="actionSaveParameters"/>
     <addaction name="separator"/>
     <addaction name="actionQuit"/>
@@ -222,6 +223,11 @@
   <action name="actionOpenBackground">
    <property name="text">
     <string>Open Background ...</string>
+   </property>
+  </action>
+  <action name="actionSetDark">
+   <property name="text">
+    <string>Set Dark Count ...</string>
    </property>
   </action>
   <action name="actionSaveParameters">

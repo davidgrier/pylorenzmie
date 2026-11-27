@@ -8,6 +8,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Added
 
+* `lmtool`: **File > Set Dark Count** sets the dark count of the camera, which
+  could only be given on the command line.
 * `analysis.CATCHAnalyzer` finds and estimates particles with the neural
   networks of the optional package CATCH.  It is the localizer of a `Frame`,
   `Frame(localizer=CATCHAnalyzer(instrument))`, which then runs CATCH once for
@@ -82,6 +84,11 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Fixed
 
+* `lmtool`: the wavelength, the magnification and the index of the medium may
+  be changed while they are locked.  They had to be released to a fit to be
+  changed, and a fit that was then free to adjust them went far wrong.
+* `lmtool`: opening an image discarded fits that had not been saved without
+  asking, and let a fit of the previous image finish.
 * `lmtool`: the magnification could not be set above 0.135 um/pixel; the
   limit is now 1.  The boxes of the magnification and of the index of the
   medium show four decimals instead of three.  A slider rounded a value
