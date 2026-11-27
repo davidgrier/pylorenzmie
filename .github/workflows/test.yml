@@ -91,7 +91,7 @@ jobs:
         run: pip install -e ".[${{ matrix.extras }}]"
 
       - name: Run tests
-        run: python -m pytest --tb=short -q
+        run: python -m pytest --tb=short -q --durations=10
 
   docs:
     # Read the Docs builds with Python 3.12, without the optional libraries
@@ -170,11 +170,11 @@ jobs:
       # Numba and Qt; pyproject.toml sets the floor.
       - name: Run the tests with coverage
         if: matrix.binding == 'pyqt6' && runner.os == 'Linux'
-        run: python -m pytest --cov --tb=short -q
+        run: python -m pytest --cov --tb=short -q --durations=10
 
       - name: Run the tests
         if: ${{ !(matrix.binding == 'pyqt6' && runner.os == 'Linux') }}
-        run: python -m pytest --tb=short -q
+        run: python -m pytest --tb=short -q --durations=10
 
   minimum:
     # the lowest version of each dependency that pyproject.toml allows, on
@@ -209,7 +209,7 @@ jobs:
           uv pip install --system numba pytest PyQt6 tables
 
       - name: Run the tests
-        run: python -m pytest --tb=short -q
+        run: python -m pytest --tb=short -q --durations=10
 
   jax:
     # the JAX tests are left out of the default run, and so a change to the
@@ -235,7 +235,7 @@ jobs:
 
       # the default run, and the JAX tests that it leaves out
       - name: Run the tests
-        run: python -m pytest -o addopts= --tb=short -q
+        run: python -m pytest -o addopts= --tb=short -q --durations=10
 
   package:
     # what pip installs is the wheel, not the checkout: a file that the wheel
