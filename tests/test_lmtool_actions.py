@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import textwrap
+import time
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -21,6 +22,8 @@ os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 try:
     import qtpy     # chooses the Qt binding (QT_API) before pyqtgraph can
     from pyqtgraph import mkQApp
+    from qtpy.QtCore import Qt
+    from qtpy.QtWidgets import QFileDialog, QMessageBox
     from pylorenzmie.lmtool import launch
     from pylorenzmie.lmtool.ALMWidget import ALMWidget
     from pylorenzmie.lmtool.LMTool import LMTool
@@ -186,6 +189,181 @@ class TestPosition(ToolTestCase):
         tool.imageWidget.x_p, tool.imageWidget.y_p = 150., 160.
         self.assertAlmostEqual(tool.session.get('x_p'), 150., delta=0.1)
         self.assertAlmostEqual(tool.session.get('y_p'), 160., delta=0.1)
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestStartingOver(ToolTestCase):
+    '''A change of the optics or the background starts over.'''
+
+    def fitted(self):
+        '''A window with a fit that is not saved.'''
+        tool = self.tool()
+        row = tool.particles.add(195., 193., 100)
+        result = pd.Series(dict(a_p=0.75, redchi=1., success=True))
+        tool.particles.setResult(row, tool.session.properties, result)
+        self.assertEqual(tool.particles.unsaved(), 1)
+        return tool
+
+    def edit(self, tool, name, value):
+        '''Change a parameter with its control, as the user does.'''
+        getattr(tool.controls, name).setValue(value)
+
+    def answer(self, discard):
+        '''Answer the question about unsaved fits, if it is asked.'''
+        button = QMessageBox.StandardButton
+        chosen = button.Discard if discard else button.Cancel
+        patcher = mock.patch.object(QMessageBox,
+                                    'question',
+                                    return_value=chosen)
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def searches(self, tool):
+        patcher = mock.patch.object(tool, 'findParticles')
+        self.addCleanup(patcher.stop)
+        return patcher.start()
+
+    def test_new_optics_clear_the_particles_and_search_again(self):
+        for name, value in (('wavelength', 0.6), ('magnification', 0.1),
+                            ('n_m', 1.4)):
+            with self.subTest(name):
+                tool = self.tool()
+                tool.particles.add(100., 100., 50)
+                search = self.searches(tool)
+                self.edit(tool, name, value)
+                search.assert_not_called()           # it waits
+                tool._applyOptics()
+                search.assert_called_once_with()
+                self.assertEqual(tool.particles.count, 0)
+
+    def test_the_search_starts_when_the_value_is_left_alone(self):
+        tool = self.tool()
+        search = self.searches(tool)
+        for value in (0.08, 0.09, 0.1):
+            self.edit(tool, 'magnification', value)
+        end = time.time() + 5.
+        while not search.called and time.time() < end:
+            mkQApp().processEvents()
+            time.sleep(0.01)
+        search.assert_called_once_with()
+
+    def test_it_waits_while_the_slider_is_held(self):
+        tool = self.tool()
+        search = self.searches(tool)
+        slider = tool.controls.magnification.slider
+        slider.setSliderDown(True)
+        self.edit(tool, 'magnification', 0.1)
+        tool._applyOptics()
+        search.assert_not_called()
+        slider.setSliderDown(False)
+        tool._applyOptics()
+        search.assert_called_once_with()
+
+    def test_other_changes_do_not_start_over(self):
+        tool = self.tool()
+        search = self.searches(tool)
+        self.edit(tool, 'a_p', 1.2)                     # not the optics
+        tool.session.update(dict(magnification=0.1))    # not the user
+        tool._applyOptics()
+        self.edit(tool, 'magnification', 0.2)           # and back again
+        self.edit(tool, 'magnification', 0.1)
+        tool._applyOptics()
+        self.edit(tool, 'n_m', tool.session.get('n_m') + 3e-5)   # unseen
+        tool._applyOptics()
+        search.assert_not_called()
+
+    def test_unsaved_fits_are_discarded_if_the_user_agrees(self):
+        tool = self.fitted()
+        question = self.answer(discard=True)
+        search = self.searches(tool)
+        self.edit(tool, 'magnification', 0.1)
+        tool._applyOptics()
+        question.assert_called_once()
+        search.assert_called_once_with()
+        self.assertEqual(tool.particles.count, 0)
+
+    def test_otherwise_the_fits_and_the_old_value_stay(self):
+        tool = self.fitted()
+        before = tool.session.get('magnification')
+        count = tool.particles.count
+        question = self.answer(discard=False)
+        search = self.searches(tool)
+        self.edit(tool, 'magnification', 0.1)
+        tool._applyOptics()
+        self.assertAlmostEqual(tool.session.get('magnification'), before)
+        self.assertAlmostEqual(tool.controls.magnification.value(),
+                               before,
+                               places=3)
+        self.assertEqual(tool.particles.count, count)
+        tool._applyOptics()                   # the return is not a change
+        question.assert_called_once()
+        search.assert_not_called()
+
+    def test_saved_fits_are_not_asked_about(self):
+        tool = self.fitted()
+        with tempfile.TemporaryDirectory() as directory:
+            tool.saveResults(str(Path(directory) / 'fits.json'))
+        self.assertEqual(tool.particles.unsaved(), 0)
+        question = self.answer(discard=False)
+        search = self.searches(tool)
+        self.edit(tool, 'magnification', 0.1)
+        tool._applyOptics()
+        question.assert_not_called()
+        search.assert_called_once_with()
+
+    def test_fits_that_are_not_checked_are_not_asked_about(self):
+        tool = self.fitted()
+        row = tool.particles.count - 1
+        index = tool.particles.index(row, 0)
+        tool.particles.setData(index,
+                               Qt.CheckState.Unchecked,
+                               Qt.ItemDataRole.CheckStateRole)
+        self.assertEqual(tool.particles.unsaved(), 0)
+
+    def test_a_fit_asked_for_at_once_uses_the_new_optics_first(self):
+        tool = self.tool()
+        search = self.searches(tool)
+        self.edit(tool, 'magnification', 0.1)
+        with mock.patch.object(tool.tasks, 'start') as start:
+            tool.optimize()
+        search.assert_called_once_with()
+        start.assert_called_once()
+
+    def test_a_new_background_starts_over_if_the_user_agrees(self):
+        for discard in (False, True):
+            with self.subTest(discard=discard):
+                tool = self.fitted()
+                count = tool.particles.count
+                self.answer(discard)
+                search = self.searches(tool)
+                with mock.patch.object(QFileDialog,
+                                       'getOpenFileName',
+                                       return_value=(str(IMAGE), '')):
+                    tool.readBackground()
+                self.assertEqual(search.called, discard)
+                self.assertEqual(tool.particles.count,
+                                 0 if discard else count)
+
+    def test_a_running_fit_is_cancelled_and_forgotten(self):
+        tool = self.tool()
+        started = self.slowly('fit')
+        tool.optimize()
+        self.assertTrue(started.wait(10))
+        with mock.patch.object(tool, '_onOptimized') as record:
+            tool.setBackground(100)
+            self.wait(tool)
+        record.assert_not_called()
+        self.assertFalse(tool.tasks.busy)
+        self.assertEqual(tool.particles.unsaved(), 0)
+        self.assertFalse(tool._search_again)
+
+    def test_a_new_dark_count_starts_over(self):
+        tool = self.tool(background=100)
+        tool.particles.add(100., 100., 50)
+        search = self.searches(tool)
+        tool.setDark(10.)
+        search.assert_called_once_with()
+        self.assertEqual(tool.particles.count, 0)
 
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')

@@ -212,6 +212,21 @@ during optimization and are excluded from uncertainty estimates.
 solver: pixel fraction, method, loss function, scale of the loss
 (``f_scale``), convergence tolerances and the step of the finite differences.
 
+Changing the optics or the background
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Particles are found and fitted with the wavelength, the magnification and the
+index of the medium that the controls show, in an image normalized by the
+background and the dark count.  When you change one of these, lmtool starts
+over, as with a new image: it empties the Particles tab, including the
+particles that you added, looks for particles again, and selects the first.
+After a change of the optics it waits until the value has been left alone for
+half a second.  If a checked particle has a fit that has not been saved,
+lmtool first asks whether to discard it; if you keep it, the previous value of
+the optics returns, or the previous background stays.  A fit that adjusts an
+unlocked parameter of the optics does not start over.  To change one of the
+optics, uncheck its lock, and check it again if fits are not to adjust it.
+
 Robust fits
 ^^^^^^^^^^^
 

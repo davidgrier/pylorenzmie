@@ -208,7 +208,8 @@ class ParticleTable(QAbstractTableModel):
                     include=True,
                     status='new',
                     properties=None,
-                    result=None)
+                    result=None,
+                    saved=False)
 
     def rowAt(self, x_p: float,
               y_p: float,
@@ -251,7 +252,19 @@ class ParticleTable(QAbstractTableModel):
         entry['properties'] = dict(properties)
         entry['result'] = result.copy()
         entry['status'] = 'fitted'
+        entry['saved'] = False
         self._changed(row)
+
+    def unsaved(self) -> int:
+        '''Number of checked particles with a fit that is not saved.'''
+        return sum(entry['result'] is not None and entry['include']
+                   and not entry['saved'] for entry in self._rows)
+
+    def markSaved(self) -> None:
+        '''Note that the fits of the checked particles have been saved.'''
+        for entry in self._rows:
+            if entry['result'] is not None and entry['include']:
+                entry['saved'] = True
 
     def _changed(self, row: int) -> None:
         self.dataChanged.emit(self.index(row, 0),

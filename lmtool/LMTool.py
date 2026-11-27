@@ -10,12 +10,12 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from qtpy import uic
-from qtpy.QtCore import Slot, QRectF
+from qtpy.QtCore import Slot, QRectF, QTimer
 from qtpy.QtGui import QAction, QCloseEvent
 from qtpy.QtWidgets import (QAbstractItemView, QFileDialog,
                             QHeaderView, QLabel, QMainWindow, QMenu,
                             QProgressBar, QTableView, QTabWidget,
-                            QVBoxLayout)
+                            QVBoxLayout, QMessageBox)
 
 from pylorenzmie.analysis import catch_available
 from pylorenzmie.lib import (Azimuthal, LMObject)
@@ -142,6 +142,13 @@ class LMTool(QMainWindow):
     #: How far the ROI can be from a particle, in pixels, and still be on it.
     PARTICLE_TOLERANCE = 10.
 
+    #: The optics.  When the user changes one of these, particles are looked
+    #: for again and earlier fits are discarded.
+    OPTICS = ('wavelength', 'magnification', 'n_m')
+
+    #: How long the optics must be left alone before that happens [ms].
+    SETTLE_TIME = 500
+
     def __init__(self,
                  controls: type[LMWidget],
                  filename: str | None = None,
@@ -159,11 +166,16 @@ class LMTool(QMainWindow):
         self._metadata: pd.Series | None = None    # of the last fit
         self._row = -1            # particle that a task works on
         self._nfound = 0          # candidates that the last search found
-        self._search_again = False    # a new image replaced the searched one
+        self._search_again = False    # what a task works on was replaced
         self._moving = False      # the ROI follows the session
         self._syncing = False     # the session moves the ROI
         self.particles = ParticleTable()
         self.tasks = TaskRunner()
+        # values of the optics before the changes that are not yet applied
+        self._edited: dict[str, float] = {}
+        self._settle = QTimer(self)
+        self._settle.setSingleShot(True)
+        self._settle.setInterval(self.SETTLE_TIME)
         self._handlers: dict[Task, Callable[[Any], None]] = {
             Task.LOCALIZE: self._onLocalized,
             Task.ESTIMATE: self._onEstimated,
@@ -257,6 +269,8 @@ class LMTool(QMainWindow):
         self.imageWidget.roiChanged.connect(self._handleROIChanged)
         self.imageWidget.radiusChanged.connect(self._handleRadiusChanged)
         self.session.parametersChanged.connect(self._onParametersChanged)
+        self.controls.propertyEdited.connect(self._onEdited)
+        self._settle.timeout.connect(self._applyOptics)
         self.actionOpen.triggered.connect(self.readHologram)
         self.actionOpenBackground.triggered.connect(self.readBackground)
         self.actionEstimateNoise.triggered.connect(self.estimateNoise)
@@ -392,6 +406,81 @@ class LMTool(QMainWindow):
             self._say('Too few pixels of the region can be used to '
                       'estimate the noise', 8000)
 
+    @Slot(str, float)
+    def _onEdited(self, name: str, previous: float) -> None:
+        '''Wait for the user to finish changing the optics.'''
+        if name not in self.OPTICS or self.data is None:
+            return
+        self._edited.setdefault(name, previous)
+        self._settle.start()
+
+    @Slot()
+    def _applyOptics(self) -> None:
+        '''Start over if the user has changed the optics.
+
+        The particles were found, and fitted, with the earlier values.  Fits
+        that have not been saved are discarded only if the user agrees, and
+        otherwise the earlier values come back.
+        '''
+        if not self._edited:
+            return
+        controls = [self.controls.control(name) for name in self._edited]
+        holding = any(c is not None and c.slider.isSliderDown()
+                      for c in controls)
+        working = self.tasks.name in (Task.ESTIMATE, Task.OPTIMIZE)
+        if holding or (self.tasks.busy and working):
+            self._settle.start()
+            return
+        self._settle.stop()
+        edited, self._edited = self._edited, {}
+        changed = {}
+        for name, previous in edited.items():
+            control = self.controls.control(name)
+            places = 6 if control is None else control.decimals()
+            # a change that does not show is the rounding of a control
+            if round(self.session.get(name), places) != round(previous,
+                                                              places):
+                changed[name] = previous
+        if not changed:
+            return
+        if not self._confirmDiscard('the new optics make them wrong'):
+            self.session.update(changed)
+            return
+        self.restart()
+
+    def _confirmDiscard(self, reason: str) -> bool:
+        '''True if there are no unsaved fits, or the user lets them go.'''
+        unsaved = self.particles.unsaved()
+        if unsaved == 0:
+            return True
+        button = QMessageBox.StandardButton
+        answer = QMessageBox.question(
+            self,
+            'lmtool',
+            f'{unsaved} fit(s) have not been saved, and {reason}.  Discard '
+            'them?',
+            button.Discard | button.Cancel,
+            button.Cancel,
+        )
+        return answer == button.Discard
+
+    def restart(self) -> None:
+        '''Discard the particles and their fits, and look for them again.
+
+        A task that is running is cancelled, and what it returns is
+        discarded.
+        '''
+        self.particles.clear()
+        self._row = -1
+        self._metadata = None
+        self._pre_estimate = None
+        self.actionUndoEstimate.setEnabled(False)
+        if self.tasks.busy:
+            self._search_again = True      # when the task has ended
+            self.tasks.cancel()
+        else:
+            self.findParticles()
+
     @Slot()
     def findParticles(self) -> None:
         '''Look for particles in the image, in the background.
@@ -511,7 +600,8 @@ class LMTool(QMainWindow):
                               'Open Background',
                               self.background.start_directory(self._datafile),
                               'Images (*.png *.tif *.tiff)')
-        if filename:
+        reason = 'a new background makes them wrong'
+        if filename and self._confirmDiscard(reason):
             self.setBackground(filename)
 
     def setDark(self, dark: float) -> None:
@@ -531,6 +621,7 @@ class LMTool(QMainWindow):
         self._showBackground()
         if self._image is not None:
             self.data = self._image.raw
+            self.restart()
 
     def setBackground(self, background: str | float) -> bool:
         '''Normalize holograms by a background.
@@ -553,6 +644,7 @@ class LMTool(QMainWindow):
             self._say(error, 8000)
         elif self._image is not None:
             self.data = self._image.raw
+            self.restart()
         return error is None
 
     @Slot()
@@ -706,6 +798,7 @@ class LMTool(QMainWindow):
 
         The search runs in a thread, on a copy of the session.
         '''
+        self._applyOptics()       # first, if they have just been changed
         if self.data is None or self._busy():
             return
         props = self.session.properties
@@ -752,6 +845,7 @@ class LMTool(QMainWindow):
 
     # Optional, and not a union with None, as in FitWidget.showEvent
     def closeEvent(self, event: Optional[QCloseEvent]) -> None:
+        self._settle.stop()
         self.tasks.shutdown()
         super().closeEvent(event)
 
@@ -762,6 +856,7 @@ class LMTool(QMainWindow):
         The fit runs in a thread, on a copy of the session; the result
         arrives when it is done, and Cancel (Esc) stops it.
         '''
+        self._applyOptics()       # first, if they have just been changed
         if self.data is None or self._busy():
             return
         self._row = self._particleRow()
@@ -801,6 +896,9 @@ class LMTool(QMainWindow):
     @Slot(str, object)
     def _onTaskFinished(self, name: str, result: object) -> None:
         self._taskEnded(name)
+        if self._search_again:        # the result is out of date
+            self._searchAgain()
+            return
         self._handlers[Task(name)](result)
 
     @Slot(str, str)
@@ -809,6 +907,8 @@ class LMTool(QMainWindow):
         what = _TASKS[Task(name)].failed
         logger.error(f'{what} failed: {message}')
         self._say(f'{what} failed: {message}', 8000)
+        if self._search_again:
+            self._searchAgain()
 
     @Slot(str)
     def _onTaskCancelled(self, name: str) -> None:
@@ -817,9 +917,13 @@ class LMTool(QMainWindow):
             self._pre_estimate = None
             self.actionUndoEstimate.setEnabled(False)
         self._say('Cancelled', 3000)
-        if name == Task.LOCALIZE and self._search_again:
-            self._search_again = False
-            self.findParticles()          # for the image that replaced it
+        if self._search_again:
+            self._searchAgain()
+
+    def _searchAgain(self) -> None:
+        '''Search what has replaced what the last task worked on.'''
+        self._search_again = False
+        self.findParticles()
 
     # ------------------------------------------------------------------
     # results
@@ -855,6 +959,7 @@ class LMTool(QMainWindow):
             self._say(
                 f'Could not save the results: {error}', 8000)
             return
+        self.particles.markSaved()
         self._say(
             f'Saved {len(results)} particle(s) to {saved}', 8000)
 

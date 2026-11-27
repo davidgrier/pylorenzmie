@@ -51,6 +51,9 @@ class LMWidget(QFrame):
 
     #: Emitted with the name and value of a control that the user changed.
     propertyChanged = Signal(str, float)
+    #: Emitted with ``(name, previous value)`` when the user changes the
+    #: value of a parameter with its control.
+    propertyEdited = Signal(str, float)
 
     def __init__(self, *args: Any,
                  session: LMSession | None = None,
@@ -93,8 +96,11 @@ class LMWidget(QFrame):
     def _handleChange(self, name: str, value: float) -> None:
         if self._updating:
             return
+        previous = self.session.get(name)
         self.session.set(name, value)
         self.propertyChanged.emit(name, value)
+        if self.session.get(name) != previous:
+            self.propertyEdited.emit(name, previous)
 
     def _handleFixed(self, name: str, fixed: bool) -> None:
         if not self._updating:

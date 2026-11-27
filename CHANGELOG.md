@@ -144,6 +144,12 @@ All notable changes to pylorenzmie are recorded here. The format follows
   `group_overlapping` now returns them as single particles.  Pair splitting
   also accepted unphysical pairs.  **Results of `Frame` differ from those of
   earlier versions** where boxes overlap or fits are poor.
+* `lmtool` starts over when the wavelength, the magnification or the index
+  of the medium is changed in its controls, and when the background or the
+  dark count is changed: it empties the list of particles and searches again,
+  because earlier detections and fits belong to the earlier values.  It asks
+  before discarding a fit that has not been saved.  Selecting a particle can
+  then no longer bring back the optics of an earlier fit.
 * The checkable menu entry **Optimization > Robust** of `lmtool` is replaced
   by **Optimization > Set Robust Mode**.  It sets up a robust fit, and the
   optimizer settings, which now include `f_scale`, may then be changed.
