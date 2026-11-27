@@ -48,7 +48,8 @@ class OptimizerWidget(ParameterTree):
              'default': 'linear'},
             {'name': 'f_scale', 'type': 'list',
              'limits': {'auto': 'auto', '1': 1., '2': 2., '4': 4.},
-             'default': 1.,
+             # (pyqtgraph 0.13 otherwise starts at the first of the limits)
+             'value': 1., 'default': 1.,
              'tip': 'residual, in units of the noise, beyond which the loss '
                     'discounts a pixel; auto matches it to the residuals'},
             {'name': 'ftol', 'type': 'float',
