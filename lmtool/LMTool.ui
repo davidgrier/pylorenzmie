@@ -195,6 +195,7 @@
     <addaction name="actionEstimateNoise"/>
     <addaction name="actionEstimate"/>
     <addaction name="actionUndoEstimate"/>
+    <addaction name="actionRobust"/>
     <addaction name="actionOptimize"/>
     <addaction name="actionCancel"/>
     <addaction name="saveResult"/>
@@ -277,6 +278,11 @@
    </property>
    <property name="shortcut">
     <string>Esc</string>
+   </property>
+  </action>
+  <action name="actionRobust">
+   <property name="text">
+    <string>Set Robust Mode</string>
    </property>
   </action>
   <action name="actionEstimate">

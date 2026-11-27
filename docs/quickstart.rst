@@ -164,14 +164,19 @@ of a frame:
    frame = Frame(localizer=catch)     # shares the instrument of catch
    results = frame.analyze(data)      # data: a normalized hologram
 
-CATCH runs once for the whole frame.  Each fit starts from its estimates, so
-there is no search and there are no ranges of parameters to choose.  The fits
-are robust unless ``Frame(robust=False)`` asks for least squares, and the
-results have two more columns: the ``confidence`` of each detection and its
-``quality``, which is empty or says why not to trust the particle.  A particle
-for which CATCH has no estimate keeps its row, with empty values and
-``success`` False.  Pass the saturated pixels of the image, if there are any,
-as ``frame.analyze(data, saturated=saturated)``.  For many frames,
+CATCH runs once for the whole frame.  The box of each particle, which holds
+the pixels of its fit, reaches the 10th bright ring of its hologram, or stops
+where the rings fade into the noise: at the outermost fringe of the azimuthal
+average that is at least three times as high as the pixel noise, though not
+short of the 5th ring.  The settings ``rings``, ``cutoff`` and ``min_rings``
+of the analyzer change these limits, and ``cutoff=0`` always takes ``rings``.  Each fit starts from CATCH's estimates, so there is no search and there are no
+ranges of parameters to choose.  The fits are robust unless
+``Frame(robust=False)`` asks for least squares, and the results have two more
+columns: the ``confidence`` of each detection and its ``quality``, which is
+empty or says why not to trust the particle.  A particle for which CATCH has
+no estimate keeps its row, with empty values and ``success`` False.  Pass the
+saturated pixels of the image, if there are any, as
+``frame.analyze(data, saturated=saturated)``.  For many frames,
 ``CATCHAnalyzer(instrument, compile=True)`` found particles about twice as
 fast after the first frame on an Apple GPU, though the fits take most of the
 time of a frame.

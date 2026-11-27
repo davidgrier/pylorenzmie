@@ -13,17 +13,13 @@ logger = logging.getLogger(__name__)
 class OptimizerWidget(ParameterTree):
     '''Parameter-tree widget for configuring scipy least_squares settings.
 
-    Emits :attr:`settingChanged` (name, value) whenever any setting changes,
-    and :attr:`robustRequested` when its button *Robust fit* is pushed.
+    Emits :attr:`settingChanged` (name, value) whenever any setting changes.
     Enforces the constraint that Levenberg-Marquardt requires
     ``loss='linear'``.
     '''
 
     #: Emitted with ``(name, value)`` whenever a solver setting changes.
     settingChanged = Signal(str, object)
-
-    #: Emitted when the button that sets up a robust fit is pushed.
-    robustRequested = Signal()
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
@@ -33,8 +29,6 @@ class OptimizerWidget(ParameterTree):
 
     def _buildTree(self) -> None:
         p = [
-            {'name': 'robust', 'type': 'action', 'title': 'Robust fit',
-             'tip': 'set up a fit that discounts what the model lacks'},
             {'name': 'fraction', 'type': 'float',
              'value': 0.25, 'limits': (0.01, 1), 'step': 0.01,
              'tip': 'fraction of pixels to fit'},
@@ -78,13 +72,8 @@ class OptimizerWidget(ParameterTree):
     def _connectSignals(self) -> None:
         method_param = self.params.child('method')
         method_param.sigValueChanged.connect(self._updateLoss)
-        self.params.child('robust').sigActivated.connect(self._requestRobust)
         for p in self.params:
             p.sigValueChanged.connect(self._handleValueChanged)
-
-    @Slot(object)
-    def _requestRobust(self, widget: Parameter) -> None:
-        self.robustRequested.emit()
 
     @Slot(object, object)
     def _updateLoss(self,
@@ -103,8 +92,7 @@ class OptimizerWidget(ParameterTree):
     def settings(self) -> dict[str, LMObject.Property]:
         '''The solver settings that are shown, by name.  Setting it changes
         the ones that are named, and ignores the others.'''
-        return {p.name(): p.value() for p in self.params
-                if p.type() != 'action'}       # a button has no value
+        return {p.name(): p.value() for p in self.params}
 
     @settings.setter
     def settings(self, settings: dict[str, LMObject.Property]) -> None:

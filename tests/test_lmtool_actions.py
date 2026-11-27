@@ -198,8 +198,8 @@ class TestRobust(ToolTestCase):
                               settings['f_scale']),
                              ('trf', 'cauchy', 'auto'))
 
-    def push(self, tool):
-        tool.optimizerWidget.params.child('robust').activate()
+    def test_the_menu_entry_is_not_a_switch(self):
+        self.assertFalse(self.tool().actionRobust.isCheckable())
 
     def test_fits_are_robust_at_the_start(self):
         self.assertRobust(self.tool())
@@ -216,12 +216,13 @@ class TestRobust(ToolTestCase):
         self.assertFalse(optimizer.robust)
         self.assertFalse(panel.child('f_scale').opts['enabled'])
 
-    def test_the_button_sets_up_a_robust_fit_again(self):
+    def test_the_menu_sets_up_a_robust_fit_again(self):
         tool = self.tool()
         panel = tool.optimizerWidget.params
         panel.child('f_scale').setValue(1.)
         panel.child('method').setValue('lm')
-        self.push(tool)
+        self.assertIn(tool.actionRobust, tool.menuOptimization.actions())
+        tool.actionRobust.trigger()
         self.assertRobust(tool)
         self.assertTrue(panel.child('f_scale').opts['enabled'])
 

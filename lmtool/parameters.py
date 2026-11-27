@@ -91,9 +91,9 @@ PARAMETERS = (
     ParameterSpec(
         name='magnification',
         text='magnification',
-        range=(0.046, 0.135),
+        range=(0.046, 1.0),
         value=0.048,
-        decimals=3,
+        decimals=4,
         step=0.001,
         suffix=' μm/pixel',
         fixed=True),
@@ -102,7 +102,7 @@ PARAMETERS = (
         text='n<sub>m</sub>',
         range=(1.3, 1.7),
         value=1.34,
-        decimals=3,
+        decimals=4,
         step=0.001,
         fixed=True),
     ParameterSpec(

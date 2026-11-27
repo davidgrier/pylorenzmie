@@ -182,12 +182,6 @@ class TestOptimizerWidget(unittest.TestCase):
         self.widget.settings = {'method': 'lm'}
         self.assertEqual(self.widget.settings['loss'], 'linear')
 
-    def test_the_button_asks_for_a_robust_fit(self):
-        asked = []
-        self.widget.robustRequested.connect(lambda: asked.append(True))
-        self.widget.params.child('robust').activate()
-        self.assertEqual(asked, [True])
-
     def test_a_change_is_announced(self):
         self.widget.settings = {'fraction': 0.5}
         self.assertIn(('fraction', 0.5), self.emitted)
@@ -280,6 +274,32 @@ class TestControlPanels(unittest.TestCase):
         self.assertIs(panel.control('a_p'), panel.a_p)
         self.assertIsNone(panel.control('noise'))
         self.assertIsNotNone(ALMWidget().control('noise'))
+
+    def test_the_optics_of_a_microscope_may_be_typed(self):
+        # a 40x objective at 640 nm
+        optics = dict(wavelength=0.640, magnification=0.1732, n_m=1.3315)
+        panel = LMWidget()
+        for name, value in optics.items():
+            control = getattr(panel, name)
+            with self.subTest(name):
+                control.spinbox.setValue(value)
+                control.spinbox.editingFinished.emit(value)
+                shown = control.value()
+                self.assertAlmostEqual(shown, value, delta=1.5e-4)
+                # the slider is within half a step of what was typed
+                low, high = control.range()
+                half = (high - low) / 2e4
+                moved = abs(control.slider.value() - value)
+                self.assertLessEqual(moved, 1.001 * half)
+
+    def test_a_value_does_not_drift(self):
+        panel = LMWidget()
+        for value in (1.3315, 1.4567, 1.6999):
+            panel.n_m.setValue(value)
+            first = panel.n_m.slider.value()
+            for _ in range(5):
+                panel.n_m.setValue(panel.n_m.slider.value())
+            self.assertEqual(panel.n_m.slider.value(), first)
 
     def test_a_config_names_only_controls(self):
         panel = LMWidget()

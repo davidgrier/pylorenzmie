@@ -116,6 +116,7 @@ class LMTool(QMainWindow):
     fitWidget: FitWidget
     optimizerWidget: OptimizerWidget
     menuParticles: QMenu
+    menuOptimization: QMenu
     actionOpen: QAction
     actionOpenBackground: QAction
     actionSaveParameters: QAction
@@ -124,6 +125,7 @@ class LMTool(QMainWindow):
     actionEstimate: QAction
     actionUndoEstimate: QAction
     actionEstimateNoise: QAction
+    actionRobust: QAction
     actionFindParticles: QAction
     actionNextParticle: QAction
     actionOptimize: QAction
@@ -270,7 +272,7 @@ class LMTool(QMainWindow):
         self.actionSaveParameters.triggered.connect(self.saveParameters)
         self.saveResult.triggered.connect(self.saveResults)
         self.saveResultAs.triggered.connect(self.saveResultsAs)
-        self.optimizerWidget.robustRequested.connect(self.setRobust)
+        self.actionRobust.triggered.connect(self.setRobust)
         self.actionOptimize.triggered.connect(self.optimize)
         self.optimizerWidget.settingChanged.connect(
             self.fitWidget.setSetting)

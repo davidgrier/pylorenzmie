@@ -120,7 +120,11 @@ medium, and lmtool warns when the pixels of the model are more than 5%
 outside that range.  Without CATCH the entry is disabled and the built-in
 methods are used.
 
-Saturated pixels are left out.  Scripts get the same detector and estimates
+The region of a particle that CATCH finds reaches the 10th bright ring of its
+hologram, or stops where the rings fade into the noise, though not short of
+the 5th (see
+:class:`~pylorenzmie.analysis.CATCHAnalyzer.CATCHAnalyzer`).  Saturated pixels
+are left out.  Scripts get the same detector and estimates
 from :class:`~pylorenzmie.analysis.CATCHAnalyzer.CATCHAnalyzer` (see
 :ref:`finding-particles-with-catch`).
 
@@ -211,18 +215,17 @@ solver: pixel fraction, method, loss function, scale of the loss
 Robust fits
 ^^^^^^^^^^^
 
-The button **Robust fit**, at the top of the optimizer settings, sets up a fit
-that limits the influence of pixels that the model does not explain, such as
-dust or the fringes of a neighbor.  It selects the trust-region reflective
-method with a Cauchy loss, and ``f_scale`` ``auto``, which matches the scale
-of the loss to the data: each fit is made by least squares first, and the loss
-then discounts the pixels that differ from the model by much more than those
-residuals typically do (see
-:attr:`~pylorenzmie.analysis.Optimizer.Optimizer.settings`).  lmtool starts
-with these settings.
+**Optimization → Set Robust Mode** sets up a fit that limits the influence of
+pixels that the model does not explain, such as dust or the fringes of a
+neighbor.  It selects the trust-region reflective method with a Cauchy loss,
+and ``f_scale`` ``auto``, which matches the scale of the loss to the data:
+each fit is made by least squares first, and the loss then discounts the
+pixels that differ from the model by much more than those residuals typically
+do (see :attr:`~pylorenzmie.analysis.Optimizer.Optimizer.settings`).  lmtool
+starts with these settings.
 
-Any of them may be changed afterwards, and the button restores them.  For a
-least-squares fit, choose the method Levenberg-Marquardt, or the loss
+Any of them may be changed afterwards, and the menu entry restores them.  For
+a least-squares fit, choose the method Levenberg-Marquardt, or the loss
 ``linear``.  A numerical ``f_scale`` discounts pixels on the scale of the
 **noise** control, which for many real holograms, with a scale of 1, discounts
 too many of them.  The reduced chi-squared in the status bar of a robust fit

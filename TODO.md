@@ -345,6 +345,13 @@
 - [ ] `CATCHAnalyzer`: it uses the first of CATCH's starting points, which
       did as well as the rest on 3 um silica spheres; test large spheres, where
       other starts may matter.  Tested only on silica and simulations.
+- [ ] Size of the boxes of a `CATCHAnalyzer`: the cutoff compares fringes
+      with the pixel noise, but what favors small boxes on real holograms is
+      what the model lacks (background structure, say).  With the minimum of
+      5 rings it does as well as fixed boxes of 5 on silica spheres, and
+      uses 10 on very clean simulations; in noisier white-noise simulations
+      10 rings are better.  Consider a criterion that measures the
+      background; test on cleaner and on larger particles.
 - [ ] A robust fit reports a smaller reduced chi-squared than a least-squares
       fit, so `Frame(split_redchi=...)` cannot be used with robust fits (two
       overlapping spheres: 1.2-1.4 robust, 6-7 least squares).  Pair

@@ -40,9 +40,9 @@ class DoubleSlider(QSlider):
         return frac * (self._maximum - self._minimum) + self._minimum
 
     def _f2i(self, value: float) -> int:
-        '''Convert floating point value to integer slider value'''
+        '''Convert floating point value to the nearest slider value'''
         frac = (value - self._minimum) / (self._maximum - self._minimum)
-        return int(frac * (self._imax - self._imin) + self._imin)
+        return round(frac * (self._imax - self._imin) + self._imin)
 
     def sliderChange(self, change: QAbstractSlider.SliderChange) -> None:
         '''Emit ``valueChanged`` with the float value.

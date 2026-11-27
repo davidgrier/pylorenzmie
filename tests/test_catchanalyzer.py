@@ -45,6 +45,11 @@ class StandIn:
                                    side_effect=self._estimate)
         self.instrument = None
         self.saturation = None
+        self.rings = 10
+
+    def sides(self, result):
+        '''The boxes as they are for 10 rings, half as wide for 5.'''
+        return [box[1] * self.rings // 10 for box in result.bbox]
 
     def analyze(self, image, saturation=None):
         self.saturation = saturation
@@ -79,7 +84,11 @@ class TestAnalyzer(Stubbed):
 
     def test_it_is_an_estimator(self):
         self.assertIsInstance(CATCHAnalyzer(), BaseEstimator)
-        self.assertEqual(CATCHAnalyzer().properties, dict(compile=False))
+        self.assertEqual(CATCHAnalyzer().properties,
+                         dict(compile=False,
+                              rings=10,
+                              min_rings=5,
+                              cutoff=3.))
 
     def test_localize_gives_catch_the_optics_and_the_saturation(self):
         app = self.stand_in(found=detections([0.9]))
@@ -90,6 +99,89 @@ class TestAnalyzer(Stubbed):
         self.assertIs(app.saturation, catch.saturated)
         self.assertEqual(found.attrs['nfound'], 1)
         self.assertEqual(found.attrs['warning'], '')
+
+    def boxes(self, image, found=None, **settings):
+        '''The detections in an image with the boxes of an analyzer.'''
+        found = detections([0.9]) if found is None else found
+        app = StandIn(found=found)       # a box 160 wide at (100, 100)
+        with mock.patch.object(analyzer, '_app', return_value=app):
+            result = CATCHAnalyzer(**settings).localize(image)
+        self.assertEqual(app.rings, 10)              # CATCH keeps its own
+        return result
+
+    def test_boxes_reach_the_rings_that_are_asked_for(self):
+        found = detections([0.9])
+        found['bbox'] = [((-20, -20), 240, 240)]
+        for rings, box, edge in ((5, ((40, 40), 120, 120), False),
+                                 (10, ((-20, -20), 240, 240), True)):
+            with self.subTest(rings=rings):
+                result = self.boxes(np.ones((200, 200)),
+                                    found,
+                                    rings=rings,
+                                    cutoff=0.)
+                self.assertEqual(result.bbox.iloc[0], box)
+                self.assertEqual(result.edge.iloc[0], edge)
+
+    def noisy(self, noise):
+        '''Fringes about (100, 100) that fade with distance.'''
+        y, x = np.indices((201, 201))
+        r = np.hypot(x - 100., y - 100.)
+        fringes = 0.5 * np.exp(-r / 20.) * np.cos(r / 2.)
+        rng = np.random.default_rng(0)
+        return 1. + fringes + rng.normal(0., noise, r.shape)
+
+    def test_a_box_stops_where_the_fringes_fade(self):
+        found = detections([0.9])
+        found['x_p'], found['y_p'] = 100., 100.
+        sides = [self.boxes(self.noisy(noise), found.copy()).bbox.iloc[0][1]
+                 for noise in (0.002, 0.025, 0.2)]
+        # clean: all that was asked for; noisier: less; never under 101
+        self.assertGreaterEqual(sides[0], 140)
+        self.assertLess(sides[1], sides[0] - 15)
+        self.assertEqual(sides[2], analyzer.MINIMUM_SIDE)
+
+    def test_noise_does_not_cut_a_box_below_the_least_rings(self):
+        found = detections([0.9])
+        found['bbox'] = [((-20, -20), 240, 240)]       # 10 rings
+        for least, side in ((5, 120), (8, 192), (12, 240)):
+            with self.subTest(min_rings=least):
+                result = self.boxes(self.noisy(0.2),
+                                    found.copy(),
+                                    min_rings=least)
+                self.assertEqual(result.bbox.iloc[0][1], side)
+
+    def test_without_a_cutoff_noise_does_not_matter(self):
+        result = self.boxes(self.noisy(0.2), cutoff=0.)
+        self.assertEqual(result.bbox.iloc[0][1], 160)
+
+    def test_a_small_box_is_not_enlarged(self):
+        found = detections([0.9])
+        found['bbox'] = [((70, 70), 60, 60)]
+        result = self.boxes(self.noisy(0.002), found)
+        self.assertEqual(result.bbox.iloc[0][1], 60)
+
+    def test_bad_pixels_do_not_spoil_the_boxes(self):
+        image = self.noisy(0.025)
+        expected = self.boxes(image).bbox.iloc[0][1]
+        image[10:14, 10:14] = np.nan
+        image[180, 180] = 80.
+        self.assertAlmostEqual(self.boxes(image).bbox.iloc[0][1],
+                               expected,
+                               delta=10)
+
+    def test_an_image_without_a_noise_estimate_keeps_its_boxes(self):
+        result = self.boxes(np.full((200, 200), np.nan))
+        self.assertEqual(result.bbox.iloc[0][1], 160)
+
+    def test_the_visible_radius_of_a_profile(self):
+        r = np.arange(120.)
+        profile = 1. + np.where(r < 60., 0.2, 0.01) * np.cos(r / 2.)
+        radius = analyzer._visible_radius(profile, 0.1)
+        self.assertAlmostEqual(radius, 60., delta=8.)
+        self.assertEqual(analyzer._visible_radius(profile, 1.), 0.)
+        self.assertEqual(analyzer._visible_radius(np.ones(50), 0.1), 0.)
+        profile[100] += 0.5                   # one spike far out
+        self.assertEqual(analyzer._visible_radius(profile, 0.1), radius)
 
     def test_no_particles_is_a_table_with_the_columns(self):
         self.stand_in()
@@ -215,6 +307,7 @@ class TestFrameWithCATCH(Stubbed):
 
     def test_pairs_are_fitted_as_pairs_and_singles_keep_their_estimates(self):
         found = detections([0.9, 0.8, 0.7])
+        found['x_p'], found['y_p'] = [30., 70., 160.], [30., 30., 160.]
         found['bbox'] = [((0, 0), 60, 60), ((40, 0), 60, 60),
                          ((130, 130), 60, 60)]
         frame = self.frame(found, pairs=True)
@@ -249,6 +342,18 @@ class TestCATCH(unittest.TestCase):
                                    ('n_p', 1.45, 0.01)):
             self.assertAlmostEqual(fit[name], truth, delta=delta)
         self.assertEqual(fit.quality, '')
+
+    def test_noise_makes_boxes_smaller_than_those_of_catch(self):
+        noise = np.random.default_rng(1).normal(0., 0.2, self.image.shape)
+        sides = {}
+        for name, settings in (('catch', dict(cutoff=0.)),
+                               ('limited', {}),
+                               ('least', dict(cutoff=0., rings=5))):
+            catch = CATCHAnalyzer(Instrument(**OPTICS), **settings)
+            found = catch.localize(self.image + noise)
+            sides[name] = found.bbox.iloc[0][1]
+        self.assertLess(sides['limited'], 0.85 * sides['catch'])
+        self.assertGreaterEqual(sides['limited'], sides['least'])
 
     def test_a_crop_is_estimated(self):
         catch = CATCHAnalyzer(Instrument(**OPTICS))

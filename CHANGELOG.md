@@ -24,6 +24,18 @@ All notable changes to pylorenzmie are recorded here. The format follows
   saturated pixels out of the detection of CATCH too.
 * `pair_grouping.group_overlapping` keeps the other columns of its input,
   so that estimates stay with the detections that are not paired.
+* The boxes of a `CATCHAnalyzer`, and so the regions of `lmtool`, reach the
+  10th bright ring of a hologram (`rings`) or stop where the fringes of the
+  azimuthal average fall below three times the pixel noise (`cutoff`),
+  whichever is closer, but reach the 5th at least (`min_rings`).  CATCH's own
+  boxes, of 10 rings, are those of `cutoff=0`; its estimates are unchanged.
+  On 1,157 holograms of 3 um silica spheres, with a quarter of the pixels,
+  the scatter between frames was then 12% lower in the radius and 30% lower
+  in the axial position than with 10 rings, fits took less than a third of
+  the time, and the median radius differed by 11 nm (0.7%).  Fixed boxes of 5
+  rings did the same.  In simulations with white noise alone, 10 rings did
+  better unless the noise was very low: at a noise of 0.035 the error of the
+  radius was 2.5 nm against 1.4 nm.
 * `Frame(robust=...)` fits every feature with a robust loss, or by least
   squares.  By default it is robust with a `CATCHAnalyzer`, unless
   `split_redchi` is set: the reduced chi-squared of a robust fit is too small
@@ -70,6 +82,11 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Fixed
 
+* `lmtool`: the magnification could not be set above 0.135 um/pixel; the
+  limit is now 1.  The boxes of the magnification and of the index of the
+  medium show four decimals instead of three.  A slider rounded a value
+  down, so that a value that was typed could change; it now takes the nearest
+  of its steps.
 * Fits with the Torch calculator, which works in single precision, often ended
   far from the minimum: the finite-difference steps, `1e-5` of each value,
   were too small for it (the derivative with respect to `z_p` was wrong by
@@ -127,10 +144,10 @@ All notable changes to pylorenzmie are recorded here. The format follows
   `group_overlapping` now returns them as single particles.  Pair splitting
   also accepted unphysical pairs.  **Results of `Frame` differ from those of
   earlier versions** where boxes overlap or fits are poor.
-* The menu entry **Optimization > Robust** of `lmtool` is replaced by a button,
-  **Robust fit**, in the optimizer settings.  It sets up a robust fit, and the
-  settings, which now include `f_scale`, may then be changed.  `lmtool`
-  starts with a robust fit set up, and, when CATCH is installed, with
+* The checkable menu entry **Optimization > Robust** of `lmtool` is replaced
+  by **Optimization > Set Robust Mode**.  It sets up a robust fit, and the
+  optimizer settings, which now include `f_scale`, may then be changed.
+  `lmtool` starts with a robust fit set up, and, when CATCH is installed, with
   **Particles > Use CATCH** checked.  It warns when the
   pixels of the instrument are more than 5% outside the range of sizes that
   CATCH was trained for.  The default of `Optimizer` is still least squares.
@@ -138,7 +155,7 @@ All notable changes to pylorenzmie are recorded here. The format follows
   the `'lm'` method also counted the evaluations of the finite differences,
   so that a limit allowed several times fewer steps than with later versions.
 * Setting `Optimizer.robust` to `True` (the `robust` argument, and
-  the **Robust fit** button of `lmtool`) now selects `f_scale='auto'`, unless
+  **Set Robust Mode** in `lmtool`) now selects `f_scale='auto'`, unless
   the settings give an `f_scale`.  **Robust fits differ from those of earlier
   versions**, and take longer, because a least-squares fit comes first.  For
   the earlier behavior set `optimizer.settings['f_scale'] = 1`.  Choosing a
