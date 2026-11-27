@@ -51,6 +51,13 @@ class ToolTestCase(unittest.TestCase):
             time.sleep(0.005)
         mkQApp().processEvents()
 
+    def setUp(self):
+        # the same detector and estimator, whether CATCH is installed or not
+        patcher = mock.patch('pylorenzmie.lmtool.LMTool.catch_available',
+                             return_value=False)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def tool(self, panel=None, background=None):
         tool = LMTool(panel or ALMWidget, str(IMAGE), background)
         self.addCleanup(tool.close)

@@ -150,13 +150,14 @@ class TestOptimizerWidget(unittest.TestCase):
     def test_settings_are_those_of_least_squares(self):
         self.assertEqual(
             set(self.widget.settings),
-            {'fraction', 'method', 'loss', 'ftol', 'xtol', 'gtol',
+            {'fraction', 'method', 'loss', 'f_scale', 'ftol', 'xtol', 'gtol',
              'diff_step'},
         )
 
     def test_the_defaults_are_those_of_the_optimizer(self):
         # the panel keeps a copy of them
-        defaults = Optimizer().settings
+        # (a scale that is not given is 1, that of scipy)
+        defaults = {'f_scale': 1.} | Optimizer().settings
         for name, value in self.widget.settings.items():
             if name != 'fraction':
                 with self.subTest(name=name):
@@ -180,6 +181,12 @@ class TestOptimizerWidget(unittest.TestCase):
         self.widget.settings = {'method': 'trf', 'loss': 'huber'}
         self.widget.settings = {'method': 'lm'}
         self.assertEqual(self.widget.settings['loss'], 'linear')
+
+    def test_the_button_asks_for_a_robust_fit(self):
+        asked = []
+        self.widget.robustRequested.connect(lambda: asked.append(True))
+        self.widget.params.child('robust').activate()
+        self.assertEqual(asked, [True])
 
     def test_a_change_is_announced(self):
         self.widget.settings = {'fraction': 0.5}

@@ -197,7 +197,6 @@
     <addaction name="actionUndoEstimate"/>
     <addaction name="actionOptimize"/>
     <addaction name="actionCancel"/>
-    <addaction name="actionRobust"/>
     <addaction name="saveResult"/>
     <addaction name="saveResultAs"/>
    </widget>
@@ -278,14 +277,6 @@
    </property>
    <property name="shortcut">
     <string>Esc</string>
-   </property>
-  </action>
-  <action name="actionRobust">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="text">
-    <string>Robust</string>
    </property>
   </action>
   <action name="actionEstimate">

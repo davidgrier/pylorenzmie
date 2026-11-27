@@ -17,7 +17,7 @@ pyqtgraph and `qtpy`, which runs on PyQt6, PyQt5 and PySide6.  It is started by 
   its stubs allow to be `None`.
 - `parameters.py` says which parameters are shown and how, `results.py`
   saves the fits, and `tasks.py` runs the work in a worker thread (with
-  CATCH, when it is installed and the user chooses it).
+  CATCH, when it is installed, unless the user turns it off).
   `splash.png` is rendered by `tools/make_splash.py`.
 
 Update this file when the role or contents of the directory change.

@@ -108,15 +108,17 @@ The ROI centre is used as the initial estimate of the particle's lateral
 position (:math:`x_p, y_p`).
 
 If `CATCH <https://github.com/laltman2/CATCH>`_ is installed in the same
-environment, **Particles → Use CATCH** is enabled.  When it is checked,
-**Find Particles** uses the detector of CATCH, and **Optimization →
-Estimate** uses its network, instead of the circle transform and the search
-of differential evolution.  The networks load the first time that you use
-them, which takes a few seconds, and they use the wavelength, the
-magnification and the index of the medium that the model has.  CATCH is
-meant for instruments whose pixel is close to that of its reference
-microscope; see its documentation.  Without CATCH the entry is disabled and
-everything else works as before.
+environment, **Particles → Use CATCH** is enabled and checked.  **Find
+Particles** then uses the detector of CATCH, and **Optimization → Estimate**
+uses its network, instead of the circle transform and the search of
+differential evolution; uncheck it to use those.  The networks load the first
+time that they are used, which takes a few seconds, and they use the
+wavelength, the magnification and the index of the medium that the model has.
+They were trained for pixels 1 to 2.5 times the size of those of a reference
+microscope (0.048 um at 0.447 um in water), measured in wavelengths in the
+medium, and lmtool warns when the pixels of the model are more than 5%
+outside that range.  Without CATCH the entry is disabled and the built-in
+methods are used.
 
 CATCH needs PyTorch.  Install it from its repository:
 
@@ -197,26 +199,29 @@ parameter.  Each slider has a lock button; locked parameters are held fixed
 during optimization and are excluded from uncertainty estimates.
 
 **Optimizer settings** (right) — controls the behaviour of the least-squares
-solver: pixel fraction, method, loss function, convergence tolerances and the
-step of the finite differences.
+solver: pixel fraction, method, loss function, scale of the loss
+(``f_scale``), convergence tolerances and the step of the finite differences.
 
 Robust fits
 ^^^^^^^^^^^
 
-**Optimization → Robust** limits the influence of pixels that the model does
-not explain, such as dust or the fringes of a neighbor.  It selects the
-trust-region reflective method with a Cauchy loss, and matches the scale of
-the loss to the data: each fit is made by least squares first, and the loss
+The button **Robust fit**, at the top of the optimizer settings, sets up a fit
+that limits the influence of pixels that the model does not explain, such as
+dust or the fringes of a neighbor.  It selects the trust-region reflective
+method with a Cauchy loss, and ``f_scale`` ``auto``, which matches the scale
+of the loss to the data: each fit is made by least squares first, and the loss
 then discounts the pixels that differ from the model by much more than those
-residuals typically do (see ``f_scale='auto'`` in
-:attr:`~pylorenzmie.analysis.Optimizer.Optimizer.settings`).  The reduced
-chi-squared in the status bar of such a fit is computed from the robust cost,
-and is not comparable with that of least squares.
+residuals typically do (see
+:attr:`~pylorenzmie.analysis.Optimizer.Optimizer.settings`).  lmtool starts
+with these settings.
 
-A loss chosen in the settings panel, without **Robust**, discounts pixels on
-the scale of the **noise** control instead, which for many real holograms
-discounts too many of them.  The panel does not show the scale, so use
-**Robust** to have it matched.
+Any of them may be changed afterwards, and the button restores them.  For a
+least-squares fit, choose the method Levenberg-Marquardt, or the loss
+``linear``.  A numerical ``f_scale`` discounts pixels on the scale of the
+**noise** control, which for many real holograms, with a scale of 1, discounts
+too many of them.  The reduced chi-squared in the status bar of a robust fit
+is computed from the robust cost, and is not comparable with that of least
+squares.
 
 Workflow
 --------

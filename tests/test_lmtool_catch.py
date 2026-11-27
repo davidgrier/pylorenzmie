@@ -51,15 +51,22 @@ class TestCatchAction(ToolTestCase):
             with mock.patch('importlib.util.find_spec', return_value=found):
                 self.assertEqual(catch_available(), available)
 
-    def test_it_is_available_when_catch_is_installed(self):
-        self.assertEqual(catch_available(), _catch)
+    def installed(self):
+        '''A window that finds CATCH, which finds nothing.'''
+        nothing = pd.DataFrame(columns=['x_p', 'y_p', 'bbox'])
         with mock.patch('pylorenzmie.lmtool.LMTool.catch_available',
                         return_value=True):
-            tool = self.tool()
+            with mock.patch('pylorenzmie.lmtool.LMTool.run_localize',
+                            return_value=nothing):
+                return self.tool()
+
+    def test_it_is_used_when_catch_is_installed(self):
+        self.assertEqual(catch_available(), _catch)
+        tool = self.installed()
         self.assertTrue(tool.actionCATCH.isEnabled())
-        self.assertFalse(tool.useCATCH)         # the user chooses it
-        tool.actionCATCH.setChecked(True)
         self.assertTrue(tool.useCATCH)
+        tool.actionCATCH.setChecked(False)     # the user may do without
+        self.assertFalse(tool.useCATCH)
 
     def test_it_is_disabled_when_catch_is_not_installed(self):
         with mock.patch('pylorenzmie.lmtool.LMTool.catch_available',
@@ -71,9 +78,7 @@ class TestCatchAction(ToolTestCase):
         self.assertFalse(tool.useCATCH)
 
     def test_find_particles_tells_the_task_to_use_catch(self):
-        with mock.patch('pylorenzmie.lmtool.LMTool.catch_available',
-                        return_value=True):
-            tool = self.tool()
+        tool = self.installed()
         requests = []
 
         def localize(request, cancel):
@@ -83,16 +88,14 @@ class TestCatchAction(ToolTestCase):
         with mock.patch('pylorenzmie.lmtool.LMTool.run_localize', localize):
             tool.findParticles()
             self.wait(tool)
-            tool.actionCATCH.setChecked(True)
+            tool.actionCATCH.setChecked(False)
             tool.findParticles()
             self.wait(tool)
-        self.assertEqual([r.catch for r in requests], [False, True])
-        self.assertEqual(requests[1].instrument, INSTRUMENT)
+        self.assertEqual([r.catch for r in requests], [True, False])
+        self.assertEqual(requests[0].instrument, INSTRUMENT)
 
     def test_estimate_tells_the_task_to_use_catch(self):
-        with mock.patch('pylorenzmie.lmtool.LMTool.catch_available',
-                        return_value=True):
-            tool = self.tool()
+        tool = self.installed()
         snapshots = []
 
         def estimate(snapshot, cancel):
@@ -102,10 +105,50 @@ class TestCatchAction(ToolTestCase):
         with mock.patch('pylorenzmie.lmtool.LMTool.run_estimate', estimate):
             tool.estimate()
             self.wait(tool)
-            tool.actionCATCH.setChecked(True)
+            tool.actionCATCH.setChecked(False)
             tool.estimate()
             self.wait(tool)
-        self.assertEqual([s.catch for s in snapshots], [False, True])
+        self.assertEqual([s.catch for s in snapshots], [True, False])
+
+    def test_a_warning_of_catch_is_shown(self):
+        tool = self.installed()
+        found = pd.DataFrame(columns=['x_p', 'y_p', 'bbox'])
+        found.attrs['warning'] = 'CATCH may not suit these pixels'
+        with mock.patch('pylorenzmie.lmtool.LMTool.run_localize',
+                        return_value=found):
+            with self.assertLogs(level='WARNING'):
+                tool.findParticles()
+                self.wait(tool)
+        self.assertEqual(tool.statusBar().currentMessage(),
+                         found.attrs['warning'])
+
+
+class _StandIn:
+    '''CATCHapp for an instrument whose pixels are *scale* times those of
+    its reference.'''
+
+    def __init__(self, scale):
+        self.scale = scale
+        self.localizer = self.estimator = mock.Mock(scales=(1., 2.5))
+        self.instrument = INSTRUMENT
+
+    def __call__(self, image):
+        return pd.DataFrame(columns=['x_p', 'y_p', 'bbox'])
+
+
+@unittest.skipUnless(_qt, 'a Qt binding is not available')
+class TestCatchRange(unittest.TestCase):
+
+    def test_pixels_outside_the_range_of_the_networks_are_reported(self):
+        request = LocalizeRequest(np.ones((64, 64)), 10, True, INSTRUMENT)
+        for scale, warned in ((0.5, True), (1., False), (2.504, False),
+                              (2.6, False), (3., True)):
+            with self.subTest(scale=scale):
+                app = _StandIn(scale)
+                with mock.patch('pylorenzmie.lmtool.tasks._catch',
+                                return_value=app):
+                    found = run_localize(request, threading.Event())
+                self.assertEqual(bool(found.attrs['warning']), warned)
 
 
 @unittest.skipUnless(_qt and _catch, 'CATCH is not installed')

@@ -191,22 +191,43 @@ class TestPosition(ToolTestCase):
 @unittest.skipUnless(_qt, 'a Qt binding is not available')
 class TestRobust(ToolTestCase):
 
-    def test_the_action_selects_robust_optimization(self):
+    def assertRobust(self, tool):
+        optimizer = tool.fitWidget.optimizer
+        for settings in (optimizer.settings, tool.optimizerWidget.settings):
+            self.assertEqual((settings['method'], settings['loss'],
+                              settings['f_scale']),
+                             ('trf', 'cauchy', 'auto'))
+
+    def push(self, tool):
+        tool.optimizerWidget.params.child('robust').activate()
+
+    def test_fits_are_robust_at_the_start(self):
+        self.assertRobust(self.tool())
+
+    def test_the_settings_may_be_changed(self):
         tool = self.tool()
         optimizer = tool.fitWidget.optimizer
+        panel = tool.optimizerWidget.params
+        panel.child('loss').setValue('huber')
+        panel.child('f_scale').setValue(2.)
+        self.assertEqual((optimizer.settings['loss'],
+                          optimizer.settings['f_scale']), ('huber', 2.))
+        panel.child('method').setValue('lm')
         self.assertFalse(optimizer.robust)
-        tool.actionRobust.setChecked(True)
-        self.assertTrue(optimizer.robust)
-        self.assertEqual(tool.optimizerWidget.settings['method'], 'trf')
-        self.assertEqual(tool.optimizerWidget.settings['loss'], 'cauchy')
-        tool.actionRobust.setChecked(False)
-        self.assertFalse(optimizer.robust)
-        self.assertEqual(tool.optimizerWidget.settings['method'], 'lm')
-        self.assertEqual(tool.optimizerWidget.settings['loss'], 'linear')
+        self.assertFalse(panel.child('f_scale').opts['enabled'])
 
-    def test_a_fit_uses_the_robust_settings(self):
+    def test_the_button_sets_up_a_robust_fit_again(self):
         tool = self.tool()
-        tool.setRobust(True)
+        panel = tool.optimizerWidget.params
+        panel.child('f_scale').setValue(1.)
+        panel.child('method').setValue('lm')
+        self.push(tool)
+        self.assertRobust(tool)
+        self.assertTrue(panel.child('f_scale').opts['enabled'])
+
+    def test_a_fit_uses_the_settings_of_the_panel(self):
+        tool = self.tool()
+        tool.optimizerWidget.params.child('f_scale').setValue(4.)
         seen = {}
 
         def fit(snapshot, cancel):
@@ -217,7 +238,8 @@ class TestRobust(ToolTestCase):
             with self.assertLogs(level='ERROR'):
                 tool.optimize()
                 self.wait(tool)
-        self.assertEqual((seen['method'], seen['loss']), ('trf', 'cauchy'))
+        self.assertEqual((seen['method'], seen['loss'], seen['f_scale']),
+                         ('trf', 'cauchy', 4.))
 
 
 @unittest.skipUnless(_qt, 'a Qt binding is not available')

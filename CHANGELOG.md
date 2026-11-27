@@ -69,11 +69,18 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ### Changed
 
+* The menu entry **Optimization > Robust** of `lmtool` is replaced by a button,
+  **Robust fit**, in the optimizer settings.  It sets up a robust fit, and the
+  settings, which now include `f_scale`, may then be changed.  `lmtool`
+  starts with a robust fit set up, and, when CATCH is installed, with
+  **Particles > Use CATCH** checked.  It warns when the
+  pixels of the instrument are more than 5% outside the range of sizes that
+  CATCH was trained for.  The default of `Optimizer` is still least squares.
 * **SciPy 1.16 or later is required** (from 1.15).  With 1.15, `max_nfev` of
   the `'lm'` method also counted the evaluations of the finite differences,
   so that a limit allowed several times fewer steps than with later versions.
 * Setting `Optimizer.robust` to `True` (the `robust` argument, and
-  **Optimization > Robust** of `lmtool`) now selects `f_scale='auto'`, unless
+  the **Robust fit** button of `lmtool`) now selects `f_scale='auto'`, unless
   the settings give an `f_scale`.  **Robust fits differ from those of earlier
   versions**, and take longer, because a least-squares fit comes first.  For
   the earlier behavior set `optimizer.settings['f_scale'] = 1`.  Choosing a

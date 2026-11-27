@@ -127,7 +127,6 @@ class LMTool(QMainWindow):
     actionNextParticle: QAction
     actionOptimize: QAction
     actionCancel: QAction
-    actionRobust: QAction
 
     #: The panel with the parameters of the model, made by the class that the
     #: window was given and put in ``controlsLayout`` when the window is made.
@@ -171,6 +170,9 @@ class LMTool(QMainWindow):
         self._setupStatusBar()
         self._setupParticles()
         self._connectSignals()
+        # fits discount what the model does not explain, unless the user
+        # chooses otherwise in the settings
+        self.setRobust()
         if background is not None:
             self.background.use(background)
             self._showBackground()
@@ -217,6 +219,7 @@ class LMTool(QMainWindow):
         self.actionCATCH.setCheckable(True)
         available = catch_available()
         self.actionCATCH.setEnabled(available)
+        self.actionCATCH.setChecked(available)
         self.actionCATCH.setToolTip(
             'Find and estimate particles with the neural networks of CATCH'
             if available else
@@ -266,7 +269,7 @@ class LMTool(QMainWindow):
         self.actionSaveParameters.triggered.connect(self.saveParameters)
         self.saveResult.triggered.connect(self.saveResults)
         self.saveResultAs.triggered.connect(self.saveResultsAs)
-        self.actionRobust.toggled.connect(self.setRobust)
+        self.optimizerWidget.robustRequested.connect(self.setRobust)
         self.actionOptimize.triggered.connect(self.optimize)
         self.optimizerWidget.settingChanged.connect(
             self.fitWidget.setSetting)
@@ -405,8 +408,15 @@ class LMTool(QMainWindow):
             self._say(
                 'No particles found: move the ROI by hand and add it '
                 '(Ctrl+Shift+A)', 8000)
-            return
-        self.nextParticle()
+        else:
+            self.nextParticle()
+        self._warn(found.attrs.get('warning'))
+
+    def _warn(self, warning: str | None) -> None:
+        '''Show a warning of a task, after any other message about it.'''
+        if warning:
+            logger.warning(warning)
+            self._say(warning, 15000)
 
     @Slot()
     def nextParticle(self) -> None:
@@ -700,6 +710,7 @@ class LMTool(QMainWindow):
             self.particles.setEstimate(self._row, self.session.properties)
         logger.info(f'Estimate: {result}')
         self._say('Estimation complete', 2000)
+        self._warn(result.attrs.get('warning'))
 
     @Slot()
     def undoEstimate(self) -> None:
@@ -710,12 +721,13 @@ class LMTool(QMainWindow):
         self._pre_estimate = None
         self.actionUndoEstimate.setEnabled(False)
 
-    @Slot(bool)
-    def setRobust(self, state: bool) -> None:
-        '''Select robust optimization, and show the settings that it
-        changes.'''
+    @Slot()
+    def setRobust(self) -> None:
+        '''Set up a robust fit, with a loss whose scale is matched to the
+        residuals, and show the settings, which may then be changed.'''
         optimizer = self.fitWidget.optimizer
-        optimizer.robust = state
+        optimizer.robust = True
+        optimizer.settings['f_scale'] = 'auto'
         self.optimizerWidget.settings = optimizer.settings
 
     # Optional, and not a union with None, as in FitWidget.showEvent
