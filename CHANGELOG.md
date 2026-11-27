@@ -61,6 +61,17 @@ All notable changes to pylorenzmie are recorded here. The format follows
   or infinite, as a background no brighter than the dark count leaves, and
   `lmtool` then could not fit.  Such pixels are now left out; an image with
   no block of 3 by 3 finite pixels raises a `ValueError`.
+* `Localizer` found nothing in an image with a single pixel that was NaN or
+  infinite.  Such pixels are now taken to be background.
+* `Localizer` missed most of the particles of frames whose background is
+  close to the dark count in places, which leaves a few negative and very
+  bright pixels.  It now limits the image that it examines to 0 to 3 times
+  the background (`Localizer.limits`).  On 24 frames of silica spheres it
+  found 89% of the particles that CATCH detected, up from 22%; detections on
+  the example holograms are unchanged.  Very strong scatterers, whose
+  holograms are physically brighter than the limit, are still found, but
+  with more false detections: in simulated frames with such peaks, 70
+  instead of 36 over 42 frames.
 * `cupyOptimizer` could not fit: `optimize` raised `AttributeError`, because
   the pixels were no longer copied to the GPU (since 1.2.0).  A step outside
   the range that the model computes is now rejected there too, as by

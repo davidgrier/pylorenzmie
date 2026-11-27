@@ -58,7 +58,20 @@ class Localizer(LMObject):
         Minimum pixel separation ``trackpy.locate`` requires between
         two detections.  Default: ``None`` (``trackpy.locate``'s own
         default, ``diameter`` + 1).
+
+    Attributes
+    ----------
+    limits : tuple[float, float]
+        The detector sees the image limited to this range.  Default:
+        ``(0., 3.)``, in units of the background.  Where a background is
+        close to the dark count, a few pixels of a normalized hologram are
+        negative or many times the background, and they would otherwise
+        hide most of the particles.  ``(-numpy.inf, numpy.inf)`` leaves the
+        image as it is.  The limits apply to detection only: the image is
+        not changed.
     '''
+
+    limits: tuple[float, float] = (0., 3.)
 
     def __init__(self,
                  diameter: int = 31,
@@ -107,7 +120,9 @@ class Localizer(LMObject):
         Parameters
         ----------
         image : numpy.ndarray or list of numpy.ndarray
-            Normalized hologram intensity.
+            Normalized hologram intensity.  Pixels that are NaN or infinite,
+            as where a background is no brighter than the dark count, are
+            taken to be background.
         diameter : int, optional
             Override ``diameter`` for this call.
         nfringes : int, optional
@@ -155,6 +170,11 @@ class Localizer(LMObject):
         nfringes = self.nfringes if nfringes is None else nfringes
         percentile = self.percentile if percentile is None else percentile
         separation = self.separation if separation is None else separation
+
+        # one pixel that is not finite would spoil the whole transform,
+        # and a few extreme ones would outshine the particles
+        image = np.where(np.isfinite(image), image, 1.)
+        image = np.clip(image, *self.limits)
 
         a = self._circletransform.transform(image)
         features = tp.locate(a,

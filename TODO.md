@@ -42,6 +42,14 @@
       marginalized over real background patches. Keep the physical model for
       the final fit. See the CNN item under `ml`.
 
+- [ ] **Camera gamma and hologram contrast** (idea, 2026-11): adjust the
+      camera's gamma to make better use of its gray levels, for example to
+      resolve dim parts of the field.  `Normalizer` takes the counts above the
+      dark count to be proportional to the intensity, so the hologram and the
+      background must be linearized first: measure how the camera applies its
+      gamma and dark offset, and compare noise, quantization and saturation
+      across settings (see also gamma correction under `lmtool`).
+
 - [ ] **Temporal background estimation**: connect `VMedian` to `Normalizer` as a
       `'running'` method. For video data, `VMedian` already accumulates the
       per-pixel temporal median across frames; when particles diffuse, each pixel
@@ -131,9 +139,11 @@
       `Normalizer.saturated`, `lmtool --saturation`)
 - [ ] Piston (constant relative phase) in `Feature`/`Aberrated` (patch on
       hold: the piston needs a physical explanation before it is introduced)
-- [ ] Missing pixels (NaN, where the background is not positive):
-      `Localizer` finds nothing in an image with a few of them.
-      (`estimate_noise` leaves them out since 3.13.)
+- [x] Missing pixels (NaN, where the background is not positive):
+      `estimate_noise` leaves them out and `Localizer` treats them as
+      background since 3.13
+- [ ] Missing pixels in `MLPEstimator`: its estimate is NaN if the crop has
+      one, because the azimuthal average takes them in
 - [x] `LayeredSphere`: core-shell particle class (released in 3.11.0) with appropriate Mie coefficients
       a_n/b_n for layered geometries. Relevant for coated beads, lipid vesicles,
       and protein-coated colloids. HoloPy and PyMieScatt both support this;

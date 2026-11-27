@@ -161,6 +161,47 @@ class TestLocalizerBoxes(unittest.TestCase):
         self.assertEqual(len(found), 0)
         self.assertEqual(list(found.columns), ['x_p', 'y_p', 'bbox', 'mass'])
 
+    def test_pixels_that_are_not_finite_do_not_hide_the_particles(self):
+        image = self.hologram((300, 300), 150., 150.)
+        reference = Localizer().localize(image)
+        rng = np.random.default_rng(0)
+        bad = rng.choice(image.size, 90, replace=False)
+        for value in (np.nan, np.inf, -np.inf):
+            with self.subTest(value=value):
+                spoiled = image.copy()
+                spoiled.ravel()[bad] = value
+                found = Localizer().localize(spoiled)
+                self.assertEqual(len(found), len(reference))
+                for p in ('x_p', 'y_p'):
+                    np.testing.assert_allclose(found[p], reference[p], atol=1.)
+                self.assertFalse(np.isfinite(spoiled).all())  # not changed
+
+    def test_an_image_without_finite_pixels_has_no_particles(self):
+        found = Localizer().localize(np.full((200, 200), np.nan))
+        self.assertEqual(len(found), 0)
+
+    def test_extreme_pixels_do_not_hide_the_particles(self):
+        image = self.hologram((300, 300), 150., 150.)
+        reference = Localizer().localize(image)
+        rng = np.random.default_rng(0)
+        bad = rng.choice(image.size, 40, replace=False)
+        spoiled = image.copy()
+        spoiled.ravel()[bad] = rng.choice((-14., 86.), bad.size)
+        copy = spoiled.copy()
+        found = Localizer().localize(spoiled)
+        self.assertEqual(len(found), len(reference))
+        for p in ('x_p', 'y_p'):
+            np.testing.assert_allclose(found[p], reference[p], atol=1.)
+        np.testing.assert_array_equal(spoiled, copy)      # not changed
+
+    def test_the_limits_can_be_removed(self):
+        image = self.hologram((300, 300), 150., 150.)
+        image[10, 10] = 500.
+        localizer = Localizer()
+        localizer.limits = (-np.inf, np.inf)
+        self.assertNotEqual(len(localizer.localize(image)),
+                            len(Localizer().localize(image)))
+
     def test_localize_reports_the_strength(self):
         result = Localizer().localize(self.hologram((200, 200), 100., 100.))
         self.assertIn('mass', result.columns)
