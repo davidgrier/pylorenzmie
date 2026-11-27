@@ -1,5 +1,6 @@
 import importlib
 import unittest
+from inspect import signature
 from unittest.mock import patch
 
 import numpy as np
@@ -233,14 +234,22 @@ class TestBroydenOptimizer(unittest.TestCase):
 
     def test_the_tolerance_is_a_setting(self):
         optimizer = self.optimizer()
-        optimizer.settings['chi2tol'] = 1e-4
+        optimizer.settings['chi2tol'] = 1e-3
         with patch('pylorenzmie.analysis.Optimizer.broyden_least_squares',
                    wraps=broyden_least_squares) as solver:
             optimizer.optimize(self.hologram)
-        self.assertEqual(solver.call_args.kwargs['tol'], 1e-4)
+        self.assertEqual(solver.call_args.kwargs['tol'], 1e-3)
         self.assertEqual(solver.call_args.kwargs['max_nfev'], 2000)
-        self.assertEqual(optimizer.settings['chi2tol'], 1e-4)
-        self.assertEqual(optimizer.metadata['chi2tol'], 1e-4)
+        self.assertEqual(optimizer.settings['chi2tol'], 1e-3)
+        self.assertEqual(optimizer.metadata['chi2tol'], 1e-3)
+
+    def test_the_default_tolerance_is_that_of_the_solver(self):
+        default = signature(broyden_least_squares).parameters['tol'].default
+        self.assertEqual(default, 1e-4)
+        with patch('pylorenzmie.analysis.Optimizer.broyden_least_squares',
+                   wraps=broyden_least_squares) as solver:
+            self.optimizer().optimize(self.hologram)
+        self.assertEqual(solver.call_args.kwargs['tol'], default)
 
     def test_the_tolerance_does_not_disturb_the_other_methods(self):
         optimizer = self.optimizer('lm')

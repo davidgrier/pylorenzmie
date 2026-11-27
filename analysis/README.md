@@ -12,7 +12,7 @@ estimate, optimize.
   (`BaseEstimator.py` is their base class).
 - `Optimizer.py` (and `cupyOptimizer.py`) refine them with the least
   squares of scipy, Levenberg-Marquardt by default, or with `broyden.py`,
-  which evaluates the model less often.
+  which updates the Jacobian instead of recomputing it.
 - `Feature.py` bundles one particle, `Frame.py` a whole image, and
   `Trajectory.py` links frames in time.  `pair_grouping.py` groups
   features that overlap.

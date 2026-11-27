@@ -327,8 +327,9 @@ its `exclude`; supports random subsampling via `fraction`: exactly
 `seed` makes the draw reproducible).
 
 **`Optimizer(LMObject)`** — wraps `scipy.optimize.least_squares`, and
-`analysis.broyden` for the setting `method='broyden'` (fewer model
-evaluations; least squares without bounds or robust loss).
+`analysis.broyden` for the setting `method='broyden'` (a little more
+reliable than `lm` in double precision at about the same cost; least squares
+without bounds or robust loss).
 `settings['f_scale'] = 'auto'`, which setting `robust` selects, matches the
 scale of a robust loss to the residuals of a least-squares fit made first
 (scipy's scale of 1 noise unit discounts many good pixels of real

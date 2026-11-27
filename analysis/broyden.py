@@ -8,10 +8,13 @@ It computes it again only when a step does worse than expected, and to
 confirm that the fit has converged.
 
 The fit stops when the step of Gauss-Newton predicts a fall of chi-squared,
-in units of the reduced chi-squared, below a tolerance ``tol``: the fit is
-then within about ``sqrt(tol)`` of its uncertainties of the minimum.  That is
-a statement about the parameters, which does not depend on the number of
-pixels, unlike a tolerance on the relative change of the sum of squares.
+in units of the reduced chi-squared, below a tolerance ``tol``.  Unlike a
+tolerance on the relative change of the sum of squares, this does not depend
+on the number of pixels.  If the model explains the data, and the prediction
+is good, the fit is then within about ``sqrt(tol)`` of its uncertainties of
+the minimum.  When the residuals are large, because the model does not
+explain the data, the prediction can be far too small, and a fit stops much
+farther from the minimum than that: choose a small ``tol``.
 
 A model in single precision limits how well a difference gives the Jacobian,
 and so how small the predicted fall can be.  The fit therefore also stops
@@ -55,7 +58,7 @@ _MAX_DAMPING = 1e14
 def broyden_least_squares(fun: Callable[[Vector], Residuals],
                           x0: Vector,
                           jac: Callable[[Vector, Residuals], Matrix],
-                          tol: float = 0.01,
+                          tol: float = 1e-4,
                           max_nfev: int | None = None) -> OptimizeResult:
     '''Minimize a sum of squares with few evaluations of the Jacobian.
 
@@ -73,7 +76,7 @@ def broyden_least_squares(fun: Callable[[Vector], Residuals],
     tol : float, optional
         The fit stops when the predicted fall of the sum of squares, divided
         by the sum of squares per degree of freedom, is below this.
-        Default: 0.01, a tenth of the uncertainties.
+        Default: 1e-4 (see the notes of the module).
     max_nfev : int, optional
         Largest number of calls of ``fun``, not counting those of ``jac``.
         Default: 100 for each parameter.

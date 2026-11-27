@@ -16,12 +16,12 @@ otherwise the solver differences numerically, with steps in proportion to the
 values.
 
 The settings ``method = 'broyden'`` select a Levenberg-Marquardt algorithm
-that updates the Jacobian from the steps that it takes, and so evaluates the
-model less often, and that stops when the parameters are within about a tenth
-of their uncertainties of the minimum (``chi2tol``).  It does least squares
-without limits: neither a robust loss nor ``bounds``.  It suits a calculator
-in double precision; in single precision it gains little, and does worse than
-``'lm'`` for large spheres.
+that updates the Jacobian from the steps that it takes, and that stops when
+the predicted fall of chi-squared is small (``chi2tol``).  With the default
+tolerance it takes about as long as ``'lm'``, and ends at the minimum a
+little more often, mostly for large spheres.  It does least squares without
+limits: neither a robust loss nor ``bounds``.  It suits a calculator in
+double precision; in single precision it does worse than ``'lm'``.
 
 Which parameters are fitted is set by ``fixed`` and ``variables``.  By default
 only the position, radius and refractive index of the particle are free:
@@ -186,9 +186,11 @@ class Optimizer(LMObject):
 
         ``chi2tol``: the tolerance of ``'broyden'``, the predicted fall of
         chi-squared, in units of the reduced chi-squared, below which the
-        fit stops.  Default: 0.01.  The other methods ignore it, and
-        ``'broyden'`` ignores ``ftol``, ``xtol`` and ``gtol``; it takes
-        ``max_nfev`` and ``diff_step``.
+        fit stops.  Default: 1e-4.  A larger value takes fewer evaluations
+        of the model, but a fit whose residuals are large, as for many real
+        holograms, then stops short of its minimum.  The other methods ignore
+        it, and ``'broyden'`` ignores ``ftol``, ``xtol`` and ``gtol``; it
+        takes ``max_nfev`` and ``diff_step``.
 
         ``loss``: ``'linear'`` (standard LS), ``'cauchy'``, ``'huber'``,
         ``'soft_l1'``, or ``'arctan'``.
@@ -396,7 +398,7 @@ class Optimizer(LMObject):
             loss with ``f_scale='auto'``.
         '''
         settings = dict(self.settings)
-        chi2tol = settings.pop('chi2tol', 0.01)
+        chi2tol = settings.pop('chi2tol', 1e-4)
         auto = settings.get('f_scale') == 'auto'
         if auto:
             del settings['f_scale']

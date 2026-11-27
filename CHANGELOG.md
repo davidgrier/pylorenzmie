@@ -27,15 +27,20 @@ All notable changes to pylorenzmie are recorded here. The format follows
   (`analysis.broyden.broyden_least_squares`): Levenberg-Marquardt that
   updates the Jacobian from the steps that it takes (Broyden's update), and
   stops when the predicted fall of chi-squared, in units of the reduced
-  chi-squared, is below `chi2tol` (default 0.01, about a tenth of the
-  uncertainties).  In double precision, on 1,120 benchmark holograms, it
-  reached the best fit (within a tenth of the uncertainties) in 97% of the
-  fits against 96% for the default, with 28% fewer evaluations of the model,
-  about as many as with the former tolerances; for spheres of 2.5 to 5 um,
-  93% against 88%.  The gain in time is smaller than in evaluations, most
-  for the example holograms.  It does least squares without a robust loss or
-  bounds.  In single precision (Torch) it gains little and does worse for
-  large spheres.  The default method is unchanged.
+  chi-squared, is below `chi2tol` (default 1e-4).  In double precision, on
+  1,120 benchmark holograms, it ended within a tenth of the uncertainties of
+  the best fit in 98% of the fits against 96% for the default method, with 6%
+  fewer evaluations of the model and in about the same time; for spheres of
+  2.5 to 5 um, 96% against 88%, with 6% more evaluations.  On real holograms
+  of 3 um silica spheres, whose reduced chi-squared is about 36, 97% against
+  94%, with 17% more evaluations.  A tolerance of 0.01 takes 28% fewer
+  evaluations than the default method on the benchmark, but ended within a
+  tenth of the uncertainties in only 10% of the fits of the silica spheres,
+  because the predicted fall is optimistic when the residuals are large.  It
+  does least squares without a robust loss or bounds.  In single precision
+  (Torch) it does worse than the default method: 58% of the fits against 67%
+  ended within a tenth of the uncertainties of the double-precision fit, with
+  28% more evaluations.  The default method is unchanged.
 * `LorenzMie.diff_steps` gives the steps, by property and in its units, with
   which `Optimizer` differences a calculator.  It is empty for double
   precision.
@@ -77,7 +82,12 @@ All notable changes to pylorenzmie are recorded here. The format follows
   earlier versions** (the radius of a real feature by up to a few tenths of
   a nanometer, typically).  A fit of one sphere takes about 30% longer, and
   60% longer for the example holograms; a fit of a pair of spheres can take
-  several times as long.  For the earlier behavior set
+  several times as long.  Real holograms that the model explains less well
+  can cost more still: for 3 um silica spheres, with a reduced chi-squared of
+  about 36, a fit took about twice the evaluations of the model.  Those fits
+  ended much closer to their minimum (94% within a tenth of the
+  uncertainties, against 1%), but the scatter of the results between frames
+  did not change.  For the earlier behavior set
   `optimizer.settings['ftol'] = 1e-4` and
   `optimizer.settings['xtol'] = 1e-6`.
 
