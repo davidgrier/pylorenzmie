@@ -6,6 +6,8 @@ All notable changes to pylorenzmie are recorded here. The format follows
 
 ## [Unreleased]
 
+## [3.13.0] - 2026-11-28
+
 ### Added
 
 * `lmtool`: **File > Set Dark Count** sets the dark count of the camera, which
